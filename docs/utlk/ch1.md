@@ -1,12 +1,8 @@
 ## Chapter 1. Introduction
 
-### Overview
-
 This chapter gives an overview of major features of Linux, as well as Unix kernels. This book is based on [Linux 2.6.11](https://github.com/shichao-an/linux-2.6.11.12) source code.
 
-### Section Points
-
-#### Linux Versus Other Unix-Like Kernels
+### Linux Versus Other Unix-Like Kernels
 
 Several differences between Linux and Unix implementations:
 
@@ -15,7 +11,7 @@ Several differences between Linux and Unix implementations:
 * Multiprocessor support: Linux 2.6 supports symmetric multiprocessing (SMP)
 * [STREAMS](http://en.wikipedia.org/wiki/STREAMS) is not included in Linux
 
-#### The Process/Kernel Model
+### The Process/Kernel Model
 
 * Users processes
 * Kernel threads:
@@ -28,7 +24,7 @@ Several differences between Linux and Unix implementations:
 	3. interrupt by a peripheral device;
 	4. kernel thread executed
 
-#### Process Implementation
+### Process Implementation
 
 **Process descriptor** contains registers:
 
@@ -39,30 +35,32 @@ Several differences between Linux and Unix implementations:
 * Processor control registers
 * Memory management registers
 
-#### Reentrant Kernels
+### Reentrant Kernels
 A **kernel control** path denotes the sequence of instructions executed by the kernel to handle a system call, an exception, or an interrupt.
 
-#### Process Address Space
-#### Synchronization and Critical Regions
-#### Signals and Interprocess Communication
+### Process Address Space
+### Synchronization and Critical Regions
+### Signals and Interprocess Communication
 
 * Unix signals
 * System V IPC: semaphores, message queues, and shared memory
 
-#### Process Management
+### Process Management
 
 * `fork()`, `_exit()`, and `exec()`-like system calls
 * `wait4()`
 * Process groups and login sessions
 
-#### Memory Management
+### Memory Management
 
 * Virtual memory acts as a logical layer between the application memory requests and the hardware Memory Management Unit (MMU).
 * Kernel Memory Allocator: Linux’s KMA uses a Slab allocator on top of a buddy system.
 * Process virtual address space
 
 
-### Doubts & Solutions
+- - -
+
+### Doubts and Solutions
 
 #### Verbatim
 
