@@ -24,4 +24,5 @@ by W. Richard Stevens and Bill Fenner
 
 
 ### Learning Notes
-#### [Golang](golang/index.md)
+* [Golang](golang/index.md)
+* [Bash](bash/index.md)
