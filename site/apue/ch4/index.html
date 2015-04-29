@@ -161,6 +161,24 @@
         
             <li><a href="#restrict-keyword">restrict keyword</a></li>
         
+            <li><a href="#stat-fstat-fstatat-and-lstat-functions">stat, fstat, fstatat, and lstat Functions</a></li>
+        
+            <li><a href="#file-types">File Types</a></li>
+        
+            <li><a href="#set-user-id-and-set-group-id">Set-User-ID and Set-Group-ID</a></li>
+        
+            <li><a href="#file-access-permissions">File Access Permissions</a></li>
+        
+            <li><a href="#ownership-of-new-files-and-directories">Ownership of New Files and Directories</a></li>
+        
+            <li><a href="#access-and-faccessat-functions">access and faccessat Functions</a></li>
+        
+            <li><a href="#umask-function">umask Function</a></li>
+        
+            <li><a href="#chmod-fchmod-and-fchmodat-functions">chmod, fchmod, and fchmodat Functions</a></li>
+        
+            <li><a href="#sticky-bit">Sticky Bit</a></li>
+        
     
     </ul>
 </div></div>
@@ -169,7 +187,79 @@
 <h2 id="chapter-4-files-and-directories">Chapter 4. Files and Directories</h2>
 <p>This chapter centers on I/O for regular files.</p>
 <h3 id="restrict-keyword"><code>restrict</code> keyword</h3>
-<p>Added in C99, <a href="https://en.wikipedia.org/wiki/Restrict"><code>restrict</code></a> keyword is used to tell the compiler which pointer references can be optimized, by indicating that the object to which the pointer refers is accessed in the function only via that pointer. [p26]</p></div>
+<p>Added in C99, <a href="https://en.wikipedia.org/wiki/Restrict"><code>restrict</code></a> keyword is used to tell the compiler which pointer references can be optimized, by indicating that the object to which the pointer refers is accessed in the function only via that pointer. [p26]</p>
+<h3 id="stat-fstat-fstatat-and-lstat-functions"><code>stat</code>, <code>fstat</code>, <code>fstatat</code>, and <code>lstat</code> Functions</h3>
+<blockquote>
+<p><a href="https://gist.github.com/shichao-an/dd0cdd90a54848ff3018">Functions</a></p>
+</blockquote>
+<ul>
+<li><code>stat</code>: returns a structure of information about the named file</li>
+<li><code>fstat</code>: returns a structure of information about the given file descriptor</li>
+<li><code>lstat</code>: similar to <code>stat</code>, returns information about the symbolic link, not the file referenced by the symbolic link</li>
+<li><code>fstatat</code>:  return the file statistics for a pathname relative to an open directory represented by the fd argument; the flag argument controls whether symbolic links are followed</li>
+</ul>
+<p>The <code>buf</code> argument is a pointer to a <a href="http://en.wikipedia.org/wiki/Stat_(system_call)#stat_structure">structure</a> that we must supply. The functions fill in the structure.</p>
+<h3 id="file-types">File Types</h3>
+<ul>
+<li>Regular file. All binary executable files conform to a format that allows the kernel to identify where to load a program’s text and data.</li>
+<li>Directory file. A file that contains the names of other files and pointers to information on these files. Any process that has read permission for a directory file can read the contents of the directory, but only the kernel can write directly to a directory file.</li>
+<li>Block special file</li>
+<li>Character special file</li>
+<li>FIFO</li>
+<li>Socket</li>
+<li>Symbolic link</li>
+</ul>
+<p>This program in prints the type of file for each command-line argument.</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/filedir/filetype.c">filetype.c</a></li>
+</ul>
+<h3 id="set-user-id-and-set-group-id">Set-User-ID and Set-Group-ID</h3>
+<h3 id="file-access-permissions">File Access Permissions</h3>
+<ol>
+<li>Whenever we want to open any type of file by name, we must have execute permission in each directory mentioned in the name, including the current directory, if it is implied. Read permission for a directory and execute permission for a directory mean different things. Read permission lets us read the directory, obtaining a list of all the filenames in the directory. Execute permission lets us pass through the directory when it is a component of a pathname that we are trying to access. [p100]</li>
+<li>We cannot create a new file in a directory unless we have write permission and execute permission in the directory.</li>
+</ol>
+<h3 id="ownership-of-new-files-and-directories">Ownership of New Files and Directories</h3>
+<ol>
+<li>The user ID of a new file is set to the effective user ID of the process</li>
+<li>The group ID of a new file can be the effective group ID of the process; or group ID of the directory in which the file is being created.</li>
+</ol>
+<p>FreeBSD 8.0 and Mac OS X 10.6.8 always copy the new file’s group ID from the directory. </p>
+<h3 id="access-and-faccessat-functions"><code>access</code> and <code>faccessat</code> Functions</h3>
+<blockquote>
+<p><a href="https://gist.github.com/shichao-an/a0d8ab4d744d51be289f">Functions</a></p>
+</blockquote>
+<p>These functions test accessibility based on the real user and group IDs.</p>
+<p>The <code>flag</code> argument can be used to change the behavior of <code>faccessat</code>. If the <code>AT_EACCESS</code> flag is set, the access checks are made using the effective user and group IDs </p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/filedir/access.c">access.c</a></li>
+</ul>
+<h3 id="umask-function"><code>umask</code> Function</h3>
+<p>The Single UNIX Specification requires that the <code>umask</code> command support a symbolic mode of operation. Unlike the octal format, the symbolic format specifies which permissions are to be allowed instead of which ones are to be denied.</p>
+<pre><code class="text">$ umask  # first print the current file mode creation mask
+002
+$ umask -S  # print the symbolic form
+u=rwx,g=rwx,o=rx
+$ umask 027  # print the symbolic form
+$ umask -S  # print the symbolic form
+u=rwx,g=rx,o=
+</code></pre>
+
+<h3 id="chmod-fchmod-and-fchmodat-functions"><code>chmod</code>, <code>fchmod</code>, and <code>fchmodat</code> Functions</h3>
+<blockquote>
+<p><a href="https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1">Functions</a></p>
+</blockquote>
+<p><code>chmod</code> automatically clear the following permission bits under the following conditions:</p>
+<ol>
+<li>Setting sticky bit on a regular file without superuser privileges (Solaris)</li>
+<li>If the group ID of the new file does not equal either the effective group ID of the process or one of the process’s supplementary group IDs and if the process does not have superuser privileges, then the set-group-ID bit is automatically turned off. On FreeBSD 8.0, Linux 3.2.0 and Mac OS X 10.6.8, if a process that does not have superuser privileges writes to a file, the set-user-ID and set-group-ID bits are automatically turned off.</li>
+</ol>
+<h3 id="sticky-bit">Sticky Bit</h3>
+<p>Sticky Bit (<code>S_ISVTX</code>), or saved-text bit in the later versions of the UNIX System.</p>
+<ul>
+<li>On file: only on a minority of systems</li>
+<li>On directory: <code>/tmp</code> and <code>/var/tmp</code></li>
+</ul></div>
         </div>
 
         
