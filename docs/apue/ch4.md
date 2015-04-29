@@ -28,7 +28,7 @@ The `buf` argument is a pointer to a [structure](http://en.wikipedia.org/wiki/St
 * Socket
 * Symbolic link
 
-This program in prints the type of file for each command-line argument.
+This program prints the type of file for each command-line argument.
 
 * [filetype.c](https://github.com/shichao-an/apue.3e/blob/master/filedir/filetype.c)
 
@@ -51,7 +51,7 @@ FreeBSD 8.0 and Mac OS X 10.6.8 always copy the new file’s group ID from the d
 
 These functions test accessibility based on the real user and group IDs.
 
-The `flag` argument can be used to change the behavior of `faccessat`. If the `AT_EACCESS` flag is set, the access checks are made using the effective user and group IDs 
+The `flag` argument can be used to change the behavior of `faccessat`. If the `AT_EACCESS` flag is set, the access checks are made using the effective user and group IDs.
 
 * [access.c](https://github.com/shichao-an/apue.3e/blob/master/filedir/access.c)
 
@@ -72,7 +72,7 @@ u=rwx,g=rx,o=
 ### `chmod`, `fchmod`, and `fchmodat` Functions
 > [Functions](https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1)
 
-`chmod` automatically clear the following permission bits under the following conditions:
+`chmod` automatically clears the following permission bits under the following conditions:
 
 1. Setting sticky bit on a regular file without superuser privileges (Solaris)
 2. If the group ID of the new file does not equal either the effective group ID of the process or one of the process’s supplementary group IDs and if the process does not have superuser privileges, then the set-group-ID bit is automatically turned off. On FreeBSD 8.0, Linux 3.2.0 and Mac OS X 10.6.8, if a process that does not have superuser privileges writes to a file, the set-user-ID and set-group-ID bits are automatically turned off.
