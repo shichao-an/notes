@@ -163,6 +163,10 @@
         
             <li><a href="#open-and-openat-functions">open and openat Functions</a></li>
         
+            <li><a href="#filename-and-pathname-truncation">Filename and Pathname Truncation</a></li>
+        
+            <li><a href="#creat-function">creat Function</a></li>
+        
     
     </ul>
 </div></div>
@@ -176,7 +180,48 @@
 <li>Non-negative integer</li>
 <li>Range from 0 to <code>OPEN_MAX - 1</code>. With FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10, the limit is essentially infinite, bounded by the amount of memory on the system, the size of an integer, and any hard and soft limits configured by the system administrator.</li>
 </ul>
-<h3 id="open-and-openat-functions"><code>open</code> and <code>openat</code> Functions</h3></div>
+<h3 id="open-and-openat-functions"><code>open</code> and <code>openat</code> Functions</h3>
+<script src="https://gist.github.com/shichao-an/84b85f42bf03c30fa75b.js"></script>
+
+<p><code>oflag</code> argument is formed by ORing one or more of the following constants from <code>&lt;fcntl.h&gt;</code> [p62]:</p>
+<p>Required:</p>
+<ul>
+<li><code>O_RDONLY</code></li>
+<li><code>O_WRONLY</code></li>
+<li><code>O_RDWR</code></li>
+<li><code>O_EXEC</code></li>
+<li><code>O_SEARCH</code>: Open for search only (applies to directories).</li>
+</ul>
+<p>Optional:</p>
+<ul>
+<li><code>O_APPEND</code></li>
+<li><code>O_CLOEXEC</code>: Set the <a href="https://www.gnu.org/software/libc/manual/html_node/Descriptor-Flags.html"><code>FD_CLOEXEC</code></a> file descriptor flag</li>
+<li><code>O_CREAT</code>: Create the file if it doesn’t exist</li>
+<li><code>O_DIRECTORY</code>: Generate an error if <code>O_CREAT</code> is also specified and the file already exists. This test for whether the file already exists and the creation of the file if it doesn’t exist is an atomic operation</li>
+<li><code>O_EXCL</code></li>
+<li><code>O_NOCTTY</code></li>
+<li><code>O_NOFOLLOW</code></li>
+<li><code>O_NONBLOCK</code></li>
+<li><code>O_SYNC</code>: Have each <code>write</code> wait for physical I/O to complete</li>
+<li><code>O_TRUNC</code></li>
+<li><code>O_TTY_INIT</code></li>
+<li><code>O_DSYNC</code></li>
+<li><code>O_RSYNC</code></li>
+</ul>
+<h4 id="tocttou">TOCTTOU</h4>
+<p><code>openat</code>, for example, provides a way to avoid <a href="http://en.wikipedia.org/wiki/Time_of_check_to_time_of_use">time-of-check-to-time-of-use</a> (TOCTTOU) errors. A program is vulnerable if it makes two file-based function calls where the second call depends on the results of the first call (two calls are not atomic).</p>
+<h3 id="filename-and-pathname-truncation">Filename and Pathname Truncation</h3>
+<p>Most modern file systems support a maximum of 255 characters for filenames.</p>
+<h3 id="creat-function"><code>creat</code> Function</h3>
+<script src="https://gist.github.com/shichao-an/e0ac0fe91b023280e33f.js"></script>
+
+<p>This function is equivalent to:</p>
+<pre><code class="c">open(path, O_WRONLY | O_CREAT | O_TRUNC, mode);
+</code></pre>
+
+<p>With <code>creat</code>, the file is opened only for writing. To read and write a file, use [p66]:</p>
+<pre><code class="c">open(path, O_RDWR | O_CREAT | O_TRUNC, mode);
+</code></pre></div>
         </div>
 
         

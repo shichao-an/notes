@@ -9,7 +9,7 @@ Added in C99, [`restrict`](https://en.wikipedia.org/wiki/Restrict) keyword is us
 
 ### `stat`, `fstat`, `fstatat`, and `lstat` Functions
 
-> [Functions](https://gist.github.com/shichao-an/dd0cdd90a54848ff3018)
+<script src="https://gist.github.com/shichao-an/dd0cdd90a54848ff3018.js"></script>
 
 * `stat`: returns a structure of information about the named file
 * `fstat`: returns a structure of information about the given file descriptor
@@ -47,7 +47,8 @@ This program prints the type of file for each command-line argument.
 FreeBSD 8.0 and Mac OS X 10.6.8 always copy the new file’s group ID from the directory. 
 
 ### `access` and `faccessat` Functions
-> [Functions](https://gist.github.com/shichao-an/a0d8ab4d744d51be289f)
+
+<script src="https://gist.github.com/shichao-an/a0d8ab4d744d51be289f.js"></script>
 
 These functions test accessibility based on the real user and group IDs.
 
@@ -70,7 +71,8 @@ u=rwx,g=rx,o=
 ```
 
 ### `chmod`, `fchmod`, and `fchmodat` Functions
-> [Functions](https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1)
+
+<script src="https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1.js"></script>
 
 `chmod` automatically clears the following permission bits under the following conditions:
 
@@ -86,7 +88,7 @@ Sticky Bit (`S_ISVTX`), or saved-text bit in the later versions of the UNIX Syst
 
 ### `chown`, `fchown`, `fchownat`, and `lchown` Functions
 
-> [Functions](https://gist.github.com/shichao-an/233e97d9b3d15aca39b2)
+<script src="https://gist.github.com/shichao-an/233e97d9b3d15aca39b2.js"></script>
 
 * `lchown` and `fchownat` (with the `AT_SYMLINK_NOFOLLOW` flag set) change the owners of the symbolic link itself.
 * `fchown` operates on a open file, it can’t be used to change the ownership of a symbolic link.
@@ -122,9 +124,9 @@ $ du -s core
 ```
 
 ### File Truncation
-> [Functions](https://gist.github.com/shichao-an/df5f6cc1cd7871670b11)
+<script src="https://gist.github.com/shichao-an/df5f6cc1cd7871670b11.js"></script>
 
-These two functions truncate an existing file to *length* bytes. If the previous size of the file was greater than length, the data beyond length is no longer accessible. Otherwise, if the previous size was less than length, the file size will increase and the data between the old end of file and the new end of file will read as 0 (a hole is probably created in the file).
+These two functions truncate an existing file to *length* bytes. If the previous size of the file was greater than *length*, the data beyond *length* is no longer accessible. Otherwise, if the previous size was less than *length*, the file size will increase and the data between the old end of file and the new end of file will read as 0 (a hole is probably created in the file).
 
 
 ### File Systems
