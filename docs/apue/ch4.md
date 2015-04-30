@@ -84,3 +84,49 @@ Sticky Bit (`S_ISVTX`), or saved-text bit in the later versions of the UNIX Syst
 * On file: only on a minority of systems
 * On directory: `/tmp` and `/var/tmp`
 
+### `chown`, `fchown`, `fchownat`, and `lchown` Functions
+
+> [Functions](https://gist.github.com/shichao-an/233e97d9b3d15aca39b2)
+
+* `lchown` and `fchownat` (with the `AT_SYMLINK_NOFOLLOW` flag set) change the owners of the symbolic link itself.
+* `fchown` operates on a open file, it can’t be used to change the ownership of a symbolic link.
+
+Only the superuser can change the ownership of a file (FreeBSD 8.0, Linux 3.2.0, and Mac OS X 10.6.8)
+
+When `_POSIX_CHOWN_RESTRICTED` is in effect, a non-superuser can’t change the user ID of your files; A nonsuperuser can change the group ID of files that he owns, but only to groups that he belongs to.
+
+### File Size
+
+The `st_size` member of the stat structure contains the size of the file in bytes. This field is meaningful only for regular files, directories, and symbolic links.
+
+FreeBSD 8.0, Mac OS X 10.6.8, and Solaris 10 also define the file size for a pipe as the number of bytes that are available for reading from the pipe.
+
+* For a regular file, a file size of 0 is allowed. We’ll get an end-of-file indication on the first read of the file. 
+* For a directory, the file size is usually a multiple of a number, such as 16 or 512.
+* For a symbolic link, the file size is the number of bytes in the filename.
+
+Most contemporary UNIX systems provide two fields:
+
+* `st_blksize`: preferred block size for I/O for the file
+* `st_blocks`: actual number of 512-byte blocks that are allocated
+
+Be aware that different versions of the UNIX System use units other than 512-byte blocks for `st_blocks`. Use of this value is **nonportable**.
+
+### Holes in a File
+
+```
+$ ls -l core
+-rw-r--r-- 1 sar 8483248 Nov 18 12:18 core
+$ du -s core
+272 core
+```
+
+### File Truncation
+> [Functions](https://gist.github.com/shichao-an/df5f6cc1cd7871670b11)
+
+These two functions truncate an existing file to *length* bytes. If the previous size of the file was greater than length, the data beyond length is no longer accessible. Otherwise, if the previous size was less than length, the file size will increase and the data between the old end of file and the new end of file will read as 0 (a hole is probably created in the file).
+
+
+### File Systems
+
+Most UNIX file systems support **case-sensitive** filenames. On Mac OS X, however, the HFS file system is **case-preserving** with **case-insensitive** comparisons.
