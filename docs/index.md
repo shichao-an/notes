@@ -22,7 +22,15 @@ by Daniel P. Bovet and Marco Cesati
 
 by W. Richard Stevens and Bill Fenner
 
-
 ### Learning Notes
+
+#### Programming Languages
+
 * [Golang](golang/index.md)
 * [Bash](bash/index.md)
+
+#### Software and Technologies
+
+* [Nginx](nginx/index.md)
+* [Iptables](iptables/index.md)
+* [Vim](vim/index.md)
