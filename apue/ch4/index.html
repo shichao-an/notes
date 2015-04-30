@@ -179,6 +179,16 @@
         
             <li><a href="#sticky-bit">Sticky Bit</a></li>
         
+            <li><a href="#chown-fchown-fchownat-and-lchown-functions">chown, fchown, fchownat, and lchown Functions</a></li>
+        
+            <li><a href="#file-size">File Size</a></li>
+        
+            <li><a href="#holes-in-a-file">Holes in a File</a></li>
+        
+            <li><a href="#file-truncation">File Truncation</a></li>
+        
+            <li><a href="#file-systems">File Systems</a></li>
+        
     
     </ul>
 </div></div>
@@ -259,7 +269,45 @@ u=rwx,g=rx,o=
 <ul>
 <li>On file: only on a minority of systems</li>
 <li>On directory: <code>/tmp</code> and <code>/var/tmp</code></li>
-</ul></div>
+</ul>
+<h3 id="chown-fchown-fchownat-and-lchown-functions"><code>chown</code>, <code>fchown</code>, <code>fchownat</code>, and <code>lchown</code> Functions</h3>
+<blockquote>
+<p><a href="https://gist.github.com/shichao-an/233e97d9b3d15aca39b2">Functions</a></p>
+</blockquote>
+<ul>
+<li><code>lchown</code> and <code>fchownat</code> (with the <code>AT_SYMLINK_NOFOLLOW</code> flag set) change the owners of the symbolic link itself.</li>
+<li><code>fchown</code> operates on a open file, it can’t be used to change the ownership of a symbolic link.</li>
+</ul>
+<p>Only the superuser can change the ownership of a file (FreeBSD 8.0, Linux 3.2.0, and Mac OS X 10.6.8)</p>
+<p>When <code>_POSIX_CHOWN_RESTRICTED</code> is in effect, a non-superuser can’t change the user ID of your files; A nonsuperuser can change the group ID of files that he owns, but only to groups that he belongs to.</p>
+<h3 id="file-size">File Size</h3>
+<p>The <code>st_size</code> member of the stat structure contains the size of the file in bytes. This field is meaningful only for regular files, directories, and symbolic links.</p>
+<p>FreeBSD 8.0, Mac OS X 10.6.8, and Solaris 10 also define the file size for a pipe as the number of bytes that are available for reading from the pipe.</p>
+<ul>
+<li>For a regular file, a file size of 0 is allowed. We’ll get an end-of-file indication on the first read of the file. </li>
+<li>For a directory, the file size is usually a multiple of a number, such as 16 or 512.</li>
+<li>For a symbolic link, the file size is the number of bytes in the filename.</li>
+</ul>
+<p>Most contemporary UNIX systems provide two fields:</p>
+<ul>
+<li><code>st_blksize</code>: preferred block size for I/O for the file</li>
+<li><code>st_blocks</code>: actual number of 512-byte blocks that are allocated</li>
+</ul>
+<p>Be aware that different versions of the UNIX System use units other than 512-byte blocks for <code>st_blocks</code>. Use of this value is <strong>nonportable</strong>.</p>
+<h3 id="holes-in-a-file">Holes in a File</h3>
+<pre><code>$ ls -l core
+-rw-r--r-- 1 sar 8483248 Nov 18 12:18 core
+$ du -s core
+272 core
+</code></pre>
+
+<h3 id="file-truncation">File Truncation</h3>
+<blockquote>
+<p><a href="https://gist.github.com/shichao-an/df5f6cc1cd7871670b11">Functions</a></p>
+</blockquote>
+<p>These two functions truncate an existing file to <em>length</em> bytes. If the previous size of the file was greater than length, the data beyond length is no longer accessible. Otherwise, if the previous size was less than length, the file size will increase and the data between the old end of file and the new end of file will read as 0 (a hole is probably created in the file).</p>
+<h3 id="file-systems">File Systems</h3>
+<p>Most UNIX file systems support <strong>case-sensitive</strong> filenames. On Mac OS X, however, the HFS file system is <strong>case-preserving</strong> with <strong>case-insensitive</strong> comparisons.</p></div>
         </div>
 
         
