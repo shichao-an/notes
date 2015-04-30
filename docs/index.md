@@ -10,6 +10,8 @@ by W. Richard Stevens and Stephen A. Rago
 
 1. [UNIX System Overview](apue/ch1.md)
 2. [UNIX Standardization and Implementations](apue/ch2.md)
+3. [File I/O](apue/ch3.md)
+4. [Files and Directories](apue/ch4.md)
 
 #### Understanding the Linux Kernel, Third Edition
 
