@@ -128,7 +128,18 @@ $ du -s core
 
 These two functions truncate an existing file to *length* bytes. If the previous size of the file was greater than *length*, the data beyond *length* is no longer accessible. Otherwise, if the previous size was less than *length*, the file size will increase and the data between the old end of file and the new end of file will read as 0 (a hole is probably created in the file).
 
-
 ### File Systems
 
 Most UNIX file systems support **case-sensitive** filenames. On Mac OS X, however, the HFS file system is **case-preserving** with **case-insensitive** comparisons.
+
+<a href="../figure_4.14.png"><img src="../figure_4.14.png" width="600px" /></a>
+
+* Every i-node has a link count that contains the number of directory entries that point to it. Only when the link count (`st_nlink`) goes to 0 can the file be deleted.
+* With a symbolic link (file type `S_IFLNK`), the actual contents of the file (the data blocks) store the name of the file that the symbolic link points to.
+* The i-node contains all the information about the file: the file type, the file’s access permission bits, the size of the file, pointers to the file’s data blocks, and so on.
+* Only two items are stored in the directory entry: the filename and the i-node number. The data type for the i-node number is `ino_t`.
+
+
+### `link`, `linkat`, `unlink`, `unlinkat`, and `remove` Functions
+
+<script src="https://gist.github.com/shichao-an/a05542802e846a5e4a9d.js"></script>
