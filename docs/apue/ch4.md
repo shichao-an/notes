@@ -132,7 +132,7 @@ These two functions truncate an existing file to *length* bytes. If the previous
 
 Most UNIX file systems support **case-sensitive** filenames. On Mac OS X, however, the HFS file system is **case-preserving** with **case-insensitive** comparisons.
 
-<a href="../figure_4.14.png" title="Figure 4.14 Cylinder group’s i-nodes and data blocks in more detail"><img src="../figure_4.14.png" width="600px" /></a>
+[![Figure 4.14 Cylinder group’s i-nodes and data blocks in more detail](figure_4.14_600.png)](figure_4.14.png "Figure 4.14 Cylinder group’s i-nodes and data blocks in more detail")
 
 * Every i-node has a link count that contains the number of directory entries that point to it. Only when the link count (`st_nlink`) goes to 0 can the file be deleted.
 * With a symbolic link (file type `S_IFLNK`), the actual contents of the file (the data blocks) store the name of the file that the symbolic link points to.
