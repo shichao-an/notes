@@ -116,7 +116,7 @@ Be aware that different versions of the UNIX System use units other than 512-byt
 
 ### Holes in a File
 
-```
+```text
 $ ls -l core
 -rw-r--r-- 1 sar 8483248 Nov 18 12:18 core
 $ du -s core
