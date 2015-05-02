@@ -61,3 +61,22 @@ With `creat`, the file is opened only for writing. To read and write a file, use
 ```c
 open(path, O_RDWR | O_CREAT | O_TRUNC, mode);
 ```
+
+### `close` Function
+
+<script src="https://gist.github.com/shichao-an/84758a089b6cb82b7495.js"></script>
+
+When a process terminates, all of its open files are closed automatically by the kernel. Many programs take advantage of this fact and don’t explicitly close open files.
+
+
+### `lseek` Function
+
+Every open file has a "current file offset", normally a non-negative integer that measures the number of bytes from the beginning of the file.
+
+<script src="https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6.js"></script>
+
+The *whence* argument can be:
+
+* `SEEK_SET`: the file’s offset is set to *offset* bytes from the beginning of the file
+* `SEEK_CUR`: the file’s offset is set to its current value plus the *offset*. The *offset* can be positive or negative.
+* `SEEK_END`: the file’s offset is set to the size of the file plus the *offset*. The *offset* can be positive or negative.
