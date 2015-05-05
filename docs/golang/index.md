@@ -64,8 +64,7 @@ The interface variable both contains the value of the receiver instance and a po
 * [interfaces_poly.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/interfaces_poly.go)
 
 #### Interface embedding interfaces
-An interface can contain the name of one or more other interface(s), which is equivalent to explicitly enumerating the methods of the embedded interface in the containing interface. [p270]
-
+An interface can contain the name of one or more other interface(s), which is equivalent to explicitly enumerating the methods of the embedded interface in the containing interface. [TWTG p270]
 
 #### Detect and convert the type of an interface variable: type assertions
 
@@ -97,8 +96,6 @@ Writing functions so that they accept an interface variable as a parameter makes
 
 #### Using method sets with interfaces
 
-* [methodset2.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/methodset2.go)
-
 1. Pointer methods can be called with pointers.
 2. Value methods can be called with values.
 3. Value-receiver methods can be called with pointer values because they can be dereferenced first.
@@ -106,12 +103,13 @@ Writing functions so that they accept an interface variable as a parameter makes
 
 Examples:
 
+* [methodset2.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/methodset2.go)
 * [sort.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/sort/sort.go)
 * [sortmain.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/sortmain.go)
 
 #### Empty Interface
 
-A variable of empty interface type interface{} can through assignment receive a variable of any type.
+A variable of empty interface type `interface{}` can through assignment receive a variable of any type.
 
 
 - - -
