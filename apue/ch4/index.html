@@ -213,6 +213,10 @@
         
             <li><a href="#symbolic-links">Symbolic Links</a></li>
         
+            <li><a href="#file-times">File Times</a></li>
+        
+            <li><a href="#futimens-utimensat-and-utimes-functions">futimens, utimensat, and utimes Functions</a></li>
+        
     
     </ul>
 </div></div>
@@ -344,7 +348,56 @@ $ du -s core
 <p><script src="https://gist.github.com/shichao-an/b2751a71cdecc9845951.js"></script></p>
 <h3 id="symbolic-links">Symbolic Links</h3>
 <p>It is possible to introduce loops into the file system by using symbolic links. Most functions that look up a pathname return an <code>errno</code> of <code>ELOOP</code> when this occurs.</p>
-<p>On Linux, the <a href="http://linux.die.net/man/3/ftw"><code>ftw</code></a> and <code>nftw</code> functions record all directories seen and avoid processing a directory more than once, so they don’t display this behavior.</p></div>
+<p>On Linux, the <a href="http://linux.die.net/man/3/ftw"><code>ftw</code></a> and <code>nftw</code> functions record all directories seen and avoid processing a directory more than once, so they don’t display this behavior.</p>
+<ul>
+<li><code>ls -l</code></li>
+<li><code>ls -F</code></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/487e3a881014019a5896.js"></script>
+
+<p>Because the open function follows a symbolic link, we need a way to open the link itself and read the name in the link.</p>
+<script src="https://gist.github.com/shichao-an/8ee1ce45f97503e1eadf.js"></script>
+
+<p>These functions combine the actions of <code>open</code>, <code>read</code>, and <code>close</code>.</p>
+<h3 id="file-times">File Times</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Example</th>
+<th>ls(1) option</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>st_atim</code></td>
+<td>last-access time of file data</td>
+<td><code>read</code></td>
+<td><code>-u</code></td>
+</tr>
+<tr>
+<td><code>st_mtim</code></td>
+<td>last-modification time of file data</td>
+<td><code>write</code></td>
+<td>default</td>
+</tr>
+<tr>
+<td><code>st_ctim</code></td>
+<td>last-change time of i-node status</td>
+<td><code>chmod</code>, <code>chown</code></td>
+<td><code>-c</code></td>
+</tr>
+</tbody>
+</table>
+<p>The system does not maintain the last-access time for an i-node. The functions <code>access</code> and <code>stat</code> don’t change any of the three times.</p>
+<h3 id="futimens-utimensat-and-utimes-functions"><code>futimens</code>, <code>utimensat</code>, and <code>utimes</code> Functions</h3>
+<script src="https://gist.github.com/shichao-an/cbb255521bbfbd297ffe.js"></script>
+
+<p>In both functions, the first element of the times array argument contains the <strong>access time</strong>, and the second element contains the <strong>modification time</strong>.</p>
+<script src="https://gist.github.com/shichao-an/45e1af258c8c65aef8e3.js"></script>
+
+<p>We are unable to specify a value for the <strong>changed-status time</strong>, <code>st_ctim</code> (the time the i-node was last changed), as this field is automatically updated when the <code>utime</code> function is called.</p></div>
         </div>
 
         
