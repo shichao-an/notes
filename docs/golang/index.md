@@ -30,7 +30,7 @@ Conflicting names [TWTG p239]
 ### Methods
 
 * Receiver type
-* Method set: collection of all the methods on a given type T (or *T)
+* Method set: collection of all the methods on a given type `T` (or `*T`)
 * No method overloading
 * A method and the type on which it acts must be defined in the same package
 * Pointer or value as receiver: if for a type `T` a method `Meth()` exists on `*T` and `t` is a variable of type `T`, then `t.Meth()` is automatically translated to `(&t).Meth()` [TWTG p246]
@@ -68,7 +68,7 @@ An interface can contain the name of one or more other interface(s), which is eq
 
 #### Detect and convert the type of an interface variable: type assertions
 
-We can test if `varI` (interface variable) contains at a certain moment a variable of type T with the type assertion test [TWTG p271]:
+We can test if `varI` (interface variable) contains at a certain moment a variable of type `T` with the type assertion test [TWTG p271]:
 
 ```go
 if v, ok := varI.(T); ok {
@@ -84,7 +84,7 @@ if v, ok := varI.(T); ok {
 
 #### Testing if a value implements an interface
 
-v is a value and we want to test whether it implements the `Stringer` interface:
+`v` is a value and we want to test whether it implements the `Stringer` interface:
 
 ```go
 if sv, ok := v.(Stringer); ok {
@@ -99,7 +99,7 @@ Writing functions so that they accept an interface variable as a parameter makes
 1. Pointer methods can be called with pointers.
 2. Value methods can be called with values.
 3. Value-receiver methods can be called with pointer values because they can be dereferenced first.
-4. Pointer-receiver methods cannot be called with values, however, because the value stored inside an interface has no address.
+4. Pointer-receiver methods **cannot** be called with values, however, because the value stored inside an interface has no address.
 
 Examples:
 
