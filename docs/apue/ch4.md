@@ -143,3 +143,18 @@ Most UNIX file systems support **case-sensitive** filenames. On Mac OS X, howeve
 ### `link`, `linkat`, `unlink`, `unlinkat`, and `remove` Functions
 
 <script src="https://gist.github.com/shichao-an/a05542802e846a5e4a9d.js"></script>
+
+When a file is closed, the kernel first checks the count of the number of processes that have the file open. If this count has reached 0, the kernel then checks the link count; if it is 0, the file’s contents are deleted.
+
+When the `AT_REMOVEDIR` flag is set,then the unlinkat function can be used to remove a directory, similar to using `rmdir`.
+
+<script src="https://gist.github.com/shichao-an/6ed5d4f09ca321b9969d.js"></script>
+
+### `rename` and `renameat` Functions
+<script src="https://gist.github.com/shichao-an/b2751a71cdecc9845951.js"></script>
+
+### Symbolic Links
+
+It is possible to introduce loops into the file system by using symbolic links. Most functions that look up a pathname return an errno of `ELOOP` when this occurs.
+
+On Linux, the [`ftw`](http://linux.die.net/man/3/ftw) and `nftw` functions record all directories seen and avoid processing a directory more than once, so they don’t display this behavior.
