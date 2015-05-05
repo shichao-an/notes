@@ -158,3 +158,34 @@ When the `AT_REMOVEDIR` flag is set, then the `unlinkat` function can be used to
 It is possible to introduce loops into the file system by using symbolic links. Most functions that look up a pathname return an `errno` of `ELOOP` when this occurs.
 
 On Linux, the [`ftw`](http://linux.die.net/man/3/ftw) and `nftw` functions record all directories seen and avoid processing a directory more than once, so they don’t display this behavior.
+
+* `ls -l`
+* `ls -F`
+
+<script src="https://gist.github.com/shichao-an/487e3a881014019a5896.js"></script>
+
+Because the open function follows a symbolic link, we need a way to open the link itself and read the name in the link.
+
+<script src="https://gist.github.com/shichao-an/8ee1ce45f97503e1eadf.js"></script>
+
+These functions combine the actions of `open`, `read`, and `close`.
+
+### File Times
+
+Field     | Description                         | Example          | ls(1) option
+--------- | ----------------------------------- | ---------------- | ------------
+`st_atim` | last-access time of file data       | `read`           | `-u`
+`st_mtim` | last-modification time of file data | `write`          | default
+`st_ctim` | last-change time of i-node status   | `chmod`, `chown` | `-c`
+
+The system does not maintain the last-access time for an i-node. The functions `access` and `stat` don’t change any of the three times.
+
+### `futimens`, `utimensat`, and `utimes` Functions
+
+<script src="https://gist.github.com/shichao-an/cbb255521bbfbd297ffe.js"></script>
+
+In both functions, the first element of the times array argument contains the **access time**, and the second element contains the **modification time**.
+
+<script src="https://gist.github.com/shichao-an/45e1af258c8c65aef8e3.js"></script>
+
+We are unable to specify a value for the **changed-status time**, `st_ctim` (the time the i-node was last changed), as this field is automatically updated when the `utime` function is called.
