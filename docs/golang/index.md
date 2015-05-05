@@ -50,6 +50,70 @@ Conflicting names [TWTG p239]
 * `%T`: complete type specification
 * `%#v` complete output of the instance with its fields
 
+### Interfaces
+
+Interfaces in Go provide a way to specify the behavior of an object: if something can do this, then it can be used here.
+
+* A type doesn’t have to state explicitly that it implements an interface: interfaces are satisfied implicitly. Multiple types can implement the same interface.
+* A type that implements an interface can also have other functions. 
+* A type can implement many interfaces.
+* An interface type can contain a reference to an instance of any of the types that implement the interface (an interface has what is called a dynamic type)
+
+The interface variable both contains the value of the receiver instance and a pointer to the appropriate method in a method table.
+
+* [interfaces_poly.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/interfaces_poly.go)
+
+#### Interface embedding interfaces
+An interface can contain the name of one or more other interface(s), which is equivalent to explicitly enumerating the methods of the embedded interface in the containing interface. [p270]
+
+
+#### Detect and convert the type of an interface variable: type assertions
+
+We can test if `varI` (interface variable) contains at a certain moment a variable of type T with the type assertion test [TWTG p271]:
+
+```go
+if v, ok := varI.(T); ok {
+	// checked type assertion
+}
+```
+
+* [type_interfaces.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/type_interfaces.go)
+
+#### The type switch
+
+* [Type switch](https://golang.org/doc/effective_go.html#type_switch)
+
+#### Testing if a value implements an interface
+
+v is a value and we want to test whether it implements the `Stringer` interface:
+
+```go
+if sv, ok := v.(Stringer); ok {
+	fmt.Printf(“v implements String(): %s\n”, sv.String()); // note: sv, not v
+}
+```
+
+Writing functions so that they accept an interface variable as a parameter makes them more general. Use interfaces to make code more generally applicable.
+
+#### Using method sets with interfaces
+
+* [methodset2.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/methodset2.go)
+
+1. Pointer methods can be called with pointers.
+2. Value methods can be called with values.
+3. Value-receiver methods can be called with pointer values because they can be dereferenced first.
+4. Pointer-receiver methods cannot be called with values, however, because the value stored inside an interface has no address.
+
+Examples:
+
+* [sort.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/sort/sort.go)
+* [sortmain.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/sortmain.go)
+
+#### Empty Interface
+
+A variable of empty interface type interface{} can through assignment receive a variable of any type.
+
+
 - - -
 
 ### References
