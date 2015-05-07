@@ -189,3 +189,22 @@ In both functions, the first element of the times array argument contains the **
 <script src="https://gist.github.com/shichao-an/45e1af258c8c65aef8e3.js"></script>
 
 We are unable to specify a value for the **changed-status time**, `st_ctim` (the time the i-node was last changed), as this field is automatically updated when the `utime` function is called.
+
+### `mkdir`, `mkdirat`, and `rmdir` Functions
+
+<script src="https://gist.github.com/shichao-an/72a28c9446973e80a80a.js"></script>
+
+For a directory, we normally want at least one of the execute bits enabled, to allow access to filenames within the directory.
+
+Solaris 10 and Linux 3.2.0 also have the new directory inherit the set-group-ID bit from the parent directory. Files created in the new directory will then inherit the group ID of that directory. With Linux, the file system implementation determines whether this behavior is supported. For example, the ext2, ext3, and ext4 file systems allow this behavior to be controlled by an option to the mount(1) command.
+
+- - -
+
+### Doubts and Solutions
+#### Verbatim
+
+Section 4.21 on `rmdir` [p130]:
+
+> If the link count of the directory becomes 0 with this call, and if no other process has the directory open, then the space occupied by the directory is freed. If one or more processes have the directory open when the link count reaches 0, the last link is removed and the dot and dot-dot entries are removed before this function returns. Additionally, no new files can be created in the directory.
+
+Does "link count" here mean number of entries (except dot and dot-dot)? Otherwise, this contradicts  "any leaf directory (a directory that does not contain any other directories) always has a link count of 2" in section 4.14 on page 115.

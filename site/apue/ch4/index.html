@@ -217,6 +217,10 @@
         
             <li><a href="#futimens-utimensat-and-utimes-functions">futimens, utimensat, and utimes Functions</a></li>
         
+            <li><a href="#mkdir-mkdirat-and-rmdir-functions">mkdir, mkdirat, and rmdir Functions</a></li>
+        
+            <li><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
     
     </ul>
 </div></div>
@@ -397,7 +401,20 @@ $ du -s core
 <p>In both functions, the first element of the times array argument contains the <strong>access time</strong>, and the second element contains the <strong>modification time</strong>.</p>
 <script src="https://gist.github.com/shichao-an/45e1af258c8c65aef8e3.js"></script>
 
-<p>We are unable to specify a value for the <strong>changed-status time</strong>, <code>st_ctim</code> (the time the i-node was last changed), as this field is automatically updated when the <code>utime</code> function is called.</p></div>
+<p>We are unable to specify a value for the <strong>changed-status time</strong>, <code>st_ctim</code> (the time the i-node was last changed), as this field is automatically updated when the <code>utime</code> function is called.</p>
+<h3 id="mkdir-mkdirat-and-rmdir-functions"><code>mkdir</code>, <code>mkdirat</code>, and <code>rmdir</code> Functions</h3>
+<script src="https://gist.github.com/shichao-an/72a28c9446973e80a80a.js"></script>
+
+<p>For a directory, we normally want at least one of the execute bits enabled, to allow access to filenames within the directory.</p>
+<p>Solaris 10 and Linux 3.2.0 also have the new directory inherit the set-group-ID bit from the parent directory. Files created in the new directory will then inherit the group ID of that directory. With Linux, the file system implementation determines whether this behavior is supported. For example, the ext2, ext3, and ext4 file systems allow this behavior to be controlled by an option to the mount(1) command.</p>
+<hr />
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>Section 4.21 on <code>rmdir</code> [p130]:</p>
+<blockquote>
+<p>If the link count of the directory becomes 0 with this call, and if no other process has the directory open, then the space occupied by the directory is freed. If one or more processes have the directory open when the link count reaches 0, the last link is removed and the dot and dot-dot entries are removed before this function returns. Additionally, no new files can be created in the directory.</p>
+</blockquote>
+<p>Does "link count" here mean number of entries (except dot and dot-dot)? Otherwise, this contradicts  "any leaf directory (a directory that does not contain any other directories) always has a link count of 2" in section 4.14 on page 115.</p></div>
         </div>
 
         
