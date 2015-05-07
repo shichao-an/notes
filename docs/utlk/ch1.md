@@ -64,7 +64,7 @@ A **kernel control** path denotes the sequence of instructions executed by the k
 
 #### Verbatim
 
-p3:
+Chatper 1 on Linux Versus Other Unix-Like Kernels [p3]:
 > Linux uses kernel threads in a very limited way to execute a few kernel functions periodically; however, they do not represent the basic execution context abstraction. 
 
 ### Summary
