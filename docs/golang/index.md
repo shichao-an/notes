@@ -82,6 +82,8 @@ if v, ok := varI.(T); ok {
 
 * [Type switch](https://golang.org/doc/effective_go.html#type_switch)
 
+<script src="https://gist.github.com/shichao-an/36c167f2b8f649e4a468.js"></script>
+
 #### Testing if a value implements an interface
 
 `v` is a value and we want to test whether it implements the `Stringer` interface:
