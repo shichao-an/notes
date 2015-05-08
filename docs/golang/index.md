@@ -111,6 +111,14 @@ Examples:
 
 A variable of empty interface type `interface{}` can through assignment receive a variable of any type.
 
+#### Interface Slice
+* [Interface slice](https://github.com/golang/go/wiki/InterfaceSlice)
+
+#### Interface to interface
+
+An interface value can also be assigned to another interface value, as long as the underlying value implements the necessary methods. 
+
+<script src="https://gist.github.com/shichao-an/4f97af9d9b7333f95b87.js"></script>
 
 - - -
 
