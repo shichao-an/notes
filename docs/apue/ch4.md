@@ -198,6 +198,21 @@ For a directory, we normally want at least one of the execute bits enabled, to a
 
 Solaris 10 and Linux 3.2.0 also have the new directory inherit the set-group-ID bit from the parent directory. Files created in the new directory will then inherit the group ID of that directory. With Linux, the file system implementation determines whether this behavior is supported. For example, the ext2, ext3, and ext4 file systems allow this behavior to be controlled by an option to the mount(1) command.
 
+### Reading Directories
+
+<script src="https://gist.github.com/shichao-an/e98f9a012d74b7a96293.js"></script>
+
+The `dirent` structure defined in <dirent.h> is implementation dependent, with at least the following two members:
+
+```c
+	ino_t  d_ino;                 /* i-node number */
+	char   d_name[];              /* null-terminated filename */
+```
+
+The `DIR` structure is an internal structure used by these seven functions to maintain information about the directory being read. The purpose of the DIR structure is similar to that of the `FILE` structure maintained by the standard I/O library,
+
+* [ftw8.c](https://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
+
 - - -
 
 ### Doubts and Solutions

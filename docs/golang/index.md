@@ -122,6 +122,27 @@ An interface value can also be assigned to another interface value, as long as t
 
 <script src="https://gist.github.com/shichao-an/4f97af9d9b7333f95b87.js"></script>
 
+### Reflection
+
+Reflection is the ability of a program to examine its own structure, particularly through the types; it’s a form of *metaprogramming*. `reflect` can be used to investigate types and variables at runtime, e.g. its size, its methods, and it can also call these methods "dynamically".
+
+* `reflect.TypeOf`
+* `reflect.ValueOf`
+
+<script src="https://gist.github.com/shichao-an/2eae3c34f717fb5bdde8.js"></script>
+
+* `v.Kind()`: returns a constant indicating the type
+* `v.Interface()`: recovers the (interface) value
+
+Example:
+
+* [reflect1.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/reflect1.go)
+
+#### Setting a value through reflection
+
+* [Settability](http://golang.org/pkg/reflect/#Value.CanSet): a `Value` can be changed only if it is addressable and was not obtained by the use of unexported struct fields.
+
+
 - - -
 
 ### References
