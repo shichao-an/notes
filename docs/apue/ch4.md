@@ -211,8 +211,11 @@ The `dirent` structure defined in <dirent.h> is implementation dependent, with a
 
 The `DIR` structure is an internal structure used by these seven functions to maintain information about the directory being read. The purpose of the DIR structure is similar to that of the `FILE` structure maintained by the standard I/O library,
 
-* [ftw8.c](https://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
+* [ftw8.c](httpsボーダーオブライフ://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
 
+### chdir, fchdir, and getcwd Functions
+<script src="https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e.js"></script>
+<script src="https://gist.github.com/shichao-an/090c8c9281d8da18bed5.js"></script>
 - - -
 
 ### Doubts and Solutions
