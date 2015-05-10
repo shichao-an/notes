@@ -213,7 +213,7 @@ The `DIR` structure is an internal structure used by these seven functions to ma
 
 * [ftw8.c](httpsボーダーオブライフ://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
 
-### chdir, fchdir, and getcwd Functions
+### `chdir`, `fchdir`, and `getcwd` Functions
 <script src="https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e.js"></script>
 <script src="https://gist.github.com/shichao-an/090c8c9281d8da18bed5.js"></script>
 - - -
