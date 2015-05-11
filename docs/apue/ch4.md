@@ -211,11 +211,23 @@ The `dirent` structure defined in <dirent.h> is implementation dependent, with a
 
 The `DIR` structure is an internal structure used by these seven functions to maintain information about the directory being read. The purpose of the DIR structure is similar to that of the `FILE` structure maintained by the standard I/O library,
 
-* [ftw8.c](httpsボーダーオブライフ://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
+* [ftw8.c](https://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
 
 ### `chdir`, `fchdir`, and `getcwd` Functions
 <script src="https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e.js"></script>
 <script src="https://gist.github.com/shichao-an/090c8c9281d8da18bed5.js"></script>
+
+#### Device Special Files
+
+* Every file system is known by its **major** and **minor** device numbers, which are encoded in the primitive system data type `dev_t`.
+* We can usually access the major and minor device numbers through two macros defined by most implementations: `major` and `minor`.
+
+On Linux 3.2.0, `dev_t` is a 64-bit integer, only 12 bits are used for the major number and 20 bits are used for the minor number. Linux defines these macros in `<sys/sysmacros.h>`, which is included by `<sys/types.h>`.
+
+The `st_dev` value for every filename on a system is the device number of the file system containing that filename and its corresponding i-node.
+
+Only character special files and block special files have an `st_rdev` value. This value contains the device number for the actual device.
+
 - - -
 
 ### Doubts and Solutions
