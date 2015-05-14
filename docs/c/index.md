@@ -5,13 +5,13 @@
 Bad:
 
 ```c
-/* Include guards and include files omitted.*/
+/* Include guards and include files omitted. */
 
 #define MAX_NO_OF_ORDERS 42
 
 /* Internal representation of a customer. */
 
-typedefstruct
+typedef struct
 
 {
     const char* name;
