@@ -12,6 +12,7 @@ by W. Richard Stevens and Stephen A. Rago
 2. [UNIX Standardization and Implementations](apue/ch2.md)
 3. [File I/O](apue/ch3.md)
 4. [Files and Directories](apue/ch4.md)
+5. [Standard I/O Library](apue/ch5.md)
 
 #### Understanding the Linux Kernel, Third Edition
 
@@ -30,6 +31,7 @@ by W. Richard Stevens and Bill Fenner
 
 * [Golang](golang/index.md)
 * [Bash](bash/index.md)
+* [C](c/index.md)
 
 #### Software and Technologies
 
