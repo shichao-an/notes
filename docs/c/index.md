@@ -39,7 +39,7 @@ The First-class ADT pattern will eliminate dependency problems. Thuis pattern pr
 
 #### Incomplete Types
 
-The C standard (C99) allows us to declare objects of incomplete types in a context where there sizes aren’t needed. 
+The C standard (C99) allows us to declare objects of incomplete types in a context where their sizes aren’t needed. 
 
 In the following code:
 
