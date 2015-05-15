@@ -188,6 +188,12 @@
         
             <li><a href="#streams-and-file-objects">Streams and FILE Objects</a></li>
         
+            <li><a href="#standard-input-standard-output-and-standard-error">Standard Input, Standard Output, and Standard Error</a></li>
+        
+            <li><a href="#buffering">Buffering</a></li>
+        
+            <li><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
     
     </ul>
 </div></div>
@@ -200,7 +206,39 @@
 <ul>
 <li>This book deals only with <strong>byte-oriented</strong> (single byte) streams.</li>
 <li>This book refers to a pointer to a <code>FILE</code> object, the type <code>FILE *</code>, as a <em>file pointer</em>.</li>
-</ul></div>
+</ul>
+<h3 id="standard-input-standard-output-and-standard-error">Standard Input, Standard Output, and Standard Error</h3>
+<p>Three streams are predefined and automatically available to a process. They refer to file descriptors <code>STDIN_FILENO</code>, <code>STDOUT_FILENO</code>, and <code>STDERR_FILENO</code> (defined in <code>&lt;unistd.h&gt;</code>) [p9]. These three standard I/O streams are referenced through the predefined file pointers <code>stdin</code>, <code>stdout</code>,and <code>stderr</code>(defined in <code>&lt;stdio.h&gt;</code>).</p>
+<h3 id="buffering">Buffering</h3>
+<ol>
+<li><strong>Fully buffered</strong></li>
+<li><strong>Line buffered</strong></li>
+<li><strong>Unbuffered</strong></li>
+</ol>
+<p>Most implementations default to the following types of buffering:</p>
+<ul>
+<li>Standard error is always unbuffered.</li>
+<li>All other streams are line buffered if they refer to a terminal device; otherwise, they are fully buffered.</li>
+</ul>
+<script src="https://gist.github.com/shichao-an/70e28ba25f1b7276e834.js"></script>
+
+<ul>
+<li>setbuf: <em>buf</em> must point to a buffer of length <code>BUFSIZ</code>, a constant defined in <code>&lt;stdio.h&gt;</code></li>
+<li>setvbuf: type of buffering is specified with <code>_IOFBF</code>, <code>_IOLBF</code>, <code>_IONBF</code>.</li>
+</ul>
+<p>The GNU C librarys use the value from the <code>st_blksize</code> member of the <code>stat</code> structure to determine the optimal standard I/O buffer size.</p>
+<p>The <code>fflush</code> function causes any unwritten data for the stream to be passed to the kernel. If <strong>fp</strong> is <code>NULL</code>, <code>fflush</code> causes all output streams to be flushed.</p>
+<script src="https://gist.github.com/shichao-an/3fea32272cd9e1b574c6.js"></script>
+
+<ul>
+<li><code>fdopen</code> function is often used with descriptors returned by the functions that create pipes and network communication channels, because these special types of files cannot be opened with the <code>fopen</code> function.</li>
+</ul>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>Section 5.4 on line buffering [p145]</p>
+<blockquote>
+<p>Second, whenever input is requested through the standard I/O library from either (a) an unbuffered stream or (b) a line-buffered stream (that requires data to be requested from the kernel), all line-buffered output streams are flushed. The reason for the qualifier on (b) is that the requested data may already be in the buffer, which doesn’t require data to be read from the kernel. Obviously, any input from an unbuffered stream, item (a), requires data to be obtained from the kernel.</p>
+</blockquote></div>
         </div>
 
         
