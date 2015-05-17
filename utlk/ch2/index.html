@@ -188,6 +188,22 @@
         
             <li><a href="#memory-addresses">Memory Addresses</a></li>
         
+            <li><a href="#segmentation-in-hardware">Segmentation in Hardware</a></li>
+        
+            <li><a href="#segment-selectors">Segment Selectors</a></li>
+        
+            <li><a href="#segmentation-registers">Segmentation registers</a></li>
+        
+            <li><a href="#segment-descriptors">Segment Descriptors</a></li>
+        
+            <li><a href="#fast-access-to-segment-descriptors">Fast Access to Segment Descriptors</a></li>
+        
+            <li><a href="#segmentation-unit">Segmentation Unit</a></li>
+        
+            <li><a href="#segmentation-in-linux">Segmentation in Linux</a></li>
+        
+            <li><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
     
     </ul>
 </div></div>
@@ -200,7 +216,84 @@
 <li><strong>Logical address</strong></li>
 <li><strong>Linear address</strong> (also known as <strong>virtual address</strong>)</li>
 <li><strong>Physical address</strong></li>
-</ul></div>
+</ul>
+<p>Memory Management Unit (MMU) transforms a logical address into a linear address, and the linear address into a physical address.</p>
+<p><a href="../figure_2-1.png" title="Figure 2-1. Logical address translation"><img alt="Figure 2-1. Logical address translation" src="../figure_2-1_600.png" /></a></p>
+<p>Memory arbiter: read or write operations on a RAM chip must be performed serially.</p>
+<h3 id="segmentation-in-hardware">Segmentation in Hardware</h3>
+<p>The following sections focus on address translation when <strong>protected mode</strong> is enabled, in Intel microprocessors starting with the 80286 model.</p>
+<h3 id="segment-selectors">Segment Selectors</h3>
+<p>A logical address consists of:</p>
+<ul>
+<li><strong>Segment Selector</strong> (segment identifier): 16-bit</li>
+<li>Offset: 32-bit</li>
+</ul>
+<h3 id="segmentation-registers">Segmentation registers</h3>
+<p><strong>Segmentation Registers</strong> hold Segment Selectors.</p>
+<ul>
+<li><code>cs</code>: code segment (program instructions); 2-bit field for CPU's Current Privilege Level (CPL), Linux uses only levels 0 and 3 for Kernel Mode and User Mode</li>
+<li><code>ss</code>: stack segment (current program stack)</li>
+<li><code>ds</code>: data segment (global and static data)</li>
+<li><code>es</code>, <code>fs</code>, and <code>gs</code>: general purpose (arbitrary data)</li>
+</ul>
+<h3 id="segment-descriptors">Segment Descriptors</h3>
+<p>Each segment is represented by an 8-byte <strong>Segment Descriptor</strong> that describes the segment characteristics. Segment Descriptors are stored either in the <strong>Global Descriptor Table</strong> (GDT) or in the <strong>Local Descriptor Table</strong> (LDT). The address and size of GDT and LDT are contained in <code>gdtr</code> and <code>ldtr</code> control registers respectively.</p>
+<ul>
+<li>Code Segment Descriptor: included in GDT or LDT</li>
+<li>Data Segment Descriptor: included in GDT or LDT</li>
+<li>Task State Segment Descriptor (TSSD): refers to a Task State Segment (TSS), a segment used to save the contents of the processor registers; included in GDT only</li>
+<li>Local Descriptor Table Descriptor (LDTD): refers to a segment containing an LDT; included in GDT only</li>
+</ul>
+<h3 id="fast-access-to-segment-descriptors">Fast Access to Segment Descriptors</h3>
+<p>Segmentation registers store only the Segment Selector. The x86 process provides an additional nonprogrammable register for each of the six programmable segmentation registers to speed up the translation of logical addresses into linear addresses. Each nonprogrammable register contains the 8-byte Segment Descriptor.</p>
+<p>Segment Selector fields [p40]:</p>
+<ul>
+<li><code>index</code>: identifies the Segment Descriptor entry contained in GDT or LDT</li>
+<li><code>TI</code> (Table Indicator): specifies whether the Segment Descriptor is included in the GDT (<code>TI</code> = 0) or in the LDT (<code>TI</code> = 1).</li>
+<li><code>RPL</code> (Requestor Privilege Level):  specifies the Current Privilege Level (CPL) of the CPU when the corresponding Segment Selector is loaded into the <code>cs</code> register</li>
+</ul>
+<h3 id="segmentation-unit">Segmentation Unit</h3>
+<p>The <strong>segmentation unit</strong> performs the following operations to obtain the linear address:</p>
+<p><a href="../figure_2-5.png" title="Figure 2-5. Translating a logical address"><img alt="Figure 2-5. Translating a logical address" src="../figure_2-5.png" /></a></p>
+<ul>
+<li>Examines the <code>TI</code> field of the Segment Selector to determine which Descriptor Table (GDT or LDT) stores the Segment Descriptor</li>
+<li>Computes the address of the Segment Descriptor from the <code>index</code> field of the Segment Selector</li>
+<li>Adds the offset of the logical address to the <code>Base</code> field of the Segment Descriptor</li>
+</ul>
+<h3 id="segmentation-in-linux">Segmentation in Linux</h3>
+<p>All Linux processes running in User Mode use the same pair of segments to address instructions and data. This is similar to processes running in Kernel Mode.</p>
+<ul>
+<li>user code segment</li>
+<li>user data segment</li>
+<li>kernel code segment</li>
+<li>kernel data segment</li>
+</ul>
+<p>Segment Selectors are defined by the macros:</p>
+<ul>
+<li><code>__USER_CS</code></li>
+<li><code>__USER_DS</code></li>
+<li><code>__KERNEL_CS</code></li>
+<li><code>__KERNEL_DS</code></li>
+</ul>
+<p>To address the kernel code segment, for instance, the kernel just loads the value yielded by the <code>__KERNEL_CS</code> macro into the <code>cs</code> segmentation register.</p>
+<p>The linear addresses associated with such segments all start at 0 and reach the addressing limit of 2<sup>32</sup> –1. This means that all processes, either in User Mode or in Kernel Mode, may use the same logical addresses.</p>
+<h4 id="cpl-rpl-and-registers"><a href="http://en.wikipedia.org/wiki/Protection_ring">CPL</a>, <code>RPL</code> and registers</h4>
+<p>The Current Privilege Level (CPL) of the CPU indicates whether the processor is in User or Kernel Mode and is specified by the <code>RPL</code> field of the Segment Selector stored in the <code>cs</code> register. [p42]</p>
+<p>Whenever the CPL is changed, some segmentation registers (e.g. <code>ds</code>, <code>ss</code>) must be correspondingly updated. [p42-43]</p>
+<h4 id="implicit-segment-selector">Implicit Segment Selector</h4>
+<p>Only Offset component of its logical address is specified:</p>
+<ul>
+<li><code>ss</code>: kernel saves a pointer to an instruction or to a data structure</li>
+<li><code>cs</code>: kernel invokes a function</li>
+<li><code>ds</code>: kernel data structure</li>
+<li><code>es</code>: user data structure</li>
+</ul>
+<hr />
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<p>Segmentation in Linux [p41]</p>
+<blockquote>
+<p>However, Linux uses segmentation in a very limited way. In fact, segmentation and paging are somewhat redundant, because both can be used to separate the physical address spaces of processes: segmentation can assign a different linear address space to each process, while paging can map the same linear address space into different physical address spaces. Linux prefers paging to segmentation for the following reasons:</p>
+</blockquote></div>
         </div>
 
         
