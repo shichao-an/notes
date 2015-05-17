@@ -26,8 +26,8 @@ Most implementations default to the following types of buffering:
 
 <script src="https://gist.github.com/shichao-an/70e28ba25f1b7276e834.js"></script>
 
-* setbuf: *buf* must point to a buffer of length `BUFSIZ`, a constant defined in `<stdio.h>`
-* setvbuf: type of buffering is specified with `_IOFBF`, `_IOLBF`, `_IONBF`.
+* `setbuf`: *buf* must point to a buffer of length `BUFSIZ`, a constant defined in `<stdio.h>`
+* `setvbuf`: type of buffering is specified with `_IOFBF`, `_IOLBF`, `_IONBF`.
 
 The GNU C librarys use the value from the `st_blksize` member of the `stat` structure to determine the optimal standard I/O buffer size.
 
