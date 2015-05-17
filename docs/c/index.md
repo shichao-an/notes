@@ -1,4 +1,7 @@
 ## C
+> If you think like a computer, writing C actually makes sense. 
+>
+> -- *Linus Torvalds*
 
 ### First-class ADT
 
