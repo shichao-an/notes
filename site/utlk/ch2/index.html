@@ -202,6 +202,14 @@
         
             <li><a href="#segmentation-in-linux">Segmentation in Linux</a></li>
         
+            <li><a href="#the-linux-gdt">The Linux GDT</a></li>
+        
+            <li><a href="#the-linux-ldt">The Linux LDT</a></li>
+        
+            <li><a href="#paging-in-hardware">Paging in Hardware</a></li>
+        
+            <li><a href="#regular-paging">Regular Paging</a></li>
+        
             <li><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
     
@@ -250,7 +258,7 @@
 <ul>
 <li><code>index</code>: identifies the Segment Descriptor entry contained in GDT or LDT</li>
 <li><code>TI</code> (Table Indicator): specifies whether the Segment Descriptor is included in the GDT (<code>TI</code> = 0) or in the LDT (<code>TI</code> = 1).</li>
-<li><code>RPL</code> (Requestor Privilege Level):  specifies the Current Privilege Level (CPL) of the CPU when the corresponding Segment Selector is loaded into the <code>cs</code> register</li>
+<li><code>RPL</code> (Requestor Privilege Level):  specifies the <a href="#cpl-rpl-and-registers">Current Privilege Level</a> (CPL) of the CPU when the corresponding Segment Selector is loaded into the <code>cs</code> register</li>
 </ul>
 <h3 id="segmentation-unit">Segmentation Unit</h3>
 <p>The <strong>segmentation unit</strong> performs the following operations to obtain the linear address:</p>
@@ -288,6 +296,34 @@
 <li><code>ds</code>: kernel data structure</li>
 <li><code>es</code>: user data structure</li>
 </ul>
+<h3 id="the-linux-gdt">The Linux GDT</h3>
+<p>In multiprocessor systems there is one GDT for every CPU [p43].</p>
+<ul>
+<li><a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S#L479"><code>cpu_gdt_table</code></a> array: stores GDTs</li>
+<li><a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S"><code>cpu_gdt_descr</code></a> array: addresses and sizes of the GDTs</li>
+</ul>
+<p>Each GDT includes 18 segment descriptors and 14 null, unused, or reserved entries. Unused entries are inserted on purpose so that Segment Descriptors usually accessed together are kept in the same 32-byte line of the hardware cache.</p>
+<ul>
+<li><a href="#segmentation-in-linux">Four user and kernel code and data segments</a></li>
+<li>Task State Segment (TSS)</li>
+<li>Default Local Descriptor Table(LDT), usually shared by all processes</li>
+<li>Three Thread-Local Storage (TLS) segments: allows multithreaded applications to make use of up to three segments containing data local to each thread. The <code>set_thread_area()</code> and <code>get_thread_area()</code> system calls, respectively, create and release a TLS segment for the executing process.</li>
+<li>Three segments related to Advanced Power Management (APM)</li>
+<li>Five segments related to Plug and Play (PnP) BIOS services</li>
+<li>A special TSS segment used by the kernel to handle "Double fault" exceptions</li>
+</ul>
+<h3 id="the-linux-ldt">The Linux LDT</h3>
+<p>Most Linux User Mode applications do not make use of a Local Descriptor Table. The kernel defines a default LDT to be shared by most processes. It has five entries but only two are used by the kernel: a <a href="http://en.wikipedia.org/wiki/Call_gate">call gate</a> for <a href="http://en.wikipedia.org/wiki/Intel_Binary_Compatibility_Standard">iBCS</a> executables, and a call gate for Solaris/x86 executables.</p>
+<p>In some cases, processes may require to set up their own LDT, such as applications (such as Wine) that execute segment-oriented Microsoft Windows applications. The <code>modify_ldt()</code> system call allows a process to do this.</p>
+<h3 id="paging-in-hardware">Paging in Hardware</h3>
+<p>The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a Page Fault exception if memory access is not valid.</p>
+<ul>
+<li><strong>Pages</strong>: grouped fixed-length intervals of linear addresses; contiguous linear addresses within a page are mapped into contiguous physical addresses. The term "page" to refer both to a set of linear addresses and to the data contained in this group of addresses.</li>
+<li><strong>Page frames</strong> (or <strong>physical pages</strong>): RAM partitions from the perspective of the paging unit. Each page frame (storage area) contains a page (block of data), thus the length of a page frame coincides with that of a page.</li>
+<li><strong>Page table</strong>: data structures (in main memory) that map linear to physical addresses</li>
+</ul>
+<h3 id="regular-paging">Regular Paging</h3>
+<p>The x86 processors support paging; it is enabled by setting the <code>PG</code> flag of a control register named <code>cr0</code>.</p>
 <hr />
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <p>Segmentation in Linux [p41]</p>

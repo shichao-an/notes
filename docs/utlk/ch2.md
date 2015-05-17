@@ -51,7 +51,7 @@ Segment Selector fields [p40]:
 
 * `index`: identifies the Segment Descriptor entry contained in GDT or LDT
 * `TI` (Table Indicator): specifies whether the Segment Descriptor is included in the GDT (`TI` = 0) or in the LDT (`TI` = 1).
-* `RPL` (Requestor Privilege Level):  specifies the Current Privilege Level (CPL) of the CPU when the corresponding Segment Selector is loaded into the `cs` register
+* `RPL` (Requestor Privilege Level):  specifies the [Current Privilege Level](#cpl-rpl-and-registers) (CPL) of the CPU when the corresponding Segment Selector is loaded into the `cs` register
 
 ### Segmentation Unit
 
@@ -97,6 +97,41 @@ Only Offset component of its logical address is specified:
 * `cs`: kernel invokes a function
 * `ds`: kernel data structure
 * `es`: user data structure
+
+### The Linux GDT
+
+In multiprocessor systems there is one GDT for every CPU [p43].
+
+* [`cpu_gdt_table`](https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S#L479) array: stores GDTs
+* [`cpu_gdt_descr`](https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S) array: addresses and sizes of the GDTs
+
+Each GDT includes 18 segment descriptors and 14 null, unused, or reserved entries. Unused entries are inserted on purpose so that Segment Descriptors usually accessed together are kept in the same 32-byte line of the hardware cache.
+
+* [Four user and kernel code and data segments](#segmentation-in-linux)
+* Task State Segment (TSS)
+* Default Local Descriptor Table(LDT), usually shared by all processes
+* Three Thread-Local Storage (TLS) segments: allows multithreaded applications to make use of up to three segments containing data local to each thread. The `set_thread_area()` and `get_thread_area()` system calls, respectively, create and release a TLS segment for the executing process.
+* Three segments related to Advanced Power Management (APM)
+* Five segments related to Plug and Play (PnP) BIOS services
+* A special TSS segment used by the kernel to handle "Double fault" exceptions
+
+### The Linux LDT
+
+Most Linux User Mode applications do not make use of a Local Descriptor Table. The kernel defines a default LDT to be shared by most processes. It has five entries but only two are used by the kernel: a [call gate](http://en.wikipedia.org/wiki/Call_gate) for [iBCS](http://en.wikipedia.org/wiki/Intel_Binary_Compatibility_Standard) executables, and a call gate for Solaris/x86 executables.
+
+In some cases, processes may require to set up their own LDT, such as applications (such as Wine) that execute segment-oriented Microsoft Windows applications. The `modify_ldt()` system call allows a process to do this.
+
+### Paging in Hardware
+
+The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a Page Fault exception if memory access is not valid.
+
+* **Pages**: grouped fixed-length intervals of linear addresses; contiguous linear addresses within a page are mapped into contiguous physical addresses. The term "page" to refer both to a set of linear addresses and to the data contained in this group of addresses.
+* **Page frames** (or **physical pages**): RAM partitions from the perspective of the paging unit. Each page frame (storage area) contains a page (block of data), thus the length of a page frame coincides with that of a page.
+* **Page table**: data structures (in main memory) that map linear to physical addresses
+
+### Regular Paging
+
+The x86 processors support paging; it is enabled by setting the `PG` flag of a control register named `cr0`.
 
 - - -
 ### Doubts and Solutions
