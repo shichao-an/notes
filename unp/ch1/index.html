@@ -186,12 +186,109 @@
     
         <li class="main active"><a href="#introduction">Introduction</a></li>
         
+            <li><a href="#introduction_1">Introduction</a></li>
+        
+            <li><a href="#a-simple-daytime-client">A Simple Daytime Client</a></li>
+        
+            <li><a href="#protocol-independence">Protocol Independence</a></li>
+        
+            <li><a href="#error-handling-wrapper-functions">Error Handling: Wrapper Functions</a></li>
+        
+            <li><a href="#unix-errno-value">Unix errno Value</a></li>
+        
+            <li><a href="#a-simple-daytime-server">A Simple Daytime Server</a></li>
+        
     
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
-<h2 id="introduction">Introduction</h2></div>
+<h2 id="introduction">Introduction</h2>
+<h3 id="introduction_1">Introduction</h3>
+<p>The <strong>client</strong> and <strong>server</strong> organization is used by most network-awared applications. Some complex applications also require <strong>asynchronous callback</strong> communication, where the server initiates a message to the client.</p>
+<h3 id="a-simple-daytime-client">A Simple Daytime Client</h3>
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpcli.c">daytimetcpcli.c</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/d4b1bae51c0a10a29fe3.js"></script>
+
+<h4 id="create-tcp-socket">Create TCP socket</h4>
+<p>The <code>socket</code> function creates an Internet (<code>AF_INET</code>) stream (<code>SOCK_STREAM</code>) socket, which is a fancy name for a TCP socket. The function returns a small integer descriptor to identify the socket.</p>
+<h4 id="specify-servers-ip-address-and-port">Specify server's IP address and port</h4>
+<p>The IP address (<code>sin_addr</code>) and port number (<code>sin_port</code>) fields in the Internet socket address structure (<code>sockaddr_in</code>) must be in specific formats:</p>
+<ul>
+<li><code>htons</code> (host to network short): converts the binary port number</li>
+<li><code>inet_pton</code> (presentation to numeric): convert the ASCII command-line argument (such as <code>206.62.226.35</code> when we ran this example) into the proper format.</li>
+</ul>
+<p><code>bzero</code> is not an ANSI C function, but is used in this book instead of the ANSI C <code>memset</code> function, because <code>bzero</code> is easier to remember (with only two arguments) than <code>memset</code> (with three arguments).</p>
+<h4 id="establish-connection-with-server">Establish connection with server</h4>
+<ul>
+<li><code>connect</code></li>
+</ul>
+<p>In the <code>unp.h</code> header, <code>SA</code> is defined to be <code>struct sockaddr</code>, a generic socket address structure.</p>
+<h4 id="read-and-display-servers-reply">Read and display server's reply</h4>
+<p>We must be careful when using TCP because it is a <strong>byte-stream</strong> protocol with no record boundaries. Since we cannot assume that the server's reply will be returned by a single <code>read</code>, we always need to code the <code>read</code> in a loop when reading from a TCP socket.</p>
+<h4 id="terminate-program">Terminate program</h4>
+<p><code>exit</code> terminates the program. Unix always closes all open descriptors when a process terminates.</p>
+<h3 id="protocol-independence">Protocol Independence</h3>
+<p>The above program is protocol-depdent on IPv4.</p>
+<p>It is better to make a program protocol-independent by using the <code>getaddrinfo</code> function.</p>
+<h3 id="error-handling-wrapper-functions">Error Handling: Wrapper Functions</h3>
+<p>We can shorten our programs by defining a <strong>wrapper function</strong> that performs the actual function call, tests the return value, and terminates on an error.</p>
+<pre><code class="c">sockfd = Socket(AF_INET, SOCK_STREAM, 0);
+</code></pre>
+
+<p>With careful C coding, we could use macros instead of functions, providing a little run-time efficiency, but these wrapper functions are rarely the performance bottleneck of a program. This book uses these wrapper functions unless otherwise explicit error needs handling.</p>
+<h3 id="unix-errno-value">Unix <code>errno</code> Value</h3>
+<p>The value of <code>errno</code> is set by a function only if an error occurs. All of the positive error values are constants with all-uppercase names beginning with "E," and are normally defined in the <code>&lt;sys/errno.h&gt;</code> header. No error has a value of 0.</p>
+<p>Storing errno in a global variable does not work with multiple threads that share all global variables.</p>
+<h3 id="a-simple-daytime-server">A Simple Daytime Server</h3>
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c">daytimetcpsrv.c</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/bf927f23914b9c20f04c.js"></script>
+
+<h4 id="create-a-tcp-socket">Create a TCP socket</h4>
+<p>Identical to the client code.</p>
+<h4 id="bind-servers-well-known-port-to-socket">Bind server's well-known port to socket</h4>
+<ul>
+<li><code>bind</code>: the server's well-known port (13) is bound to the socket by calling <code>bind</code></li>
+<li><code>INADDR_ANY</code> allows the server to accept a client connection on any interface</li>
+</ul>
+<h4 id="convert-socket-to-listening-socket">Convert socket to listening socket</h4>
+<ul>
+<li><code>listen</code>: converts the socket into a listening socket, on which incoming connections from clients will be accepted by the kernel</li>
+<li><code>listenfd</code> in the code is called a <strong>listening descriptor</strong></li>
+</ul>
+<h4 id="accept-client-connection-send-reply">Accept client connection, send reply</h4>
+<ul>
+<li><code>accept</code></li>
+<li><code>connfd</code> in the code is called a <strong>connected descriptor</strong> for communication with the client. A new descriptor is returned by accept for each client that connects to our server.</li>
+</ul>
+<p>This book uses this code style for infinite loop:</p>
+<pre><code class="c">for ( ; ; ) {
+    // . . .
+}
+</code></pre>
+
+<h4 id="snprintf-function"><code>snprintf</code> function</h4>
+<ul>
+<li><code>snprintf</code> instead of <code>sprintf</code></li>
+</ul>
+<p>Similarly:</p>
+<ul>
+<li><code>fgets</code> instead of <code>gets</code></li>
+<li><code>strncat</code> or <code>strlcat</code> instead of <code>strcat</code></li>
+<li><code>strncpy</code> or <code>strlcpy</code> instead of a <code>strcpy</code></li>
+</ul>
+<h4 id="terminate-connection">Terminate connection</h4>
+<p><code>close</code> initiates the normal TCP connection termination sequence: a FIN is sent in each direction and each FIN is acknowledged by the other end.</p>
+<p>The server implemented in the above server code is:</p>
+<ul>
+<li>Protocol-dependent on IPv4</li>
+<li>Handles only one client at a time. If multiple client connections arrive at about the same time, the kernel queues them, up to some limit, and returns them to <code>accept</code> one at a time.</li>
+<li>Called an <strong>iterative server</strong>. A <strong>concurrent server</strong> handles multiple clients at the same time.</li>
+</ul></div>
         </div>
 
         
