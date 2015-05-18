@@ -115,3 +115,43 @@ The server implemented in the above server code is:
 * Protocol-dependent on IPv4
 * Handles only one client at a time. If multiple client connections arrive at about the same time, the kernel queues them, up to some limit, and returns them to `accept` one at a time.
 * Called an **iterative server**. A **concurrent server** handles multiple clients at the same time.
+
+### OSI Model
+
+Some terms mentioned:
+
+* **Raw socket**: it is possible for an application to bypass the transport layer and use IPv4 or IPv6 directly
+* [XTI](X/Open Transport Interface)
+
+Sockets provide the interface from the upper three layers of the OSI model into the transport layer:
+
+* The upper three layers handle all the details of the application. The lower four layers know little about the application, but handle all the communication details
+* The upper three layers form what is called a **user process** while the lower four layers are normally provided as part of the operating system (OS) kernel
+
+
+### BSD Networking History
+
+Linux does not fit into the Berkeley-derived classification: Its networking code and sockets API were developed from scratch.
+
+### Unix Standards
+
+#### Background on POSIX
+
+* POSIX: Portable Operating System Interface, developed by IEEE and adopted as standards by ISO and IEC (ISO/IEC)
+
+#### Background on The Open Group
+
+* Single UNIX Specification
+
+#### Internet Engineering Task Force (IETF)
+
+
+### 64-Bit Architectures
+
+* **ILP32**: integers (I), long integers (L), and pointers (P) occupy 32 bits.
+* **LP64**:only long integers (L) and pointers (P) require 64 bits.
+
+From a programming perspective, the LP64 model means we cannot assume that a pointer can be stored in an integer. We must also consider the effect of the LP64 model on existing APIs
+
+On a 32-bit system, `size_t` is a 32-bit value, but on a 64-bit system, it must be a 64-bit value, to take advantage of the larger addressing model. This means a 64-bit system will probably contain a typedef of `size_t` to be an unsigned long.
+
