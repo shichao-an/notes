@@ -6,10 +6,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/apue/ch3/">
+        <link rel="canonical" href="https://notes.shichao.io/icnd1/part1/">
         <link rel="shortcut icon" href="../../img/favicon.ico">
 
-	<title>Chapter 3. File I/O - Shichao's Notes</title>
+	<title>ICND1 Part I: Networking Fundamentals - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -57,28 +57,28 @@
             
             
             
-                <li class="dropdown active">
+                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../ch1/">Chapter 1. UNIX System Overview</a>
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
                         </li>
                     
                         <li >
-                            <a href="../ch2/">Chapter 2. UNIX Standardization and Implementations</a>
-                        </li>
-                    
-                        <li class="active">
-                            <a href="./">Chapter 3. File I/O</a>
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
                         </li>
                     
                         <li >
-                            <a href="../ch4/">Chapter 4. Files and Directories</a>
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
                         </li>
                     
                         <li >
-                            <a href="../ch5/">Chapter 5. Standard I/O Library</a>
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
                         </li>
                     
                     </ul>
@@ -116,12 +116,12 @@
             
             
             
-                <li class="dropdown">
+                <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">ICND <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
-                        <li >
-                            <a href="../../icnd1/part1/">ICND1 Part I: Networking Fundamentals</a>
+                        <li class="active">
+                            <a href="./">ICND1 Part I: Networking Fundamentals</a>
                         </li>
                     
                         <li >
@@ -173,12 +173,12 @@
             <ul class="nav navbar-nav navbar-right">
                 
                 <li >
-                    <a rel="next" href="../ch2/">
+                    <a rel="next" href="../../unp/ch1/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../ch4/">
+                    <a rel="prev" href="../../icnd2/part1/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -201,90 +201,17 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-3-file-io">Chapter 3. File I/O</a></li>
+        <li class="main active"><a href="#part-i-networking-fundamentals">Part I: Networking Fundamentals</a></li>
         
-            <li><a href="#file-descriptors">File Descriptors</a></li>
-        
-            <li><a href="#open-and-openat-functions">open and openat Functions</a></li>
-        
-            <li><a href="#filename-and-pathname-truncation">Filename and Pathname Truncation</a></li>
-        
-            <li><a href="#creat-function">creat Function</a></li>
-        
-            <li><a href="#close-function">close Function</a></li>
-        
-            <li><a href="#lseek-function">lseek Function</a></li>
+            <li><a href="#chapter-1-introduction-to-computer-networking">Chapter 1. Introduction to Computer Networking</a></li>
         
     
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
-<h2 id="chapter-3-file-io">Chapter 3. File I/O</h2>
-<p>This chapter discusses unbuffered I/O, which are not part of ISO C but are part of POSIX.1 and the Single UNIX Specification.</p>
-<h3 id="file-descriptors">File Descriptors</h3>
-<ul>
-<li>All open files are referred to by file descriptors</li>
-<li>Non-negative integer</li>
-<li>Range from 0 to <code>OPEN_MAX - 1</code>. With FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10, the limit is essentially infinite, bounded by the amount of memory on the system, the size of an integer, and any hard and soft limits configured by the system administrator.</li>
-</ul>
-<h3 id="open-and-openat-functions"><code>open</code> and <code>openat</code> Functions</h3>
-<script src="https://gist.github.com/shichao-an/84b85f42bf03c30fa75b.js"></script>
-
-<p><code>oflag</code> argument is formed by ORing one or more of the following constants from <code>&lt;fcntl.h&gt;</code> [p62]:</p>
-<p>Required:</p>
-<ul>
-<li><code>O_RDONLY</code></li>
-<li><code>O_WRONLY</code></li>
-<li><code>O_RDWR</code></li>
-<li><code>O_EXEC</code></li>
-<li><code>O_SEARCH</code>: Open for search only (applies to directories).</li>
-</ul>
-<p>Optional:</p>
-<ul>
-<li><code>O_APPEND</code></li>
-<li><code>O_CLOEXEC</code>: Set the <a href="https://www.gnu.org/software/libc/manual/html_node/Descriptor-Flags.html"><code>FD_CLOEXEC</code></a> file descriptor flag</li>
-<li><code>O_CREAT</code>: Create the file if it doesn’t exist</li>
-<li><code>O_DIRECTORY</code>: Generate an error if <code>O_CREAT</code> is also specified and the file already exists. This test for whether the file already exists and the creation of the file if it doesn’t exist is an atomic operation</li>
-<li><code>O_EXCL</code></li>
-<li><code>O_NOCTTY</code></li>
-<li><code>O_NOFOLLOW</code></li>
-<li><code>O_NONBLOCK</code></li>
-<li><code>O_SYNC</code>: Have each <code>write</code> wait for physical I/O to complete</li>
-<li><code>O_TRUNC</code></li>
-<li><code>O_TTY_INIT</code></li>
-<li><code>O_DSYNC</code></li>
-<li><code>O_RSYNC</code></li>
-</ul>
-<h4 id="tocttou">TOCTTOU</h4>
-<p><code>openat</code>, for example, provides a way to avoid <a href="http://en.wikipedia.org/wiki/Time_of_check_to_time_of_use">time-of-check-to-time-of-use</a> (TOCTTOU) errors. A program is vulnerable if it makes two file-based function calls where the second call depends on the results of the first call (two calls are not atomic).</p>
-<h3 id="filename-and-pathname-truncation">Filename and Pathname Truncation</h3>
-<p>Most modern file systems support a maximum of 255 characters for filenames.</p>
-<h3 id="creat-function"><code>creat</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/e0ac0fe91b023280e33f.js"></script>
-
-<p>This function is equivalent to:</p>
-<pre><code class="c">open(path, O_WRONLY | O_CREAT | O_TRUNC, mode);
-</code></pre>
-
-<p>With <code>creat</code>, the file is opened only for writing. To read and write a file, use [p66]:</p>
-<pre><code class="c">open(path, O_RDWR | O_CREAT | O_TRUNC, mode);
-</code></pre>
-
-<h3 id="close-function"><code>close</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/84758a089b6cb82b7495.js"></script>
-
-<p>When a process terminates, all of its open files are closed automatically by the kernel. Many programs take advantage of this fact and don’t explicitly close open files.</p>
-<h3 id="lseek-function"><code>lseek</code> Function</h3>
-<p>Every open file has a "current file offset", normally a non-negative integer that measures the number of bytes from the beginning of the file.</p>
-<script src="https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6.js"></script>
-
-<p>The <em>whence</em> argument can be:</p>
-<ul>
-<li><code>SEEK_SET</code>: the file’s offset is set to <em>offset</em> bytes from the beginning of the file</li>
-<li><code>SEEK_CUR</code>: the file’s offset is set to its current value plus the <em>offset</em>. The <em>offset</em> can be positive or negative.</li>
-<li><code>SEEK_END</code>: the file’s offset is set to the size of the file plus the <em>offset</em>. The <em>offset</em> can be positive or negative.</li>
-</ul></div>
+<h1 id="part-i-networking-fundamentals">Part I: Networking Fundamentals</h1>
+<h2 id="chapter-1-introduction-to-computer-networking">Chapter 1. Introduction to Computer Networking</h2></div>
         </div>
 
         
