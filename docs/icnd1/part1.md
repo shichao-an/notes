@@ -93,3 +93,19 @@ The term Ethernet is often used to mean "all types of Ethernet", but in some cas
 ### Ethernet UTP Cabling
 #### UTP Cables and RJ-45 Connectors
 
+
+### Improving Performance by Using Switches Instead of Hubs
+
+CSMA/CD logic helps prevent collisions and also defines how to act when a collision does occur:
+
+1. A device with a frame to send listens until the Ethernet is not busy.
+2. When the Ethernet is not busy, the sender(s) begin(s) sending the frame.
+3. The sender(s) listen(s) to make sure that no collision occurred.
+4. If a collision occurs, the devices that had been sending a frame each send a jamming signal to ensure that all stations recognize the collision.
+5. After the jamming is complete, each sender randomizes a timer and waits that long before trying to resend the collided frame. When each random timer expires, the process starts over with Step 1.
+
+#### Increasing Available Bandwidth Using Switches
+
+#### Doubling Performance by Using Full-Duplex Ethernet
+
+#### Ethernet Data-Link Protocols
