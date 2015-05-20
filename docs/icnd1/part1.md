@@ -205,7 +205,7 @@ The WAN topics in this chapter describe mainly how enterprise networks use WANs 
 
 Routers provide the capability to connect many different types of OSI Layer 1 and Layer 2 technologies. A router is connected to each end of a WAN connection.
 
-[![Figure 4-3 Point-to-Point Leased Line: Components and Terminology](figure_4-3_600.png)](figure_3-14.png "Figure 4-3 Point-to-Point Leased Line: Components and Terminology")
+[![Figure 4-3 Point-to-Point Leased Line: Components and Terminology](figure_4-3_600.png)](figure_4-3_600.png "Figure 4-3 Point-to-Point Leased Line: Components and Terminology")
 
 * Central Office (CO): a building where the telco locates the devices used to create its own network
 * Channel service unit/data service ([CSU/DSU](http://en.wikipedia.org/wiki/CSU/DSU))
@@ -237,3 +237,39 @@ J1 (Y1) | 2.048 Mbps (32 DS0s; Japanese standard)
 
 
 ### OSI Layer 2 for Point-to-Point WANs
+
+#### HDLC
+
+[![Figure 4-6 HDLC Framing](figure_4-6_600.png)](figure_4-6.png "Figure 4-6 HDLC Framing")
+
+[High-Level Data Link Control](http://en.wikipedia.org/wiki/High-Level_Data_Link_Control) (HDLC) defines framing to:
+
+* Delivers data across the link 
+* Check for errors
+* Identify the packet type
+
+#### Point-to-Point Protocol
+
+Point-to-Point Protocol (PPP) behaves much like HDLC. The framing looks identical to the Cisco proprietary HDLC framing. PPP has become the most popular and feature-rich of WAN data link layer protocols. [p91]
+
+#### Point-to-Point WAN Summary
+
+WAN Terminology [p91-92]
+
+* Synchronous: The imposition of time ordering on a bit stream
+* Clock source: The device to which the other devices on the link adjust their speed when using synchronous links
+* CSU/DSU: Used on digital links as an interface to the telephone company in the United States. Routers typically use a short cable from a serial interface to a CSU/DSU, which is attached to the line from the telco
+* Telco
+* Four-wire circuit: A line from the telco with four wires, composed of two twisted-pair wires. Each pair is used to send in one direction, so a four-wire circuit allows full-duplex communication.
+* T1
+* E1
+
+All the following terms may be used to refer to a point-to-point leased line:
+
+* leased line
+* leased circuit
+* link
+* serial link
+* serial line
+* point-to-point link
+* circuit
