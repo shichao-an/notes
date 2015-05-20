@@ -106,6 +106,29 @@ CSMA/CD logic helps prevent collisions and also defines how to act when a collis
 
 #### Increasing Available Bandwidth Using Switches
 
+The term **collision domain** defines the set of devices whose frames could collide. For example, all devices connected to the hub are in the same collision domain. To avoid collisions, and to recover when they occur, devices in the same collision domain use CSMA/CD.
+
+**Switches** significantly reduce, or even eliminate, the number of collisions on a LAN:
+
+* Switches interpret the bits in the received frame so that they can typically send the frame out the one required port, rather than all other ports
+* If a switch needs to forward multiple frames out the same port, the switch buffers the frames in memory, sending one at a time, thereby avoiding collisions
+
+The switch’s logic requires that the switch look at the Ethernet header, which is considered a Layer 2 feature. As a result, switches are considered to operate as a Layer 2 device, whereas hubs are Layer 1 devices.
+
+Buffering (temporarily holds the frame in memory) also helps prevent collisions.
+
+Switch features provide significant performance improvements:
+
+* If only one device is cabled to each port of a switch, no collisions can occur.
+* Devices connected to one switch port do not share their bandwidth with devices connected to another switch port. Each has its own separate bandwidth, meaning that a switch with 100-Mbps ports has 100 Mbps of bandwidth **per port**.
+
+##### Shared Ethernet vs. Switched Ethernet
+
+* **Shared Ethernet**: bandwidth is shared among the devices on the LAN because they must take turns using the LAN because of the CSMA/CD algorithm. A hub with 24 100-Mbps Ethernet devices connected to it allows for a theoretical maximum of 100 Mbps of bandwidth
+* **Switched Ethernet**: bandwidth does not have to be shared, allowing for far greater performance. A switch with 24 100-Mbps Ethernet devices connected to it supports 100 Mbps for each port, or 2400 Mbps (2.4 Gbps) theoretical maximum bandwidth.
+
 #### Doubling Performance by Using Full-Duplex Ethernet
 
-#### Ethernet Data-Link Protocols
+In an Ethernet network using hubs, CSMA/CD imposes **half-duplex** logic on each device, meaning that only one device can send at a time. LAN switches with only one device cabled to each port of the switch allow the use of **full-duplex** operation; Ethernet card can send and receive concurrently.
+
+### Ethernet Data-Link Protocols
