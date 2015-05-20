@@ -198,3 +198,42 @@ Errors (bit changes) occur due to electrical interference. Trailer containing a 
 The WAN topics in this chapter describe mainly how enterprise networks use WANs to connect remote sites.
 
 ### OSI Layer 1 for Point-to-Point WANs
+
+* **Leased line** or **leased circuit**: WAN cable, line or point-to-point connection that is paid for use
+* Telephone company (telco), or public telephone and telegraph (PTT)
+* **Service provider**: a company that provides any form of WAN connectivity, including Internet services.
+
+Routers provide the capability to connect many different types of OSI Layer 1 and Layer 2 technologies. A router is connected to each end of a WAN connection.
+
+[![Figure 4-3 Point-to-Point Leased Line: Components and Terminology](figure_4-3_600.png)](figure_3-14.png "Figure 4-3 Point-to-Point Leased Line: Components and Terminology")
+
+* Central Office (CO): a building where the telco locates the devices used to create its own network
+* Channel service unit/data service ([CSU/DSU](http://en.wikipedia.org/wiki/CSU/DSU))
+* **demarc** ([demarcation point](http://en.wikipedia.org/wiki/Demarcation_point)): he point at which the telco’s responsibility is on one side and the customer’s responsibility is on the other
+* [Customer premises equipment](http://en.wikipedia.org/wiki/Customer-premises_equipment) (CPE): devices that are at the customer site
+
+#### WAN Cabling Standards
+
+[p84]
+
+#### Clock Rates, Synchronization, DCE, and DTE
+
+[p86]
+
+* Synchronization: various devices need to synchronize their clocks so that they run at exactly the same speed to make a link work
+* Data communications equipment (DCE): device that provides clocking, typically the CSU/DSU
+* Data terminal equipment (DTE): device receiving clocking, typically the router
+
+#### Link Speeds
+
+Name(s) of Line | Bit Rate
+--------------- | --------
+DS0 | 64 kbps
+DS1 (T1) | 1.544 Mbps (24 DS0s, plus 8 kbps overhead)
+DS3 (T3) | 44.736 Mbps (28 DS1s, plus management overhead)
+E1 | 2.048 Mbps (32 DS0s)
+E3 | 34.368 Mbps (16 E1s, plus management overhead)
+J1 (Y1) | 2.048 Mbps (32 DS0s; Japanese standard)
+
+
+### OSI Layer 2 for Point-to-Point WANs
