@@ -1,4 +1,4 @@
-# Part I: Networking Fundamentals
+#### **Part I: Networking Fundamentals**
 
 ## Chapter 1. Introduction to Computer Networking
 
@@ -8,7 +8,7 @@
 
 A **networking model** (**networking architecture** or **networking blueprint**), refers to a comprehensive set of documents that define everything that should happen for a computer network to work.
 
-The TCP/IP model both defines and references a large collection of protocols that allow computers to communicate. TCP/IP uses documents called **Requests for Comments** (RFC).
+The TCP/IP model both defines and references a large collection of protocols that allow computers to communicate. TCP/IP uses documents called [**Requests for Comments**](http://en.wikipedia.org/wiki/Request_for_Comments) (RFC).
 
 #### Data Encapsulation Terminology
 
@@ -59,7 +59,7 @@ The TCP/IP model uses terms such as **segment**, **packet**, and **frame** to re
 
 Types of cabling:
 
-* **Unshielded Twisted-Pair** (UTP)
+* **[Unshielded Twisted-Pair](http://en.wikipedia.org/wiki/Twisted_pair#Unshielded_twisted_pair_.28UTP.29)** (UTP)
 * **Fiber-optic**
 
 Most IEEE standards define a different variation of Ethernet at the physical layer. 
@@ -91,8 +91,37 @@ The term Ethernet is often used to mean "all types of Ethernet", but in some cas
 **Hubs** are essentially repeaters with multiple physical ports. It simply regenerates the electrical signal that comes in one port and sends the same signal out every other port.
 
 ### Ethernet UTP Cabling
-#### UTP Cables and RJ-45 Connectors
+#### Transmitting Data Using Twisted Pairs
 
+UTP cabling consists of matched pairs of wires that are indeed twisted together, with current on the two wires in opposite directions.
+
+#### UTP Cabling Pinouts for **10BASE-T and 100BASE-TX**
+
+10BASE-T and 100BASE-TX Ethernet define that one pair should be used to send data in one direction, with the other pair used to send data in the other direction.
+
+The wires in the UTP cable must be connected to the correct **pin positions** in the RJ-45 connectors in order for communication to work correctly. 
+
+[p62-64]
+
+The following applies to 10BASE-T and 100BASE-TX only:
+
+* Ethernet **straight-through cable**: both ends of the cable use the same EIA/TIA pinout standard on each end of the cable. A straight-through cable is used when the devices on the ends of the cable use opposite pins when they transmit data.
+* Ethernet **crossover cable**:  two devices both use the same pins to transmit and the pinouts of the cable are set up to swap the wire pair
+
+Devices That Transmit on 1,2 and Receive on 3,6 | Devices That Transmit on 3,6 and Receive on 1,2 
+----------------------------------------------- | -----------------------------------------------
+PC NICs | Hubs
+Routers | Switches
+Wireless Access Point (Ethernet interface) | —
+Networked printers (printers that connect directly to the LAN) | —
+
+#### **1000BASE-T Cabling**
+
+1000BASE-T differs from 10BASE-T and 100BASE-TX as far as the cabling and pinouts:
+
+* Reequires four wire pairs
+* Transmits and receives on each of the four wire pairs simultaneously
+* Has no concept of straight-through and crossover cables
 
 ### Improving Performance by Using Switches Instead of Hubs
 
@@ -132,3 +161,40 @@ Switch features provide significant performance improvements:
 In an Ethernet network using hubs, CSMA/CD imposes **half-duplex** logic on each device, meaning that only one device can send at a time. LAN switches with only one device cabled to each port of the switch allow the use of **full-duplex** operation; Ethernet card can send and receive concurrently.
 
 ### Ethernet Data-Link Protocols
+#### Ethernet Addressing
+
+LAN Addressing Term or Feature | Description
+------------------------------ | -----------
+MAC | Media Access Control. 802.3 (Ethernet) defines the MAC sublayer of IEEE Ethernet.
+Ethernet address, NIC address, LAN address | Other names often used instead of MAC address. These terms describe the 6-byte address of the LAN interface card.
+Burned-in address | The 6-byte address assigned by the vendor making the card.
+Unicast address | A term for a MAC that represents a single LAN interface.
+Broadcast address | An address that means “all devices that reside on this LAN right now.” (FFFF.FFFF.FFFF)
+Multicast address | On Ethernet, a multicast address implies some subset of all devices currently on the Ethernet LAN. (0100.5exx.xxxx, any value can be used in the last half)
+
+#### Ethernet Framing
+
+**Framing** defines the meaning of the bits transmitted and received over a network.
+
+[![Figure 3-14 LAN Header Formats](figure_3-14.png)](figure_3-14.png "Figure 3-14 LAN Header Formats")
+
+* **Data** field holds Layer 3 packets (L3 PDU)
+* **Maximum transmission unit** (MTU) defines the maximum Layer 3 packet that can be sent over a medium. 1500 bytes is the largest IP MTU allowed over an Ethernet.
+
+#### Identifying the Data Inside an Ethernet Frame
+
+**Type/Length** filed:
+
+* **Length** field: with a value less than hex 0600 (decimal 1536); another field is needed to identify the type of L3 PDU inside the frame.
+* **Type** field: value of hexadecimal 0800 (decimal 2048) implies an IP packet
+
+#### Error Detection
+
+Errors (bit changes) occur due to electrical interference. Trailer containing a **Frame Check Sequence** (FCS) field used for error detection.
+
+
+## Chapter 4. Fundamentals of WANs
+
+The WAN topics in this chapter describe mainly how enterprise networks use WANs to connect remote sites.
+
+### OSI Layer 1 for Point-to-Point WANs
