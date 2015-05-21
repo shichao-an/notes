@@ -282,3 +282,10 @@ Two types of packet-switching service are very popular today:
 
 * Frame Relay: much more common
 * Asynchronous Transfer Mode (ATM)
+
+## Chapter 5. Fundamentals of IPv4 Addressing and Routing
+
+* Routing: the process of forwarding packets (Layer 3 PDUs).
+* Logical addressing: enables the routing process to identify a packet’s source and destination.
+* Routing protocol: aids routers by dynamically learning about the groups of addresses in the network, which in turn allows the routing (forwarding) process to work well.
+* Other utilities: The network layer also relies on other utilities: Domain Name System (DNS), Dynamic Host Configuration Protocol (DHCP), Address Resolution Protocol (ARP), and ping.
