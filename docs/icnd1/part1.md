@@ -289,3 +289,30 @@ Two types of packet-switching service are very popular today:
 * Logical addressing: enables the routing process to identify a packet’s source and destination.
 * Routing protocol: aids routers by dynamically learning about the groups of addresses in the network, which in turn allows the routing (forwarding) process to work well.
 * Other utilities: The network layer also relies on other utilities: Domain Name System (DNS), Dynamic Host Configuration Protocol (DHCP), Address Resolution Protocol (ARP), and ping.
+
+**Path selection** sometimes is used to mean:
+
+* Routing protocol
+* Routing (forwarding) of packets
+
+### Overview of Network Layer Functions
+
+Today, the only Layer 3 protocol that is used widely is the TCP/IP network layer protocol, specifically, IP.  IP does not require any overhead agreements or messages before sending a packet, making IP a connectionless protocol, with no error recovery.
+
+#### Routing (Forwarding)
+
+Routing focuses on the end-to-end logic of forwarding data.
+
+The routing table for any particular network layer protocol contains a list of network layer address groupings. Instead of a single entry in the routing table per individual destination network layer address, there is one routing table entry per group.
+
+
+#### Network Layer Interaction with the Data Link Layer
+
+The routing process forwards the packet, and only the packet, end-to-end through the network, discarding data-link headers and trailers along the way.
+
+Routers build new data-link headers and trailers and because the new headers contain data-link addresses, the PCs and routers must decide what data-link addresses to use. The Address Resolution Protocol (ARP) is used to dynamically learn the data-link address of an IP host connected to a LAN.
+
+Routing as covered so far has two main concepts:
+
+* The process of routing forwards Layer 3 packets, also called Layer 3 protocol data units (L3 PDU), based on the destination Layer 3 address in the packet.
+* The routing process uses the data link layer to encapsulate the Layer 3 packets into Layer 2 frames for transmission across each successive data link.
