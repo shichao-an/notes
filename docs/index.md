@@ -35,6 +35,14 @@ by W. Richard Stevens and Bill Fenner
 
 1. [LAN Switching](icnd2/part1.md)
 
+
+#### Hacking: The Art of Exploitation, 2nd Edition
+
+by Jon Erickson 
+
+1. Introduction (skipped)
+2. [Programming](htae/ch2.md)
+
 ### Learning Notes
 
 #### Programming Languages
