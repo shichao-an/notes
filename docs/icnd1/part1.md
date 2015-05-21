@@ -273,3 +273,12 @@ All the following terms may be used to refer to a point-to-point leased line:
 * serial line
 * point-to-point link
 * circuit
+
+### Frame Relay and Packet-Switching Services
+
+**Packet-switching service**: a company can connect a large number of routers using a single serial link from each router into the packet-switching service. Once connected, each router can send packets to all the other routers—much like all the devices connected to an Ethernet hub or switch can send data directly to each other.
+
+Two types of packet-switching service are very popular today:
+
+* Frame Relay: much more common
+* Asynchronous Transfer Mode (ATM)
