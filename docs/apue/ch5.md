@@ -37,6 +37,23 @@ The `fflush` function causes any unwritten data for the stream to be passed to t
 
 * `fdopen` function is often used with descriptors returned by the functions that create pipes and network communication channels, because these special types of files cannot be opened with the `fopen` function.
 
+**type** argument has 15 values as specifed by ISO C:
+
+**type** | Description | `open`(2) Flags
+---- | ----------- | ---------------
+`r`, `rb` | open for reading | <code>O_RDONLY</code>
+`w`, `wb` | truncate to 0 length or create for writing | <code>O_WRONLY&#124;O_CREAT&#124;O_TRUNC</code>
+`a`, `ab` | append; open for writing at end of file, or create for writing | <code>O_WRONLY&#124;O_CREAT&#124;O_APPEND</code>
+`r+`, `r+b`, `rb+` | open for reading and writing | <code>O_RDWR</code>
+`w+`, `w+b`, `wb+` | truncate to 0 length or create for reading and writing | <code>O_RDWR&#124;O_CREAT&#124;O_TRUNC</code>
+`a+`, `a+b`, `ab+` | open or create for reading and writing at end of file | <code>O_RDWR&#124;O_CREAT&#124;O_APPEND</code>
+
+Character `b` allows the standard I/O system to differentiate between a text file and a binary file. The UNIX kernel doesn’t differentiate between these types of files, thus character `b` has no effect.
+
+* **Write**: The `fdopen` function cannot truncate any file it opens for writing
+* **Append**: each write will take place at the then current end of file. If multiple processes open the same file with the standard I/O append mode, the data from each process will be correctly written to the file
+* **Read and write** (`+` sign in type): Output cannot be directly followed by input without an intervening `fflush`, `fseek`, `fsetpos`, or `rewind`. Input cannot be directly followed by output without an intervening `fseek`, `fsetpos`, or `rewind`, or an input operation that encounters an end of file.
+
 ### Doubts and Solutions
 #### Verbatim
 
