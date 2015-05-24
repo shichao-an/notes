@@ -26,6 +26,7 @@ by Daniel P. Bovet and Marco Cesati
 by W. Richard Stevens and Bill Fenner
 
 1. [Introduction](unp/ch1.md)
+1. [The Transport Layer: TCP, UDP, and SCTP](unp/ch1.md)
 
 #### CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
