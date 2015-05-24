@@ -6,10 +6,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/htae/ch2/">
+        <link rel="canonical" href="https://notes.shichao.io/unp/ch2/">
         <link rel="shortcut icon" href="../../img/favicon.ico">
 
-	<title>0x200 Programming - Shichao's Notes</title>
+	<title>Chapter 2. The Transport Layer: TCP, UDP, and SCTP - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -103,16 +103,16 @@
             
             
             
-                <li class="dropdown">
+                <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                            <a href="../ch1/">Chapter 1. Introduction</a>
                         </li>
                     
-                        <li >
-                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        <li class="active">
+                            <a href="./">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
                         </li>
                     
                     </ul>
@@ -137,12 +137,12 @@
             
             
             
-                <li class="dropdown active">
+                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">HTAE <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
-                        <li class="active">
-                            <a href="./">0x200 Programming</a>
+                        <li >
+                            <a href="../../htae/ch2/">0x200 Programming</a>
                         </li>
                     
                     </ul>
@@ -188,12 +188,12 @@
             <ul class="nav navbar-nav navbar-right">
                 
                 <li >
-                    <a rel="next" href="../../icnd2/part1/">
+                    <a rel="next" href="../ch1/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../../golang/">
+                    <a rel="prev" href="../../icnd1/part1/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -216,14 +216,109 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#0x200-programming">0x200 Programming</a></li>
+        <li class="main active"><a href="#chapter-2-the-transport-layer-tcp-udp-and-sctp">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a></li>
+        
+            <li><a href="#introduction">Introduction</a></li>
+        
+            <li><a href="#the-big-picture">The Big Picture</a></li>
+        
+            <li><a href="#user-datagram-protocol-udp">User Datagram Protocol (UDP)</a></li>
+        
+            <li><a href="#transmission-control-protocol-tcp">Transmission Control Protocol (TCP)</a></li>
+        
+            <li><a href="#stream-control-transmission-protocol-sctp">Stream Control Transmission Protocol (SCTP)</a></li>
         
     
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
-<h2 id="0x200-programming">0x200 Programming</h2></div>
+<h2 id="chapter-2-the-transport-layer-tcp-udp-and-sctp">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</h2>
+<h3 id="introduction">Introduction</h3>
+<p>This chapter focuses on the transport layer: TCP, UDP, and Stream Control Transmission Protocol (SCTP). UDP is a simple, unreliable datagram protocol, while TCP is a sophisticated, reliable byte-stream protocol. SCTP is similar to TCP as a reliable transport protocol, but it also provides message boundaries, transport-level support for multihoming, and a way to minimize head-of-line blocking.</p>
+<h3 id="the-big-picture">The Big Picture</h3>
+<p>Overview of TCP/IP protocols:</p>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IPv4</td>
+<td>Internet Protocol version 4. IPv4 uses 32-bit addresses and provides packet delivery service for TCP, UDP, SCTP, ICMP, and IGMP.</td>
+</tr>
+<tr>
+<td>IPv6</td>
+<td>Internet Protocol version 6. IPv6 uses 128-bit addresses.</td>
+</tr>
+<tr>
+<td>TCP</td>
+<td>Transmission Control Protocol. TCP is a connection-oriented protocol that provides a reliable, full-duplex byte stream to its users</td>
+</tr>
+<tr>
+<td>UDP</td>
+<td>User Datagram Protocol. UDP is a connectionless protocol, and UDP sockets are an example of datagram sockets.</td>
+</tr>
+<tr>
+<td>SCTP</td>
+<td>Stream Control Transmission Protocol. SCTP is a connection-oriented protocol that provides a reliable full-duplex association</td>
+</tr>
+<tr>
+<td>ICMP</td>
+<td>Internet Control Message Protocol. ICMP handles error and control information between routers and hosts.</td>
+</tr>
+<tr>
+<td>IGMP</td>
+<td>Internet Group Management Protocol. IGMP is used with multicasting.</td>
+</tr>
+<tr>
+<td>ARP</td>
+<td>Address Resolution Protocol. ARP maps an IPv4 address into a hardware address (such as an Ethernet address). ARP is normally used on broadcast networks such as Ethernet, <a href="http://en.wikipedia.org/wiki/Token_ring">token ring</a>, and <a href="http://en.wikipedia.org/wiki/Fiber_Distributed_Data_Interface">FDDI</a>, and is not needed on point-to-point networks.</td>
+</tr>
+<tr>
+<td>RARP</td>
+<td>Reverse Address Resolution Protocol. RARP maps a hardware address into an IPv4 address. It is sometimes used when a diskless node is booting.</td>
+</tr>
+<tr>
+<td>ICMPv6</td>
+<td>Internet Control Message Protocol version 6. ICMPv6 combines the functionality of ICMPv4, IGMP, and ARP.</td>
+</tr>
+<tr>
+<td>BPF</td>
+<td><a href="http://en.wikipedia.org/wiki/PF_(firewall)">BSD packet filter</a>. This interface provides access to the datalink layer. It is normally found on Berkeley-derived kernels.</td>
+</tr>
+<tr>
+<td>DLPI</td>
+<td><a href="http://en.wikipedia.org/wiki/Data_Link_Provider_Interface">Datalink provider interface</a>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="user-datagram-protocol-udp">User Datagram Protocol (UDP)</h3>
+<ul>
+<li>Lack of reliability</li>
+<li>Each UDP datagram has a length</li>
+<li><strong>Connectionless</strong> service</li>
+</ul>
+<h3 id="transmission-control-protocol-tcp">Transmission Control Protocol (TCP)</h3>
+<ul>
+<li><strong>Connection</strong>: TCP provides connections between clients and servers. A TCP client establishes a connection with a server, exchanges data across the connection, and then terminates the connection.</li>
+<li><strong>Reliability</strong>: TCP requires acknowledgment when sending data. If an acknowledgment is not received, TCP automatically retransmits the data and waits a longer amount of time.</li>
+<li><strong>Round-trip time</strong> (RTT): TCP estimates RTT between a client and server dynamically so that it knows how long to wait for an acknowledgment.</li>
+<li><strong>Sequencing</strong>: TCP associates a sequence number with every byte (<strong>segment</strong>, unit of data that TCP passes to IP.) it sends. TCP reorders out-of-order segments and discards duplicate segments.</li>
+<li><strong>Flow control</strong></li>
+<li><strong>Full-duplex</strong>: an application can send and receive data in both directions on a given connection at any time.</li>
+</ul>
+<h3 id="stream-control-transmission-protocol-sctp">Stream Control Transmission Protocol (SCTP)</h3>
+<p>Like TCP, SCTP provides reliability, sequencing, flow control, and full-duplex data transfer.</p>
+<p>Unlike TCP, SCTP provides:</p>
+<ul>
+<li><strong>Association</strong> instead of "connection": An association refers to a communication between two systems, which may involve more than two addresses due to multihoming.</li>
+<li><strong>Message-oriented</strong>: provides sequenced delivery of individual records. Like UDP, the length of a record written by the sender is passed to the receiving application.</li>
+<li><strong>Multihoming</strong>: allows a single SCTP endpoint to support multiple IP addresses. This feature can provide increased robustness against network failure.</li>
+</ul></div>
         </div>
 
         
