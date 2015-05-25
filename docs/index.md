@@ -19,20 +19,21 @@ by W. Richard Stevens and Stephen A. Rago
 by Daniel P. Bovet and Marco Cesati
 
 1. [Introduction](utlk/ch1.md)
-1. [Memory Addressing](utlk/ch2.md)
+2. [Memory Addressing](utlk/ch2.md)
 
 #### Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 
 by W. Richard Stevens and Bill Fenner
 
 1. [Introduction](unp/ch1.md)
-1. [The Transport Layer: TCP, UDP, and SCTP](unp/ch1.md)
+2. [The Transport Layer: TCP, UDP, and SCTP](unp/ch1.md)
 
 #### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
 
 by Kevin R. Fall and W. Richard Stevens
 
 1. [Introduction](tcpv1/ch1.md)
+2. [The Internet Address Architecture](tcpv1/ch2.md)
 
 #### CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
