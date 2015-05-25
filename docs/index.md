@@ -36,13 +36,16 @@ by W. Richard Stevens and Bill Fenner
 
 1. [LAN Switching](icnd2/part1.md)
 
+#### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
+
+1. [Introduction](tcpv1/ch1.md)
 
 #### Hacking: The Art of Exploitation, 2nd Edition
 
 by Jon Erickson 
 
 1. Introduction (skipped)
-2. [Programming](htae/ch2.md)
+2. [Programming](htae/index.md)
 
 ### Learning Notes
 
