@@ -28,6 +28,12 @@ by W. Richard Stevens and Bill Fenner
 1. [Introduction](unp/ch1.md)
 1. [The Transport Layer: TCP, UDP, and SCTP](unp/ch1.md)
 
+#### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
+
+by Kevin R. Fall and W. Richard Stevens
+
+1. [Introduction](tcpv1/ch1.md)
+
 #### CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
 1. [Networking Fundamentals](icnd1/part1.md)
@@ -35,10 +41,6 @@ by W. Richard Stevens and Bill Fenner
 #### CCNA ICND2 Official Exam Certification Guide, Second Edition
 
 1. [LAN Switching](icnd2/part1.md)
-
-#### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
-
-1. [Introduction](tcpv1/ch1.md)
 
 #### Hacking: The Art of Exploitation, 2nd Edition
 
