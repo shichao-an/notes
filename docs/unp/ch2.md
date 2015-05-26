@@ -48,3 +48,48 @@ Unlike TCP, SCTP provides:
 * **Association** instead of "connection": An association refers to a communication between two systems, which may involve more than two addresses due to multihoming.
 * **Message-oriented**: provides sequenced delivery of individual records. Like UDP, the length of a record written by the sender is passed to the receiving application.
 * **Multihoming**: allows a single SCTP endpoint to support multiple IP addresses. This feature can provide increased robustness against network failure.
+
+
+### TCP Connection Establishment and Termination
+
+#### Three-Way Handshake
+
+[![Figure 2.2. TCP three-way handshake.](figure_2.2.png)](figure_2.2.png "Figure 2.2. TCP three-way handshake.")
+
+1. Server: **passive open**, by calling `socket`, `bind`, and `listen`
+2. Client: **active open**, by calling `connect`. The client TCP to send a "synchronize" (SYN) segment with no data but it contains client's initial sequence number for the data to be sent on the connection.
+3. Server: acknowledges (ACK) client's SYN. The server sends its SYN and the ACK of the client's SYN in a single segment which also contains its own SYN containing the initial sequence number for the data to be sent on the connection.
+4. Client: acknowledges the server's SYN.
+
+The client's initial sequence number as *J* and the server's initial sequence number as *K*. The acknowledgment number in an ACK is the next expected sequence number for the end sending the ACK. Since a SYN occupies one byte of the sequence number space, the acknowledgment number in the ACK of each SYN is the initial sequence number plus one.
+
+#### TCP Options
+
+* MSS option. The TCP sending the SYN announces its **maximum segment size** (the maximum amount of data that it is willing to accept in each TCP segment)on this connection.
+* Window scale option. [p38]
+* Timestamp option
+
+#### TCP Connection Termination
+
+[![Figure 2.3. Packets exchanged when a TCP connection is closed.](figure_2.3.png)](figure_2.3.png "Figure 2.3. Packets exchanged when a TCP connection is closed.")
+
+It takes four segments to terminate a connection:
+
+1. One end calls `close` first by sending a FIN segment to mean it is finished sending data. This is called **active close**.
+2. The other end that receives the FIN performs the **passive close**. The received FIN is acknowledged by TCP (sending an ACK segment). The receipt of the FIN is also passed to the application as an end-of-file.
+3. Sometime later, the application that received the end-of-file will close its socket. This causes its TCP to send a FIN.
+4. The TCP on the system that receives this final FIN (the end that did the active close) acknowledges the FIN
+
+A FIN occupies one byte of sequence number space just like a SYN. Therefore, the ACK of each FIN is the sequence number of the FIN plus one.
+
+#### TCP State Transition Diagram
+
+[![Figure 2.4. TCP state transition diagram.](figure_2.4_600.png)](figure_2.4.png "Figure 2.4. TCP state transition diagram.")
+
+There are 11 different states defined for a connection and the rules of TCP dictate the transitions from one state to another, based on the current state and the segment received in that state.
+
+#### Watching the Packets
+
+[![Figure 2.5. Packet exchange for TCP connection.](figure_2.5.png)](figure_2.5.png "Figure 2.5. Packet exchange for TCP connection.")
+
+The client in this example announces an MSS of 536 (**minimum reassembly buffer size**) and the server announces an MSS of 1,460 (typical for IPv4 on an Ethernet). It is okay for the MSS to be different in each direction.
