@@ -92,4 +92,38 @@ There are 11 different states defined for a connection and the rules of TCP dict
 
 [![Figure 2.5. Packet exchange for TCP connection.](figure_2.5.png)](figure_2.5.png "Figure 2.5. Packet exchange for TCP connection.")
 
-The client in this example announces an MSS of 536 (**minimum reassembly buffer size**) and the server announces an MSS of 1,460 (typical for IPv4 on an Ethernet). It is okay for the MSS to be different in each direction.
+The client in this example announces an MSS of 536 (**minimum reassembly buffer size**) and the server announces an MSS of 1,460 (typical for IPv4 on an Ethernet). It is okay for the MSS to be different in each direction. The acknowledgment of the client's request is sent with the server's reply. This is called **piggybacking** and will normally happen when the time it takes the server to process the request and generate the reply is less than around 200 ms. 
+With TCP, there would be eight segments of overhead. If UDP was used, only two packets would be exchanged.
+
+* UDP removes all the reliability that TCP provides to the application.
+* UDP avoids the overhead of TCP connection establishment and connection termination.
+
+### TIME_WAIT State
+
+The end that performs the active close goes through the TIME_WAIT state. The duration that this endpoint remains in the TIME_WAIT state is twice the **maximum segment lifetime** (MSL), sometimes called 2MSL, which is between 1 and 4 minutes. The MSL is the maximum amount of time that any given IP datagram can live in a network. The IPv4 TTL field  IPv6 hop limit field have a maximum value 255. The assumption is made that a packet with the maximum hop limit of 255 cannot exist in a network for more than MSL seconds. [p43]
+
+TCP must handle **lost duplicates** (or **wandering duplicate**).
+
+There are two reasons for the TIME_WAIT state:
+
+* To implement TCP's full-duplex connection termination reliably. If TCP is performing all the work necessary to terminate both directions of data flow cleanly for a connection (its full-duplex close), then it must correctly handle the loss of any of these four segments.
+* To allow old duplicate segments to expire in the network. When we successfully establish a TCP connection, all old duplicates from previous **incarnations** of the connection have expired in the network.
+
+### Port Numbers
+
+All three transport layers (UDP, SCTP and TCP) use 16-bit integer port numbers to differentiate between processes.
+
+* The **well-known ports**: 0 through 1023.
+* The **registered ports**: 1024 through 49151
+* The **dynamic ports** or **private ports**, 49152 through 65535. Also called **ephemeral ports**.
+
+#### Socket Pair
+
+* **Socket pair**: the four-tuple that defines the two endpoints of a TCP connection: the local IP address, local port, foreign IP address, and foreign port. A socket pair uniquely identifies every TCP connection on a network.
+* **Socket**: two values (an IP address and a port number) that identify each endpoint.
+
+### TCP Port Numbers and Concurrent Servers
+
+[p52-55]
+
+### Buffer Sizes and Limitations
