@@ -236,6 +236,14 @@
         
             <li><a href="#buffering">Buffering</a></li>
         
+            <li><a href="#opening-a-stream">Opening a Stream</a></li>
+        
+            <li><a href="#reading-and-writing-a-stream">Reading and Writing a Stream</a></li>
+        
+            <li><a href="#line-at-a-time-io">Line-at-a-Time I/O</a></li>
+        
+            <li><a href="#standard-io-efficiency">Standard I/O Efficiency</a></li>
+        
             <li><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
     
@@ -272,6 +280,7 @@
 </ul>
 <p>The GNU C librarys use the value from the <code>st_blksize</code> member of the <code>stat</code> structure to determine the optimal standard I/O buffer size.</p>
 <p>The <code>fflush</code> function causes any unwritten data for the stream to be passed to the kernel. If <strong>fp</strong> is <code>NULL</code>, <code>fflush</code> causes all output streams to be flushed.</p>
+<h3 id="opening-a-stream">Opening a Stream</h3>
 <script src="https://gist.github.com/shichao-an/3fea32272cd9e1b574c6.js"></script>
 
 <ul>
@@ -325,6 +334,118 @@
 <li><strong>Append</strong>: each write will take place at the then current end of file. If multiple processes open the same file with the standard I/O append mode, the data from each process will be correctly written to the file</li>
 <li><strong>Read and write</strong> (<code>+</code> sign in type): Output cannot be directly followed by input without an intervening <code>fflush</code>, <code>fseek</code>, <code>fsetpos</code>, or <code>rewind</code>. Input cannot be directly followed by output without an intervening <code>fseek</code>, <code>fsetpos</code>, or <code>rewind</code>, or an input operation that encounters an end of file.</li>
 </ul>
+<script src="https://gist.github.com/shichao-an/3c8458270dc1f08325f4.js"></script>
+
+<p>An open stream is closed by calling <code>fclose</code>:</p>
+<ul>
+<li>Any buffered output data is flushed before the file is closed</li>
+<li>Any input data that may be buffered is discarded</li>
+</ul>
+<p>When a process terminates normally, either by calling the exit function directly or by returning from the main function, all standard I/O streams with unwritten buffered data are flushed and all open standard I/O streams are closed.</p>
+<h3 id="reading-and-writing-a-stream">Reading and Writing a Stream</h3>
+<p>Unformatted I/O:</p>
+<ul>
+<li>Character-at-a-time I/O</li>
+<li>Line-at-a-time I/O: <code>fgets</code> and <code>fputs</code>. Each line is terminated with a newline character.</li>
+<li>Direct I/O (binary I/O, object-at-a-time I/O, record-oriented I/O, or structure-oriented I/O): <code>fread</code> and <code>fwrite</code>. For each I/O operation, we read or write some number of objects, where each object is of a specified size</li>
+</ul>
+<h4 id="input-functions">Input Functions</h4>
+<script src="https://gist.github.com/shichao-an/afcad88f5484e55327c4.js"></script>
+
+<ul>
+<li>The function <code>getchar</code> is defined to be equivalent to <code>getc(stdin)</code>. </li>
+<li><code>getc</code> can be implemented as a macro, whereas <code>fgetc</code> cannot be implemented as a macro.</li>
+<li>These three functions return the next character as an <code>unsigned char</code> converted to an <code>int</code>. Thus, all possible character values can be returned, along with an indication that either an error occurred or the end of file has been encountered. The constant EOF in <code>&lt;stdio.h&gt;</code> is required to be a negative value. Its value is often −1.</li>
+</ul>
+<p>These functions return the same value whether an error occurs or the end of file is reached. To distinguish between the two, we must call either <code>ferror</code> or <code>feof</code>:</p>
+<script src="https://gist.github.com/shichao-an/fe81c6d98b62e487aaf3.js"></script>
+
+<p>In most implementations, two flags are maintained for each stream in the <code>FILE</code> object:</p>
+<ul>
+<li>An error flag</li>
+<li>An end-of-file flag</li>
+</ul>
+<p>Both flags are cleared by calling <code>clearerr</code>.</p>
+<h5 id="pushback"><strong>Pushback</strong></h5>
+<p>After reading from a stream, we can push back characters by calling <code>ungetc</code>.</p>
+<script src="https://gist.github.com/shichao-an/1de26637c53e6de17b25.js"></script>
+
+<ul>
+<li>The characters that are pushed back are returned by subsequent reads on the stream in reverse order of their pushing.</li>
+<li>The character that is pushed back does not have to be the same character that was read.</li>
+<li>When characters are pushed back with <code>ungetc</code>, they are not written back to the underlying file or device. Instead, they are kept incore in the standard I/O library’s buffer for the stream. EOF cannot be pushed back.</li>
+<li>Used for peeking characters.</li>
+</ul>
+<h4 id="output-functions">Output Functions</h4>
+<script src="https://gist.github.com/shichao-an/3aaa0731d3fbbe68da0c.js"></script>
+
+<ul>
+<li><code>putchar(c)</code> is equivalent to <code>putc(c, stdout)</code></li>
+<li><code>putc</code> can be implemented as a macro, whereas <code>fputc</code> cannot be implemented as a macro.</li>
+</ul>
+<h3 id="line-at-a-time-io">Line-at-a-Time I/O</h3>
+<script src="https://gist.github.com/shichao-an/2c9049288e8634b92734.js"></script>
+
+<ul>
+<li><code>gets</code> function reads from standard input, whereas <code>fgets</code> reads from the specified stream.</li>
+<li><code>fgets</code>: reads <em>n - 1</em> characters (including the newline) or partial line if longer than <em>n - 1</em> into the buffer, then the buffer is (always) null terminated.</li>
+<li><code>gets</code>: should never be used. Without specifying buffer size, this may cause buffer to overflow if the line is longer than the buffer, writing over whatever happens to follow the buffer in memory. <code>gets</code> is marked as an obsolescent interface in SUSv4 and has been omitted from the latest version of the ISO C standard</li>
+</ul>
+<script src="https://gist.github.com/shichao-an/5a2fdd9294a2e4c37aad.js"></script>
+
+<ul>
+<li><code>fputs</code>: writes the null-terminated string to the specified stream without writing the null byte</li>
+<li><code>puts</code>: writes the null-terminated string to the standard output without writing the null byte, and then writes a newline character to the standard output. <code>puts</code> should be avoided being used to prevent having to remember whether it appends a newline.</li>
+</ul>
+<h3 id="standard-io-efficiency">Standard I/O Efficiency</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>User CPU (seconds)</th>
+<th>System CPU (seconds)</th>
+<th>Clock time (seconds)</th>
+<th>Bytes of program text</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>best time from Figure 3.6</td>
+<td>0.05</td>
+<td>0.29</td>
+<td>3.18</td>
+<td></td>
+</tr>
+<tr>
+<td>fgets, fputs</td>
+<td>2.27</td>
+<td>0.30</td>
+<td>3.49</td>
+<td>143</td>
+</tr>
+<tr>
+<td>getc, putc</td>
+<td>8.45</td>
+<td>0.29</td>
+<td>10.33</td>
+<td>114</td>
+</tr>
+<tr>
+<td>fgetc, fputc</td>
+<td>8.16</td>
+<td>0.40</td>
+<td>10.18</td>
+<td>114</td>
+</tr>
+<tr>
+<td>single byte time from Figure 3.6</td>
+<td>134.61</td>
+<td>249.94</td>
+<td>394.95</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>Section 5.4 on line buffering [p145]</p>
