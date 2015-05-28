@@ -134,9 +134,95 @@ getc, putc | 8.45 | 0.29 | 10.33 | 114
 fgetc, fputc | 8.16 | 0.40 | 10.18 | 114
 single byte time from Figure 3.6 | 134.61 | 249.94 | 394.95 | 
 
+* One advantage of using the standard I/O routines is that we don’t have to worry about buffering or choosing the optimal I/O size.
+* Usually, `getc` and `putc` are implemented as macros, but in the GNU C library implementation the macro simply expands to a function call.
+* The line-at-a-time functions are implemented using memccpy(3). Often, the memccpy function is implemented in assembly language instead of C, for efficiency.
+
+### Binary I/O
+
+If doing binary I/O, we often want to read or write an entire structure at a time. There are problems with the previous functions:
+
+* `getc`, `putc`: we have to loop through the entire structure one byte a time
+* `fputs`: stops writing when it hits a null byte
+* `fgets`: won't work correctly on input if any data bytes are null or newlines
+
+<script src="https://gist.github.com/shichao-an/a90609694cb97c765ca2.js"></script>
+
+These functions have two common uses:
+
+Read or write a binary array (e.g write elements 2 through 5 of a floating-point array):
+
+```c
+float   data[10];
+
+if (fwrite(&data[2], sizeof(float), 4, fp) != 4)
+    err_sys("fwrite error");
+```
+
+Read or write a structure:
+
+```c
+struct {
+    short  count;
+    long   total;
+    char   name[NAMESIZE];
+} item;
+
+if (fwrite(&item, sizeof(item), 1, fp) != 1)
+    err_sys("fwrite error");
+```
+
+* `fread`: return value can be less than *nobj* if an error occurs or if the end of file is encountered
+* `fwrite`: if the return value is less than the requested `nobj`, an error has occurred
+
+These two functions won't work on different systems (sometimes even on the same system):
+
+1. The offset of a member within a structure can differ between compilers and systems because of different [alignment requirements](http://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86). Even on a single system, the binary layout of a structure can differ, depending on compiler options. [p157]
+2. The binary formats used to store multibyte integers and floating-point values differ among machine architectures
+
+
+### Positioning a Stream
+
+<script src="https://gist.github.com/shichao-an/18d258b1815658a84cf7.js"></script>
+
+* `ftell`: return file's position indicator (bytes from the beginning of the file)
+* `fseek`
+    * Binary file: *whence* can be `SEEK_SET`, `SEEK_CUR`, and `SEEK_END`
+    * Text file: *whence* has to be `SEEK_SET`; *offset* can only be 0 (rewind the file to its beginning) or a value that was returned by `ftell` for that file.
+* `rewind`: set the stream to the beginning of the file
+
+<script src="https://gist.github.com/shichao-an/530b106fa164cb197077.js"></script>
+<script src="https://gist.github.com/shichao-an/e37050a7db81810e78cc.js"></script>
+
+### Formatted I/O
+
+<script src="https://gist.github.com/shichao-an/558af328d4915c8d77b8.js"></script>
+
+* `sprintf`: automatically appends a null byte at the end of the array, but this null byte is not included in the return value. `sprintf` is possible to overflow the buffer.
+* `snprintf`: returns the number of characters that would have been written to the buffer had it been big enough. If `snprintf` returns a positive value less than the buffer size n, then the output was not truncated.
+
+#### Conversion specification
+
+```
+%[flags][fldwidth][precision][lenmodifier]convtype
+```
+
+Flag | Description
+---- | -----------
+`’` | (apostrophe) format integer with thousands grouping characters
+`-` | left-justify the output in the field
+`+` | always display sign of a signed conversion
+(space) | prefix by a space if no sign is generated
+`#` | convert using alternative form (include 0x prefix for hexadecimal format, for example)
+`0` | prefix with leading zeros instead of padding with spaces
+
 ### Doubts and Solutions
 #### Verbatim
 
 Section 5.4 on line buffering [p145]
 
 > Second, whenever input is requested through the standard I/O library from either (a) an unbuffered stream or (b) a line-buffered stream (that requires data to be requested from the kernel), all line-buffered output streams are flushed. The reason for the qualifier on (b) is that the requested data may already be in the buffer, which doesn’t require data to be read from the kernel. Obviously, any input from an unbuffered stream, item (a), requires data to be obtained from the kernel.
+
+Section 5.8 Standard I/O Efficiency [p155]
+
+> The version using line-at-a-time I/O is almost twice as fast as the version using character-at-a-time I/O. If the fgets and fputs functions are implemented using getc and putc, then we would expect the timing to be similar to the getc version. Actually, we might expect the line-at-a-time version to take longer, since we would be adding the overhead of 200 million extra function calls to the existing 6 million ones.
