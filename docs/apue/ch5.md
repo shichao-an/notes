@@ -207,14 +207,31 @@ These two functions won't work on different systems (sometimes even on the same 
 %[flags][fldwidth][precision][lenmodifier]convtype
 ```
 
-Flag | Description
----- | -----------
-`’` | (apostrophe) format integer with thousands grouping characters
-`-` | left-justify the output in the field
-`+` | always display sign of a signed conversion
-(space) | prefix by a space if no sign is generated
-`#` | convert using alternative form (include 0x prefix for hexadecimal format, for example)
-`0` | prefix with leading zeros instead of padding with spaces
+* Flag
+
+    Flag | Description
+    ---- | -----------
+    `’` | (apostrophe) format integer with thousands grouping characters
+    `-` | left-justify the output in the field
+    `+` | always display sign of a signed conversion
+    (space) | prefix by a space if no sign is generated
+    `#` | convert using alternative form (include 0x prefix for hexadecimal format, for example)
+    `0` | prefix with leading zeros instead of padding with spaces
+
+* `fldwidth` specifies a minimum field width for the conversion
+* `precision` specifies the minimum number of digits to appear for integer conversions, the minimum number of digits to appear to the right of the decimal point for floating-point conversions, or the maximum number of bytes for string conversions
+* `lenmodifier` pecifies the size of the argument
+
+    Length modifier | Description
+    --------------- | -----------
+    `hh` | signed or unsigned `char`
+    `h` | signed or unsigned `short`
+    `l` | signed or unsigned `long` or wide character
+    `ll` | signed or unsigned `long` `long`
+    `j` | `intmax_t` or `uintmax_t`
+    `z` | `size_t`
+    `t` | `ptrdiff_t`
+    `L` | `long double`
 
 ### Doubts and Solutions
 #### Verbatim
