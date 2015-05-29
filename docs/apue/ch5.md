@@ -186,7 +186,7 @@ These two functions won't work on different systems (sometimes even on the same 
 <script src="https://gist.github.com/shichao-an/18d258b1815658a84cf7.js"></script>
 
 * `ftell`: return file's position indicator (bytes from the beginning of the file)
-* `fseek`
+* `fseek`:
     * Binary file: *whence* can be `SEEK_SET`, `SEEK_CUR`, and `SEEK_END`
     * Text file: *whence* has to be `SEEK_SET`; *offset* can only be 0 (rewind the file to its beginning) or a value that was returned by `ftell` for that file.
 * `rewind`: set the stream to the beginning of the file
@@ -196,12 +196,14 @@ These two functions won't work on different systems (sometimes even on the same 
 
 ### Formatted I/O
 
+#### Formatted Output
+
 <script src="https://gist.github.com/shichao-an/558af328d4915c8d77b8.js"></script>
 
 * `sprintf`: automatically appends a null byte at the end of the array, but this null byte is not included in the return value. `sprintf` is possible to overflow the buffer.
 * `snprintf`: returns the number of characters that would have been written to the buffer had it been big enough. If `snprintf` returns a positive value less than the buffer size n, then the output was not truncated.
 
-#### Conversion specification
+##### **Conversion specification**
 
 ```
 %[flags][fldwidth][precision][lenmodifier]convtype
@@ -232,6 +234,69 @@ These two functions won't work on different systems (sometimes even on the same 
     `z` | `size_t`
     `t` | `ptrdiff_t`
     `L` | `long double`
+
+* `convtype` is required.
+
+Conversion type | Description
+--------------- | -----------
+`d`,`i` | signed decimal
+`o` | unsigned octal
+`u` | unsigned decimal
+`x`,`X` | unsigned hexadecimal
+`f`,`F` | double floating-point number
+`e`,`E` | double floating-point number in exponential format
+`g`,`G` | interpreted as `f`, `F`, `e`, or `E`, depending on value converted
+`a`,`A` | double floating-point number in hexadecimal exponential format
+`c` | character (with `l` length modifier, wide character)
+`s` | string (with `l` length modifier, wide character string)
+`p` | pointer to a void
+`n` | pointer to a signed integer into which is written the number of characters written so far
+`%` | a `%` character
+`C` | wide character (XSI option, equivalent to `lc`)
+`S` | wide character string (XSI option, equivalent to `ls`)
+
+
+With the normal conversion specification, conversions are applied to the arguments in the order they appear after the format argument. An alternative conversion specification syntax allows the arguments to be named explicitly with the sequence `%n$` representing the nth argument.
+
+The following five variants of the printf family are similar to the previous five, but the variable argument list (`...`) is replaced with `arg`.
+
+<script src="https://gist.github.com/shichao-an/dbc3fe7bcb50f823951b.js"></script>
+
+#### Formatted Output
+
+<script src="https://gist.github.com/shichao-an/ee777644c2ea82bf38c0.js"></script>
+
+Except for the conversion specifications and white space, other characters in the format have to match the input. If a character doesn’t match, processing stops, leaving the remainder of the input unread.
+
+##### **Conversion specification**
+
+```
+%[*][fldwidth][m][lenmodifier]convtype
+```
+
+* `*` (leading asterisk) causes the result not stored in an argument
+* `m`: **assignment-allocation character**, used with the `%c`, `%s`, and `%[` to force a memory  buffer to be allocated to hold the converted string. The caller is responsible for freeing the buffer.
+
+* `convtype`
+
+Conversion type | Description
+--------------- | -----------
+`d` | signed decimal, base 10
+`i` | signed decimal, base determined by format of input
+`o` | unsigned octal (input optionally signed)
+`u` | unsigned decimal, base 10 (input optionally signed)
+`x`,`X` | unsigned hexadecimal (input optionally signed)
+`a`,`A`,`e`,`E`,`f`,`F`,`g`,`G` | floating-point number
+`c` | character (with `l` length modifier, wide character)
+`s` | string (with `l` length modifier, wide character string)
+`[` | matches a sequence of listed characters, ending with `]`
+`[ˆ` | matches all characters except the ones listed, ending with `]`
+`p` | pointer to a void
+`n` | pointer to a signed integer into which is written the number of characters read so far 
+`%` | a `%` character
+`C` | wide character (XSI option, equivalent to `lc`)
+`S` | wide character string (XSI option, equivalent to `ls`)
+
 
 ### Doubts and Solutions
 #### Verbatim
