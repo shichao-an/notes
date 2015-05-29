@@ -498,7 +498,7 @@ if (fwrite(&amp;item, sizeof(item), 1, fp) != 1)
 
 <ul>
 <li><code>ftell</code>: return file's position indicator (bytes from the beginning of the file)</li>
-<li><code>fseek</code><ul>
+<li><code>fseek</code>:<ul>
 <li>Binary file: <em>whence</em> can be <code>SEEK_SET</code>, <code>SEEK_CUR</code>, and <code>SEEK_END</code></li>
 <li>Text file: <em>whence</em> has to be <code>SEEK_SET</code>; <em>offset</em> can only be 0 (rewind the file to its beginning) or a value that was returned by <code>ftell</code> for that file.</li>
 </ul>
@@ -510,13 +510,14 @@ if (fwrite(&amp;item, sizeof(item), 1, fp) != 1)
 <script src="https://gist.github.com/shichao-an/e37050a7db81810e78cc.js"></script>
 
 <h3 id="formatted-io">Formatted I/O</h3>
+<h4 id="formatted-output">Formatted Output</h4>
 <script src="https://gist.github.com/shichao-an/558af328d4915c8d77b8.js"></script>
 
 <ul>
 <li><code>sprintf</code>: automatically appends a null byte at the end of the array, but this null byte is not included in the return value. <code>sprintf</code> is possible to overflow the buffer.</li>
 <li><code>snprintf</code>: returns the number of characters that would have been written to the buffer had it been big enough. If <code>snprintf</code> returns a positive value less than the buffer size n, then the output was not truncated.</li>
 </ul>
-<h4 id="conversion-specification">Conversion specification</h4>
+<h5 id="conversion-specification"><strong>Conversion specification</strong></h5>
 <pre><code>%[flags][fldwidth][precision][lenmodifier]convtype
 </code></pre>
 
@@ -607,7 +608,171 @@ if (fwrite(&amp;item, sizeof(item), 1, fp) != 1)
 </tbody>
 </table>
 </li>
+<li>
+<p><code>convtype</code> is required.</p>
+</li>
 </ul>
+<table>
+<thead>
+<tr>
+<th>Conversion type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>d</code>,<code>i</code></td>
+<td>signed decimal</td>
+</tr>
+<tr>
+<td><code>o</code></td>
+<td>unsigned octal</td>
+</tr>
+<tr>
+<td><code>u</code></td>
+<td>unsigned decimal</td>
+</tr>
+<tr>
+<td><code>x</code>,<code>X</code></td>
+<td>unsigned hexadecimal</td>
+</tr>
+<tr>
+<td><code>f</code>,<code>F</code></td>
+<td>double floating-point number</td>
+</tr>
+<tr>
+<td><code>e</code>,<code>E</code></td>
+<td>double floating-point number in exponential format</td>
+</tr>
+<tr>
+<td><code>g</code>,<code>G</code></td>
+<td>interpreted as <code>f</code>, <code>F</code>, <code>e</code>, or <code>E</code>, depending on value converted</td>
+</tr>
+<tr>
+<td><code>a</code>,<code>A</code></td>
+<td>double floating-point number in hexadecimal exponential format</td>
+</tr>
+<tr>
+<td><code>c</code></td>
+<td>character (with <code>l</code> length modifier, wide character)</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>string (with <code>l</code> length modifier, wide character string)</td>
+</tr>
+<tr>
+<td><code>p</code></td>
+<td>pointer to a void</td>
+</tr>
+<tr>
+<td><code>n</code></td>
+<td>pointer to a signed integer into which is written the number of characters written so far</td>
+</tr>
+<tr>
+<td><code>%</code></td>
+<td>a <code>%</code> character</td>
+</tr>
+<tr>
+<td><code>C</code></td>
+<td>wide character (XSI option, equivalent to <code>lc</code>)</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>wide character string (XSI option, equivalent to <code>ls</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>With the normal conversion specification, conversions are applied to the arguments in the order they appear after the format argument. An alternative conversion specification syntax allows the arguments to be named explicitly with the sequence <code>%n$</code> representing the nth argument.</p>
+<p>The following five variants of the printf family are similar to the previous five, but the variable argument list (<code>...</code>) is replaced with <code>arg</code>.</p>
+<script src="https://gist.github.com/shichao-an/dbc3fe7bcb50f823951b.js"></script>
+
+<h4 id="formatted-output_1">Formatted Output</h4>
+<script src="https://gist.github.com/shichao-an/ee777644c2ea82bf38c0.js"></script>
+
+<p>Except for the conversion specifications and white space, other characters in the format have to match the input. If a character doesn’t match, processing stops, leaving the remainder of the input unread.</p>
+<h5 id="conversion-specification_1"><strong>Conversion specification</strong></h5>
+<pre><code>%[*][fldwidth][m][lenmodifier]convtype
+</code></pre>
+
+<ul>
+<li><code>*</code> (leading asterisk) causes the result not stored in an argument</li>
+<li>
+<p><code>m</code>: <strong>assignment-allocation character</strong>, used with the <code>%c</code>, <code>%s</code>, and <code>%[</code> to force a memory  buffer to be allocated to hold the converted string. The caller is responsible for freeing the buffer.</p>
+</li>
+<li>
+<p><code>convtype</code></p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Conversion type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>d</code></td>
+<td>signed decimal, base 10</td>
+</tr>
+<tr>
+<td><code>i</code></td>
+<td>signed decimal, base determined by format of input</td>
+</tr>
+<tr>
+<td><code>o</code></td>
+<td>unsigned octal (input optionally signed)</td>
+</tr>
+<tr>
+<td><code>u</code></td>
+<td>unsigned decimal, base 10 (input optionally signed)</td>
+</tr>
+<tr>
+<td><code>x</code>,<code>X</code></td>
+<td>unsigned hexadecimal (input optionally signed)</td>
+</tr>
+<tr>
+<td><code>a</code>,<code>A</code>,<code>e</code>,<code>E</code>,<code>f</code>,<code>F</code>,<code>g</code>,<code>G</code></td>
+<td>floating-point number</td>
+</tr>
+<tr>
+<td><code>c</code></td>
+<td>character (with <code>l</code> length modifier, wide character)</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>string (with <code>l</code> length modifier, wide character string)</td>
+</tr>
+<tr>
+<td><code>[</code></td>
+<td>matches a sequence of listed characters, ending with <code>]</code></td>
+</tr>
+<tr>
+<td><code>[ˆ</code></td>
+<td>matches all characters except the ones listed, ending with <code>]</code></td>
+</tr>
+<tr>
+<td><code>p</code></td>
+<td>pointer to a void</td>
+</tr>
+<tr>
+<td><code>n</code></td>
+<td>pointer to a signed integer into which is written the number of characters read so far</td>
+</tr>
+<tr>
+<td><code>%</code></td>
+<td>a <code>%</code> character</td>
+</tr>
+<tr>
+<td><code>C</code></td>
+<td>wide character (XSI option, equivalent to <code>lc</code>)</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>wide character string (XSI option, equivalent to <code>ls</code>)</td>
+</tr>
+</tbody>
+</table>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>Section 5.4 on line buffering [p145]</p>
