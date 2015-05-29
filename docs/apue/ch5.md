@@ -136,7 +136,7 @@ single byte time from Figure 3.6 | 134.61 | 249.94 | 394.95 |
 
 * One advantage of using the standard I/O routines is that we don’t have to worry about buffering or choosing the optimal I/O size.
 * Usually, `getc` and `putc` are implemented as macros, but in the GNU C library implementation the macro simply expands to a function call.
-* The line-at-a-time functions are implemented using memccpy(3). Often, the memccpy function is implemented in assembly language instead of C, for efficiency.
+* The line-at-a-time functions are implemented using `memccpy(3)`. Often, the memccpy function is implemented in assembly language instead of C, for efficiency.
 
 ### Binary I/O
 
@@ -256,7 +256,7 @@ Conversion type | Description
 `S` | wide character string (XSI option, equivalent to `ls`)
 
 
-With the normal conversion specification, conversions are applied to the arguments in the order they appear after the format argument. An alternative conversion specification syntax allows the arguments to be named explicitly with the sequence `%n$` representing the nth argument.
+With the normal conversion specification, conversions are applied to the arguments in the order they appear after the format argument. An alternative conversion specification syntax allows the arguments to be named explicitly with the sequence `%n$` representing the *n*th argument.
 
 The following five variants of the printf family are similar to the previous five, but the variable argument list (`...`) is replaced with `arg`.
 
