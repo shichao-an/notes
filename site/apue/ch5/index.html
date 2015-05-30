@@ -249,6 +249,12 @@
         
             <li><a href="#formatted-io">Formatted I/O</a></li>
         
+            <li><a href="#implementation-details">Implementation Details</a></li>
+        
+            <li><a href="#temporary-files">Temporary Files</a></li>
+        
+            <li><a href="#memory-streams">Memory Streams</a></li>
+        
             <li><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
     
@@ -422,21 +428,21 @@
 <td></td>
 </tr>
 <tr>
-<td>fgets, fputs</td>
+<td><code>fgets</code>, <code>fputs</code></td>
 <td>2.27</td>
 <td>0.30</td>
 <td>3.49</td>
 <td>143</td>
 </tr>
 <tr>
-<td>getc, putc</td>
+<td><code>getc</code>, <code>putc</code></td>
 <td>8.45</td>
 <td>0.29</td>
 <td>10.33</td>
 <td>114</td>
 </tr>
 <tr>
-<td>fgetc, fputc</td>
+<td><code>fgetc</code>, <code>fputc</code></td>
 <td>8.16</td>
 <td>0.40</td>
 <td>10.18</td>
@@ -773,6 +779,61 @@ if (fwrite(&amp;item, sizeof(item), 1, fp) != 1)
 </tr>
 </tbody>
 </table>
+<h3 id="implementation-details">Implementation Details</h3>
+<script src="https://gist.github.com/shichao-an/938ed0cb122d71d66cfc.js"></script>
+
+<p>Each standard I/O stream has an associated file descriptor, and we can obtain the descriptor for a stream by calling <code>fileno</code>.</p>
+<ul>
+<li><a href="https://github.com/shichao-an/glibc-2.21/blob/master/libio/libio.h#L245"><code>FILE</code></a> implementaion in GNU C.</li>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/stdio/buf.c"><code>buf.c</code></a> (Figure 5.11): print buffering for various standard I/O streams</li>
+</ul>
+<p>Result on OS X 10.10:</p>
+<pre><code class="text">$ ./buf
+enter any character
+
+one line to standard error
+stream = stdin, line buffered, buffer size = 4096
+stream = stdout, line buffered, buffer size = 4096
+stream = stderr, unbuffered, buffer size = 1
+stream = /etc/passwd, fully buffered, buffer size = 4096
+
+$ ./buf &lt; /etc/group &gt; std.out 2&gt; std.err
+$ cat std.out 
+enter any character
+stream = stdin, fully buffered, buffer size = 4096
+stream = stdout, fully buffered, buffer size = 4096
+stream = stderr, unbuffered, buffer size = 1
+stream = /etc/passwd, fully buffered, buffer size = 4096
+$ cat std.err 
+one line to standard error
+</code></pre>
+
+<h3 id="temporary-files">Temporary Files</h3>
+<script src="https://gist.github.com/shichao-an/5679ebc6a3221a63c196.js"></script>
+
+<ul>
+<li><code>tmpnam</code>: generates a string that is a valid pathname that does not match any existing file. This function generates a different pathname each time it is called, up to <code>TMP_MAX</code> times. <ul>
+<li>When <em>ptr</em> is <code>NULL</code>: pathname is stored in a static area</li>
+<li>When <em>ptr</em> is not <code>NULL</code>: it is assumed that it points to an array of at least <code>L_tmpnam</code> characters. The generated pathname is stored in this array, and <em>ptr</em> is returned as the value of the function.</li>
+</ul>
+</li>
+<li><code>tmpfile</code>: creates a temporary binary file (type <code>wb+</code>) that is automatically removed when it is closed or on program termination.</li>
+</ul>
+<script src="https://gist.github.com/shichao-an/f2065b6923b100974256.js"></script>
+
+<ul>
+<li><code>mkdtemp</code>: creates a uniquely named directory</li>
+<li><code>mkstemp</code>: creates a uniquely named regular file</li>
+<li><em>template</em>: a pathname whose last six characters are set to <code>XXXXXX</code> (<code>/tmp/dirXXXXXX</code>)</li>
+</ul>
+<p>Unlike <code>tmpfile</code>, the temporary file created by <code>mkstemp</code> is not removed automatically for us.</p>
+<p>The <code>tmpfile</code> and <code>mkstemp</code> functions should be used instead of <code>tmpnam</code>. [p169]</p>
+<p>Example:</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/ef04db13cfdaecb65f4b">apue_stdio_mkstemp.c</a>: the array variable is allocated on the stacl. For a pointer to a string literal, only the pointer itself resides on the stack; the (constant) string is stored in the read-only segment of the program.</li>
+</ul>
+<h3 id="memory-streams">Memory Streams</h3>
+<p><strong>Memory streams</strong> are standard I/O streams for which there are no underlying files, although they are still accessed with <code>FILE</code> pointers. All I/O is done by transferring bytes to and from buffers in main memory.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>Section 5.4 on line buffering [p145]</p>

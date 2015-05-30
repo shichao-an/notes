@@ -129,9 +129,9 @@ After reading from a stream, we can push back characters by calling `ungetc`.
 Function | User CPU (seconds) | System CPU (seconds) | Clock time (seconds) | Bytes of program text
 -------- | ------------------ | -------------------- | -------------------- | ---------------------
 best time from Figure 3.6 | 0.05 | 0.29 | 3.18 | 
-fgets, fputs | 2.27 | 0.30 | 3.49 | 143
-getc, putc | 8.45 | 0.29 | 10.33 | 114
-fgetc, fputc | 8.16 | 0.40 | 10.18 | 114
+`fgets`, `fputs` | 2.27 | 0.30 | 3.49 | 143
+`getc`, `putc` | 8.45 | 0.29 | 10.33 | 114
+`fgetc`, `fputc` | 8.16 | 0.40 | 10.18 | 114
 single byte time from Figure 3.6 | 134.61 | 249.94 | 394.95 | 
 
 * One advantage of using the standard I/O routines is that we don’t have to worry about buffering or choosing the optimal I/O size.
@@ -297,6 +297,64 @@ Conversion type | Description
 `C` | wide character (XSI option, equivalent to `lc`)
 `S` | wide character string (XSI option, equivalent to `ls`)
 
+### Implementation Details
+
+<script src="https://gist.github.com/shichao-an/938ed0cb122d71d66cfc.js"></script>
+
+Each standard I/O stream has an associated file descriptor, and we can obtain the descriptor for a stream by calling `fileno`.
+
+* [`FILE`](https://github.com/shichao-an/glibc-2.21/blob/master/libio/libio.h#L245) implementaion in GNU C.
+* [`buf.c`](https://github.com/shichao-an/apue.3e/blob/master/stdio/buf.c) (Figure 5.11): print buffering for various standard I/O streams
+
+Result on OS X 10.10:
+
+```text
+$ ./buf
+enter any character
+
+one line to standard error
+stream = stdin, line buffered, buffer size = 4096
+stream = stdout, line buffered, buffer size = 4096
+stream = stderr, unbuffered, buffer size = 1
+stream = /etc/passwd, fully buffered, buffer size = 4096
+
+$ ./buf < /etc/group > std.out 2> std.err
+$ cat std.out 
+enter any character
+stream = stdin, fully buffered, buffer size = 4096
+stream = stdout, fully buffered, buffer size = 4096
+stream = stderr, unbuffered, buffer size = 1
+stream = /etc/passwd, fully buffered, buffer size = 4096
+$ cat std.err 
+one line to standard error
+```
+
+### Temporary Files
+
+<script src="https://gist.github.com/shichao-an/5679ebc6a3221a63c196.js"></script>
+
+* `tmpnam`: generates a string that is a valid pathname that does not match any existing file. This function generates a different pathname each time it is called, up to `TMP_MAX` times. 
+    * When *ptr* is `NULL`: pathname is stored in a static area
+    * When *ptr* is not `NULL`: it is assumed that it points to an array of at least `L_tmpnam` characters. The generated pathname is stored in this array, and *ptr* is returned as the value of the function.
+* `tmpfile`: creates a temporary binary file (type `wb+`) that is automatically removed when it is closed or on program termination.
+
+<script src="https://gist.github.com/shichao-an/f2065b6923b100974256.js"></script>
+
+* `mkdtemp`: creates a uniquely named directory
+* `mkstemp`: creates a uniquely named regular file
+* *template*: a pathname whose last six characters are set to `XXXXXX` (`/tmp/dirXXXXXX`)
+
+Unlike `tmpfile`, the temporary file created by `mkstemp` is not removed automatically for us.
+
+The `tmpfile` and `mkstemp` functions should be used instead of `tmpnam`. [p169]
+
+Example:
+
+* [apue_stdio_mkstemp.c](https://gist.github.com/shichao-an/ef04db13cfdaecb65f4b): the array variable is allocated on the stacl. For a pointer to a string literal, only the pointer itself resides on the stack; the (constant) string is stored in the read-only segment of the program.
+
+### Memory Streams
+
+**Memory streams** are standard I/O streams for which there are no underlying files, although they are still accessed with `FILE` pointers. All I/O is done by transferring bytes to and from buffers in main memory.
 
 ### Doubts and Solutions
 #### Verbatim
