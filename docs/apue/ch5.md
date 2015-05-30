@@ -31,7 +31,7 @@ Most implementations default to the following types of buffering:
 
 The GNU C librarys use the value from the `st_blksize` member of the `stat` structure to determine the optimal standard I/O buffer size.
 
-The `fflush` function causes any unwritten data for the stream to be passed to the kernel. If **fp** is `NULL`, `fflush` causes all output streams to be flushed.
+The `fflush` function causes any unwritten data for the stream to be passed to the kernel. If *fp* is `NULL`, `fflush` causes all output streams to be flushed.
 
 ### Opening a Stream
 
