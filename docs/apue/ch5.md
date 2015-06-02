@@ -356,6 +356,17 @@ Example:
 
 **Memory streams** are standard I/O streams for which there are no underlying files, although they are still accessed with `FILE` pointers. All I/O is done by transferring bytes to and from buffers in main memory.
 
+<script src="https://gist.github.com/shichao-an/1e2ecfc1323bdae6ff58.js"></script>
+
+* *buf*: points to the beginning of the user-allocated buffer and the size argument specifies the size of the buffer in bytes. If the buf argument is null, then the fmemopen function allocates a buffer of *size* bytes.
+* *type*: controls how the stream can be used [p171]
+
+Note:
+
+* Under append mode, the current file position is set to the first null byte in the buffer. If the buffer contains no null bytes, then the current position is set to one byte past the end of the buffer. Under non-append mode, the current position is set to the beginning of the buffer. Thus, memory streams aren’t well suited for storing binary data (which might contain null bytes before the end of the data).
+* If the *buf* argument is a null pointer, it makes no sense to open the stream for only reading or only writing. Because the buffer is allocated by `fmemopen` in this case, there is no way to find the buffer's address
+* A null byte is written at the current position in the stream whenever we increase the amount of data in the stream’s buffer and call `fclose`, `fflush`, `fseek`, `fseeko`, or `fsetpos`.
+
 ### Doubts and Solutions
 #### Verbatim
 
@@ -366,3 +377,6 @@ Section 5.4 on line buffering [p145]
 Section 5.8 Standard I/O Efficiency [p155]
 
 > The version using line-at-a-time I/O is almost twice as fast as the version using character-at-a-time I/O. If the fgets and fputs functions are implemented using getc and putc, then we would expect the timing to be similar to the getc version. Actually, we might expect the line-at-a-time version to take longer, since we would be adding the overhead of 200 million extra function calls to the existing 6 million ones.
+
+Section 5.14 on Memory Stream [p172]
+> Third, a null byte is written at the current position in the stream whenever we increase the amount of data in the stream’s buffer and call fclose, fflush, fseek, fseeko, or fsetpos.
