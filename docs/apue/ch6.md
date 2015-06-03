@@ -28,6 +28,8 @@ Some systems provide the `vipw` command to allow administrators to edit the pass
 * `getpwuid`: used by the `ls(1)` program to map the numerical user ID contained in an i-node into a user's login name.
 * `getpwnam`: used by the `login(1)` program when we enter our login name
 
+Both functions return a pointer to a passwd structure that the functions fill in. This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.
+
 <script src="https://gist.github.com/shichao-an/ffbbc20702760d6a4fab.js"></script>
 
 * `getpwent`: returns the next entry (a pointer to a structure that it has filled in, this structure is overwritten each time we call this function) in the password file.
