@@ -367,6 +367,11 @@ Note:
 * If the *buf* argument is a null pointer, it makes no sense to open the stream for only reading or only writing. Because the buffer is allocated by `fmemopen` in this case, there is no way to find the buffer's address
 * A null byte is written at the current position in the stream whenever we increase the amount of data in the stream’s buffer and call `fclose`, `fflush`, `fseek`, `fseeko`, or `fsetpos`.
 
+### Alternatives to Standard I/O
+
+When we use the line-at-a-time functions, `fgets` and `fputs`, the data is usually copied twice: once between the kernel and the standard I/O buffer (when the corresponding read or write is issued) and again between the standard I/O buffer and our line buffer.
+
+
 ### Doubts and Solutions
 #### Verbatim
 

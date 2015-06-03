@@ -18,6 +18,24 @@ Added in C99, [`restrict`](https://en.wikipedia.org/wiki/Restrict) keyword is us
 
 The `buf` argument is a pointer to a [structure](http://en.wikipedia.org/wiki/Stat_(system_call)#stat_structure) that we must supply. The functions fill in the structure.
 
+```c
+struct stat {
+    mode_t    st_mode;
+    ino_t    st_ino;
+    dev_t    st_dev;
+    dev_t    st_rdev;
+    nlink_t    st_nlink;
+    uid_t    st_uid;
+    gid_t    st_gid;
+    off_t    st_size;
+    struct timespec    st_atim;
+    struct timespec    st_mtim;
+    struct timespec    st_ctim;
+    blksize_t    st_blksize;
+    blkcnt_t    st_blocks;
+};
+```
+
 ### File Types
 
 * Regular file. All binary executable files conform to a format that allows the kernel to identify where to load a program’s text and data.

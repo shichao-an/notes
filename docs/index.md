@@ -13,6 +13,7 @@ by W. Richard Stevens and Stephen A. Rago
 3. [File I/O](apue/ch3.md)
 4. [Files and Directories](apue/ch4.md)
 5. [Standard I/O Library](apue/ch5.md)
+6. [System Data Files and Information](apue/ch6.md)
 
 #### Understanding the Linux Kernel, Third Edition
 
