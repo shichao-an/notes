@@ -403,7 +403,29 @@ With TCP, there would be eight segments of overhead. If UDP was used, only two p
 </ul>
 <h3 id="tcp-port-numbers-and-concurrent-servers">TCP Port Numbers and Concurrent Servers</h3>
 <p>[p52-55]</p>
-<h3 id="buffer-sizes-and-limitations">Buffer Sizes and Limitations</h3></div>
+<h3 id="buffer-sizes-and-limitations">Buffer Sizes and Limitations</h3>
+<p>Figures: <a href="../../tcpv1/ipv4_header.png">IPv4 Header</a>, <a href="../../tcpv1/ipv6_header.png">IPv6 Header</a></p>
+<ul>
+<li>Maximum size of an IPv4 datagram: 65,535 bytes (including the header), because of the 16-bit total length field.</li>
+<li>Maximum size of an IPv6 datagram: 65,575 bytes (including the 40-byte IPv6 header), because of the 16-bit payload length field. IPv6 has a jumbo payload option, which extends the payload length field to 32 bits, but this option is supported only on datalinks with a <strong>maximum transmission unit</strong> (MTU) that exceeds 65,535.</li>
+<li><strong>MTU</strong> (maximum transmission unit): dictated by the hardware. Ethernet MTU is 1,500 bytes; Point-to-point links have a configurable MTU.<ul>
+<li>Minimum link MTU for IPv4: 68 bytes. This permits a maximum-sized IPv4 header (20 bytes of fixed header, 40 bytes of options)  and minimum-sized fragment (the fragment offset is in units of 8 bytes) <a href="http://www.unpbook.com/errata.html">[errata]</a></li>
+<li>Minimum link MTU for IPv6: 1,280 bytes.</li>
+</ul>
+</li>
+<li><strong>Path MTU</strong>: smallest MTU in the path between two hosts. Today, the Ethernet MTU of 1,500 bytes is often the path MTU. The path MTU need not be the same in both directions between any two hosts because routing in the Internet is often asymmetric.</li>
+<li><strong>Fragmentation</strong> is performed by both IPv4 and IPv6 when the size of an IP datagram to be sent out an interface exceeds the link MTU. The fragments are not normally <strong>reassembled</strong> until they reach the final destination.<ul>
+<li>IPv4: hosts perform fragmentation on datagrams that they generate and routers perform fragmentation on datagrams that they forward</li>
+<li>IPv6: only hosts perform fragmentation on datagrams that they generate; routers do not fragment datagrams that they are forwarding</li>
+<li>IPv4 header contains fields to handle fragmentation. IPv6 contains an option header with the fragmentation information.</li>
+</ul>
+</li>
+<li>"Don't Fragment" (DF) bit in IPv4 header specifies that this datagram must not be fragmented, either by the sending host or by any router. A router that receives an IPv4 datagram with the DF bit set whose size exceeds the outgoing link's MTU generates an ICMPv4 "destination unreachable, fragmentation needed but DF bit set" error message.<ul>
+<li>Since IPv6 routers do not perform fragmentation, there is an implied DF bit with every IPv6 datagram. When an IPv6 router receives a datagram whose size exceeds the outgoing link's MTU, it generates an ICMPv6 "packet too big" error message</li>
+<li><strong>Path MTU discovery</strong> uses IPv4 DF bit and its implied IPv6 counterpart. Path MTU discovery is optional with IPv4, but IPv6 implementations all either support path MTU discovery or always send using the minimum MTU. [p55]</li>
+</ul>
+</li>
+</ul></div>
         </div>
 
         <footer class="col-md-12">
