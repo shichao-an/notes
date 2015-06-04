@@ -51,3 +51,35 @@ Systems store the encrypted password in another file, often called the **shadow 
 The shadow password file should not be readable by the world. Only a few programs need to access encrypted passwords, e.g. `login(1)` and `passwd(1)`, and these programs are often set-user-ID root. With shadow passwords, the regular password file, `/etc/passwd`, can be left readable by the world.
 
 <script src="https://gist.github.com/shichao-an/bad119e8e6ed442e25bf.js"></script>
+
+### Group File
+
+The UNIX System’s group file, called the group database by POSIX.1, contains the following fields:
+
+[![Figure 6.4 Fields in /etc/group file](figure_6.4_600.png)](figure_6.4.png "Figure 6.4 Fields in /etc/group file")
+
+The field `gr_mem` is an array of pointers to the user names that belong to this group. This array is terminated by a null pointer.
+
+<script src="https://gist.github.com/shichao-an/c280f5fa5d15b006e8af.js"></script>
+
+Like the password file functions, both of these functions normally return pointers to a static variable, which is overwritten on each call.
+
+<script src="https://gist.github.com/shichao-an/98d14c0850ac1f357993.js"></script>
+
+* `getgrent`: reads the next entry from the group file, opening the file first, if it’s not already open
+
+### Supplementary Group IDs
+
+`newgrp(1)` can be used to change the real group ID to the new group’s ID. We could always go back to our original group (as listed in `/etc/passwd`) by executing `newgrp` without any arguments.
+
+With 4.2BSD, the concept of **supplementary group IDs** was introduced. The file access permission checks were modified so that in addition to comparing the the file’s group ID to the process effective group ID, it was also compared to all the supplementary group IDs.
+
+The constant `NGROUPS_MAX` specifies the number of supplementary group IDs.
+
+<script src="https://gist.github.com/shichao-an/72cd85f9279a4501249c.js"></script>
+
+* `getgroups`
+    * *gidsetsize* > 0: the function fills in the array up to *gidsetsize* supplementary group IDs
+    * *gidsetsize* = 0: the function returns only the number of supplementary group IDs; `grouplist` is not modified
+* `setgroups`: called by the superuser to set the supplementary group ID list for the calling process
+* `initgroups`: reads the entire group file with the functions `getgrent`, `setgrent`, and `endgrent` and determines the group membership for username.  It then calls setgroups to initialize the supplementary group ID list for the user. It includes *basegid* in the supplementary group ID list; basegid is the group ID from the password file for username. See [Setting the Group IDs](http://www.gnu.org/software/libc/manual/html_node/Setting-Groups.html)
