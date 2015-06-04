@@ -237,6 +237,10 @@
         
             <li><a href="#shadow-passwords">Shadow Passwords</a></li>
         
+            <li><a href="#group-file">Group File</a></li>
+        
+            <li><a href="#supplementary-group-ids">Supplementary Group IDs</a></li>
+        
     
     </ul>
 </div></div>
@@ -286,7 +290,35 @@
 <p>Systems store the encrypted password in another file, often called the <strong>shadow password file</strong>. Minimally, this file has to contain the user name and the encrypted password.</p>
 <p><a href="../figure_6.3.png" title="Figure 6.3 Fields in /etc/shadow file"><img alt="Figure 6.3 Fields in /etc/shadow file" src="../figure_6.3_600.png" /></a></p>
 <p>The shadow password file should not be readable by the world. Only a few programs need to access encrypted passwords, e.g. <code>login(1)</code> and <code>passwd(1)</code>, and these programs are often set-user-ID root. With shadow passwords, the regular password file, <code>/etc/passwd</code>, can be left readable by the world.</p>
-<script src="https://gist.github.com/shichao-an/bad119e8e6ed442e25bf.js"></script></div>
+<script src="https://gist.github.com/shichao-an/bad119e8e6ed442e25bf.js"></script>
+
+<h3 id="group-file">Group File</h3>
+<p>The UNIX System’s group file, called the group database by POSIX.1, contains the following fields:</p>
+<p><a href="../figure_6.4.png" title="Figure 6.4 Fields in /etc/group file"><img alt="Figure 6.4 Fields in /etc/group file" src="../figure_6.4_600.png" /></a></p>
+<p>The field <code>gr_mem</code> is an array of pointers to the user names that belong to this group. This array is terminated by a null pointer.</p>
+<script src="https://gist.github.com/shichao-an/c280f5fa5d15b006e8af.js"></script>
+
+<p>Like the password file functions, both of these functions normally return pointers to a static variable, which is overwritten on each call.</p>
+<script src="https://gist.github.com/shichao-an/98d14c0850ac1f357993.js"></script>
+
+<ul>
+<li><code>getgrent</code>: reads the next entry from the group file, opening the file first, if it’s not already open</li>
+</ul>
+<h3 id="supplementary-group-ids">Supplementary Group IDs</h3>
+<p><code>newgrp(1)</code> can be used to change the real group ID to the new group’s ID. We could always go back to our original group (as listed in <code>/etc/passwd</code>) by executing <code>newgrp</code> without any arguments.</p>
+<p>With 4.2BSD, the concept of <strong>supplementary group IDs</strong> was introduced. The file access permission checks were modified so that in addition to comparing the the file’s group ID to the process effective group ID, it was also compared to all the supplementary group IDs.</p>
+<p>The constant <code>NGROUPS_MAX</code> specifies the number of supplementary group IDs.</p>
+<script src="https://gist.github.com/shichao-an/72cd85f9279a4501249c.js"></script>
+
+<ul>
+<li><code>getgroups</code><ul>
+<li><em>gidsetsize</em> &gt; 0: the function fills in the array up to <em>gidsetsize</em> supplementary group IDs</li>
+<li><em>gidsetsize</em> = 0: the function returns only the number of supplementary group IDs; <code>grouplist</code> is not modified</li>
+</ul>
+</li>
+<li><code>setgroups</code>: called by the superuser to set the supplementary group ID list for the calling process</li>
+<li><code>initgroups</code>: reads the entire group file with the functions <code>getgrent</code>, <code>setgrent</code>, and <code>endgrent</code> and determines the group membership for username.  It then calls setgroups to initialize the supplementary group ID list for the user. It includes <em>basegid</em> in the supplementary group ID list; basegid is the group ID from the password file for username. See <a href="http://www.gnu.org/software/libc/manual/html_node/Setting-Groups.html">Setting the Group IDs</a></li>
+</ul></div>
         </div>
 
         <footer class="col-md-12">
