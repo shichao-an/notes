@@ -131,7 +131,7 @@ struct utmp {
 };
 ```
 
-On login, the `login` program fills one of these structures, and writes it to the `utmp` and `wtmp` file. On logout, the `init` process erases this entry (fills with null bytes) in `utmp` file and appends a new logout entry. This logout entry in the `wtmp` file had the `ut_name` field zeroed out. Special entries were appended to the `wtmp` file to indicate when the system was rebooted and right before and after the system’s time and date was changed.
+On login, the `login` program fills one of these structures, and writes it to the `utmp` and `wtmp` file. On logout, the `init` process erases this entry (fills with null bytes) in `utmp` file and appends a new logout entry. This logout entry in the `wtmp` file has the `ut_name` field zeroed out. Special entries were appended to the `wtmp` file to indicate when the system was rebooted and right before and after the system’s time and date was changed.
 
 The `who(1)` program read the `utmp` file and printed its contents in a readable form
 
