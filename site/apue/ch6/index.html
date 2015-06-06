@@ -241,6 +241,14 @@
         
             <li><a href="#supplementary-group-ids">Supplementary Group IDs</a></li>
         
+            <li><a href="#implementation-differences">Implementation Differences</a></li>
+        
+            <li><a href="#other-data-files">Other Data Files</a></li>
+        
+            <li><a href="#login-accounting">Login Accounting</a></li>
+        
+            <li><a href="#system-identification">System Identification</a></li>
+        
     
     </ul>
 </div></div>
@@ -318,7 +326,113 @@
 </li>
 <li><code>setgroups</code>: called by the superuser to set the supplementary group ID list for the calling process</li>
 <li><code>initgroups</code>: reads the entire group file with the functions <code>getgrent</code>, <code>setgrent</code>, and <code>endgrent</code> and determines the group membership for username.  It then calls setgroups to initialize the supplementary group ID list for the user. It includes <em>basegid</em> in the supplementary group ID list; basegid is the group ID from the password file for username. See <a href="http://www.gnu.org/software/libc/manual/html_node/Setting-Groups.html">Setting the Group IDs</a></li>
-</ul></div>
+</ul>
+<h3 id="implementation-differences">Implementation Differences</h3>
+<p>[p184-185]</p>
+<h3 id="other-data-files">Other Data Files</h3>
+<p>Numerous other files are used by UNIX systems in normal day-to-day operation.</p>
+<p>Services and networks:</p>
+<ul>
+<li><code>/etc/services</code></li>
+<li><code>/etc/protocols</code></li>
+<li><code>/etc/networks</code></li>
+</ul>
+<p>The general principle is that every data file has at least three functions:</p>
+<ul>
+<li><code>get</code>: reads the next record, opening the file</li>
+<li><code>set</code>: opens the file, if not already open, and rewinds the file</li>
+<li><code>end</code>: closes the data file</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Data file</th>
+<th>Header</th>
+<th>Structure</th>
+<th>Additional keyed lookup functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>passwords</td>
+<td><code>/etc/passwd</code></td>
+<td><code>&lt;pwd.h&gt;</code></td>
+<td><code>passwd</code></td>
+<td><code>getpwnam</code>, <code>getpwuid</code></td>
+</tr>
+<tr>
+<td>groups</td>
+<td><code>/etc/group</code></td>
+<td><code>&lt;grp.h&gt;</code></td>
+<td><code>group</code></td>
+<td><code>getgrnam</code>, <code>getgrgid</code></td>
+</tr>
+<tr>
+<td>shadow</td>
+<td><code>/etc/shadow</code></td>
+<td><code>&lt;shadow.h&gt;</code></td>
+<td><code>spwd</code></td>
+<td><code>getspnam</code></td>
+</tr>
+<tr>
+<td>hosts</td>
+<td><code>/etc/hosts</code></td>
+<td><code>&lt;netdb.h&gt;</code></td>
+<td><code>hostent</code></td>
+<td><code>getnameinfo</code>, <code>getaddrinfo</code></td>
+</tr>
+<tr>
+<td>networks</td>
+<td><code>/etc/networks</code></td>
+<td><code>&lt;netdb.h&gt;</code></td>
+<td><code>netent</code></td>
+<td><code>getnetbyname</code>, <code>getnetbyaddr</code></td>
+</tr>
+<tr>
+<td>protocols</td>
+<td><code>/etc/protocols</code></td>
+<td><code>&lt;netdb.h&gt;</code></td>
+<td><code>protoent</code></td>
+<td><code>getprotobyname</code>, <code>getprotobynumber</code></td>
+</tr>
+<tr>
+<td>services</td>
+<td><code>/etc/services</code></td>
+<td><code>&lt;netdb.h&gt;</code></td>
+<td><code>servent</code></td>
+<td><code>getservbyname</code>, <code>getservbyport</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="login-accounting">Login Accounting</h3>
+<p>Two data files provided with most UNIX systems:</p>
+<ul>
+<li><code>utmp</code>: keeps track of all the users currently logged in</li>
+<li><code>wtmp</code>: keeps track of all logins and logouts</li>
+</ul>
+<pre><code class="c">struct utmp {
+    char ut_line[8]; /* tty line: &quot;ttyh0&quot;, &quot;ttyd0&quot;, &quot;ttyp0&quot;, ... */
+    char ut_name[8]; /* login name */
+    long ut_time; /* seconds since Epoch */
+};
+</code></pre>
+
+<p>On login, the <code>login</code> program fills one of these structures, and writes it to the <code>utmp</code> and <code>wtmp</code> file. On logout, the <code>init</code> process erases this entry (fills with null bytes) in <code>utmp</code> file and appends a new logout entry. This logout entry in the <code>wtmp</code> file had the <code>ut_name</code> field zeroed out. Special entries were appended to the <code>wtmp</code> file to indicate when the system was rebooted and right before and after the system’s time and date was changed.</p>
+<p>The <code>who(1)</code> program read the <code>utmp</code> file and printed its contents in a readable form</p>
+<h3 id="system-identification">System Identification</h3>
+<script src="https://gist.github.com/shichao-an/7477d4a7e401fc628fe9.js"></script>
+
+<pre><code class="c">struct utsname {
+    char sysname[]; /* name of the operating system */
+    char nodename[]; /* name of this node */
+    char release[]; /* current release of operating system */
+    char version[]; /* current version of this release */
+    char machine[]; /* name of hardware type */
+};
+</code></pre>
+
+<script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script></div>
         </div>
 
         <footer class="col-md-12">

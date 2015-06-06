@@ -83,3 +83,71 @@ The constant `NGROUPS_MAX` specifies the number of supplementary group IDs.
     * *gidsetsize* = 0: the function returns only the number of supplementary group IDs; `grouplist` is not modified
 * `setgroups`: called by the superuser to set the supplementary group ID list for the calling process
 * `initgroups`: reads the entire group file with the functions `getgrent`, `setgrent`, and `endgrent` and determines the group membership for username.  It then calls setgroups to initialize the supplementary group ID list for the user. It includes *basegid* in the supplementary group ID list; basegid is the group ID from the password file for username. See [Setting the Group IDs](http://www.gnu.org/software/libc/manual/html_node/Setting-Groups.html)
+
+
+### Implementation Differences
+
+[p184-185]
+
+
+### Other Data Files
+
+Numerous other files are used by UNIX systems in normal day-to-day operation.
+
+Services and networks:
+
+* `/etc/services`
+* `/etc/protocols`
+* `/etc/networks`
+
+The general principle is that every data file has at least three functions:
+
+* `get`: reads the next record, opening the file
+* `set`: opens the file, if not already open, and rewinds the file
+* `end`: closes the data file
+
+Description | Data file | Header | Structure | Additional keyed lookup functions
+----------- | --------- | ------ | --------- | ---------------------------------
+passwords | `/etc/passwd` | `<pwd.h>` | `passwd` | `getpwnam`, `getpwuid`
+groups | `/etc/group` | `<grp.h>` | `group` | `getgrnam`, `getgrgid`
+shadow | `/etc/shadow` | `<shadow.h>` | `spwd` | `getspnam`
+hosts | `/etc/hosts` | `<netdb.h>` | `hostent` | `getnameinfo`, `getaddrinfo`
+networks | `/etc/networks` | `<netdb.h>` | `netent` | `getnetbyname`, `getnetbyaddr`
+protocols | `/etc/protocols` | `<netdb.h>` | `protoent` | `getprotobyname`, `getprotobynumber`
+services | `/etc/services` | `<netdb.h>` | `servent` | `getservbyname`, `getservbyport`
+
+### Login Accounting
+
+Two data files provided with most UNIX systems:
+
+* `utmp`: keeps track of all the users currently logged in
+* `wtmp`: keeps track of all logins and logouts
+
+```c
+struct utmp {
+    char ut_line[8]; /* tty line: "ttyh0", "ttyd0", "ttyp0", ... */
+    char ut_name[8]; /* login name */
+    long ut_time; /* seconds since Epoch */
+};
+```
+
+On login, the `login` program fills one of these structures, and writes it to the `utmp` and `wtmp` file. On logout, the `init` process erases this entry (fills with null bytes) in `utmp` file and appends a new logout entry. This logout entry in the `wtmp` file had the `ut_name` field zeroed out. Special entries were appended to the `wtmp` file to indicate when the system was rebooted and right before and after the system’s time and date was changed.
+
+The `who(1)` program read the `utmp` file and printed its contents in a readable form
+
+
+### System Identification
+
+<script src="https://gist.github.com/shichao-an/7477d4a7e401fc628fe9.js"></script>
+
+```c
+struct utsname {
+    char sysname[]; /* name of the operating system */
+    char nodename[]; /* name of this node */
+    char release[]; /* current release of operating system */
+    char version[]; /* current version of this release */
+    char machine[]; /* name of hardware type */
+};
+```
+
+<script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script>
