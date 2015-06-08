@@ -154,6 +154,10 @@
                         </li>
                     
                         <li >
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                    
+                        <li >
                             <a href="../../tcpv1/headers/">Headers</a>
                         </li>
                     
@@ -233,32 +237,56 @@
     
         <li class="main active"><a href="#chapter-2-the-transport-layer-tcp-udp-and-sctp">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a></li>
         
-            <li><a href="#introduction">Introduction</a></li>
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
         
-            <li><a href="#the-big-picture">The Big Picture</a></li>
+    
+        <li class="main "><a href="#the-big-picture">The Big Picture</a></li>
         
-            <li><a href="#user-datagram-protocol-udp">User Datagram Protocol (UDP)</a></li>
+    
+        <li class="main "><a href="#user-datagram-protocol-udp">User Datagram Protocol (UDP)</a></li>
         
-            <li><a href="#transmission-control-protocol-tcp">Transmission Control Protocol (TCP)</a></li>
+    
+        <li class="main "><a href="#transmission-control-protocol-tcp">Transmission Control Protocol (TCP)</a></li>
         
-            <li><a href="#stream-control-transmission-protocol-sctp">Stream Control Transmission Protocol (SCTP)</a></li>
+    
+        <li class="main "><a href="#stream-control-transmission-protocol-sctp">Stream Control Transmission Protocol (SCTP)</a></li>
         
-            <li><a href="#tcp-connection-establishment-and-termination">TCP Connection Establishment and Termination</a></li>
+    
+        <li class="main "><a href="#tcp-connection-establishment-and-termination">TCP Connection Establishment and Termination</a></li>
         
-            <li><a href="#time_wait-state">TIME_WAIT State</a></li>
+            <li><a href="#three-way-handshake">Three-Way Handshake</a></li>
         
-            <li><a href="#port-numbers">Port Numbers</a></li>
+            <li><a href="#tcp-options">TCP Options</a></li>
         
-            <li><a href="#tcp-port-numbers-and-concurrent-servers">TCP Port Numbers and Concurrent Servers</a></li>
+            <li><a href="#tcp-connection-termination">TCP Connection Termination</a></li>
         
-            <li><a href="#buffer-sizes-and-limitations">Buffer Sizes and Limitations</a></li>
+            <li><a href="#tcp-state-transition-diagram">TCP State Transition Diagram</a></li>
+        
+            <li><a href="#watching-the-packets">Watching the Packets</a></li>
+        
+    
+        <li class="main "><a href="#time_wait-state">TIME_WAIT State</a></li>
+        
+    
+        <li class="main "><a href="#port-numbers">Port Numbers</a></li>
+        
+            <li><a href="#socket-pair">Socket Pair</a></li>
+        
+    
+        <li class="main "><a href="#tcp-port-numbers-and-concurrent-servers">TCP Port Numbers and Concurrent Servers</a></li>
+        
+    
+        <li class="main "><a href="#buffer-sizes-and-limitations">Buffer Sizes and Limitations</a></li>
+        
+            <li><a href="#tcp-output">TCP Output</a></li>
         
     
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
-<h2 id="chapter-2-the-transport-layer-tcp-udp-and-sctp">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</h2>
+<h3 id="chapter-2-the-transport-layer-tcp-udp-and-sctp"><strong>Chapter 2. The Transport Layer: TCP, UDP, and SCTP</strong></h3>
 <h3 id="introduction">Introduction</h3>
 <p>This chapter focuses on the transport layer: TCP, UDP, and Stream Control Transmission Protocol (SCTP). UDP is a simple, unreliable datagram protocol, while TCP is a sophisticated, reliable byte-stream protocol. SCTP is similar to TCP as a reliable transport protocol, but it also provides message boundaries, transport-level support for multihoming, and a way to minimize head-of-line blocking.</p>
 <h3 id="the-big-picture">The Big Picture</h3>
@@ -425,7 +453,18 @@ With TCP, there would be eight segments of overhead. If UDP was used, only two p
 <li><strong>Path MTU discovery</strong> uses IPv4 DF bit and its implied IPv6 counterpart. Path MTU discovery is optional with IPv4, but IPv6 implementations all either support path MTU discovery or always send using the minimum MTU. [p55]</li>
 </ul>
 </li>
-</ul></div>
+<li><strong>Minimum reassembly buffer size</strong>: the minimum datagram size that we are guaranteed any implementation must support.<ul>
+<li>IPv4: 576 bytes. We have no idea whether a given destination can accept a 577-byte datagram or not. Therefore, many IPv4 applications that use UDP (e.g., DNS, RIP, TFTP, BOOTP, SNMP) prevent applications from generating IP datagrams that exceed this size.</li>
+<li>IPv6: 1,500 bytes</li>
+</ul>
+</li>
+<li>TCP has a <strong>maximum segment size</strong> (MSS) that announces to the peer TCP the maximum amount of TCP data that the peer can send per segment. We saw the MSS option on the SYN segments in <a href="../figure_2.5.png">Figure 2.5</a>. The goal of the MSS is to tell the peer the actual value of the reassembly buffer size and to try to avoid fragmentation. The MSS is often set to the interface MTU minus the fixed sizes of the IP and TCP headers. On an Ethernet using IPv4, this would be 1,460, and on an Ethernet using IPv6, this would be 1,440. (The TCP header is 20 bytes for both, but the IPv4 header is 20 bytes and the IPv6 header is 40 bytes.)<ul>
+<li>IPv4: The MSS value in the TCP MSS option is a 16-bit field, limiting the value to 65,535. The maximum amount of TCP data in an IPv4 datagram is 65,495 (65,535 minus the 20-byte IPv4 header and minus the 20-byte TCP header).</li>
+<li>IPv6: the maximum amount of TCP data in an IPv6 datagram without the jumbo payload option is 65,515 (65,535 minus the 20-byte TCP header). The MSS value of 65,535 is considered a special case that designates "infinity." This value is used only if the jumbo payload option is being used, which requires an MTU that exceeds 65,535.</li>
+</ul>
+</li>
+</ul>
+<h4 id="tcp-output">TCP Output</h4></div>
         </div>
 
         <footer class="col-md-12">
