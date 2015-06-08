@@ -1,4 +1,4 @@
-## Chapter 5. Standard I/O Library
+### **Chapter 5. Standard I/O Library**
 
 The standard I/O library handles such details as buffer allocation and performing I/O in optimal-sized chunks.
 

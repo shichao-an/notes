@@ -1,4 +1,4 @@
-## Chapter 4. Files and Directories
+### **Chapter 4. Files and Directories**
 
 This chapter centers on I/O for regular files.
 

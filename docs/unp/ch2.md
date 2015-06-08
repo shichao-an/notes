@@ -1,4 +1,4 @@
-## Chapter 2. The Transport Layer: TCP, UDP, and SCTP
+### **Chapter 2. The Transport Layer: TCP, UDP, and SCTP**
 
 ### Introduction
 
@@ -143,4 +143,11 @@ Figures: [IPv4 Header](../tcpv1/ipv4_header.png), [IPv6 Header](../tcpv1/ipv6_he
 * "Don't Fragment" (DF) bit in IPv4 header specifies that this datagram must not be fragmented, either by the sending host or by any router. A router that receives an IPv4 datagram with the DF bit set whose size exceeds the outgoing link's MTU generates an ICMPv4 "destination unreachable, fragmentation needed but DF bit set" error message.
 	* Since IPv6 routers do not perform fragmentation, there is an implied DF bit with every IPv6 datagram. When an IPv6 router receives a datagram whose size exceeds the outgoing link's MTU, it generates an ICMPv6 "packet too big" error message
 	* **Path MTU discovery** uses IPv4 DF bit and its implied IPv6 counterpart. Path MTU discovery is optional with IPv4, but IPv6 implementations all either support path MTU discovery or always send using the minimum MTU. [p55]
+* **Minimum reassembly buffer size**: the minimum datagram size that we are guaranteed any implementation must support.
+	* IPv4: 576 bytes. We have no idea whether a given destination can accept a 577-byte datagram or not. Therefore, many IPv4 applications that use UDP (e.g., DNS, RIP, TFTP, BOOTP, SNMP) prevent applications from generating IP datagrams that exceed this size.
+	* IPv6: 1,500 bytes
+* TCP has a **maximum segment size** (MSS) that announces to the peer TCP the maximum amount of TCP data that the peer can send per segment. We saw the MSS option on the SYN segments in [Figure 2.5](figure_2.5.png). The goal of the MSS is to tell the peer the actual value of the reassembly buffer size and to try to avoid fragmentation. The MSS is often set to the interface MTU minus the fixed sizes of the IP and TCP headers. On an Ethernet using IPv4, this would be 1,460, and on an Ethernet using IPv6, this would be 1,440. (The TCP header is 20 bytes for both, but the IPv4 header is 20 bytes and the IPv6 header is 40 bytes.)
+	* IPv4: The MSS value in the TCP MSS option is a 16-bit field, limiting the value to 65,535. The maximum amount of TCP data in an IPv4 datagram is 65,495 (65,535 minus the 20-byte IPv4 header and minus the 20-byte TCP header).
+	* IPv6: the maximum amount of TCP data in an IPv6 datagram without the jumbo payload option is 65,515 (65,535 minus the 20-byte TCP header). The MSS value of 65,535 is considered a special case that designates "infinity." This value is used only if the jumbo payload option is being used, which requires an MTU that exceeds 65,535.
 
+#### TCP Output

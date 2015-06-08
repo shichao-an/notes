@@ -1,4 +1,4 @@
-## Chapter 1. Introduction
+### **Chapter 1. Introduction**
 
 This chapter gives an overview of major features of Linux, as well as Unix kernels. This book is based on [Linux 2.6.11](https://github.com/shichao-an/linux-2.6.11.12) source code.
 

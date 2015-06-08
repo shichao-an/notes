@@ -1,4 +1,4 @@
-## Chapter 2. UNIX Standardization and Implementations
+### **Chapter 2. UNIX Standardization and Implementations**
 
 This chapter discusses Unix standards, specifications and implementations.
 
