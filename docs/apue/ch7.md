@@ -124,10 +124,48 @@ Shared libraries remove the common library routines from the executable file and
 
 * `malloc`: allocates a specified number of bytes of memory
 * `calloc`: allocates space for a specified number of objects of a specified size
-* `realloc`: increases or decreases the size of a previously allocated area
+* `realloc`: increases or decreases the size of a previously allocated area. The final argument to realloc is the new size of the region, not the
+difference between the old and new sizes
 
 The pointer returned by the three allocation functions is guaranteed to be suitably aligned so that it can be used for any data object.
 
 Because the three `alloc` functions return a generic `void *` pointer, if we `#include <stdlib.h>` (to obtain the function prototypes), we do not explicitly have to cast the pointer returned by these functions when we assign it to a pointer of a different type. <u>The default return value for undeclared functions is int, so using a cast without the proper function declaration could hide an error on systems where the size of type int differs from the size of a function’s return value (a pointer in this case).</u>
 
 * `free`: causes the space pointed to by *ptr* to be deallocated. This freed space is usually put into a pool of available memory and can be allocated in a later call to one of the three `alloc` functions.
+
+The allocation routines are usually implemented with the `sbrk(2)` system call. This system call expands (or contracts) the heap of the process. Although `sbrk` can expand or contract the memory of a process, most versions of `malloc` and free never decrease their memory size. <u>The space that we free is available for a later allocation, but the freed space is not usually returned to the kernel; instead, that space is kept in the `malloc` pool.</u>
+
+#### Alternate Memory Allocators
+
+[p209]
+
+* `libmalloc`
+* `vmalloc`
+* `quick-fit`
+* `jemalloc`
+* `TCMalloc`
+* `alloca` Function: has the same calling sequence as `malloc`; however, instead of allocating memory from the heap, the memory is allocated from the stack frame of the current function
+
+### Environment Variables
+
+The environment strings are usually of the form:
+
+```
+name=value
+```
+
+The UNIX kernel never looks at these strings; their interpretation is up to the various applications. 
+
+<script src="https://gist.github.com/shichao-an/618104c2fa3a6caba3b3.js"></script>
+
+* `getenv`: returns a pointer to the value of a `name=value` string. We should always use `getenv` to fetch a specific value from the environment, instead of accessing `environ` directly
+
+[![Figure 7.7 Environment variables defined in the Single UNIX Specification](figure_7.7_600.png)](figure_7.7.png "Figure 7.7 Environment variables defined in the Single UNIX Specification")
+
+* `putenv`: takes a string of the form `name=value` and places it in the environment list. If name already exists, its old definition is first removed.
+* `setenv`: sets *name* to *value*. If name already exists in the environment, then:
+    * If *rewrite* is nonzero, the existing definition for *name* is first removed
+    * If *rewrite* is 0, the existing definition for *name* is not removed, *name* is not set to the new value, and no error occurs
+* `unsetenv`: removes any definition of name. It is not an error if such a definition does not exist.
+
+Note the difference between `putenv` and `setenv`. Whereas `setenv` must allocate memory to create the `name=value` string from its arguments, `putenv` is free to place the string passed to it directly into the environment. Indeed, many implementations do exactly this, so <u>it would be an error to pass putenv a string allocated on the stack, since the memory would be reused after we return from the current function.</u>
