@@ -169,3 +169,126 @@ The UNIX kernel never looks at these strings; their interpretation is up to the 
 * `unsetenv`: removes any definition of name. It is not an error if such a definition does not exist.
 
 Note the difference between `putenv` and `setenv`. Whereas `setenv` must allocate memory to create the `name=value` string from its arguments, `putenv` is free to place the string passed to it directly into the environment. Indeed, many implementations do exactly this, so <u>it would be an error to pass putenv a string allocated on the stack, since the memory would be reused after we return from the current function.</u>
+
+* Deleting a string: we just find the pointer in the environment list and move all subsequent pointers down one.
+* Modifying a existing *name*:
+    * If new *value* is smaller than or equal to old: we just copy the string
+    * If new *value* is larger than old: we must `malloc` and replace the old pointer in the environment list for *name* with the pointer to this allocated area
+* Adding a new *name*:
+    * First time: we call `malloc`, copy the old environment list to this new area and store a pointer to the `name=value` string at the end of
+this list of pointers. We also store a null pointer at the end of this list, of course. Finally, we set `environ` to point to this new list of pointers. <u>If the original environment list was contained above the top of the stack, as is common, then we have moved this list of pointers to the heap. But most of the pointers in this list still point to `name=value` strings above the top of the stack.</u>
+    * Not first time: we call `realloc` to allocate room for one more pointer. The pointer to the new `name=value` string is stored at the end of the list (on top of the previous null pointer), followed by a null pointer.
+
+### `setjmp` and `longjmp` Functions
+
+In C, we can't `goto` a label that’s in another function. Instead, we must use the `setjmp` and `longjmp` functions to perform this type of branching. These two functions are useful for handling error conditions that occur in a deeply nested function call.
+
+<script src="https://gist.github.com/shichao-an/4d30742d979b1b83dc69.js"></script>
+
+Examples:
+
+* [cmd1.c](https://github.com/shichao-an/apue.3e/blob/master/environ/cmd1.c)
+* [cmd2.c](https://github.com/shichao-an/apue.3e/blob/master/environ/cmd2.c)
+
+#### Automatic, Register, and Volatile Variables
+
+When we return to `main` as a result of the `longjmp`, implementations do not try to roll back these automatic variables and register variables (in `main`), though standards say only that their values are indeterminate.
+
+Example:
+
+* [testjmp.c](https://github.com/shichao-an/apue.3e/blob/master/environ/testjmp.c)
+
+Compile the above program, with and without compiler optimizations, the results are different:
+
+```text
+$ gcc testjmp.c compile without any optimization
+$ ./a.out
+in f1():
+globval = 95, autoval = 96, regival = 97, volaval = 98, statval = 99
+after longjmp:
+globval = 95, autoval = 96, regival = 97, volaval = 98, statval = 99
+$ gcc -O testjmp.c compile with full optimization
+$ ./a.out
+in f1():
+globval = 95, autoval = 96, regival = 97, volaval = 98, statval = 99
+after longjmp:
+globval = 95, autoval = 2, regival = 3, volaval = 98, statval = 99
+```
+
+The optimizations don’t affect the global, static, and volatile variables. The `setjmp(3)` manual page on one system states that variables stored in memory will have values as of the time of the `longjmp`, whereas variables in the CPU and floating-point registers are restored to their values when `setjmp` was called. Without optimization, all five variables are stored in memory. When we enable optimization, both `autoval` and `regival` go into registers, even though the former wasn't declared `register`, and the `volatile` variable stays in memory.
+
+#### Potential Problem with Automatic Variables
+
+<u>An automatic variable can never be referenced after the function that declared it returns.</u>
+
+Incorrect usage of an automatic variable:
+
+```c
+#include <stdio.h>
+FILE *
+open_data(void)
+{
+    FILE *fp;
+    char databuf[BUFSIZ]; /* setvbuf makes this the stdio buffer */
+    if ((fp = fopen("datafile", "r")) == NULL)
+        return(NULL);
+    if (setvbuf(fp, databuf, _IOLBF, BUFSIZ) != 0)
+        return(NULL);
+    return(fp); /* error */
+}
+```
+
+The problem is that when `open_data` returns, the space it used on the stack will be used by the stack frame for the next function that is called. But the standard I/O library will still be using that portion of memory for its stream buffer. Chaos is sure to result. To correct this problem, the array `databuf` needs to be allocated from global memory, either statically (`static` or `extern`) or dynamically (one of the `alloc` functions).
+
+
+### `getrlimit` and `setrlimit` Functions
+
+Every process has a set of resource limits, some of which can be queried and changed by the `getrlimit` and `setrlimit` functions.
+
+<script src="https://gist.github.com/shichao-an/4562094dcbbca444ec4b.js"></script>
+
+These two functions are defined in the XSI option in the Single UNIX Specification. The resource limits for a process are normally established by process 0 when the system is initialized and then inherited by each successive process. Each implementation has its own way of tuning the various limits.
+
+* *rlptr*: a pointer to the following structure:
+
+```c
+struct rlimit {
+    rlim_t rlim_cur; /* soft limit: current limit */
+    rlim_t rlim_max; /* hard limit: maximum value for rlim_cur */
+};
+```
+* *resource* argument takes on one of the following values:
+
+    * `RLIMIT_AS`: The maximum size in bytes of a process’s total available memory. This affects the `sbrk` function and the `mmap` function.
+    * `RLIMIT_CORE`: The maximum size in bytes of a core file. A limit of 0 prevents the creation of a core file.
+    * `RLIMIT_CPU`: The maximum amount of CPU time in seconds. When the soft limit is exceeded, the SIGXCPU signal is sent to the process.
+    * `RLIMIT_DATA`: The maximum size in bytes of the data segment: the sum of the initialized data, uninitialized data, and heap from [Figure 7.6](apue/figure_7.6.png).
+    * `RLIMIT_FSIZE`: The maximum size in bytes of a file that may be created.  When the soft limit is exceeded, the process is sent the `SIGXFSZ` signal.
+    * `RLIMIT_MEMLOCK`: The maximum amount of memory in bytes that a process can lock into memory using `mlock(2)`.
+    * `RLIMIT_MSGQUEUE`: The maximum amount of memory in bytes that a process can allocate for POSIX message queues.
+    * `RLIMIT_NICE`: The limit to which a process’s nice value can be raised to affect its scheduling priority.
+    * `RLIMIT_NOFILE`: The maximum number of open files per process. Changing this limit affects the value returned by the `sysconf` function for its `_SC_OPEN_MAX` argument.
+    * `RLIMIT_NPROC`: The maximum number of child processes per real user ID. Changing this limit affects the value returned for `_SC_CHILD_MAX` by the `sysconf` function.  
+    * `RLIMIT_NPTS`: The maximum number of pseudo terminals that a user can have open at one time.
+    * `RLIMIT_RSS`: Maximum resident set size (RSS) in bytes. If available physical memory is low, the kernel takes memory from processes that exceed their RSS.
+    * `RLIMIT_SBSIZE`: The maximum size in bytes of socket buffers that a user can consume at any given time.
+    * `RLIMIT_SIGPENDING`: The maximum number of signals that can be queued for a process. This limit is enforced by the sigqueue function
+    * `RLIMIT_STACK`: The maximum size in bytes of the stack. See [Figure 7.6](apue/figure_7.6.png).
+    * `RLIMIT_SWAP`: The maximum amount of swap space in bytes that a user can consume.
+    * `RLIMIT_VMEM` This is a synonym for `RLIMIT_AS`.
+
+Rules of changing resource limits:
+
+1. A process can change its soft limit to a value less than or equal to its hard limit.
+2. A process can lower its hard limit to a value greater than or equal to its soft limit. <u>This lowering of the hard limit is irreversible for normal users.</u>
+3. Only a superuser process can raise a hard limit.
+
+The resource limits affect the calling process and are inherited by any of its children. This means that the setting of resource limits needs to be built into the shells to affect all our future processes. Indeed, the Bourne shell, the GNU Bourne-again shell, and the Korn shell have the built-in `ulimit` command, and the C shell has the built-in limit command. (The `umask` and `chdir` functions also have to be handled as shell built-ins.)
+
+Example:
+
+* [getrlimit.c](https://github.com/shichao-an/apue.3e/blob/master/environ/getrlimit.c)
+
+### Summary
+
+Understanding the environment of a C program within a UNIX system’s environment is a prerequisite to understanding the process control features of the UNIX System. This chapter discusses process start and termination, and how a process is passed  an argument list and an environment. Although both the argument list and the environment are uninterpreted by the kernel, it is the kernel that passes both from the caller of `exec` to the new process.  This chapter also examines the typical memory layout of a C program and how a process can dynamically allocate and free memory.

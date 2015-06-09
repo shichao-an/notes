@@ -89,6 +89,10 @@
                             <a href="./">Chapter 7. Process Environment</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch8/">Chapter 8. Process Control</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -220,7 +224,7 @@
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../../utlk/ch1/">
+                    <a rel="prev" href="../ch8/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -275,6 +279,19 @@
         
     
         <li class="main "><a href="#environment-variables">Environment Variables</a></li>
+        
+    
+        <li class="main "><a href="#setjmp-and-longjmp-functions">setjmp and longjmp Functions</a></li>
+        
+            <li><a href="#automatic-register-and-volatile-variables">Automatic, Register, and Volatile Variables</a></li>
+        
+            <li><a href="#potential-problem-with-automatic-variables">Potential Problem with Automatic Variables</a></li>
+        
+    
+        <li class="main "><a href="#getrlimit-and-setrlimit-functions">getrlimit and setrlimit Functions</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
         
     
     </ul>
@@ -419,7 +436,121 @@ difference between the old and new sizes</li>
 </li>
 <li><code>unsetenv</code>: removes any definition of name. It is not an error if such a definition does not exist.</li>
 </ul>
-<p>Note the difference between <code>putenv</code> and <code>setenv</code>. Whereas <code>setenv</code> must allocate memory to create the <code>name=value</code> string from its arguments, <code>putenv</code> is free to place the string passed to it directly into the environment. Indeed, many implementations do exactly this, so <u>it would be an error to pass putenv a string allocated on the stack, since the memory would be reused after we return from the current function.</u></p></div>
+<p>Note the difference between <code>putenv</code> and <code>setenv</code>. Whereas <code>setenv</code> must allocate memory to create the <code>name=value</code> string from its arguments, <code>putenv</code> is free to place the string passed to it directly into the environment. Indeed, many implementations do exactly this, so <u>it would be an error to pass putenv a string allocated on the stack, since the memory would be reused after we return from the current function.</u></p>
+<ul>
+<li>Deleting a string: we just find the pointer in the environment list and move all subsequent pointers down one.</li>
+<li>Modifying a existing <em>name</em>:<ul>
+<li>If new <em>value</em> is smaller than or equal to old: we just copy the string</li>
+<li>If new <em>value</em> is larger than old: we must <code>malloc</code> and replace the old pointer in the environment list for <em>name</em> with the pointer to this allocated area</li>
+</ul>
+</li>
+<li>Adding a new <em>name</em>:<ul>
+<li>First time: we call <code>malloc</code>, copy the old environment list to this new area and store a pointer to the <code>name=value</code> string at the end of
+this list of pointers. We also store a null pointer at the end of this list, of course. Finally, we set <code>environ</code> to point to this new list of pointers. <u>If the original environment list was contained above the top of the stack, as is common, then we have moved this list of pointers to the heap. But most of the pointers in this list still point to <code>name=value</code> strings above the top of the stack.</u></li>
+<li>Not first time: we call <code>realloc</code> to allocate room for one more pointer. The pointer to the new <code>name=value</code> string is stored at the end of the list (on top of the previous null pointer), followed by a null pointer.</li>
+</ul>
+</li>
+</ul>
+<h3 id="setjmp-and-longjmp-functions"><code>setjmp</code> and <code>longjmp</code> Functions</h3>
+<p>In C, we can't <code>goto</code> a label that’s in another function. Instead, we must use the <code>setjmp</code> and <code>longjmp</code> functions to perform this type of branching. These two functions are useful for handling error conditions that occur in a deeply nested function call.</p>
+<script src="https://gist.github.com/shichao-an/4d30742d979b1b83dc69.js"></script>
+
+<p>Examples:</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/environ/cmd1.c">cmd1.c</a></li>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/environ/cmd2.c">cmd2.c</a></li>
+</ul>
+<h4 id="automatic-register-and-volatile-variables">Automatic, Register, and Volatile Variables</h4>
+<p>When we return to <code>main</code> as a result of the <code>longjmp</code>, implementations do not try to roll back these automatic variables and register variables (in <code>main</code>), though standards say only that their values are indeterminate.</p>
+<p>Example:</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/environ/testjmp.c">testjmp.c</a></li>
+</ul>
+<p>Compile the above program, with and without compiler optimizations, the results are different:</p>
+<pre><code class="text">$ gcc testjmp.c compile without any optimization
+$ ./a.out
+in f1():
+globval = 95, autoval = 96, regival = 97, volaval = 98, statval = 99
+after longjmp:
+globval = 95, autoval = 96, regival = 97, volaval = 98, statval = 99
+$ gcc -O testjmp.c compile with full optimization
+$ ./a.out
+in f1():
+globval = 95, autoval = 96, regival = 97, volaval = 98, statval = 99
+after longjmp:
+globval = 95, autoval = 2, regival = 3, volaval = 98, statval = 99
+</code></pre>
+
+<p>The optimizations don’t affect the global, static, and volatile variables. The <code>setjmp(3)</code> manual page on one system states that variables stored in memory will have values as of the time of the <code>longjmp</code>, whereas variables in the CPU and floating-point registers are restored to their values when <code>setjmp</code> was called. Without optimization, all five variables are stored in memory. When we enable optimization, both <code>autoval</code> and <code>regival</code> go into registers, even though the former wasn't declared <code>register</code>, and the <code>volatile</code> variable stays in memory.</p>
+<h4 id="potential-problem-with-automatic-variables">Potential Problem with Automatic Variables</h4>
+<p><u>An automatic variable can never be referenced after the function that declared it returns.</u></p>
+<p>Incorrect usage of an automatic variable:</p>
+<pre><code class="c">#include &lt;stdio.h&gt;
+FILE *
+open_data(void)
+{
+    FILE *fp;
+    char databuf[BUFSIZ]; /* setvbuf makes this the stdio buffer */
+    if ((fp = fopen(&quot;datafile&quot;, &quot;r&quot;)) == NULL)
+        return(NULL);
+    if (setvbuf(fp, databuf, _IOLBF, BUFSIZ) != 0)
+        return(NULL);
+    return(fp); /* error */
+}
+</code></pre>
+
+<p>The problem is that when <code>open_data</code> returns, the space it used on the stack will be used by the stack frame for the next function that is called. But the standard I/O library will still be using that portion of memory for its stream buffer. Chaos is sure to result. To correct this problem, the array <code>databuf</code> needs to be allocated from global memory, either statically (<code>static</code> or <code>extern</code>) or dynamically (one of the <code>alloc</code> functions).</p>
+<h3 id="getrlimit-and-setrlimit-functions"><code>getrlimit</code> and <code>setrlimit</code> Functions</h3>
+<p>Every process has a set of resource limits, some of which can be queried and changed by the <code>getrlimit</code> and <code>setrlimit</code> functions.</p>
+<script src="https://gist.github.com/shichao-an/4562094dcbbca444ec4b.js"></script>
+
+<p>These two functions are defined in the XSI option in the Single UNIX Specification. The resource limits for a process are normally established by process 0 when the system is initialized and then inherited by each successive process. Each implementation has its own way of tuning the various limits.</p>
+<ul>
+<li><em>rlptr</em>: a pointer to the following structure:</li>
+</ul>
+<pre><code class="c">struct rlimit {
+    rlim_t rlim_cur; /* soft limit: current limit */
+    rlim_t rlim_max; /* hard limit: maximum value for rlim_cur */
+};
+</code></pre>
+
+<ul>
+<li>
+<p><em>resource</em> argument takes on one of the following values:</p>
+<ul>
+<li><code>RLIMIT_AS</code>: The maximum size in bytes of a process’s total available memory. This affects the <code>sbrk</code> function and the <code>mmap</code> function.</li>
+<li><code>RLIMIT_CORE</code>: The maximum size in bytes of a core file. A limit of 0 prevents the creation of a core file.</li>
+<li><code>RLIMIT_CPU</code>: The maximum amount of CPU time in seconds. When the soft limit is exceeded, the SIGXCPU signal is sent to the process.</li>
+<li><code>RLIMIT_DATA</code>: The maximum size in bytes of the data segment: the sum of the initialized data, uninitialized data, and heap from <a href="../apue/figure_7.6.png">Figure 7.6</a>.</li>
+<li><code>RLIMIT_FSIZE</code>: The maximum size in bytes of a file that may be created.  When the soft limit is exceeded, the process is sent the <code>SIGXFSZ</code> signal.</li>
+<li><code>RLIMIT_MEMLOCK</code>: The maximum amount of memory in bytes that a process can lock into memory using <code>mlock(2)</code>.</li>
+<li><code>RLIMIT_MSGQUEUE</code>: The maximum amount of memory in bytes that a process can allocate for POSIX message queues.</li>
+<li><code>RLIMIT_NICE</code>: The limit to which a process’s nice value can be raised to affect its scheduling priority.</li>
+<li><code>RLIMIT_NOFILE</code>: The maximum number of open files per process. Changing this limit affects the value returned by the <code>sysconf</code> function for its <code>_SC_OPEN_MAX</code> argument.</li>
+<li><code>RLIMIT_NPROC</code>: The maximum number of child processes per real user ID. Changing this limit affects the value returned for <code>_SC_CHILD_MAX</code> by the <code>sysconf</code> function.  </li>
+<li><code>RLIMIT_NPTS</code>: The maximum number of pseudo terminals that a user can have open at one time.</li>
+<li><code>RLIMIT_RSS</code>: Maximum resident set size (RSS) in bytes. If available physical memory is low, the kernel takes memory from processes that exceed their RSS.</li>
+<li><code>RLIMIT_SBSIZE</code>: The maximum size in bytes of socket buffers that a user can consume at any given time.</li>
+<li><code>RLIMIT_SIGPENDING</code>: The maximum number of signals that can be queued for a process. This limit is enforced by the sigqueue function</li>
+<li><code>RLIMIT_STACK</code>: The maximum size in bytes of the stack. See <a href="../apue/figure_7.6.png">Figure 7.6</a>.</li>
+<li><code>RLIMIT_SWAP</code>: The maximum amount of swap space in bytes that a user can consume.</li>
+<li><code>RLIMIT_VMEM</code> This is a synonym for <code>RLIMIT_AS</code>.</li>
+</ul>
+</li>
+</ul>
+<p>Rules of changing resource limits:</p>
+<ol>
+<li>A process can change its soft limit to a value less than or equal to its hard limit.</li>
+<li>A process can lower its hard limit to a value greater than or equal to its soft limit. <u>This lowering of the hard limit is irreversible for normal users.</u></li>
+<li>Only a superuser process can raise a hard limit.</li>
+</ol>
+<p>The resource limits affect the calling process and are inherited by any of its children. This means that the setting of resource limits needs to be built into the shells to affect all our future processes. Indeed, the Bourne shell, the GNU Bourne-again shell, and the Korn shell have the built-in <code>ulimit</code> command, and the C shell has the built-in limit command. (The <code>umask</code> and <code>chdir</code> functions also have to be handled as shell built-ins.)</p>
+<p>Example:</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/environ/getrlimit.c">getrlimit.c</a></li>
+</ul>
+<h3 id="summary">Summary</h3>
+<p>Understanding the environment of a C program within a UNIX system’s environment is a prerequisite to understanding the process control features of the UNIX System. This chapter discusses process start and termination, and how a process is passed  an argument list and an environment. Although both the argument list and the environment are uninterpreted by the kernel, it is the kernel that passes both from the caller of <code>exec</code> to the new process.  This chapter also examines the typical memory layout of a C program and how a process can dynamically allocate and free memory.</p></div>
         </div>
 
         <footer class="col-md-12">

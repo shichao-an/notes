@@ -15,6 +15,7 @@ by W. Richard Stevens and Stephen A. Rago
 5. [Standard I/O Library](apue/ch5.md)
 6. [System Data Files and Information](apue/ch6.md)
 7. [Process Environment](apue/ch7.md)
+8. [Process Control](apue/ch8.md)
 
 #### Understanding the Linux Kernel, Third Edition
 
