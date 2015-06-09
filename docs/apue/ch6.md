@@ -28,7 +28,7 @@ Some systems provide the `vipw` command to allow administrators to edit the pass
 * `getpwuid`: used by the `ls(1)` program to map the numerical user ID contained in an i-node into a user's login name.
 * `getpwnam`: used by the `login(1)` program when we enter our login name
 
-Both functions return a pointer to a passwd structure that the functions fill in. This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.
+Both functions return a pointer to a passwd structure that the functions fill in. <u>This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.</u>
 
 <script src="https://gist.github.com/shichao-an/ffbbc20702760d6a4fab.js"></script>
 
@@ -151,3 +151,160 @@ struct utsname {
 ```
 
 <script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script>
+
+`gethostname` (now defined as part of POSIX.1) specifies that the maximum host name length is `HOST_NAME_MAX`.
+
+Interface | FreeBSD 8.0 | Linux 3.2.0 | Mac OS X 10.6.8 | Solaris 10
+--------- | ----------- | ----------- | --------------- | ----------
+`uname` | 256 | 65 | 256 | 257
+`gethostname` | 256 | 64 | 256 | 256
+
+If the host is connected to a TCP/IP network, the <u>host name is normally the fully qualified domain name of the host.</u>
+
+There is also a `hostname(1)` command that can fetch or set the host name. (The host name is set by the superuser using a similar function, `sethostname`.) The host name is normally set at bootstrap time from one of the start-up files invoked by `/etc/rc` or `init`.
+
+### Time and Date Routines
+
+**Calendar times**: number of seconds (represented in a `time_t` data type) that have passed since the [Epoch](http://en.wikipedia.org/wiki/Unix_time): 00:00:00 January 1, 1970, Coordinated Universal Time (UTC). These calendar times represent both the time and the date. The UNIX System has always differed from other operating systems in:
+
+* keeping time in UTC instead of the local time
+* automatically handling conversions, such as daylight saving time
+* keeping the time and date as a single quantity
+
+The `time` function returns the current time and date.
+
+<script src="https://gist.github.com/shichao-an/2b5d80841cbdf01791cd.js"></script>
+
+The time value is always returned as the value of the function. If the argument is non-null, the time value is also stored at the location pointed to by *calptr*.
+
+The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the `clockid_t` type. 
+
+Identifier | Option | Description
+---------- | ------ | -----------
+`CLOCK_REALTIME` | | real system time
+`CLOCK_MONOTONIC` | `_POSIX_MONOTONIC_CLOCK` | real system time with no negative jumps
+`CLOCK_PROCESS_CPUTIME_ID` | `_POSIX_CPUTIME` | CPU time for calling process
+`CLOCK_THREAD_CPUTIME_ID` | `_POSIX_THREAD_CPUTIME` | CPU time for calling thread
+
+<script src="https://gist.github.com/shichao-an/83e13fecc886c9653976.js"></script>
+
+* `clock_gettime`: gets the time of the specified clock. The time is returned in a [`timespec`](/apue/ch4/#timespec-structure) structure
+* `clock_getres`: determines the resolution of a given system clock. It initializes the `timespec` structure pointed to by the *tsp*
+* `clock_settime`: sets the time for a particular clock.
+* `gettimeofday`: now obsolescent. The only legal value for *tzp* is `NULL`.
+
+Once we have the integer value that counts the number of seconds since the Epoch, we normally call a function to convert it to a broken-down time structure, and then call another function to generate a human-readable time and date.
+
+[![Figure 6.9 Relationship of the various time functions](figure_6.9_600.png)](figure_6.9.png "Figure 6.9 Relationship of the various time functions")
+
+The two functions `localtime` and `gmtime` convert a calendar time into a broken-down time, a `tm` structure.
+
+```c
+struct tm { /* a broken-down time */
+    int tm_sec; /* seconds after the minute: [0 - 60] */
+    int tm_min; /* minutes after the hour: [0 - 59] */
+    int tm_hour; /* hours after midnight: [0 - 23] */
+    int tm_mday; /* day of the month: [1 - 31] */
+    int tm_mon; /* months since January: [0 - 11] */
+    int tm_year; /* years since 1900 */
+    int tm_wday; /* days since Sunday: [0 - 6] */
+    int tm_yday; /* days since January 1: [0 - 365] */
+    int tm_isdst; /* daylight saving time flag: <0, 0, >0 */
+};
+```
+
+The reason that the seconds can be greater than 59 is to allow for a [leap second](http://en.wikipedia.org/wiki/Leap_second).
+
+<script src="https://gist.github.com/shichao-an/6be4fa71d74422d28709.js"></script>
+
+* `gmtime`: converts the calendar time to UTC time (broken time)
+* `localtime`: converts the calendar time to local time (broken time)
+* `mktime`: takes a broken-down time, expressed as a local time, and converts it into a `time_t` value
+* The `strftime` and `strftime_l` functions are the same, except that the `strftime_l` function allows the caller to specify the locale as an argument. The strftime function uses the locale specified by the `TZ` environment variable
+    * *tmptr* argument is the time value to format, specified by a pointer to a broken-down time value. [p192]
+    * *format* argument controls the formatting of the time value
+
+#### Conversion specifiers for `strftime`
+
+Format | Description | Example
+------ | ----------- | -------
+`%a` | abbreviated weekday name | `Thu`
+`%A` | full weekday name | `Thursday`
+`%b` | abbreviated month name | `Jan`
+`%B` | full month name | `January`
+`%c` | date and time | `Thu Jan 19 21:24:52 2012`
+`%C` | year/100: [00–99] | `20`
+`%d` | day of the month: [01–31] | `19`
+`%D` | date [MM/DD/YY] | `01/19/12`
+`%e` | day of month (single digit preceded by space) [1–31] | `19`
+`%F` | ISO 8601 date format [YYYY–MM–DD] | `2012-01-19`
+`%g` | last two digits of ISO 8601 week-based year [00–99] | `12`
+`%G` | ISO 8601 week-based year | `2012`
+`%h` | same as `%b` | `Jan`
+`%H` | hour of the day (24-hour format): [00–23] | `21`
+`%I` | hour of the day (12-hour format): [01–12] | `09`
+`%j` | day of the year: [001–366] | `019`
+`%m` | month: [01–12] | `01`
+`%M` | minute: [00–59] | `24`
+`%n` | newline character |
+`%p` | AM/PM | `PM`
+`%r` | locale’s time (12-hour format) | `09:24:52 PM`
+`%R` | same as `%H:%M` | `21:24`
+`%S` | second: [00–60] | `52`
+`%t` | horizontal tab character |
+`%T` | same as `%H:%M:%S` | `21:24:52`
+`%u` | ISO 8601 weekday [Monday = 1, 1–7] | `4`
+`%U` | Sunday week number: [00–53] | `03`
+`%V` | ISO 8601 week number: [01–53] | `03`
+`%w` | weekday: [0 = Sunday, 0–6] | `4`
+`%W` | Monday week number: [00–53] | `03`
+`%x` | locale’s date 01/19/| `12`
+`%X` | locale’s time 21:24:| `52`
+`%y` | last two digits of year: [00–99] | `12`
+`%Y` | year | `2012`
+`%z` | offset from UTC in ISO 8601 format | `-0500`
+`%Z` | time zone name | `EST`
+`%%` | translates to a percent sign | `%`
+
+* `strftime` example: [strftime.c](https://github.com/shichao-an/apue.3e/blob/master/datafiles/strftime.c)
+
+#### Conversion specifiers for `strptime`
+
+Format | Description
+------ | -----------
+`%a` | abbreviated or full weekday name
+`%A` | same as `%a`
+`%b` | abbreviated or full month name
+`%B` | same as `%b`
+`%c` | date and time
+`%C` | all but the last two digits of the year
+`%d` | day of the month: [01–31]
+`%D` | date [MM/DD/YY]
+`%e` | same as `%d`
+`%h` | same as `%b`
+`%H` | hour of the day (24-hour format): [00–23]
+`%I` | hour of the day (12-hour format): [01–12]
+`%j` | day of the year: [001–366]
+`%m` | month: [01–12]
+`%M` | minute: [00–59]
+`%n` | any white space
+`%p` | AM/PM
+`%r` | locale’s time (12-hour format, AM/PM notation)
+`%R` | time as `%H:%M`
+`%S` | second: [00–60]
+`%t` | any white space
+`%T` | time as `%H:%M:%S`
+`%U` | Sunday week number: [00–53]
+`%w` | weekday: [0 = Sunday, 0–6]
+`%W` | Monday week number: [00–53]
+`%x` | locale’s date
+`%X` | locale’s time
+`%y` | last two digits of year: [00–99]
+`%Y` | year
+`%%` | translates to a percent sign
+
+Functions that are affected by `TZ` environment variable. If defined, the value of this environment variable is used by these functions instead of the default time zone:
+
+* `localtime`
+* `mktime`
+* `strftime`

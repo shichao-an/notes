@@ -85,6 +85,10 @@
                             <a href="./">Chapter 6. System Data Files and Information</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -212,7 +216,7 @@
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../../utlk/ch1/">
+                    <a rel="prev" href="../ch7/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -262,6 +266,13 @@
         <li class="main "><a href="#system-identification">System Identification</a></li>
         
     
+        <li class="main "><a href="#time-and-date-routines">Time and Date Routines</a></li>
+        
+            <li><a href="#conversion-specifiers-for-strftime">Conversion specifiers for strftime</a></li>
+        
+            <li><a href="#conversion-specifiers-for-strptime">Conversion specifiers for strptime</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -293,7 +304,7 @@
 <li><code>getpwuid</code>: used by the <code>ls(1)</code> program to map the numerical user ID contained in an i-node into a user's login name.</li>
 <li><code>getpwnam</code>: used by the <code>login(1)</code> program when we enter our login name</li>
 </ul>
-<p>Both functions return a pointer to a passwd structure that the functions fill in. This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.</p>
+<p>Both functions return a pointer to a passwd structure that the functions fill in. <u>This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.</u></p>
 <script src="https://gist.github.com/shichao-an/ffbbc20702760d6a4fab.js"></script>
 
 <ul>
@@ -444,7 +455,455 @@
 };
 </code></pre>
 
-<script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script></div>
+<script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script>
+
+<p><code>gethostname</code> (now defined as part of POSIX.1) specifies that the maximum host name length is <code>HOST_NAME_MAX</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>FreeBSD 8.0</th>
+<th>Linux 3.2.0</th>
+<th>Mac OS X 10.6.8</th>
+<th>Solaris 10</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uname</code></td>
+<td>256</td>
+<td>65</td>
+<td>256</td>
+<td>257</td>
+</tr>
+<tr>
+<td><code>gethostname</code></td>
+<td>256</td>
+<td>64</td>
+<td>256</td>
+<td>256</td>
+</tr>
+</tbody>
+</table>
+<p>If the host is connected to a TCP/IP network, the <u>host name is normally the fully qualified domain name of the host.</u></p>
+<p>There is also a <code>hostname(1)</code> command that can fetch or set the host name. (The host name is set by the superuser using a similar function, <code>sethostname</code>.) The host name is normally set at bootstrap time from one of the start-up files invoked by <code>/etc/rc</code> or <code>init</code>.</p>
+<h3 id="time-and-date-routines">Time and Date Routines</h3>
+<p><strong>Calendar times</strong>: number of seconds (represented in a <code>time_t</code> data type) that have passed since the <a href="http://en.wikipedia.org/wiki/Unix_time">Epoch</a>: 00:00:00 January 1, 1970, Coordinated Universal Time (UTC). These calendar times represent both the time and the date. The UNIX System has always differed from other operating systems in:</p>
+<ul>
+<li>keeping time in UTC instead of the local time</li>
+<li>automatically handling conversions, such as daylight saving time</li>
+<li>keeping the time and date as a single quantity</li>
+</ul>
+<p>The <code>time</code> function returns the current time and date.</p>
+<script src="https://gist.github.com/shichao-an/2b5d80841cbdf01791cd.js"></script>
+
+<p>The time value is always returned as the value of the function. If the argument is non-null, the time value is also stored at the location pointed to by <em>calptr</em>.</p>
+<p>The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the <code>clockid_t</code> type. </p>
+<table>
+<thead>
+<tr>
+<th>Identifier</th>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLOCK_REALTIME</code></td>
+<td></td>
+<td>real system time</td>
+</tr>
+<tr>
+<td><code>CLOCK_MONOTONIC</code></td>
+<td><code>_POSIX_MONOTONIC_CLOCK</code></td>
+<td>real system time with no negative jumps</td>
+</tr>
+<tr>
+<td><code>CLOCK_PROCESS_CPUTIME_ID</code></td>
+<td><code>_POSIX_CPUTIME</code></td>
+<td>CPU time for calling process</td>
+</tr>
+<tr>
+<td><code>CLOCK_THREAD_CPUTIME_ID</code></td>
+<td><code>_POSIX_THREAD_CPUTIME</code></td>
+<td>CPU time for calling thread</td>
+</tr>
+</tbody>
+</table>
+<script src="https://gist.github.com/shichao-an/83e13fecc886c9653976.js"></script>
+
+<ul>
+<li><code>clock_gettime</code>: gets the time of the specified clock. The time is returned in a <a href="../../apue/ch4/#timespec-structure"><code>timespec</code></a> structure</li>
+<li><code>clock_getres</code>: determines the resolution of a given system clock. It initializes the <code>timespec</code> structure pointed to by the <em>tsp</em></li>
+<li><code>clock_settime</code>: sets the time for a particular clock.</li>
+<li><code>gettimeofday</code>: now obsolescent. The only legal value for <em>tzp</em> is <code>NULL</code>.</li>
+</ul>
+<p>Once we have the integer value that counts the number of seconds since the Epoch, we normally call a function to convert it to a broken-down time structure, and then call another function to generate a human-readable time and date.</p>
+<p><a href="../figure_6.9.png" title="Figure 6.9 Relationship of the various time functions"><img alt="Figure 6.9 Relationship of the various time functions" src="../figure_6.9_600.png" /></a></p>
+<p>The two functions <code>localtime</code> and <code>gmtime</code> convert a calendar time into a broken-down time, a <code>tm</code> structure.</p>
+<pre><code class="c">struct tm { /* a broken-down time */
+    int tm_sec; /* seconds after the minute: [0 - 60] */
+    int tm_min; /* minutes after the hour: [0 - 59] */
+    int tm_hour; /* hours after midnight: [0 - 23] */
+    int tm_mday; /* day of the month: [1 - 31] */
+    int tm_mon; /* months since January: [0 - 11] */
+    int tm_year; /* years since 1900 */
+    int tm_wday; /* days since Sunday: [0 - 6] */
+    int tm_yday; /* days since January 1: [0 - 365] */
+    int tm_isdst; /* daylight saving time flag: &lt;0, 0, &gt;0 */
+};
+</code></pre>
+
+<p>The reason that the seconds can be greater than 59 is to allow for a <a href="http://en.wikipedia.org/wiki/Leap_second">leap second</a>.</p>
+<script src="https://gist.github.com/shichao-an/6be4fa71d74422d28709.js"></script>
+
+<ul>
+<li><code>gmtime</code>: converts the calendar time to UTC time (broken time)</li>
+<li><code>localtime</code>: converts the calendar time to local time (broken time)</li>
+<li><code>mktime</code>: takes a broken-down time, expressed as a local time, and converts it into a <code>time_t</code> value</li>
+<li>The <code>strftime</code> and <code>strftime_l</code> functions are the same, except that the <code>strftime_l</code> function allows the caller to specify the locale as an argument. The strftime function uses the locale specified by the <code>TZ</code> environment variable<ul>
+<li><em>tmptr</em> argument is the time value to format, specified by a pointer to a broken-down time value. [p192]</li>
+<li><em>format</em> argument controls the formatting of the time value</li>
+</ul>
+</li>
+</ul>
+<h4 id="conversion-specifiers-for-strftime">Conversion specifiers for <code>strftime</code></h4>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>%a</code></td>
+<td>abbreviated weekday name</td>
+<td><code>Thu</code></td>
+</tr>
+<tr>
+<td><code>%A</code></td>
+<td>full weekday name</td>
+<td><code>Thursday</code></td>
+</tr>
+<tr>
+<td><code>%b</code></td>
+<td>abbreviated month name</td>
+<td><code>Jan</code></td>
+</tr>
+<tr>
+<td><code>%B</code></td>
+<td>full month name</td>
+<td><code>January</code></td>
+</tr>
+<tr>
+<td><code>%c</code></td>
+<td>date and time</td>
+<td><code>Thu Jan 19 21:24:52 2012</code></td>
+</tr>
+<tr>
+<td><code>%C</code></td>
+<td>year/100: [00–99]</td>
+<td><code>20</code></td>
+</tr>
+<tr>
+<td><code>%d</code></td>
+<td>day of the month: [01–31]</td>
+<td><code>19</code></td>
+</tr>
+<tr>
+<td><code>%D</code></td>
+<td>date [MM/DD/YY]</td>
+<td><code>01/19/12</code></td>
+</tr>
+<tr>
+<td><code>%e</code></td>
+<td>day of month (single digit preceded by space) [1–31]</td>
+<td><code>19</code></td>
+</tr>
+<tr>
+<td><code>%F</code></td>
+<td>ISO 8601 date format [YYYY–MM–DD]</td>
+<td><code>2012-01-19</code></td>
+</tr>
+<tr>
+<td><code>%g</code></td>
+<td>last two digits of ISO 8601 week-based year [00–99]</td>
+<td><code>12</code></td>
+</tr>
+<tr>
+<td><code>%G</code></td>
+<td>ISO 8601 week-based year</td>
+<td><code>2012</code></td>
+</tr>
+<tr>
+<td><code>%h</code></td>
+<td>same as <code>%b</code></td>
+<td><code>Jan</code></td>
+</tr>
+<tr>
+<td><code>%H</code></td>
+<td>hour of the day (24-hour format): [00–23]</td>
+<td><code>21</code></td>
+</tr>
+<tr>
+<td><code>%I</code></td>
+<td>hour of the day (12-hour format): [01–12]</td>
+<td><code>09</code></td>
+</tr>
+<tr>
+<td><code>%j</code></td>
+<td>day of the year: [001–366]</td>
+<td><code>019</code></td>
+</tr>
+<tr>
+<td><code>%m</code></td>
+<td>month: [01–12]</td>
+<td><code>01</code></td>
+</tr>
+<tr>
+<td><code>%M</code></td>
+<td>minute: [00–59]</td>
+<td><code>24</code></td>
+</tr>
+<tr>
+<td><code>%n</code></td>
+<td>newline character</td>
+<td></td>
+</tr>
+<tr>
+<td><code>%p</code></td>
+<td>AM/PM</td>
+<td><code>PM</code></td>
+</tr>
+<tr>
+<td><code>%r</code></td>
+<td>locale’s time (12-hour format)</td>
+<td><code>09:24:52 PM</code></td>
+</tr>
+<tr>
+<td><code>%R</code></td>
+<td>same as <code>%H:%M</code></td>
+<td><code>21:24</code></td>
+</tr>
+<tr>
+<td><code>%S</code></td>
+<td>second: [00–60]</td>
+<td><code>52</code></td>
+</tr>
+<tr>
+<td><code>%t</code></td>
+<td>horizontal tab character</td>
+<td></td>
+</tr>
+<tr>
+<td><code>%T</code></td>
+<td>same as <code>%H:%M:%S</code></td>
+<td><code>21:24:52</code></td>
+</tr>
+<tr>
+<td><code>%u</code></td>
+<td>ISO 8601 weekday [Monday = 1, 1–7]</td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td><code>%U</code></td>
+<td>Sunday week number: [00–53]</td>
+<td><code>03</code></td>
+</tr>
+<tr>
+<td><code>%V</code></td>
+<td>ISO 8601 week number: [01–53]</td>
+<td><code>03</code></td>
+</tr>
+<tr>
+<td><code>%w</code></td>
+<td>weekday: [0 = Sunday, 0–6]</td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td><code>%W</code></td>
+<td>Monday week number: [00–53]</td>
+<td><code>03</code></td>
+</tr>
+<tr>
+<td><code>%x</code></td>
+<td>locale’s date 01/19/</td>
+<td><code>12</code></td>
+</tr>
+<tr>
+<td><code>%X</code></td>
+<td>locale’s time 21:24:</td>
+<td><code>52</code></td>
+</tr>
+<tr>
+<td><code>%y</code></td>
+<td>last two digits of year: [00–99]</td>
+<td><code>12</code></td>
+</tr>
+<tr>
+<td><code>%Y</code></td>
+<td>year</td>
+<td><code>2012</code></td>
+</tr>
+<tr>
+<td><code>%z</code></td>
+<td>offset from UTC in ISO 8601 format</td>
+<td><code>-0500</code></td>
+</tr>
+<tr>
+<td><code>%Z</code></td>
+<td>time zone name</td>
+<td><code>EST</code></td>
+</tr>
+<tr>
+<td><code>%%</code></td>
+<td>translates to a percent sign</td>
+<td><code>%</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>strftime</code> example: <a href="https://github.com/shichao-an/apue.3e/blob/master/datafiles/strftime.c">strftime.c</a></li>
+</ul>
+<h4 id="conversion-specifiers-for-strptime">Conversion specifiers for <code>strptime</code></h4>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>%a</code></td>
+<td>abbreviated or full weekday name</td>
+</tr>
+<tr>
+<td><code>%A</code></td>
+<td>same as <code>%a</code></td>
+</tr>
+<tr>
+<td><code>%b</code></td>
+<td>abbreviated or full month name</td>
+</tr>
+<tr>
+<td><code>%B</code></td>
+<td>same as <code>%b</code></td>
+</tr>
+<tr>
+<td><code>%c</code></td>
+<td>date and time</td>
+</tr>
+<tr>
+<td><code>%C</code></td>
+<td>all but the last two digits of the year</td>
+</tr>
+<tr>
+<td><code>%d</code></td>
+<td>day of the month: [01–31]</td>
+</tr>
+<tr>
+<td><code>%D</code></td>
+<td>date [MM/DD/YY]</td>
+</tr>
+<tr>
+<td><code>%e</code></td>
+<td>same as <code>%d</code></td>
+</tr>
+<tr>
+<td><code>%h</code></td>
+<td>same as <code>%b</code></td>
+</tr>
+<tr>
+<td><code>%H</code></td>
+<td>hour of the day (24-hour format): [00–23]</td>
+</tr>
+<tr>
+<td><code>%I</code></td>
+<td>hour of the day (12-hour format): [01–12]</td>
+</tr>
+<tr>
+<td><code>%j</code></td>
+<td>day of the year: [001–366]</td>
+</tr>
+<tr>
+<td><code>%m</code></td>
+<td>month: [01–12]</td>
+</tr>
+<tr>
+<td><code>%M</code></td>
+<td>minute: [00–59]</td>
+</tr>
+<tr>
+<td><code>%n</code></td>
+<td>any white space</td>
+</tr>
+<tr>
+<td><code>%p</code></td>
+<td>AM/PM</td>
+</tr>
+<tr>
+<td><code>%r</code></td>
+<td>locale’s time (12-hour format, AM/PM notation)</td>
+</tr>
+<tr>
+<td><code>%R</code></td>
+<td>time as <code>%H:%M</code></td>
+</tr>
+<tr>
+<td><code>%S</code></td>
+<td>second: [00–60]</td>
+</tr>
+<tr>
+<td><code>%t</code></td>
+<td>any white space</td>
+</tr>
+<tr>
+<td><code>%T</code></td>
+<td>time as <code>%H:%M:%S</code></td>
+</tr>
+<tr>
+<td><code>%U</code></td>
+<td>Sunday week number: [00–53]</td>
+</tr>
+<tr>
+<td><code>%w</code></td>
+<td>weekday: [0 = Sunday, 0–6]</td>
+</tr>
+<tr>
+<td><code>%W</code></td>
+<td>Monday week number: [00–53]</td>
+</tr>
+<tr>
+<td><code>%x</code></td>
+<td>locale’s date</td>
+</tr>
+<tr>
+<td><code>%X</code></td>
+<td>locale’s time</td>
+</tr>
+<tr>
+<td><code>%y</code></td>
+<td>last two digits of year: [00–99]</td>
+</tr>
+<tr>
+<td><code>%Y</code></td>
+<td>year</td>
+</tr>
+<tr>
+<td><code>%%</code></td>
+<td>translates to a percent sign</td>
+</tr>
+</tbody>
+</table>
+<p>Functions that are affected by <code>TZ</code> environment variable. If defined, the value of this environment variable is used by these functions instead of the default time zone:</p>
+<ul>
+<li><code>localtime</code></li>
+<li><code>mktime</code></li>
+<li><code>strftime</code></li>
+</ul></div>
         </div>
 
         <footer class="col-md-12">

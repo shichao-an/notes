@@ -36,6 +36,14 @@ struct stat {
 };
 ```
 
+#### `timespec` structure
+The `timespec` structure type defines time in terms of seconds and nanoseconds. It includes at least the following fields:
+
+```c
+time_t tv_sec;
+long tv_nsec;
+```
+
 ### File Types
 
 * Regular file. All binary executable files conform to a format that allows the kernel to identify where to load a program’s text and data.
