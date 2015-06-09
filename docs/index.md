@@ -28,7 +28,8 @@ by Daniel P. Bovet and Marco Cesati
 by W. Richard Stevens and Bill Fenner
 
 1. [Introduction](unp/ch1.md)
-2. [The Transport Layer: TCP, UDP, and SCTP](unp/ch1.md)
+2. [The Transport Layer: TCP, UDP, and SCTP](unp/ch2.md)
+3. [Sockets Introduction](unp/ch3.md)
 
 #### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
 

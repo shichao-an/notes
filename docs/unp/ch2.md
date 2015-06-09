@@ -151,3 +151,18 @@ Figures: [IPv4 Header](../tcpv1/ipv4_header.png), [IPv6 Header](../tcpv1/ipv6_he
 	* IPv6: the maximum amount of TCP data in an IPv6 datagram without the jumbo payload option is 65,515 (65,535 minus the 20-byte TCP header). The MSS value of 65,535 is considered a special case that designates "infinity." This value is used only if the jumbo payload option is being used, which requires an MTU that exceeds 65,535.
 
 #### TCP Output
+
+Every TCP socket has a send buffer and we can change the size of this buffer with the `SO_SNDBUF` socket option. When an application calls `write`, the kernel copies all the data from the application buffer into the socket send buffer. If there is insufficient room in the socket buffer for all the application's data, the process is put to sleep. This assumes the normal default of a blocking socket. The kernel will not return from the write until the final byte in the application buffer has been copied into the socket send buffer. Therefore, <u>the successful return from a write to a TCP socket only tells us that we can reuse our application buffer. It does not tell us that either the peer TCP has received the data or that the peer application has received the data.</u>
+
+<u>TCP takes the data in the socket send buffer and sends it to the peer TCP.</u> The peer TCP must acknowledge the data, and as the ACKs arrive from the peer, only then can our TCP discard the acknowledged data from the socket send buffer. TCP must keep a copy of our data until it is acknowledged by the peer.
+
+TCP sends the data to IP in MSS-sized or smaller chunks, prepending its TCP header to each segment, where the MSS is the value announced by the peer, or 536 if the peer did not send an MSS option. IP prepends its header, searches the routing table for the destination IP address, and passes the datagram to the appropriate datalink. IP might perform fragmentation before passing the datagram to the datalink, but one goal of the MSS option is to try to avoid fragmentation and newer implementations also use path MTU discovery. Each datalink has an output queue, and if this queue is full, the packet is discarded and an error is returned up the protocol stack [p58]
+
+#### UDP Output
+
+UDP socket doesn't have a socket send buffer, since it does not need to keep a copy of the application's data. It has a send buffer size (which we can change with the `SO_SNDBUF` socket option), but this is simply an upper limit on the maximum-sized UDP datagram that can be written to the socket. If an application writes a datagram larger than the socket send buffer size, `EMSGSIZE` is returned.
+
+UDP simply prepends its 8-byte header and passes the datagram to IP. IP determines the outgoing interface by performing the routing function, and then either adds the datagram to the datalink output queue (if it fits within the MTU) or fragments the datagram and adds each fragment to the datalink output queue (see [UDP and IP Fragmentation in TCPv1](/tcpv1/ch10/#ip-fragmentation)). If a UDP application sends large datagrams, there is a much higher probability of (IP) fragmentation than with TCP.
+
+### Standard Internet Services
+### Protocol Usage by Common Internet Applications
