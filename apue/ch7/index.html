@@ -267,6 +267,11 @@
     
         <li class="main "><a href="#memory-allocation">Memory Allocation</a></li>
         
+            <li><a href="#alternate-memory-allocators">Alternate Memory Allocators</a></li>
+        
+    
+        <li class="main "><a href="#environment-variables">Environment Variables</a></li>
+        
     
     </ul>
 </div></div>
@@ -370,13 +375,47 @@ main(int argc, char *argv[])
 <ul>
 <li><code>malloc</code>: allocates a specified number of bytes of memory</li>
 <li><code>calloc</code>: allocates space for a specified number of objects of a specified size</li>
-<li><code>realloc</code>: increases or decreases the size of a previously allocated area</li>
+<li><code>realloc</code>: increases or decreases the size of a previously allocated area. The final argument to realloc is the new size of the region, not the
+difference between the old and new sizes</li>
 </ul>
 <p>The pointer returned by the three allocation functions is guaranteed to be suitably aligned so that it can be used for any data object.</p>
 <p>Because the three <code>alloc</code> functions return a generic <code>void *</code> pointer, if we <code>#include &lt;stdlib.h&gt;</code> (to obtain the function prototypes), we do not explicitly have to cast the pointer returned by these functions when we assign it to a pointer of a different type. <u>The default return value for undeclared functions is int, so using a cast without the proper function declaration could hide an error on systems where the size of type int differs from the size of a function’s return value (a pointer in this case).</u></p>
 <ul>
 <li><code>free</code>: causes the space pointed to by <em>ptr</em> to be deallocated. This freed space is usually put into a pool of available memory and can be allocated in a later call to one of the three <code>alloc</code> functions.</li>
-</ul></div>
+</ul>
+<p>The allocation routines are usually implemented with the <code>sbrk(2)</code> system call. This system call expands (or contracts) the heap of the process. Although <code>sbrk</code> can expand or contract the memory of a process, most versions of <code>malloc</code> and free never decrease their memory size. <u>The space that we free is available for a later allocation, but the freed space is not usually returned to the kernel; instead, that space is kept in the <code>malloc</code> pool.</u></p>
+<h4 id="alternate-memory-allocators">Alternate Memory Allocators</h4>
+<p>[p209]</p>
+<ul>
+<li><code>libmalloc</code></li>
+<li><code>vmalloc</code></li>
+<li><code>quick-fit</code></li>
+<li><code>jemalloc</code></li>
+<li><code>TCMalloc</code></li>
+<li><code>alloca</code> Function: has the same calling sequence as <code>malloc</code>; however, instead of allocating memory from the heap, the memory is allocated from the stack frame of the current function</li>
+</ul>
+<h3 id="environment-variables">Environment Variables</h3>
+<p>The environment strings are usually of the form:</p>
+<pre><code>name=value
+</code></pre>
+
+<p>The UNIX kernel never looks at these strings; their interpretation is up to the various applications. </p>
+<script src="https://gist.github.com/shichao-an/618104c2fa3a6caba3b3.js"></script>
+
+<ul>
+<li><code>getenv</code>: returns a pointer to the value of a <code>name=value</code> string. We should always use <code>getenv</code> to fetch a specific value from the environment, instead of accessing <code>environ</code> directly</li>
+</ul>
+<p><a href="../figure_7.7.png" title="Figure 7.7 Environment variables defined in the Single UNIX Specification"><img alt="Figure 7.7 Environment variables defined in the Single UNIX Specification" src="../figure_7.7_600.png" /></a></p>
+<ul>
+<li><code>putenv</code>: takes a string of the form <code>name=value</code> and places it in the environment list. If name already exists, its old definition is first removed.</li>
+<li><code>setenv</code>: sets <em>name</em> to <em>value</em>. If name already exists in the environment, then:<ul>
+<li>If <em>rewrite</em> is nonzero, the existing definition for <em>name</em> is first removed</li>
+<li>If <em>rewrite</em> is 0, the existing definition for <em>name</em> is not removed, <em>name</em> is not set to the new value, and no error occurs</li>
+</ul>
+</li>
+<li><code>unsetenv</code>: removes any definition of name. It is not an error if such a definition does not exist.</li>
+</ul>
+<p>Note the difference between <code>putenv</code> and <code>setenv</code>. Whereas <code>setenv</code> must allocate memory to create the <code>name=value</code> string from its arguments, <code>putenv</code> is free to place the string passed to it directly into the environment. Indeed, many implementations do exactly this, so <u>it would be an error to pass putenv a string allocated on the stack, since the memory would be reused after we return from the current function.</u></p></div>
         </div>
 
         <footer class="col-md-12">
