@@ -270,6 +270,9 @@
         <li class="main "><a href="#lseek-function">lseek Function</a></li>
         
     
+        <li class="main "><a href="#read-function">read Function</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -338,7 +341,23 @@
 <li><code>SEEK_SET</code>: the file’s offset is set to <em>offset</em> bytes from the beginning of the file</li>
 <li><code>SEEK_CUR</code>: the file’s offset is set to its current value plus the <em>offset</em>. The <em>offset</em> can be positive or negative.</li>
 <li><code>SEEK_END</code>: the file’s offset is set to the size of the file plus the <em>offset</em>. The <em>offset</em> can be positive or negative.</li>
-</ul></div>
+</ul>
+<p>To determine the current offset, <u>seek zero bytes from the current position</u>:</p>
+<pre><code class="c">off_t currpos;
+currpos = lseek(fd, 0, SEEK_CUR);
+</code></pre>
+
+<p>This technique (above code) can also be used to determine if a file is capable of seeking. If the file descriptor refers to a pipe, FIFO, or socket, <code>lseek</code> sets <code>errno</code> to <code>ESPIPE</code> and returns −1.</p>
+<ul>
+<li>Negative offsets are possible for certain devices, but for regular files, the offset must be non-negative.</li>
+<li><code>lseek</code> only records the current file offset within the kernel and does not cause any I/O to take place. This offset is then used by the next read or write operation.</li>
+<li>Hole in a file: file’s offset can be greater than the file’s current size, in which case the next <code>write</code> to the file will extend the file. This creates a hole in the file.<ul>
+<li>Bytes in the hole (bytes that have not been writen) are read back as 0. </li>
+<li>A hole in a file isn’t required to have storage backing it on disk.</li>
+</ul>
+</li>
+</ul>
+<h3 id="read-function"><code>read</code> Function</h3></div>
         </div>
 
         <footer class="col-md-12">

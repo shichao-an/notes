@@ -1,8 +1,8 @@
 #### **Part I: Networking Fundamentals**
 
-## Chapter 1. Introduction to Computer Networking
+## **Chapter 1. Introduction to Computer Networking**
 
-## Chapter 2. The TCP/IP and OSI Networking Models
+## **Chapter 2. The TCP/IP and OSI Networking Models**
 
 ### TCP/IP Networking Model
 
@@ -54,7 +54,7 @@ Physical (Layer 1) | RJ-45, EIA/TIA-232, V.35, Ethernet (IEEE 802.3) | LAN hub, 
 The TCP/IP model uses terms such as **segment**, **packet**, and **frame** to refer to various layers and their respective encapsulated data. OSI uses a more generic term: **protocol data unit** (PDU).
 
 
-## Chapter 3. Fundamentals of LANs
+## **Chapter 3. Fundamentals of LANs**
 ### An Overview of Modern Ethernet LANs
 
 Types of cabling:
@@ -193,7 +193,7 @@ Multicast address | On Ethernet, a multicast address implies some subset of all 
 Errors (bit changes) occur due to electrical interference. Trailer containing a **Frame Check Sequence** (FCS) field used for error detection.
 
 
-## Chapter 4. Fundamentals of WANs
+## **Chapter 4. Fundamentals of WANs**
 
 The WAN topics in this chapter describe mainly how enterprise networks use WANs to connect remote sites.
 
@@ -283,7 +283,7 @@ Two types of packet-switching service are very popular today:
 * Frame Relay: much more common
 * Asynchronous Transfer Mode (ATM)
 
-## Chapter 5. Fundamentals of IPv4 Addressing and Routing
+## **Chapter 5. Fundamentals of IPv4 Addressing and Routing**
 
 * Routing: the process of forwarding packets (Layer 3 PDUs).
 * Logical addressing: enables the routing process to identify a packet’s source and destination.

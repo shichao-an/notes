@@ -1,4 +1,4 @@
 #### **Part I: LAN Switching**
 
-## Chapter 1. Virtual LANs
+## **Chapter 1. Virtual LANs**
 

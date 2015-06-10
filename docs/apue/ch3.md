@@ -80,3 +80,20 @@ The *whence* argument can be:
 * `SEEK_SET`: the file’s offset is set to *offset* bytes from the beginning of the file
 * `SEEK_CUR`: the file’s offset is set to its current value plus the *offset*. The *offset* can be positive or negative.
 * `SEEK_END`: the file’s offset is set to the size of the file plus the *offset*. The *offset* can be positive or negative.
+
+To determine the current offset, <u>seek zero bytes from the current position</u>:
+
+```c
+off_t currpos;
+currpos = lseek(fd, 0, SEEK_CUR);
+```
+
+This technique (above code) can also be used to determine if a file is capable of seeking. If the file descriptor refers to a pipe, FIFO, or socket, `lseek` sets `errno` to `ESPIPE` and returns −1.
+
+* Negative offsets are possible for certain devices, but for regular files, the offset must be non-negative.
+* `lseek` only records the current file offset within the kernel and does not cause any I/O to take place. This offset is then used by the next read or write operation.
+* Hole in a file: file’s offset can be greater than the file’s current size, in which case the next `write` to the file will extend the file. This creates a hole in the file.
+    * Bytes in the hole (bytes that have not been writen) are read back as 0. 
+    * A hole in a file isn’t required to have storage backing it on disk.
+
+### `read` Function
