@@ -273,6 +273,12 @@
         <li class="main "><a href="#read-function">read Function</a></li>
         
     
+        <li class="main "><a href="#write-function">write Function</a></li>
+        
+    
+        <li class="main "><a href="#io-efficiency">I/O Efficiency</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -357,7 +363,67 @@ currpos = lseek(fd, 0, SEEK_CUR);
 </ul>
 </li>
 </ul>
-<h3 id="read-function"><code>read</code> Function</h3></div>
+<h3 id="read-function"><code>read</code> Function</h3>
+<script src="https://gist.github.com/shichao-an/ed695671abeb99a2a4b4.js"></script>
+
+<ul>
+<li><em>buf</em>: type <code>void *</code> is used for generic pointers.</li>
+<li>Return value is required to be a signed integer (<code>ssize_t</code>) to return a positive byte count, 0 (for end of file), or −1 (for an error).</li>
+</ul>
+<p>Several cases in which the number of bytes actually read is less than the amount requested:</p>
+<ul>
+<li>Regular file: if the end of file is reached before the requested number of bytes has been read.</li>
+<li>Terminal device: up to one line is read at a time</li>
+<li>Network: buffering within the network may cause less than the requested amount to be returned</li>
+<li>Pipe or FIFO: if the pipe contains fewer bytes than requested, <code>read</code> will return only what is available</li>
+<li>Record-oriented device</li>
+<li>Interrupted by a signal and a partial amount of data has already been read</li>
+</ul>
+<h3 id="write-function"><code>write</code> Function</h3>
+<script src="https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f.js"></script>
+
+<p>The return value is usually equal to the <em>nbytes</em> argument; otherwise, an error has occurred. </p>
+<p>Common causes for a <code>write</code> error: </p>
+<ul>
+<li>Filling up a disk</li>
+<li>Exceeding the file size limit for a given process</li>
+</ul>
+<p>For a regular file, the write operation starts at the file’s current offset. If the <code>O_APPEND</code> option was specified when the file was opened, the file’s offset is set to the current end of file before each write operation. After a successful write, the file’s offset is incremented by the number of bytes actually written.</p>
+<h3 id="io-efficiency">I/O Efficiency</h3>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/fileio/mycat.c">mycat.c</a></li>
+</ul>
+<pre><code class="c">#include &quot;apue.h&quot;
+
+#define BUFFSIZE 4096
+
+int
+main(void)
+{
+    int n;
+    char buf[BUFFSIZE];
+
+    while ((n = read(STDIN_FILENO, buf, BUFFSIZE)) &gt; 0)
+    if (write(STDOUT_FILENO, buf, n) != n)
+        err_sys(&quot;write error&quot;);
+
+    if (n &lt; 0)
+        err_sys(&quot;read error&quot;);
+
+    exit(0);
+}
+</code></pre>
+
+<p>Caveats of the above program:</p>
+<ul>
+<li>It reads from standard input and writes to standard output, assuming that these have been set up by the shell before this program is executed.</li>
+<li>It doesn’t close the input file or output file. Instead, the program uses the feature of the <u>UNIX kernel that closes all open file descriptors in a process when that process terminates.</u></li>
+<li>This example works for both text files and binary files, since there is no difference between the two to the UNIX kernel.</li>
+</ul>
+<p>Timing results for reading with different buffer sizes (<code>BUFFSIZE</code>) on Linux:</p>
+<p><a href="../figure_3.6.png" title="Figure 3.6 Timing results for reading with different buffer sizes on Linux"><img alt="Figure 3.6 Timing results for reading with different buffer sizes on Linux" src="../figure_3.6_600.png" /></a></p>
+<p>The file was read using the program shown above, with standard output redirected to <code>/dev/null</code>. The file system used for this test was the Linux ext4 file system with 4,096-byte blocks (the <code>st_blksize</code> value is 4,096). This accounts for the minimum in the system time occurring at the few timing measurements starting around a <code>BUFFSIZE</code> of 4,096. Increasing the buffer size beyond this limit has little positive effect.</p>
+<p>Most file systems support some kind of read-ahead to improve performance. When sequential reads are detected, the system tries to read in more data than an application requests, assuming that the application will read it shortly. The effect of read-ahead can be seen in Figure 3.6, where the elapsed time for buffer sizes as small as 32 bytes is as good as the elapsed time for larger buffer sizes.</p></div>
         </div>
 
         <footer class="col-md-12">
