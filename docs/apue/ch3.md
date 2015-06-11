@@ -97,3 +97,70 @@ This technique (above code) can also be used to determine if a file is capable o
     * A hole in a file isn’t required to have storage backing it on disk.
 
 ### `read` Function
+
+<script src="https://gist.github.com/shichao-an/ed695671abeb99a2a4b4.js"></script>
+
+* *buf*: type `void *` is used for generic pointers.
+* Return value is required to be a signed integer (`ssize_t`) to return a positive byte count, 0 (for end of file), or −1 (for an error).
+
+Several cases in which the number of bytes actually read is less than the amount requested:
+
+* Regular file: if the end of file is reached before the requested number of bytes has been read.
+* Terminal device: up to one line is read at a time
+* Network: buffering within the network may cause less than the requested amount to be returned
+* Pipe or FIFO: if the pipe contains fewer bytes than requested, `read` will return only what is available
+* Record-oriented device
+* Interrupted by a signal and a partial amount of data has already been read
+
+### `write` Function
+
+<script src="https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f.js"></script>
+
+The return value is usually equal to the *nbytes* argument; otherwise, an error has occurred. 
+
+Common causes for a `write` error: 
+
+* Filling up a disk
+* Exceeding the file size limit for a given process
+
+For a regular file, the write operation starts at the file’s current offset. If the `O_APPEND` option was specified when the file was opened, the file’s offset is set to the current end of file before each write operation. After a successful write, the file’s offset is incremented by the number of bytes actually written.
+
+### I/O Efficiency
+
+* [mycat.c](https://github.com/shichao-an/apue.3e/blob/master/fileio/mycat.c)
+
+```c
+#include "apue.h"
+
+#define BUFFSIZE 4096
+
+int
+main(void)
+{
+    int n;
+    char buf[BUFFSIZE];
+
+    while ((n = read(STDIN_FILENO, buf, BUFFSIZE)) > 0)
+    if (write(STDOUT_FILENO, buf, n) != n)
+        err_sys("write error");
+
+    if (n < 0)
+        err_sys("read error");
+
+    exit(0);
+}
+```
+
+Caveats of the above program:
+
+* It reads from standard input and writes to standard output, assuming that these have been set up by the shell before this program is executed.
+* It doesn’t close the input file or output file. Instead, the program uses the feature of the <u>UNIX kernel that closes all open file descriptors in a process when that process terminates.</u>
+* This example works for both text files and binary files, since there is no difference between the two to the UNIX kernel.
+
+Timing results for reading with different buffer sizes (`BUFFSIZE`) on Linux:
+
+[![Figure 3.6 Timing results for reading with different buffer sizes on Linux](figure_3.6_600.png)](figure_3.6.png "Figure 3.6 Timing results for reading with different buffer sizes on Linux")
+
+The file was read using the program shown above, with standard output redirected to `/dev/null`. The file system used for this test was the Linux ext4 file system with 4,096-byte blocks (the `st_blksize` value is 4,096). This accounts for the minimum in the system time occurring at the few timing measurements starting around a `BUFFSIZE` of 4,096. Increasing the buffer size beyond this limit has little positive effect.
+
+Most file systems support some kind of read-ahead to improve performance. When sequential reads are detected, the system tries to read in more data than an application requests, assuming that the application will read it shortly. The effect of read-ahead can be seen in Figure 3.6, where the elapsed time for buffer sizes as small as 32 bytes is as good as the elapsed time for larger buffer sizes.
