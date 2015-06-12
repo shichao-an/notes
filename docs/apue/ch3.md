@@ -163,4 +163,51 @@ Timing results for reading with different buffer sizes (`BUFFSIZE`) on Linux:
 
 The file was read using the program shown above, with standard output redirected to `/dev/null`. The file system used for this test was the Linux ext4 file system with 4,096-byte blocks (the `st_blksize` value is 4,096). This accounts for the minimum in the system time occurring at the few timing measurements starting around a `BUFFSIZE` of 4,096. Increasing the buffer size beyond this limit has little positive effect.
 
-Most file systems support some kind of read-ahead to improve performance. When sequential reads are detected, the system tries to read in more data than an application requests, assuming that the application will read it shortly. The effect of read-ahead can be seen in Figure 3.6, where the elapsed time for buffer sizes as small as 32 bytes is as good as the elapsed time for larger buffer sizes.
+Most file systems support some kind of read-ahead to improve performance. When sequential reads are detected, the system tries to read in more data than an application requests, assuming that the application will read it shortly. The effect of read-ahead can be seen in Figure 3.6, where the elapsed time for buffer sizes as small as 32 bytes is as good as the elapsed time for larger buffer sizes. [p73]
+
+### File Sharing
+
+The UNIX System supports the sharing of open files among different processes.
+
+[![Figure 3.7 Kernel data structures for open files](figure_3.7_600.png)](figure_3.7.png "Figure 3.7 Kernel data structures for open files")
+
+The kernel uses three data structures to represent an open file, and the relationships among them determine the effect one process has on another with regard to file sharing.
+
+* **Process table entry**: every process has an entry in the process table. Each process table entry has a table of open file descriptors. Associated with each file descriptor are:
+    * [**File descriptor flags**](http://www.gnu.org/software/libc/manual/html_node/Descriptor-Flags.html) (close-on-exec)
+    * Pointer to a file table entry:
+* **File table entry**: the kernel maintains a file table for all open files. Each file table entry contains:
+    * [**File status flags**](http://www.gnu.org/software/libc/manual/html_node/File-Status-Flags.html)
+    * Current file offset
+    * Pointer to the v-node table entry for the file
+* **v-node** structure: contains information about the type of file and pointers to functions that operate on the file
+    * This information is read from disk when the file is opened, so that all the pertinent information about the file is readily available
+    * v-node also contains the **i-node** for the file
+    * Linux has no v-node. Instead, a generic i-node structure is used. [p75] Instead of splitting the data structures into a v-node and an i-node, Linux uses a file system–independent i-node and a file system–dependent i-node. [p76]
+
+[Figure 3.7](/apue/figure_3.7.png) shows a pictorial arrangement of these three tables for a single process that has two different files open: one file is open on standard input (file descriptor 0), and the other is open on standard output (file descriptor 1).
+
+If two independent processes have the same file open, we could have the arrangement shown in Figure 3.8 (below).
+
+[![Figure 3.8 Two independent processes with the same file open](figure_3.8_600.png)](figure_3.8.png "Figure 3.8 Two independent processes with the same file open")
+
+Each process that opens the file gets its own file table entry, but only a single v-node table entry is required for a given file. One reason <u>each process gets its own file table entry is so that each process has its own current offset for the file.</u>
+
+#### Specific operations
+
+* File offset: After each `write` is complete, the current file offset in the file table entry is incremented by the number of bytes written. If this causes the current file offset to exceed the current file size, the current file size in the i-node table entry is set to the current file offset (the file is extended).
+* `O_APPEND`: If a file is opened with the `O_APPEND` flag, a corresponding flag is set in the file status flags of the file table entry. Each time a `write` is performed for a file with this append flag set, the current file offset in the file table entry is first set to the current file size from the i-node table entry. Th is forces every `write` to be appended to the current end of file.
+* `lseek`
+    * If a file is positioned to its current end of file using `lseek`, all that happens is the current file offset in the file table entry is set to the current file size from the i-node table entry. <u>This is not the same as if the file was opened with the `O_APPEND` flag.</u>
+    * The `lseek` function modifies only the current file offset in the file table entry. No I/O takes place.
+
+It is possible for more than one file descriptor entry to point to the same file table entry:
+
+* `dup`
+* `fork`: the parent and the child share the same file table entry for each open descriptor
+
+#### File descriptor flags vs. the file status flags
+
+* File descriptor flags: apply only to a single descriptor in a single process
+* File status flags: apply to all descriptors in any process that point to the given file table entry
+* `fcntl` is used to fetch and modify both of them
