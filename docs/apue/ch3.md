@@ -260,3 +260,54 @@ if ((fd = open(path, O_WRONLY)) < 0) {
 The problem occurs if the file is created by another process between the `open` and the `creat`. If the file is created by another process between these two function calls, and if that other process writes something to the file, that data is erased when this `creat` is executed. Combining the test for existence and the creation into a single atomic operation avoids this problem.
 
 **Atomic operation** refers to an operation that might be composed of multiple steps. <u>If the operation is performed atomically, either all the steps are performed (on success) or none are performed (on failure). It must not be possible for only a subset of the steps to be performed.</u>
+
+
+### `dup` and `dup2` Functions
+
+An existing file descriptor is duplicated by either of the following functions:
+
+<script src="https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67.js"></script>
+
+* `dup`: return the new file descriptor, which is guaranteed to be the lowest-numbered available file descriptor
+* `dup2`: *fd2* argument is the new file descriptor we specifiy.
+    * If *fd2* is already open, it is first closed
+    * If *fd* equals *fd2*, then `dup2` returns *fd2* without closing it. Otherwise, the `FD_CLOEXEC` file descriptor flag is cleared for *fd2*, so that *fd2* is left open if the process calls `exec`.
+
+Kernel data structures after `dup(1)`:
+
+[![Figure 3.9 Kernel data structures after dup(1)](figure_3.9_600.png)](figure_3.9.png "Figure 3.9 Kernel data structures after dup(1)")
+
+In the above figure, we assume the process executes:
+
+```c
+newfd = dup(1);
+```
+
+* Because both descriptors point to the same file table entry, they share the same file status flags (e.g. read, write, append) and the same current file offset.
+* Each descriptor has its own set of file descriptor flags
+
+Another way to duplicate a descriptor is with the `fcntl` function:
+
+```c
+dup(fd);
+```
+
+is equivalent to
+
+```c
+fcntl(fd, F_DUPFD, 0);
+```
+
+Similarly, the call
+
+```c
+dup2(fd, fd2);
+```
+
+is equivalent to
+
+```c
+close(fd2);
+fcntl(fd, F_DUPFD, fd2);
+```
+
