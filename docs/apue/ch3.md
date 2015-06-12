@@ -211,3 +211,52 @@ It is possible for more than one file descriptor entry to point to the same file
 * File descriptor flags: apply only to a single descriptor in a single process
 * File status flags: apply to all descriptors in any process that point to the given file table entry
 * `fcntl` is used to fetch and modify both of them
+
+### Atomic Operations
+
+Older versions of the UNIX System didn’t support the `O_APPEND` option if a single process wants to append to the end of a file. The program would be:
+
+```c
+if (lseek(fd, 0L, 2) < 0) /* position to EOF, 2 means SEEK_END */
+    err_sys("lseek error");
+if (write(fd, buf, 100) != 100) /* and write */
+    err_sys("write error");
+```
+
+This works fine for a single process, but problems arise if multiple processes (or multiple instances of the same program) use this technique to append to the same file. The problem here is that our logical operation of "position to the end of file and write" requires two separate function calls. The solution is to have the positioning to the current end of file and the write be an atomic operation with regard to other processes. Any operation that requires more than one function call cannot be atomic, as there is always the possibility that the kernel might temporarily suspend the process between the two function calls. The UNIX System provides an atomic way to do this operation if we set the `O_APPEND` flag when a file is opened. This causes the kernel to position the file to its current end of file before each `write`. We no longer have to call lseek before each `write`.
+
+### `pread` and `pwrite` Functions
+
+The Single UNIX Specification includes two functions that allow applications to seek and perform I/O atomically:
+
+<script src="https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3.js"></script>
+
+* `pread`: equivalent to calling `lseek` followed by a call to `read`, with the following exceptions:
+    * There is no way to interrupt the two operations that occur calling `pread`.
+    * The current file offset is not updated.
+* `pwrite`:  equivalent to calling lseek followed by a call to write, with similar exceptions to `pread`.
+
+#### Creating a File
+
+##### **Atomic operation**
+
+When both of `O_CREAT` and `O_EXCL` options are specified, the `open` will fail if the file already exists. The check for the existence of the file and the creation of the file was performed as an atomic operation.
+
+##### **Non-atomic operation**
+
+If we didn’t have this atomic operation, we might try:
+
+```c
+if ((fd = open(path, O_WRONLY)) < 0) {
+    if (errno == ENOENT) {
+        if ((fd = creat(path, mode)) < 0)
+            err_sys("creat error");
+    } else {
+        err_sys("open error");
+    }
+}
+```
+
+The problem occurs if the file is created by another process between the `open` and the `creat`. If the file is created by another process between these two function calls, and if that other process writes something to the file, that data is erased when this `creat` is executed. Combining the test for existence and the creation into a single atomic operation avoids this problem.
+
+**Atomic operation** refers to an operation that might be composed of multiple steps. <u>If the operation is performed atomically, either all the steps are performed (on success) or none are performed (on failure). It must not be possible for only a subset of the steps to be performed.</u>
