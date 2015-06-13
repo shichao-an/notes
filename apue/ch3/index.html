@@ -288,6 +288,16 @@
         <li class="main "><a href="#dup-and-dup2-functions">dup and dup2 Functions</a></li>
         
     
+        <li class="main "><a href="#sync-fsync-and-fdatasync-functions">sync, fsync, and fdatasync Functions</a></li>
+        
+    
+        <li class="main "><a href="#fcntl-function">fcntl Function</a></li>
+        
+            <li><a href="#getting-file-flags">Getting file flags</a></li>
+        
+            <li><a href="#modifying-file-flags">Modifying file flags</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -556,7 +566,228 @@ if (write(fd, buf, 100) != 100) /* and write */
 <p>is equivalent to</p>
 <pre><code class="c">close(fd2);
 fcntl(fd, F_DUPFD, fd2);
-</code></pre></div>
+</code></pre>
+
+<p>In this last case (above), the <code>dup2</code> is not exactly the same as a <code>close</code> followed by an <code>fcntl</code>:</p>
+<ol>
+<li><code>dup2</code> is an atomic operation, whereas the alternate form involves two function calls. It is possible in the latter case to have a signal catcher called between the <code>close</code> and the <code>fcntl</code> that could modify the file descriptors. The same problem could occur if a different thread changes the file descriptors.</li>
+<li>There are some <code>errno</code> differences between <code>dup2</code> and <code>fcntl</code>.</li>
+</ol>
+<h3 id="sync-fsync-and-fdatasync-functions"><code>sync</code>, <code>fsync</code>, and <code>fdatasync</code> Functions</h3>
+<p>Traditional implementations of the UNIX System have a buffer cache or page cache in the kernel through which most disk I/O passes.</p>
+<ul>
+<li><strong>Delayed write</strong>: when we write data to a file, the data is normally copied by the kernel into one of its buffers and queued for writing to disk at some later time</li>
+</ul>
+<p>The kernel eventually writes all the delayed-write blocks to disk, normally when it needs to reuse the buffer for some other disk block. To ensure consistency of the file system on disk with the contents of the buffer cache, the <code>sync</code>, <code>fsync</code>, and <code>fdatasync</code> functions are provided.</p>
+<script src="https://gist.github.com/shichao-an/2b0c9e36de750eb9de05.js"></script>
+
+<ul>
+<li><code>sync</code>: queues all the modified block buffers for writing and returns. It does not wait for the disk writes to take place<ul>
+<li><code>sync</code> is normally called periodically (usually every 30 seconds) from a system daemon, often called <code>update</code>, which guarantees regular flushing of the kernel’s block buffers. The command <code>sync(1)</code> also calls the <code>sync</code> function.</li>
+</ul>
+</li>
+<li><code>fsync</code>: applies to a single file specified by the file descriptor <em>fd</em>, and waits for the disk writes to complete before returning. <ul>
+<li><code>fsync</code> also updates the file's attributes synchronously</li>
+</ul>
+</li>
+<li><code>fdatasync</code>: similar to <code>fsync</code>, but it affects only the data portions of a file.</li>
+</ul>
+<h3 id="fcntl-function"><code>fcntl</code> Function</h3>
+<p>The <code>fcntl</code> function can change the properties of a file that is already open.</p>
+<script src="https://gist.github.com/shichao-an/45ca16d52791e4ab773d.js"></script>
+
+<p>In this section, the third argument of <code>fcntl</code> is always an integer, corresponding to the comment in the function prototype just shown.</p>
+<p>The <code>fcntl</code> function is used for five different purposes:</p>
+<ol>
+<li>Duplicate an existing descriptor (<em>cmd</em> = <code>F_DUPFD</code> or <code>F_DUPFD_CLOEXEC</code>)</li>
+<li>Get/set file descriptor flags (<em>cmd</em> = <code>F_GETFD</code> or <code>F_SETFD</code>)</li>
+<li>Get/set file status flags (<em>cmd</em> = <code>F_GETFL</code> or <code>F_SETFL</code>)</li>
+<li>Get/set asynchronous I/O ownership (<em>cmd</em> = <code>F_GETOWN</code> or <code>F_SETOWN</code>)</li>
+<li>Get/set record locks (<em>cmd</em> = <code>F_GETLK</code>, <code>F_SETLK</code>, or <code>F_SETLKW</code>)</li>
+</ol>
+<p>The following text discusses both the file descriptor flags associated with each file descriptor in the process table entry and the file status flags associated with each file table entry.</p>
+<ul>
+<li><code>F_DUPFD</code>: Duplicate the file descriptor <em>fd</em>. The new file descriptor, which is the lowest-numbered descriptor that is not already open and is greater than or equal to the third argument (integer), is returned as the value of the function. The new descriptor has its own set of file descriptor flags with <code>FD_CLOEXEC</code> cleared.
+cleared.</li>
+<li><code>F_DUPFD_CLOEXEC</code>: Duplicate the file descriptor and set the <code>FD_CLOEXEC</code> file descriptor flag associated with the new descriptor.</li>
+<li><code>F_GETFD</code>: Return the file descriptor flags for <em>fd</em>. Currently, only one file descriptor flag (<code>FD_CLOEXEC</code>) is defined.</li>
+<li><code>F_SETFD</code>: Set the file descriptor flags for <em>fd</em>. The new flag value is set from the third argument.<ul>
+<li>Some existing programs don’t use constant <code>FD_CLOEXEC</code>. Instead, these programs set the flag to either 0 (don’t close-on-exec, the default) or 1 (do close-on-exec).</li>
+</ul>
+</li>
+<li>
+<p><code>F_GETFL</code>: Return the file status flags for <em>fd</em>. The file status flags were described with the <code>open</code> function.</p>
+<ul>
+<li>The five access-mode flags (<code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code>, <code>O_EXEC</code>, and <code>O_SEARCH</code>) are not separate bits that can be tested. </li>
+<li><code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code> often have the values 0, 1, and 2, respectively</li>
+<li><u>The five access-mode flags are mutually exclusive: this means a file can have only one of them enabled.</u></li>
+<li><u>We must first use the <code>O_ACCMODE</code> mask to obtain the access-mode bits and then compare the result against any of the five values.</u></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>File status flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>O_RDONLY</code></td>
+<td>open for reading only</td>
+</tr>
+<tr>
+<td><code>O_WRONLY</code></td>
+<td>open for writing only</td>
+</tr>
+<tr>
+<td><code>O_RDWR</code></td>
+<td>open for reading and writing</td>
+</tr>
+<tr>
+<td><code>O_EXEC</code></td>
+<td>open for execute only</td>
+</tr>
+<tr>
+<td><code>O_SEARCH</code></td>
+<td>open directory for searching only</td>
+</tr>
+<tr>
+<td><code>O_APPEND</code></td>
+<td>append on each write</td>
+</tr>
+<tr>
+<td><code>O_NONBLOCK</code></td>
+<td>nonblocking mode</td>
+</tr>
+<tr>
+<td><code>O_SYNC</code></td>
+<td>wait for writes to complete (data and attributes)</td>
+</tr>
+<tr>
+<td><code>O_DSYNC</code></td>
+<td>wait for writes to complete (data only)</td>
+</tr>
+<tr>
+<td><code>O_RSYNC</code></td>
+<td>synchronize reads and writes</td>
+</tr>
+<tr>
+<td><code>O_FSYNC</code></td>
+<td>wait for writes to complete (FreeBSD and Mac OS X only)</td>
+</tr>
+<tr>
+<td><code>O_ASYNC</code></td>
+<td>asynchronous I/O (FreeBSD and Mac OS X only)</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><code>F_SETFL</code>: Set the file status flags to the value of the third argument (integer). The only flags that can be changed are:</p>
+<ul>
+<li><code>O_APPEND</code></li>
+<li><code>O_NONBLOCK</code></li>
+<li><code>O_SYNC</code></li>
+<li><code>O_DSYNC</code></li>
+<li><code>O_RSYNC</code></li>
+<li><code>O_FSYNC</code></li>
+<li><code>O_ASYNC</code></li>
+</ul>
+</li>
+<li><code>F_GETOWN</code>: Get the process ID or process group ID currently receiving the <code>SIGIO</code> and <code>SIGURG</code> signals.</li>
+<li><code>F_SETOWN</code>: Set the process ID or process group ID to receive the <code>SIGIO</code> and <code>SIGURG</code> signals.</li>
+</ul>
+<p>The return value from <code>fcntl</code> depends on the command. All commands return −1 on an error or some other value if OK. The following four commands have special return values:</p>
+<ul>
+<li><code>F_DUPFD</code>: returns the new file descriptor</li>
+<li><code>F_GETFD</code>: returns the file descriptor flags </li>
+<li><code>F_GETFL</code>: returns the file status flags</li>
+<li><code>F_GETOWN</code>: returns a positive process ID or a negative process group ID</li>
+</ul>
+<h4 id="getting-file-flags">Getting file flags</h4>
+<p>Example:</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/fileio/fileflags.c">fileflags.c</a></li>
+</ul>
+<pre><code class="c">#include &quot;apue.h&quot;
+#include &lt;fcntl.h&gt;
+
+int
+main(int argc, char *argv[])
+{
+    int val;
+
+    if (argc != 2)
+        err_quit(&quot;usage: a.out &lt;descriptor#&gt;&quot;);
+    if ((val = fcntl(atoi(argv[1]), F_GETFL, 0)) &lt; 0)
+        err_sys(&quot;fcntl error for fd %d&quot;, atoi(argv[1]));
+
+    switch (val &amp; O_ACCMODE) {
+    case O_RDONLY:
+        printf(&quot;read only&quot;);
+        break;
+    case O_WRONLY:
+        printf(&quot;write only&quot;);
+        break;
+    case O_RDWR:
+        printf(&quot;read write&quot;);
+        break;
+    default:
+        err_dump(&quot;unknown access mode&quot;);
+    }
+
+    if (val &amp; O_APPEND)
+        printf(&quot;, append&quot;);
+    if (val &amp; O_NONBLOCK)
+        printf(&quot;, nonblocking&quot;);
+    if (val &amp; O_SYNC)
+        printf(&quot;, synchronous writes&quot;);
+
+#if !defined(_POSIX_C_SOURCE) &amp;&amp; defined(O_FSYNC) &amp;&amp; (O_FSYNC != O_SYNC)
+    if (val &amp; O_FSYNC)
+        printf(&quot;, synchronous writes&quot;);
+#endif
+
+    putchar('\n');
+    exit(0);
+}
+</code></pre>
+
+<p>Results:</p>
+<pre><code class="text">$ ./a.out 0 &lt; /dev/tty
+read only
+$ ./a.out 1 &gt; temp.foo
+$ cat temp.foo
+write only
+$ ./a.out 2 2&gt;&gt;temp.foo
+write only, append
+$ ./a.out 5 5&lt;&gt;temp.foo
+read write
+</code></pre>
+
+<h4 id="modifying-file-flags">Modifying file flags</h4>
+<p>To modify either the file descriptor flags or the file status flags, we must be careful to fetch the existing flag value, modify it as desired, and then set the new flag value. We can’t simply issue an <code>F_SETFD</code> or an <code>F_SETFL</code> command, as this could turn off flag bits that were previously set.  </p>
+<p>Example:</p>
+<pre><code class="c">#include &quot;apue.h&quot;
+#include &lt;fcntl.h&gt;
+
+void
+set_fl(int fd, int flags) /* flags are file status flags to turn on */
+{
+    int val;
+    if ((val = fcntl(fd, F_GETFL, 0)) &lt; 0)
+        err_sys(&quot;fcntl F_GETFL error&quot;);
+    val |= flags; /* turn on flags */
+    if (fcntl(fd, F_SETFL, val) &lt; 0)
+        err_sys(&quot;fcntl F_SETFL error&quot;);
+}
+</code></pre>
+
+<p>If we change the middle statement to</p>
+<pre><code class="c">val &amp;= ˜flags; /* turn flags off */
+</code></pre>
+
+<p>we have a function named <code>clr_fl</code>,  logically ANDs the one’s complement of <code>flags</code> with the current <code>val</code>.</p></div>
         </div>
 
         <footer class="col-md-12">
