@@ -24,6 +24,13 @@ by Daniel P. Bovet and Marco Cesati
 1. [Introduction](utlk/ch1.md)
 2. [Memory Addressing](utlk/ch2.md)
 
+#### Linux Kernel Development (3rd Edition)
+
+by Robert Love
+
+1. [Introduction to the Linux Kernel] (lkd/ch1.md)
+2. [Getting Started with the Kernel](lkd/ch2.md)
+
 #### Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 
 by W. Richard Stevens and Bill Fenner
