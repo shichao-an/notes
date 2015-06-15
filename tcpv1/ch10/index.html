@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/tcpv1/ch10/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            
+                <li >
+                    <a href="../..">Home</a>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UTLK <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../utlk/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../utlk/ch2/">Chapter 2. Memory Addressing</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">ICND <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../icnd1/part1/">ICND1 Part I: Networking Fundamentals</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../icnd2/part1/">ICND2 Part I: LAN Switching</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                    
+                        <li class="active">
+                            <a href="./">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../headers/">Headers</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            </ul>
+
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    <a href="https://github.com/shichao-an/notes">
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-10-user-datagram-protocol-udp-and-ip-fragmentation">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a></li>
+        
+    
+        <li class="main "><a href="#ip-fragmentation">IP Fragmentation</a></li>
+        
+            <li><a href="#example-udpipv4-fragmentation">Example: UDP/IPv4 Fragmentation</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+
+<h3 id="chapter-10-user-datagram-protocol-udp-and-ip-fragmentation"><strong>Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</strong></h3>
+<h3 id="ip-fragmentation">IP Fragmentation</h3>
+<p>IP employs <strong>fragmentation</strong> and <strong>reassembly</strong>. Fragmentation in IPv4 can take place at the original sending host and at any intermediate routers along the end-to-end path. Note that datagram fragments can themselves be fragmented. Fragmentation in IPv6 is somewhat different because <u>only the source is permitted to perform fragmentation</u>.</p>
+<p>When an IP datagram is fragmented, it is not reassembled until it reaches its final destination, because:</p>
+<ol>
+<li>Not performing reassembly within the network alleviates the forwarding software (or hardware) in routers from implementing this feature</li>
+<li>Different fragments of the same datagram may follow different paths to their common destination</li>
+</ol>
+<h4 id="example-udpipv4-fragmentation">Example: UDP/IPv4 Fragmentation</h4>
+<p>An UDP application may wish to avoid IP fragmentation, because when the size of the resulting datagram exceeds the link’s MTU, the IP datagram is split across multiple IP packets, which can lead to performance issues because <u>if any fragment is lost, the entire datagram is lost.</u></p>
+<p><a href="../figure_10-9.png" title="A single UDP datagram with 2992 UDP payload bytes is fragmented into three UDP/ IPv4 packets (no options)."><img alt="A single UDP datagram with 2992 UDP payload bytes is fragmented into three UDP/ IPv4 packets (no options)." src="../figure_10-9.png" /></a></p>
+<p>A single UDP datagram with 2992 UDP payload bytes is fragmented into three UDP/ IPv4 packets (no options). The UDP header that contains the source and destination port numbers appears only in the first fragment (a complicating factor for firewalls and NATs). Fragmentation is controlled by the <strong>Identification</strong>, <strong>Fragment Offset</strong>, and <strong>More Fragments</strong> (MF) fields in the IPv4 header.</p>
+<p>The original UDP datagram included 2992 bytes of application (UDP payload) data and 8 bytes of UDP header, resulting in an IPv4 Total Length field value of 3020 bytes (IP header is 20-byte). When this datagram was fragmented into three packets, 40 extra bytes were created (20 bytes for each of the newly created IPv4 fragment headers). Thus, the total number of bytes sent is 3060. [p489]</p>
+<p>Fields:</p>
+<ul>
+<li><strong>Identification</strong>: its value (set by the original sender) is copied to each fragment and is used to group them together when they arrive</li>
+<li><strong>Fragment Offset</strong>: the offset of the first byte of the fragment payload byte in the original IPv4 datagram (in 8-byte units)</li>
+<li><strong>MF</strong>: indicates whether more fragments in the datagram should be expected and is 0 only in the final fragment</li>
+</ul>
+<p>If one fragment is lost, the entire datagram is lost, since IP itself has no error correction mechanism of its own. Mechanisms such as timeout and retransmission are left as the responsibility of the higher layers. <u>For this reason, fragmentation is often avoided.</u></p>
+<p>We can use our <code>sock</code> program and increase the size of the datagram until fragmentation occurs. On an Ethernet, the maximum amount of data in a frame is ordinarily 1500 bytes, which leaves at most 1472 bytes for application data to avoid fragmentation, assuming 20 bytes for the IPv4 header and 8 bytes for the UDP header.</p>
+<p>We will run our sock program with data sizes of 1471, 1472, 1473, and 1474 bytes. We expect the last two to cause fragmentation:</p>
+<p>[p490-492]</p>
+<pre><code class="bash">Linux% sock -u -i -n1 -w1471 10.0.0.3 discard
+Linux% sock -u -i -n1 -w1472 10.0.0.3 discard 
+Linux% sock -u -i -n1 -w1473 10.0.0.3 discard
+Linux% sock -u -i -n1 -w1474 10.0.0.3 discard
+</code></pre>
+
+<pre><code class="text">1 23:42:43.562452 10.0.0.5.46530 &gt; 10.0.0.3.9:
+        udp 1471 (DF) (ttl 64, id 61350, len 1499)
+2 23:42:50.267424 10.0.0.5.46531 &gt; 10.0.0.3.9:
+        udp 1472 (DF) (ttl 64, id 62020, len 1500)
+3 23:42:57.814555 10.0.0.5 &gt; 10.0.0.3:
+        udp (frag 37671:1@1480) (ttl 64, len 21)
+4 23:42:57.814715 10.0.0.5.46532 &gt; 10.0.0.3.9:
+        udp 1473 (frag 37671:1480@0+) (ttl 64, len 1500)
+5 23:43:04.368677 10.0.0.5 &gt; 10.0.0.3:
+        udp (frag 37672:2@1480) (ttl 64, len 22)
+6 23:43:04.368838 10.0.0.5.46535 &gt; 10.0.0.3.9:
+        udp 1474 (frag 37672:1480@0+) (ttl 64, len 1500)
+</code></pre>
+
+<p>One observation that may be surprising is that the fragments with larger offsets are delivered <em>prior</em> to the first fragments. In effect, <u>the sender has intentionally reordered the fragments.</u> This behavior can be beneficial. If the last fragment is delivered first, the receiving host is able to ascer- tain the maximum amount of buffer space it will require in order to reassemble the entire datagram.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            
+            <center>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</center>
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+    </body>
+</html>
