@@ -28,7 +28,7 @@ by Daniel P. Bovet and Marco Cesati
 
 by Robert Love
 
-1. [Introduction to the Linux Kernel] (lkd/ch1.md)
+1. [Introduction to the Linux Kernel](lkd/ch1.md)
 2. [Getting Started with the Kernel](lkd/ch2.md)
 
 #### Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
