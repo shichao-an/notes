@@ -104,11 +104,11 @@ With Linux on a 32-bit Intel x86 processor, the text segment starts at location 
 
 The `size(1)` command reports the sizes (in bytes) of the text, data, and bss segments:
 
-```text
-    $ size /usr/bin/cc /bin/sh
-    text data bss dec hex filename
-    346919 3576 6680 357175 57337 /usr/bin/cc
-    102134 1776 11272 115182 1c1ee /bin/sh
+```
+$ size /usr/bin/cc /bin/sh
+text data bss dec hex filename
+346919 3576 6680 357175 57337 /usr/bin/cc
+102134 1776 11272 115182 1c1ee /bin/sh
 ```
 
 ### Shared Libraries
