@@ -360,8 +360,43 @@ pid = 431, glob = 6, var = 88
 </li>
 </ul>
 <h4 id="file-sharing">File Sharing</h4>
+<p>One characteristic of <code>fork</code> is that all file descriptors that are open in the parent are duplicated in the child, because it’s as if the <code>dup</code> function had been called for each descriptor. The parent and the child shareafile table entry for every open descriptor.</p>
 <p>For a process that has three different files opened for standard input, standard output, and standard error, on return from <code>fork</code>, we have the arrangement shown below:</p>
-<p><a href="../figure_8.2.png" title="Figure 8.2 Sharing of open files between parent and child after fork"><img alt="Figure 8.2 Sharing of open files between parent and child after fork" src="../figure_8.2_600.png" /></a></p></div>
+<p><a href="../figure_8.2.png" title="Figure 8.2 Sharing of open files between parent and child after fork"><img alt="Figure 8.2 Sharing of open files between parent and child after fork" src="../figure_8.2_600.png" /></a></p>
+<p>It is important that the parent and the child share the same file offset. Otherwise, this type of interaction would be more difficult to accomplish and would require explicit actions by the parent.</p>
+<p>There are two normal cases for handling the descriptors after a <code>fork</code>:</p>
+<ol>
+<li>The parent waits for the child to complete.</li>
+<li>Both the parent and the child go their own ways. After the fork, both the parent and child close the descriptors that they don't need, so neither interferes with the other’s open descriptors. This scenario is often found with network servers.</li>
+</ol>
+<p>Besides the open files, other properties of the parent are inherited by the child:</p>
+<ul>
+<li>Real user ID, real group ID, effective user ID, and effective group ID</li>
+<li>Supplementary group IDs</li>
+<li>Process group ID</li>
+<li>Session ID</li>
+<li>Controlling terminal</li>
+<li>The set-user-ID and set-group-ID flags</li>
+<li>Current working directory</li>
+<li>Root directory</li>
+<li>File mode creation mask</li>
+<li>Signal mask and dispositions</li>
+<li>The close-on-exec flag for any open file descriptors</li>
+<li>Environment</li>
+<li>Attached shared memory segments</li>
+<li>Memory mappings</li>
+<li>Resource limits</li>
+</ul>
+<p>The differences between the parent and child are:</p>
+<ul>
+<li>The return values from fork are different.</li>
+<li>The process IDs are different.</li>
+<li>The two processes have different parent process IDs: the parent process ID of the child is the parent; the parent process ID of the parent doesn’t change.</li>
+<li>The child’s <code>tms_utime</code>, <code>tms_stime</code>, <code>tms_cutime</code>, and <code>tms_cstime</code> values are set to 0 (these times are discussed in Section 8.17).</li>
+<li>File locks set by the parent are not inherited by the child.</li>
+<li>Pending alarms are cleared for the child.</li>
+<li>The set of pending signals for the child is set to the empty set</li>
+</ul></div>
         </div>
 
         <footer class="col-md-12">
