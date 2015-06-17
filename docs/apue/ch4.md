@@ -86,7 +86,7 @@ The `flag` argument can be used to change the behavior of `faccessat`. If the `A
 
 The Single UNIX Specification requires that the `umask` command support a symbolic mode of operation. Unlike the octal format, the symbolic format specifies which permissions are to be allowed instead of which ones are to be denied.
 
-```text
+```
 $ umask  # first print the current file mode creation mask
 002
 $ umask -S  # print the symbolic form
@@ -142,7 +142,7 @@ Be aware that different versions of the UNIX System use units other than 512-byt
 
 ### Holes in a File
 
-```text
+```
 $ ls -l core
 -rw-r--r-- 1 sar 8483248 Nov 18 12:18 core
 $ du -s core

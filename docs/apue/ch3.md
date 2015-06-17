@@ -448,7 +448,7 @@ main(int argc, char *argv[])
 
 Results:
 
-```text
+```
 $ ./a.out 0 < /dev/tty
 read only
 $ ./a.out 1 > temp.foo
@@ -488,3 +488,59 @@ If we change the middle statement to
 val &= ˜flags; /* turn flags off */
 ```
 we have a function named `clr_fl`,  logically ANDs the one’s complement of `flags` with the current `val`.
+
+#### Synchronous-write flag
+If we add the line
+
+```c
+set_fl(STDOUT_FILENO, O_SYNC);
+```
+
+to the beginning of the program shown in [I/O Efficiency section](#io-efficiency), we’ll turn on the synchronous-write flag. This causes each write to wait for the data to be written to disk before returning. Normally in the UNIX System, <u>a `write` only queues the data for writing; the actual disk write operation can take place sometime later.</u> A database system is a likely candidate for using `O_SYNC`, so that it knows on return from a write that the data is actually on the disk, in case of an abnormal system failure.
+
+Linux ext4 timing results using various synchronization mechanisms [p86]
+
+Mac OS X HFS timing results using various synchronization mechanisms [p87]
+
+The [above program](#modifying-file-flags) operates on a descriptor (standard output), never knowing the name of the file that was opened on that descriptor. We can’t set the `O_SYNC` flag when the file is opened, since the shell opened the file. With `fcntl`, we can modify the properties of a descriptor, knowing only the descriptor for the open file.
+
+
+### `ioctl` Function
+
+<script src="https://gist.github.com/shichao-an/26d278ca768f90e8c67a.js"></script>
+
+The `ioctl` function has always been the catchall for I/O operations. Anything that couldn’t be expressed using one of the other functions in this chapter usually ended up being specified with an `ioctl`. Terminal I/O was the biggest user of this function.
+
+For the ISO C prototype, an ellipsis is used for the remaining arguments. Normally, however, there is only one more argument, and it’s usually a pointer to a variable or a structure.
+
+Each device driver can define its own set of `ioctl` commands. The system, however, provides generic ioctl commands for different classes of devices.
+
+We use the `ioctl` function in Section 18.12 to fetch and set the size of a terminal’s window, and in Section 19.7 when we access the advanced features of pseudo terminals.
+
+### `/dev/fd`
+
+Newer systems provide a directory named `/dev/fd` whose entries are files named 0, 1, 2, and so on. Opening the file `/dev/fd/n` is equivalent to duplicating descriptor *n*, assuming that descriptor *n* is open. `/dev/fd` is not part of POSIX.1.
+
+The following are equivalent:
+
+```c
+fd = open("/dev/fd/0", mode);
+fd = dup(0);
+```
+
+Most systems ignore the specified `mode`, whereas others require that it be a subset of the mode used when the referenced file (standard input, in this case) was originally opened. The descriptors 0 and `fd` [share the same file table entry](/apue/figure_3.9.png).
+
+The Linux implementation of `/dev/fd` is an exception. It maps file descriptors into symbolic links pointing to the underlying physical files. When you open `/dev/fd/0`, for example, you are really opening the file associated with your standard input. Thus the mode of the new file descriptor returned is unrelated to the mode of the `/dev/fd` file descriptor.
+
+We can also call `creat` with a `/dev/fd` pathname argument as well as specify `O_CREAT` in a call to open. This allows a program that calls `creat` to still work if the pathname argument is `/dev/fd/1`, for example.
+
+Some systems provide the pathnames `/dev/stdin`, `/dev/stdout`, and `/dev/stderr`. These pathnames are equivalent to `/dev/fd/0`, `/dev/fd/1`, and `/dev/fd/2`, respectively.
+
+The main use of the `/dev/fd` files is from the shell. It allows programs that use pathname arguments to handle standard input and standard output in the same manner as other pathnames.
+
+The following are equivalent:
+
+```bash
+filter file2 | cat file1 - file3 | lpr
+filter file2 | cat file1 /dev/fd/0 file3 | lpr
+```
