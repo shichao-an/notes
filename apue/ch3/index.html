@@ -314,6 +314,14 @@
         
             <li><a href="#modifying-file-flags">Modifying file flags</a></li>
         
+            <li><a href="#synchronous-write-flag">Synchronous-write flag</a></li>
+        
+    
+        <li class="main "><a href="#ioctl-function">ioctl Function</a></li>
+        
+    
+        <li class="main "><a href="#devfd">/dev/fd</a></li>
+        
     
     </ul>
 </div></div>
@@ -771,7 +779,7 @@ main(int argc, char *argv[])
 </code></pre>
 
 <p>Results:</p>
-<pre><code class="text">$ ./a.out 0 &lt; /dev/tty
+<pre><code>$ ./a.out 0 &lt; /dev/tty
 read only
 $ ./a.out 1 &gt; temp.foo
 $ cat temp.foo
@@ -804,7 +812,39 @@ set_fl(int fd, int flags) /* flags are file status flags to turn on */
 <pre><code class="c">val &amp;= ˜flags; /* turn flags off */
 </code></pre>
 
-<p>we have a function named <code>clr_fl</code>,  logically ANDs the one’s complement of <code>flags</code> with the current <code>val</code>.</p></div>
+<p>we have a function named <code>clr_fl</code>,  logically ANDs the one’s complement of <code>flags</code> with the current <code>val</code>.</p>
+<h4 id="synchronous-write-flag">Synchronous-write flag</h4>
+<p>If we add the line</p>
+<pre><code class="c">set_fl(STDOUT_FILENO, O_SYNC);
+</code></pre>
+
+<p>to the beginning of the program shown in <a href="#io-efficiency">I/O Efficiency section</a>, we’ll turn on the synchronous-write flag. This causes each write to wait for the data to be written to disk before returning. Normally in the UNIX System, <u>a <code>write</code> only queues the data for writing; the actual disk write operation can take place sometime later.</u> A database system is a likely candidate for using <code>O_SYNC</code>, so that it knows on return from a write that the data is actually on the disk, in case of an abnormal system failure.</p>
+<p>Linux ext4 timing results using various synchronization mechanisms [p86]</p>
+<p>Mac OS X HFS timing results using various synchronization mechanisms [p87]</p>
+<p>The <a href="#modifying-file-flags">above program</a> operates on a descriptor (standard output), never knowing the name of the file that was opened on that descriptor. We can’t set the <code>O_SYNC</code> flag when the file is opened, since the shell opened the file. With <code>fcntl</code>, we can modify the properties of a descriptor, knowing only the descriptor for the open file.</p>
+<h3 id="ioctl-function"><code>ioctl</code> Function</h3>
+<script src="https://gist.github.com/shichao-an/26d278ca768f90e8c67a.js"></script>
+
+<p>The <code>ioctl</code> function has always been the catchall for I/O operations. Anything that couldn’t be expressed using one of the other functions in this chapter usually ended up being specified with an <code>ioctl</code>. Terminal I/O was the biggest user of this function.</p>
+<p>For the ISO C prototype, an ellipsis is used for the remaining arguments. Normally, however, there is only one more argument, and it’s usually a pointer to a variable or a structure.</p>
+<p>Each device driver can define its own set of <code>ioctl</code> commands. The system, however, provides generic ioctl commands for different classes of devices.</p>
+<p>We use the <code>ioctl</code> function in Section 18.12 to fetch and set the size of a terminal’s window, and in Section 19.7 when we access the advanced features of pseudo terminals.</p>
+<h3 id="devfd"><code>/dev/fd</code></h3>
+<p>Newer systems provide a directory named <code>/dev/fd</code> whose entries are files named 0, 1, 2, and so on. Opening the file <code>/dev/fd/n</code> is equivalent to duplicating descriptor <em>n</em>, assuming that descriptor <em>n</em> is open. <code>/dev/fd</code> is not part of POSIX.1.</p>
+<p>The following are equivalent:</p>
+<pre><code class="c">fd = open(&quot;/dev/fd/0&quot;, mode);
+fd = dup(0);
+</code></pre>
+
+<p>Most systems ignore the specified <code>mode</code>, whereas others require that it be a subset of the mode used when the referenced file (standard input, in this case) was originally opened. The descriptors 0 and <code>fd</code> <a href="../../apue/figure_3.9.png">share the same file table entry</a>.</p>
+<p>The Linux implementation of <code>/dev/fd</code> is an exception. It maps file descriptors into symbolic links pointing to the underlying physical files. When you open <code>/dev/fd/0</code>, for example, you are really opening the file associated with your standard input. Thus the mode of the new file descriptor returned is unrelated to the mode of the <code>/dev/fd</code> file descriptor.</p>
+<p>We can also call <code>creat</code> with a <code>/dev/fd</code> pathname argument as well as specify <code>O_CREAT</code> in a call to open. This allows a program that calls <code>creat</code> to still work if the pathname argument is <code>/dev/fd/1</code>, for example.</p>
+<p>Some systems provide the pathnames <code>/dev/stdin</code>, <code>/dev/stdout</code>, and <code>/dev/stderr</code>. These pathnames are equivalent to <code>/dev/fd/0</code>, <code>/dev/fd/1</code>, and <code>/dev/fd/2</code>, respectively.</p>
+<p>The main use of the <code>/dev/fd</code> files is from the shell. It allows programs that use pathname arguments to handle standard input and standard output in the same manner as other pathnames.</p>
+<p>The following are equivalent:</p>
+<pre><code class="bash">filter file2 | cat file1 - file3 | lpr
+filter file2 | cat file1 /dev/fd/0 file3 | lpr
+</code></pre></div>
         </div>
 
         <footer class="col-md-12">
