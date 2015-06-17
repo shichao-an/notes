@@ -265,6 +265,10 @@
         
             <li><a href="#ipv4-socket-address-structure">IPv4 Socket Address Structure</a></li>
         
+            <li><a href="#generic-socket-address-structure">Generic Socket Address Structure</a></li>
+        
+            <li><a href="#ipv6-socket-address-structure">IPv6 Socket Address Structure</a></li>
+        
     
     </ul>
 </div></div>
@@ -295,15 +299,44 @@ struct sockaddr_in {
 
 <ul>
 <li><code>sin_len</code>: the length field. We need never set it and need never examine it.<ul>
-<li>The four socket functions that pass a socket address structure from the process to the kernel, <code>bind</code>, <code>connect</code>, <code>sendto</code>, and <code>sendmsg</code>, all go through the <code>sockargs</code> function in a Berkeley-derived implementation. This function copies the socket address structure from the process and explicitly sets its ~sin_len~ member to the size of the structure that was passed as an argument to these four functions. The five socket functions that pass a socket address structure from the kernel to the process, <code>accept</code>, <code>recvfrom</code>, <code>recvmsg</code>, <code>getpeername</code>, and <code>getsockname</code>, all set the <code>sin_len</code> member before returning to the process.</li>
+<li>The four socket functions that pass a socket address structure from the process to the kernel, <code>bind</code>, <code>connect</code>, <code>sendto</code>, and <code>sendmsg</code>, all go through the <code>sockargs</code> function in a Berkeley-derived implementation. This function copies the socket address structure from the process and explicitly sets its <code>sin_len</code> member to the size of the structure that was passed as an argument to these four functions. The five socket functions that pass a socket address structure from the kernel to the process, <code>accept</code>, <code>recvfrom</code>, <code>recvmsg</code>, <code>getpeername</code>, and <code>getsockname</code>, all set the <code>sin_len</code> member before returning to the process.</li>
 </ul>
 </li>
-<li>POSIX requires only three members in the structure: <code>sin_family</code>, <code>sin_addr</code>, and <code>sin_port</code>. Almost all implementations add the sin_zero member so that all socket address structures are at least 16 bytes in size.</li>
+<li>POSIX requires only three members in the structure: <code>sin_family</code>, <code>sin_addr</code>, and <code>sin_port</code>. Almost all implementations add the <code>sin_zero</code> member so that all socket address structures are at least 16 bytes in size.</li>
 <li>The <code>in_addr_t</code> datatype must be an unsigned integer type of at least 32 bits, <code>in_port_t</code> must be an unsigned integer type of at least 16 bits, and <code>sa_family_t</code> can be any unsigned integer type. The latter is normally an 8-bit unsigned integer if the implementation supports the length field, or an unsigned 16-bit integer if the length field is not supported.</li>
 <li>Both the IPv4 address and the TCP or UDP port number are always stored in the structure in <strong>network byte order</strong>.</li>
 <li>The <code>sin_zero</code> member is unused. By convention, we always set the entire structure to 0 before filling it in.</li>
 <li>Socket address structures are used only on a given host: The structure itself is not communicated between different hosts</li>
-</ul></div>
+</ul>
+<h4 id="generic-socket-address-structure">Generic Socket Address Structure</h4>
+<p>A socket address structures is always passed by reference when passed as an argument to any socket functions. But any socket function that takes one of these pointers as an argument must deal with socket address structures from any of the supported protocol families.</p>
+<p>A generic socket address structure in the <code>&lt;sys/socket.h&gt;</code> header:</p>
+<pre><code class="c">struct sockaddr {
+  uint8_t      sa_len;
+  sa_family_t  sa_family;    /* address family: AF_xxx value */
+  char         sa_data[14];  /* protocol-specific address */
+};
+</code></pre>
+
+<p>The socket functions are then defined as taking a pointer to the generic socket address structure, as shown here in the ANSI C function prototype for the <code>bind</code> function:</p>
+<pre><code class="c">int bind(int, struct sockaddr *, socklen_t);
+</code></pre>
+
+<p>This requires that any calls to these functions must cast the <u>pointer to the <em>protocol-specific socket address structure</em></u> to be a <u>pointer to a <em>generic socket address structure</em>.</u></p>
+<p>For example:</p>
+<pre><code class="c">struct sockaddr_in  serv;      /* IPv4 socket address structure */
+
+/* fill in serv{} */
+
+bind(sockfd, (struct sockaddr *) &amp;serv, sizeof(serv));
+</code></pre>
+
+<p><a href="../../unp/ch1/#a-simple-daytime-client">In Chapter 1 in our unp.h header</a>, we define <code>SA</code> to be the string <code>struct sockaddr</code>, just to shorten the code that we must write to cast these pointers.</p>
+<ul>
+<li>From an application programmer ’s point of view, <u>the only use of these generic socket address structures is to cast pointers to protocol-specific structures.</u></li>
+<li>From the kernel’s perspective, another reason for using pointers to generic socket address structures as arguments is that the kernel must take the caller’s pointer, cast it to a <code>struct sockaddr *</code>, and then look at the value of <code>sa_family</code> to determine the type of the structure.</li>
+</ul>
+<h4 id="ipv6-socket-address-structure">IPv6 Socket Address Structure</h4></div>
         </div>
 
         <footer class="col-md-12">

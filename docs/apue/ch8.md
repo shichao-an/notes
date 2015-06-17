@@ -93,7 +93,43 @@ Analysis:
 
 #### File Sharing
 
+One characteristic of `fork` is that all file descriptors that are open in the parent are duplicated in the child, because it’s as if the `dup` function had been called for each descriptor. The parent and the child shareafile table entry for every open descriptor.
+
 For a process that has three different files opened for standard input, standard output, and standard error, on return from `fork`, we have the arrangement shown below:
 
-
 [![Figure 8.2 Sharing of open files between parent and child after fork](figure_8.2_600.png)](figure_8.2.png "Figure 8.2 Sharing of open files between parent and child after fork")
+
+It is important that the parent and the child share the same file offset. Otherwise, this type of interaction would be more difficult to accomplish and would require explicit actions by the parent.
+
+There are two normal cases for handling the descriptors after a `fork`:
+
+1. The parent waits for the child to complete.
+2. Both the parent and the child go their own ways. After the fork, both the parent and child close the descriptors that they don't need, so neither interferes with the other’s open descriptors. This scenario is often found with network servers.
+
+Besides the open files, other properties of the parent are inherited by the child:
+
+* Real user ID, real group ID, effective user ID, and effective group ID
+* Supplementary group IDs
+* Process group ID
+* Session ID
+* Controlling terminal
+* The set-user-ID and set-group-ID flags
+* Current working directory
+* Root directory
+* File mode creation mask
+* Signal mask and dispositions
+* The close-on-exec flag for any open file descriptors
+* Environment
+* Attached shared memory segments
+* Memory mappings
+* Resource limits
+
+The differences between the parent and child are:
+
+* The return values from fork are different.
+* The process IDs are different.
+* The two processes have different parent process IDs: the parent process ID of the child is the parent; the parent process ID of the parent doesn’t change.
+* The child’s `tms_utime`, `tms_stime`, `tms_cutime`, and `tms_cstime` values are set to 0 (these times are discussed in Section 8.17).
+* File locks set by the parent are not inherited by the child.
+* Pending alarms are cleared for the child.
+* The set of pending signals for the child is set to the empty set
