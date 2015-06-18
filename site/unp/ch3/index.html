@@ -269,6 +269,13 @@
         
             <li><a href="#ipv6-socket-address-structure">IPv6 Socket Address Structure</a></li>
         
+            <li><a href="#new-generic-socket-address-structure">New Generic Socket Address Structure</a></li>
+        
+            <li><a href="#comparison-of-socket-address-structures">Comparison of Socket Address Structures</a></li>
+        
+    
+        <li class="main "><a href="#value-result-arguments">Value-Result Arguments</a></li>
+        
     
     </ul>
 </div></div>
@@ -336,7 +343,74 @@ bind(sockfd, (struct sockaddr *) &amp;serv, sizeof(serv));
 <li>From an application programmer ’s point of view, <u>the only use of these generic socket address structures is to cast pointers to protocol-specific structures.</u></li>
 <li>From the kernel’s perspective, another reason for using pointers to generic socket address structures as arguments is that the kernel must take the caller’s pointer, cast it to a <code>struct sockaddr *</code>, and then look at the value of <code>sa_family</code> to determine the type of the structure.</li>
 </ul>
-<h4 id="ipv6-socket-address-structure">IPv6 Socket Address Structure</h4></div>
+<h4 id="ipv6-socket-address-structure">IPv6 Socket Address Structure</h4>
+<p>The IPv6 socket address is defined by including the <code>&lt;netinet/in.h&gt;</code> header:</p>
+<pre><code class="c">struct in6_addr {
+  uint8_t  s6_addr[16];          /* 128-bit IPv6 address */
+                                 /* network byte ordered */
+};
+
+#define SIN6_LEN      /* required for compile-time tests */
+
+struct sockaddr_in6 {
+  uint8_t         sin6_len;      /* length of this struct (28) */
+  sa_family_t     sin6_family;   /* AF_INET6 */
+  in_port_t       sin6_port;     /* transport layer port# */
+                                 /* network byte ordered */
+  uint32_t        sin6_flowinfo; /* flow information, undefined */
+  struct in6_addr sin6_addr;     /* IPv6 address */
+                                 /* network byte ordered */
+  uint32_t        sin6_scope_id; /* set of interfaces for a scope */
+};
+</code></pre>
+
+<ul>
+<li>The <code>SIN6_LEN</code> constant must be defined if the system supports the length member for socket address structures.</li>
+<li>The IPv6 family is <code>AF_INET6</code>, whereas the IPv4 family is <code>AF_INET</code></li>
+<li>The members in this structure are ordered so that if the <code>sockaddr_in6</code> structure is 64-bit aligned, so is the 128-bit <code>sin6_addr</code> member.</li>
+<li>The <code>sin6_flowinfo</code> member is divided into two fields:<ul>
+<li>The low-order 20 bits are the flow label</li>
+<li>The high-order 12 bits are reserved</li>
+</ul>
+</li>
+<li>The <code>sin6_scope_id</code> identifies the scope zone in which a scoped address is meaningful, most commonly an interface index for a link-local address</li>
+</ul>
+<h4 id="new-generic-socket-address-structure">New Generic Socket Address Structure</h4>
+<p>A new generic socket address structure was defined as part of the IPv6 sockets API, to overcome some of the shortcomings of the existing <code>struct sockaddr</code>. Unlike the <code>struct sockaddr</code>, the new <code>struct sockaddr_storage</code> is large enough to hold any socket address type supported by the system. The <code>sockaddr_storage</code> structure is defined by including the <code>&lt;netinet/in.h&gt;</code> header:</p>
+<pre><code class="c">struct sockaddr_storage {
+  uint8_t      ss_len;       /* length of this struct (implementation dependent) */
+  sa_family_t  ss_family;    /* address family: AF_xxx value */
+  /* implementation-dependent elements to provide:
+   * a) alignment sufficient to fulfill the alignment requirements of
+   *    all socket address types that the system supports.
+   * b) enough storage to hold any type of socket address that the
+   *    system supports.
+   */
+};
+</code></pre>
+
+<p>The <code>sockaddr_storage</code> type provides a generic socket address structure that is different from <code>struct sockaddr</code> in two ways:</p>
+<ol>
+<li>If any socket address structures that the system supports have alignment requirements, the <code>sockaddr_storage</code> provides the strictest alignment requirement.</li>
+<li>The <code>sockaddr_storage</code> is large enough to contain any socket address structure that the system supports.</li>
+</ol>
+<p>The fields of the <code>sockaddr_storage</code> structure are opaque to the user, except for <code>ss_family</code> and <code>ss_len</code> (if present). The <code>sockaddr_storage</code> must be cast or copied to the appropriate socket address structure for the address given in <code>ss_family</code> to access any other fields.</p>
+<h4 id="comparison-of-socket-address-structures">Comparison of Socket Address Structures</h4>
+<p>In this figure, we assume that:</p>
+<ul>
+<li>Socket address structures all contain a one-byte length field </li>
+<li>The family field also occupies one byte</li>
+<li>Any field that must be at least some number of bits is exactly that number of bits</li>
+</ul>
+<p><a href="../figure_3.6.png" title="Figure 3.6 Comparison of various socket address structures."><img alt="Figure 3.6 Comparison of various socket address structures." src="../figure_3.6_600.png" /></a></p>
+<p>To handle variable-length structures, whenever we pass a pointer to a socket address structure as an argument to one of the socket functions, we pass its length as another argument. </p>
+<h3 id="value-result-arguments">Value-Result Arguments</h3>
+<p>When a socket address structure is passed to any socket function, it is always passed by reference (a pointer to the structure is passed). The length of the structure is also passed as an argument. </p>
+<p>The way in which the length is passed depends on which direction the structure is being passed:</p>
+<ol>
+<li>From the process to the kernel</li>
+<li>From the kernel to the process</li>
+</ol></div>
         </div>
 
         <footer class="col-md-12">
