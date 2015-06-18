@@ -143,12 +143,142 @@ In this figure, we assume that:
 
 To handle variable-length structures, whenever we pass a pointer to a socket address structure as an argument to one of the socket functions, we pass its length as another argument. 
 
-
 ### Value-Result Arguments
 
 When a socket address structure is passed to any socket function, it is always passed by reference (a pointer to the structure is passed). The length of the structure is also passed as an argument. 
 
 The way in which the length is passed depends on which direction the structure is being passed:
 
-1. From the process to the kernel
-2. From the kernel to the process
+1. From the **process to the kernel**
+2. From the **kernel to the process**
+
+#### From process to kernel
+
+`bind`, `connect`, and `sendto` functions pass a socket address structure from the process to the kernel.
+
+Arumgents to these functions:
+
+* The pointer to the socket address structure
+* The integer size of the structure
+
+```c
+struct sockaddr_in serv;
+
+/* fill in serv{} */
+connect (sockfd, (SA *) &serv, sizeof(serv));
+```
+
+[![Figure 3.7 Socket address structure passed from process to kernel.](figure_3.7.png)](figure_3.7.png "Figure 3.7 Socket address structure passed from process to kernel.")
+
+The datatype for the size of a socket address structure is actually `socklen_t` and not `int`, but the POSIX specification recommends that `socklen_t` be defined as `uint32_t`.
+
+
+#### From kernel to process
+
+`accept`, `recvfrom`, `getsockname`, and `getpeername` functions pass a socket address structure from the kernel to the process.
+
+Arguments to these functions:
+
+* The pointer to the socket address structure 
+* The pointer to an integer containing the size of the structure.
+
+```c
+struct sockaddr_un  cli;   /* Unix domain */
+socklen_t  len;
+
+len = sizeof(cli);         /* len is a value */
+getpeername(unixfd, (SA *) &cli, &len);
+/* len may have changed */
+```
+
+[![Figure 3.8 Socket address structure passed from kernel to process.](figure_3.8.png)](figure_3.8.png "Figure 3.8 Socket address structure passed from kernel to process.")
+
+**Value-result argument** (Figure 3.8): the size changes from an integer to be a pointer to an integer because the size is both <u>a value when the function is called and a result when the function returns.</u>
+
+* As a **value**: it tells the kernel the size of the structure so that the kernel does not write past the end of the structure when filling it in
+* As a **result**: it tells the process how much information the kernel actually stored in the structure
+
+For two other functions that pass socket address structures, `recvmsg` and `sendmsg`, the length field is not a function argument but a structure member.
+
+If the socket address structure is fixed-length, the value returned by the kernel will always be that fixed size: 16 for an IPv4 `sockaddr_in` and 28 for an IPv6 `sockaddr_in6`. But with a variable-length socket address structure (e.g., a Unix domain `sockaddr_un`), the value returned can be less than the maximum size of the structure.
+
+Though the most common example of a value-result argument is the length of a returned socket address structure, we will encounter other value-result arguments in this text:
+
+* The middle three arguments for the `select` function (Section 6.3)
+* The length argument for the `getsockopt` function (Section 7.2)
+* The `msg_namelen` and `msg_controllen` members of the `msghdr` structure, when used with `recvmsg` (Section 14.5)
+* The `ifc_len` member of the `ifconf` structure (Figure 17.2)
+* The first of the two length arguments for the `sysctl` function (Section 18.4)
+
+### Byte Ordering Functions
+
+For a 16-bit integer that is made up of 2 bytes, there are two ways to store the two bytes in memory:
+
+* **Little-endian** order: low-order byte is at the starting address.
+* **Big-endian** order: high-order byte is at the starting address.
+
+[![Figure 3.9 Little-endian byte order and big-endian byte order for a 16-bit integer.](figure_3.9_600.png)](figure_3.9.png "Figure 3.9 Little-endian byte order and big-endian byte order for a 16-bit integer.")
+
+The figure shows the most significant bit (MSB) as the leftmost bit of the 16-bit value and the least significant bit (LSB) as the rightmost bit.
+
+The terms "little-endian" and "big-endian" indicate which end of the multibyte value, the little end or the big end, is stored at the starting address of the value.
+
+**Host byte order** refer to the byte ordering used by a given system. The program below prints the host byte order:
+
+* [byteorder.c](https://github.com/shichao-an/unpv13e/blob/master/intro/byteorder.c)
+
+<script src="https://gist.github.com/shichao-an/ee430bf440011d96f76a.js"></script>
+
+We store the two-byte value `0x0102` in the short integer and then look at the two consecutive bytes, `c[0]` (the address *A*) and `c[1]` (the address *A+1*) to determine the byte order.
+
+The string `CPU_VENDOR_OS` is determined by the GNU `autoconf` program.
+
+```text
+freebsd4 % byteorder
+i386-unknown-freebsd4.8: little-endian
+
+macosx % byteorder
+powerpc-apple-darwin6.6: big-endian
+
+freebsd5 % byteorder
+sparc64-unknown-freebsd5.1: big-endian
+
+aix % byteorder
+powerpc-ibm-aix5.1.0.0: big-endian
+
+hpux % byteorder
+hppa1.1-hp-hpux11.11: big-endian
+
+linux % byteorder
+i586-pc-linux-gnu: little-endian
+
+solaris % byteorder
+sparc-sun-solaris2.9: big-endian
+```
+
+Networking protocols must specify a **network byte order**. The sending protocol stack and the receiving protocol stack must agree on the order in which the bytes of these multibyte fields will be transmitted. <u>The Internet protocols use big-endian byte ordering for these multibyte integers.</u>
+
+But, both history and the POSIX specification say that certain fields in the socket address structures must be maintained in network byte order. We use the following four functions to convert between these two byte orders:
+
+<script src="https://gist.github.com/shichao-an/27bb5bebddf78e36198e.js"></script>
+
+* `h` stands for *host*
+* `n` stands for *network*
+* `s` stands for *short* (16-bit value, e.g. TCP or UDP port number)
+* `l` stands for *long* (32-bit value, e.g. IPv4 address)
+
+When using these functions, we do not care about the actual values (big-endian or little-endian) for the host byte order and the network byte order. What we must do is call the appropriate function to convert a given value between the host and network byte order. On those systems that have the same byte ordering as the Internet protocols (big-endian), these four functions are usually defined as null macros.
+
+We use the term "byte" to mean an 8-bit quantity since almost all current computer systems use 8-bit bytes. Most Internet standards use the term **octet** instead of byte to mean an 8-bit quantity.
+
+Bit ordering is an important convention in Internet standards, such as the the first 32 bits of the IPv4 header from RFC 791:
+
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version|  IHL |Type of Service|           Total Length         |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. 
