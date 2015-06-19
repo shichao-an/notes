@@ -284,6 +284,9 @@
         <li class="main "><a href="#byte-ordering-functions">Byte Ordering Functions</a></li>
         
     
+        <li class="main "><a href="#byte-manipulation-functions">Byte Manipulation Functions</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -523,7 +526,43 @@ sparc-sun-solaris2.9: big-endian
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 </code></pre>
 
-<p>This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. </p></div>
+<p>This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. </p>
+<h3 id="byte-manipulation-functions">Byte Manipulation Functions</h3>
+<p>Two types functions differ in whether they deal with null-terminated C strings:</p>
+<ul>
+<li>The functions that operate on multibyte fields, without interpreting the data, and without assuming that the data is a null-terminated C string. These types of functions deal with socket address structures to manipulate fields such as IP addresses, which can contain bytes of 0, but are not C character strings. <ul>
+<li>The functions whose names begin with <code>b</code> (for byte) (from 4.2BSD)</li>
+<li>The functions whose names begin with <code>mem</code> (for memory) (from ANSI C)</li>
+</ul>
+</li>
+<li>The functions that deal with null-terminated C character strings (beginning with <code>str</code> (for string), defined by including the <code>&lt;string.h&gt;</code> header)</li>
+</ul>
+<script src="https://gist.github.com/shichao-an/4871b3026c68dc6c4140.js"></script>
+
+<p>The memory pointed to by the <code>const</code> pointer is read but not modified by the function.</p>
+<ul>
+<li><code>bzero</code> sets the specified number of bytes to 0 in the destination. We often use this function to initialize a socket address structure to 0.</li>
+<li><code>bcopy</code> moves the specified number of bytes from the source to the destination. </li>
+<li><code>bcmp</code> compares two arbitrary byte strings. The return value is zero if the two byte strings are identical; otherwise, it is nonzero</li>
+</ul>
+<script src="https://gist.github.com/shichao-an/c229d6cc4ac8d310567b.js"></script>
+
+<ul>
+<li><code>memset</code> sets the specified number of bytes to the value <code>c</code> in the destination</li>
+<li><code>memcpy</code> is similar to <code>bcopy</code>, but the order of the two pointer arguments is swapped</li>
+<li><code>memcmp</code> compares two arbitrary byte strings </li>
+</ul>
+<p>Note:</p>
+<ul>
+<li>
+<p>One way to remember the order of the two pointers for <code>memcpy</code> is to remember that they are written in the same left-to-right order as an assignment statement in C:</p>
+<pre><code>dest = src;
+</code></pre>
+</li>
+<li>
+<p>One way to remember the order of the final two arguments to <code>memset</code> is to realize that all of the ANSI C <code>memXXX</code> functions require a length argument, and it is always the final argument. The comparison is done assuming the two unequal bytes are <code>unsigned chars</code>.</p>
+</li>
+</ul></div>
         </div>
 
         <footer class="col-md-12">

@@ -282,3 +282,35 @@ Bit ordering is an important convention in Internet standards, such as the the f
 ```
 
 This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. 
+
+
+### Byte Manipulation Functions
+
+Two types functions differ in whether they deal with null-terminated C strings:
+
+* The functions that operate on multibyte fields, without interpreting the data, and without assuming that the data is a null-terminated C string. These types of functions deal with socket address structures to manipulate fields such as IP addresses, which can contain bytes of 0, but are not C character strings. 
+    * The functions whose names begin with `b` (for byte) (from 4.2BSD)
+    * The functions whose names begin with `mem` (for memory) (from ANSI C)
+* The functions that deal with null-terminated C character strings (beginning with `str` (for string), defined by including the `<string.h>` header)
+
+<script src="https://gist.github.com/shichao-an/4871b3026c68dc6c4140.js"></script>
+
+The memory pointed to by the `const` pointer is read but not modified by the function.
+
+* `bzero` sets the specified number of bytes to 0 in the destination. We often use this function to initialize a socket address structure to 0.
+* `bcopy` moves the specified number of bytes from the source to the destination. 
+* `bcmp` compares two arbitrary byte strings. The return value is zero if the two byte strings are identical; otherwise, it is nonzero
+
+<script src="https://gist.github.com/shichao-an/c229d6cc4ac8d310567b.js"></script>
+
+* `memset` sets the specified number of bytes to the value `c` in the destination
+* `memcpy` is similar to `bcopy`, but the order of the two pointer arguments is swapped
+* `memcmp` compares two arbitrary byte strings 
+
+Note:
+
+* One way to remember the order of the two pointers for `memcpy` is to remember that they are written in the same left-to-right order as an assignment statement in C:
+
+        dest = src;
+
+* One way to remember the order of the final two arguments to `memset` is to realize that all of the ANSI C `memXXX` functions require a length argument, and it is always the final argument. The comparison is done assuming the two unequal bytes are `unsigned chars`.
