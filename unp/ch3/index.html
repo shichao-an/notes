@@ -287,6 +287,18 @@
         <li class="main "><a href="#byte-manipulation-functions">Byte Manipulation Functions</a></li>
         
     
+        <li class="main "><a href="#inet_aton-inet_addr-and-inet_ntoa-functions">inet_aton, inet_addr, and inet_ntoa Functions</a></li>
+        
+    
+        <li class="main "><a href="#inet_pton-and-inet_ntop-functions">inet_pton and inet_ntop Functions</a></li>
+        
+            <li><a href="#replacing-inet_addr-to-inet_pton">Replacing inet_addr to inet_pton</a></li>
+        
+            <li><a href="#replacing-inet_ntoa-to-inet_ntop">Replacing inet_ntoa to inet_ntop</a></li>
+        
+            <li><a href="#simple-definitions-of-inet_pton-and-inet_ntop-that-support-ipv4">Simple definitions of inet_pton and inet_ntop that support IPv4</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -562,7 +574,110 @@ sparc-sun-solaris2.9: big-endian
 <li>
 <p>One way to remember the order of the final two arguments to <code>memset</code> is to realize that all of the ANSI C <code>memXXX</code> functions require a length argument, and it is always the final argument. The comparison is done assuming the two unequal bytes are <code>unsigned chars</code>.</p>
 </li>
-</ul></div>
+</ul>
+<h3 id="inet_aton-inet_addr-and-inet_ntoa-functions"><code>inet_aton</code>, <code>inet_addr</code>, and <code>inet_ntoa</code> Functions</h3>
+<p>These functions convert Internet addresses between ASCII strings (what humans prefer to use) and network byte ordered binary values (values that are stored in socket address structures).</p>
+<script src="https://gist.github.com/shichao-an/af1102b95566ee43cde7.js"></script>
+
+<ul>
+<li><code>inet_aton</code>: converts the C character string pointed to by <em>strptr</em> into its 32-bit binary network byte ordered value, which is stored through the pointer <em>addrptr</em></li>
+<li><code>inet_addr</code>: does the same conversion, returning the 32-bit binary network byte ordered value as the return value. It is deprecated and any new code should use <code>inet_aton</code> instead</li>
+<li><code>inet_ntoa</code>: converts a 32-bit binary network byte ordered IPv4 address into its corresponding dotted-decimal string.<ul>
+<li><u>The string pointed to by the return value of the function resides in static memory.</u> This means the function is not reentrant, which we will discuss in Section 11.18.</li>
+<li>This function takes a structure as its argument, not a pointer to a structure. (Functions that take actual structures as arguments are rare. It is more common to pass a pointer to the structure.)</li>
+</ul>
+</li>
+</ul>
+<h3 id="inet_pton-and-inet_ntop-functions"><code>inet_pton</code> and <code>inet_ntop</code> Functions</h3>
+<p>These two functions are new with IPv6 and work with both IPv4 and IPv6 addresses. We use these two functions throughout the text. The letters "p" and "n" stand for <em>presentation</em> and <em>numeric</em>. The presentation format for an address is often an ASCII string and the numeric format is the binary value that goes into a socket address structure.</p>
+<script src="https://gist.github.com/shichao-an/a4f313716c78362d0b49.js"></script>
+
+<p>Arguments:</p>
+<ul>
+<li><em>family</em>: is either <code>AF_INET</code> or <code>AF_INET6</code>. If <em>family</em> is not supported, both functions return an error with <code>errno</code> set to <code>EAFNOSUPPORT</code>.</li>
+</ul>
+<p>Functions:</p>
+<ul>
+<li><code>inet_pton</code>: converts the string pointed to by <em>strptr</em>, storing the binary result through the pointer <em>addrptr</em>. If successful, the return value is 1. If the input string is not a valid presentation format for the specified <em>family</em>, 0 is returned.</li>
+<li><code>inet_ntop</code> does the reverse conversion, from numeric (<em>addrptr</em>) to presentation (<em>strptr</em>).<ul>
+<li><em>len</em> argument is the size of the destination. To help specify this size, the following two definitions are defined by including the <code>&lt;netinet/in.h&gt;</code> header. </li>
+<li>If <em>len</em> is too small to hold the resulting presentation format, including the terminating null, a null pointer is returned and <code>errno</code> is set to <code>ENOSPC</code>.</li>
+<li>The <em>strptr</em> argument to <code>inet_ntop</code> cannot be a null pointer. The caller must allocate memory for the destination and specify its size. On success, this pointer is the return value of the function.</li>
+</ul>
+</li>
+</ul>
+<p>Size definitions in <code>&lt;netinet/in.h&gt;</code> header for the <em>len</em> argument:</p>
+<pre><code class="c">#define INET_ADDRSTRLEN       16       /* for IPv4 dotted-decimal */
+#define INET6_ADDRSTRLEN      46       /* for IPv6 hex string */
+</code></pre>
+
+<p>The following figure summarizes the five functions on address conversion functions:</p>
+<p><a href="../figure_3.11.png" title="Figure 3.11 Summary of address conversion functions."><img alt="Figure 3.11 Summary of address conversion functions." src="../figure_3.11_600.png" /></a></p>
+<p>Even if your system does not yet include support for IPv6, you can start using these newer functions by replacing calls of the form.</p>
+<h4 id="replacing-inet_addr-to-inet_pton">Replacing <code>inet_addr</code> to <code>inet_pton</code></h4>
+<p>Replace:</p>
+<pre><code class="c">foo.sin_addr.s_addr = inet_addr(cp);
+</code></pre>
+
+<p>with</p>
+<pre><code class="c">inet_pton(AF_INET, cp, &amp;foo.sin_addr);
+</code></pre>
+
+<h4 id="replacing-inet_ntoa-to-inet_ntop">Replacing <code>inet_ntoa</code> to <code>inet_ntop</code></h4>
+<p>Replace:</p>
+<pre><code>ptr = inet_ntoa(foo.sin_addr);
+</code></pre>
+
+<p>with</p>
+<pre><code class="c">char str[INET_ADDRSTRLEN];
+ptr = inet_ntop(AF_INET, &amp;foo.sin_addr, str, sizeof(str));
+</code></pre>
+
+<h4 id="simple-definitions-of-inet_pton-and-inet_ntop-that-support-ipv4">Simple definitions of <code>inet_pton</code> and <code>inet_ntop</code> that support IPv4</h4>
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_pton_ipv4.c">libfree/inet_pton_ipv4.c</a></li>
+</ul>
+<pre><code class="c">int
+inet_pton(int family, const char *strptr, void *addrptr)
+{
+    if (family == AF_INET) {
+        struct in_addr  in_val;
+
+        if (inet_aton(strptr, &amp;in_val)) {
+            memcpy(addrptr, &amp;in_val, sizeof(struct in_addr));
+            return (1);
+        }
+        return(0);
+    }
+    errno = EAFNOSUPPORT;
+    return (-1);
+}
+</code></pre>
+
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_ntop_ipv4.c">inet_ntop_ipv4.c</a></li>
+</ul>
+<pre><code class="c">const char *
+inet_ntop(int family, const void *addrptr, char *strptr, size_t len)
+{
+    const u_char *p = (const u_char *) addrptr;
+
+    if (family == AF_INET) {
+        char    temp[INET_ADDRSTRLEN];
+
+        snprintf(temp, sizeof(temp), &quot;%d.%d.%d.%d&quot;,
+                 p[0], p[1], p[2], p[3]);
+        if (strlen(temp) &gt;= len) {
+            errno = ENOSPC;
+            return (NULL);
+        }
+        strcpy(strptr, temp);
+        return (strptr);
+    }
+    errno = EAFNOSUPPORT;
+    return (NULL);
+}
+</code></pre></div>
         </div>
 
         <footer class="col-md-12">
