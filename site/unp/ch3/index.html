@@ -299,6 +299,15 @@
             <li><a href="#simple-definitions-of-inet_pton-and-inet_ntop-that-support-ipv4">Simple definitions of inet_pton and inet_ntop that support IPv4</a></li>
         
     
+        <li class="main "><a href="#sock_ntop-and-related-functions">sock_ntop and Related Functions</a></li>
+        
+            <li><a href="#presentation-format-of-sock_ntop">Presentation format of sock_ntop</a></li>
+        
+            <li><a href="#sock_ntop-definition">sock_ntop definition</a></li>
+        
+            <li><a href="#related-functions">Related functions</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -677,7 +686,67 @@ inet_ntop(int family, const void *addrptr, char *strptr, size_t len)
     errno = EAFNOSUPPORT;
     return (NULL);
 }
-</code></pre></div>
+</code></pre>
+
+<h3 id="sock_ntop-and-related-functions"><code>sock_ntop</code> and Related Functions</h3>
+<p>A basic problem with <code>inet_ntop</code> is that it requires the caller to pass a pointer to a binary address. This address is normally contained in a socket address structure, requiring the caller to know the format of the structure and the address family.</p>
+<p>For IPv4:</p>
+<pre><code class="c">struct sockaddr_in   addr;
+inet_ntop(AF_INET, &amp;addr.sin_addr, str, sizeof(str));
+</code></pre>
+
+<p>For IPv6:</p>
+<pre><code class="c">struct sockaddr_in6   addr6;
+inet_ntop(AF_INET6, &amp;addr6.sin6_addr, str, sizeof(str));
+</code></pre>
+
+<p>This (above) makes our code protocol-dependent.</p>
+<p>To solve this, we will write our own function named <code>sock_ntop</code> that takes a pointer to a socket address structure, looks inside the structure, and calls the appropriate function to return the presentation format of the address.</p>
+<script src="https://gist.github.com/shichao-an/b0f21ce69e2b8024022e.js"></script>
+
+<p><em>sockaddr</em> points to a socket address structure whose length is <em>addrlen</em>. The function uses its own static buffer to hold the result and a pointer to this buffer is the return value. Notice that <u>using static storage for the result prevents the function from being <strong>re-entrant</strong> or <strong>thread-safe</strong>.</u></p>
+<h4 id="presentation-format-of-sock_ntop">Presentation format of <code>sock_ntop</code></h4>
+<ul>
+<li>IPv4: dotted-decimal form, followed by a terminator (colon), followed by the decimal port number, followed by a null character<ul>
+<li>The buffer size must be at least <code>INET_ADDRSTRLEN</code> plus 6 bytes for IPv4 (16 + 6 = 22)</li>
+</ul>
+</li>
+<li>IPv6: hex string form of an IPv6 address surrounded by brackets, followed by a terminator (colon), followed by the decimal port number, followed by a
+null character. Hence, the buffer size must be at least INET_ADDRSTRLEN plus 6 bytes<ul>
+<li>The buffer size must be at least <code>INET6_ADDRSTRLEN</code> plus 8 bytes for IPv6 (46 + 8 = 54)</li>
+</ul>
+</li>
+</ul>
+<h4 id="sock_ntop-definition"><code>sock_ntop</code> definition</h4>
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/sock_ntop.c">lib/sock_ntop.c</a></li>
+</ul>
+<p>The source code for only the <code>AF_INET</code> case:</p>
+<pre><code class="c">char *
+sock_ntop(const struct sockaddr *sa, socklen_t salen)
+{
+    char        portstr[8];
+    static char str[128];       /* Unix domain is largest */
+
+    switch (sa-&gt;sa_family) {
+    case AF_INET: {
+        struct sockaddr_in  *sin = (struct sockaddr_in *) sa;
+
+        if (inet_ntop(AF_INET, &amp;sin-&gt;sin_addr, str, sizeof(str)) == NULL)
+            return(NULL);
+        if (ntohs(sin-&gt;sin_port) != 0) {
+            snprintf(portstr, sizeof(portstr), &quot;:%d&quot;, ntohs(sin-&gt;sin_port));
+            strcat(str, portstr);
+        }
+        return(str);
+    }
+  /* ... */
+</code></pre>
+
+<h4 id="related-functions">Related functions</h4>
+<p>There are a few other functions that we define to operate on socket address structures,
+and these will simplify the portability of our code between IPv4 and IPv6.</p>
+<script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script></div>
         </div>
 
         <footer class="col-md-12">
