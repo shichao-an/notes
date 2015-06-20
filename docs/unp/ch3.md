@@ -433,3 +433,71 @@ inet_ntop(int family, const void *addrptr, char *strptr, size_t len)
 	return (NULL);
 }
 ```
+
+### `sock_ntop` and Related Functions
+
+A basic problem with `inet_ntop` is that it requires the caller to pass a pointer to a binary address. This address is normally contained in a socket address structure, requiring the caller to know the format of the structure and the address family.
+
+For IPv4:
+
+```c
+struct sockaddr_in   addr;
+inet_ntop(AF_INET, &addr.sin_addr, str, sizeof(str));
+```
+
+For IPv6:
+
+```c
+struct sockaddr_in6   addr6;
+inet_ntop(AF_INET6, &addr6.sin6_addr, str, sizeof(str));
+```
+
+This (above) makes our code protocol-dependent.
+
+To solve this, we will write our own function named `sock_ntop` that takes a pointer to a socket address structure, looks inside the structure, and calls the appropriate function to return the presentation format of the address.
+
+<script src="https://gist.github.com/shichao-an/b0f21ce69e2b8024022e.js"></script>
+
+*sockaddr* points to a socket address structure whose length is *addrlen*. The function uses its own static buffer to hold the result and a pointer to this buffer is the return value. Notice that <u>using static storage for the result prevents the function from being **re-entrant** or **thread-safe**.</u>
+
+#### Presentation format of `sock_ntop`
+
+* IPv4: dotted-decimal form, followed by a terminator (colon), followed by the decimal port number, followed by a null character
+    * The buffer size must be at least `INET_ADDRSTRLEN` plus 6 bytes for IPv4 (16 + 6 = 22)
+* IPv6: hex string form of an IPv6 address surrounded by brackets, followed by a terminator (colon), followed by the decimal port number, followed by a
+null character. Hence, the buffer size must be at least INET_ADDRSTRLEN plus 6 bytes
+    * The buffer size must be at least `INET6_ADDRSTRLEN` plus 8 bytes for IPv6 (46 + 8 = 54)
+
+#### `sock_ntop` definition
+
+* [lib/sock_ntop.c](https://github.com/shichao-an/unpv13e/blob/master/lib/sock_ntop.c)
+
+The source code for only the `AF_INET` case:
+
+```c
+char *
+sock_ntop(const struct sockaddr *sa, socklen_t salen)
+{
+    char		portstr[8];
+    static char str[128];		/* Unix domain is largest */
+
+	switch (sa->sa_family) {
+	case AF_INET: {
+		struct sockaddr_in	*sin = (struct sockaddr_in *) sa;
+
+		if (inet_ntop(AF_INET, &sin->sin_addr, str, sizeof(str)) == NULL)
+			return(NULL);
+		if (ntohs(sin->sin_port) != 0) {
+			snprintf(portstr, sizeof(portstr), ":%d", ntohs(sin->sin_port));
+			strcat(str, portstr);
+		}
+		return(str);
+	}
+  /* ... */
+```
+
+#### Related functions
+There are a few other functions that we define to operate on socket address structures,
+and these will simplify the portability of our code between IPv4 and IPv6.
+
+<script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script>
