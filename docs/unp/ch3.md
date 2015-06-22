@@ -501,3 +501,65 @@ There are a few other functions that we define to operate on socket address stru
 and these will simplify the portability of our code between IPv4 and IPv6.
 
 <script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script>
+
+* `sock_bind_wild`: binds the wildcard address and an ephemeral port to a socket. 
+* `sock_cmp_addr`: compares the address portion of two socket address structures.
+* `sock_cmp_port`: compares the port number of two socket address structures.
+* `sock_get_port`: returns just the port number.
+* `sock_ntop_host`: converts just the host portion of a socket address structure to presentation format (not the port number)
+* `sock_set_addr`: sets just the address portion of a socket address structure to the value pointed to by *ptr*.
+* `sock_set_port`: sets just the port number of a socket address structure.
+* `sock_set_wild`: sets the address portion of a socket address structure to the wildcard
+
+### `readn`, `writen`, and `readline` Functions
+
+Stream sockets (e.g., TCP sockets) exhibit a behavior with the `read` and `write` functions that differs from normal file I/O. A `read` or `write` on a stream socket might input or output fewer bytes than requested, but this is not an error condition. <u>The reason is that buffer limits might be reached for the socket in the kernel. All that is required to input or output the remaining bytes is for the caller to invoke the `read` or `write` function again.</u> This scenario is always a possibility on a stream socket with `read`, but is normally seen with `write` only if the socket is nonblocking.
+
+<script src="https://gist.github.com/shichao-an/26f53ad6de8d2e1a10b2.js"></script>
+
+* [lib/readn.c](https://github.com/shichao-an/unpv13e/blob/master/lib/readn.c)
+* [lib/writen.c](https://github.com/shichao-an/unpv13e/blob/master/lib/writen.c)
+* [test/readline1.c](https://github.com/shichao-an/unpv13e/blob/master/test/readline1.c)
+* [lib/readline.c](https://github.com/shichao-an/unpv13e/blob/master/lib/readline.c)
+
+```c
+#include	"unp.h"
+
+ssize_t						/* Read "n" bytes from a descriptor. */
+readn(int fd, void *vptr, size_t n)
+{
+	size_t	nleft;
+	ssize_t	nread;
+	char	*ptr;
+
+	ptr = vptr;
+	nleft = n;
+	while (nleft > 0) {
+		if ( (nread = read(fd, ptr, nleft)) < 0) {
+			if (errno == EINTR)
+				nread = 0;		/* and call read() again */
+			else
+				return(-1);
+		} else if (nread == 0)
+			break;				/* EOF */
+
+		nleft -= nread;
+		ptr   += nread;
+	}
+	return(n - nleft);		/* return >= 0 */
+}
+```
+
+Our three functions look for the error `EINTR` (the system call was interrupted by a caught signal) and continue reading or writing if the error occurs. We handle the error here, instead of forcing the caller to call `readn` or `writen` again, since the purpose of these three functions is to prevent the caller from having to handle a short count.
+
+In Section 14.3, we will mention that the `MSG_WAITALL` flag can be used with the `recv` function to replace the need for a separate `readn` function.
+
+In *test/readline1.c*, our `readline` function calls the system’s `read` function once for every byte of data. This is very inefficient, and why we’ve commented the code to state it is "PAINFULLY SLOW".
+
+Our advice is to think in terms of buffers and not lines. Write your code to read buffers of data, and if a line is expected, check the buffer to see if it contains that line.
+
+*lib/readline.c* shows a faster version of the readline function, which uses its own buffering rather than stdio buffering. Most importantly, the state of readline’s internal buffer is exposed, so callers have visibility into exactly what has been received.
+
+In *lib/readline.c*, the internal function `my_read` reads up to `MAXLINE` characters at a time and then returns them, one at a time. The only change to the `readline` function itself is to call `my_read` instead of read. A new function, `readlinebuf`, exposes the internal buffer state so that callers can check and see if more data was received beyond a single line.
+
+Unfortunately, by using `static` variables in `readline.c` to maintain the state information across successive calls, the functions are not *re-entrant* or *thread-safe*.

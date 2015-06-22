@@ -308,6 +308,9 @@
             <li><a href="#related-functions">Related functions</a></li>
         
     
+        <li class="main "><a href="#readn-writen-and-readline-functions">readn, writen, and readline Functions</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -746,7 +749,62 @@ sock_ntop(const struct sockaddr *sa, socklen_t salen)
 <h4 id="related-functions">Related functions</h4>
 <p>There are a few other functions that we define to operate on socket address structures,
 and these will simplify the portability of our code between IPv4 and IPv6.</p>
-<script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script></div>
+<script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script>
+
+<ul>
+<li><code>sock_bind_wild</code>: binds the wildcard address and an ephemeral port to a socket. </li>
+<li><code>sock_cmp_addr</code>: compares the address portion of two socket address structures.</li>
+<li><code>sock_cmp_port</code>: compares the port number of two socket address structures.</li>
+<li><code>sock_get_port</code>: returns just the port number.</li>
+<li><code>sock_ntop_host</code>: converts just the host portion of a socket address structure to presentation format (not the port number)</li>
+<li><code>sock_set_addr</code>: sets just the address portion of a socket address structure to the value pointed to by <em>ptr</em>.</li>
+<li><code>sock_set_port</code>: sets just the port number of a socket address structure.</li>
+<li><code>sock_set_wild</code>: sets the address portion of a socket address structure to the wildcard</li>
+</ul>
+<h3 id="readn-writen-and-readline-functions"><code>readn</code>, <code>writen</code>, and <code>readline</code> Functions</h3>
+<p>Stream sockets (e.g., TCP sockets) exhibit a behavior with the <code>read</code> and <code>write</code> functions that differs from normal file I/O. A <code>read</code> or <code>write</code> on a stream socket might input or output fewer bytes than requested, but this is not an error condition. <u>The reason is that buffer limits might be reached for the socket in the kernel. All that is required to input or output the remaining bytes is for the caller to invoke the <code>read</code> or <code>write</code> function again.</u> This scenario is always a possibility on a stream socket with <code>read</code>, but is normally seen with <code>write</code> only if the socket is nonblocking.</p>
+<script src="https://gist.github.com/shichao-an/26f53ad6de8d2e1a10b2.js"></script>
+
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/readn.c">lib/readn.c</a></li>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/writen.c">lib/writen.c</a></li>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/test/readline1.c">test/readline1.c</a></li>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/readline.c">lib/readline.c</a></li>
+</ul>
+<pre><code class="c">#include    &quot;unp.h&quot;
+
+ssize_t                     /* Read &quot;n&quot; bytes from a descriptor. */
+readn(int fd, void *vptr, size_t n)
+{
+    size_t  nleft;
+    ssize_t nread;
+    char    *ptr;
+
+    ptr = vptr;
+    nleft = n;
+    while (nleft &gt; 0) {
+        if ( (nread = read(fd, ptr, nleft)) &lt; 0) {
+            if (errno == EINTR)
+                nread = 0;      /* and call read() again */
+            else
+                return(-1);
+        } else if (nread == 0)
+            break;              /* EOF */
+
+        nleft -= nread;
+        ptr   += nread;
+    }
+    return(n - nleft);      /* return &gt;= 0 */
+}
+</code></pre>
+
+<p>Our three functions look for the error <code>EINTR</code> (the system call was interrupted by a caught signal) and continue reading or writing if the error occurs. We handle the error here, instead of forcing the caller to call <code>readn</code> or <code>writen</code> again, since the purpose of these three functions is to prevent the caller from having to handle a short count.</p>
+<p>In Section 14.3, we will mention that the <code>MSG_WAITALL</code> flag can be used with the <code>recv</code> function to replace the need for a separate <code>readn</code> function.</p>
+<p>In <em>test/readline1.c</em>, our <code>readline</code> function calls the system’s <code>read</code> function once for every byte of data. This is very inefficient, and why we’ve commented the code to state it is "PAINFULLY SLOW".</p>
+<p>Our advice is to think in terms of buffers and not lines. Write your code to read buffers of data, and if a line is expected, check the buffer to see if it contains that line.</p>
+<p><em>lib/readline.c</em> shows a faster version of the readline function, which uses its own buffering rather than stdio buffering. Most importantly, the state of readline’s internal buffer is exposed, so callers have visibility into exactly what has been received.</p>
+<p>In <em>lib/readline.c</em>, the internal function <code>my_read</code> reads up to <code>MAXLINE</code> characters at a time and then returns them, one at a time. The only change to the <code>readline</code> function itself is to call <code>my_read</code> instead of read. A new function, <code>readlinebuf</code>, exposes the internal buffer state so that callers can check and see if more data was received beyond a single line.</p>
+<p>Unfortunately, by using <code>static</code> variables in <code>readline.c</code> to maintain the state information across successive calls, the functions are not <em>re-entrant</em> or <em>thread-safe</em>.</p></div>
         </div>
 
         <footer class="col-md-12">
