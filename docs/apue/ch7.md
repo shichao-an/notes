@@ -17,6 +17,24 @@ When a C program is executed by the kernel (by one of the `exec` functions), a s
 
 ### Process Termination
 
+There are eight ways for a process to terminate.
+
+* Normal termination occurs in five ways:
+
+    1. Return from `main`
+    2. Calling `exit`
+    3. Calling `_exit` or `_Exit`
+    4. Return of the last thread from its start routine (Section 11.5)
+    5. Calling `pthread_exit` (Section 11.5) from the last thread
+
+* Abnormal termination occurs in three ways:
+
+    6. Calling `abort` (Section 10.17)
+    7. Receipt of a signal (Section 10.2)
+    8. Response of the last thread to a cancellation request (Sections 11.5 and 12.7)
+
+#### Exit Functions
+
 Three functions terminate a program normally:
 
 <script src="https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6.js"></script>

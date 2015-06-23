@@ -133,3 +133,116 @@ The differences between the parent and child are:
 * File locks set by the parent are not inherited by the child.
 * Pending alarms are cleared for the child.
 * The set of pending signals for the child is set to the empty set
+
+#### The two main reasons for `fork` to fail
+
+1. If too many processes are already in the system, which usually means that something else is wrong
+2. If the total number of processes for this real user ID exceeds the system’s limit. (`CHILD_MAX` specifies the maximum number of simultaneous processes per real user ID.)
+
+#### The two uses for `fork`
+
+1. When a process wants to duplicate itself so that the parent and the child can each execute different sections of code at the same time.
+    * This is common for network servers—the parent waits for a service request from a client. When the request arrives, the parent calls `fork` and lets the child handle the request. The parent goes back to waiting for the next service request to arrive.
+2. When a process wants to execute a different program.
+    * This is common for shells. In this case, the child does an `exec` right after it returns from the `fork`.
+
+Some operating systems combine the operations from step 2, a `fork` followed by an `exec`, into a single operation called a `spawn`. The UNIX System separates the two, as there are numerous cases where it is useful to `fork` without doing an `exec`. Also, separating the two operations allows the child to change the per-process attributes between the `fork` and the `exec`, such as I/O redirection, user ID, signal disposition, and so on
+
+### `vfork` Function
+
+The function `vfork` has the same calling sequence and same return values as `fork`, but the semantics of the two functions differ.
+
+The `vfork` function was intended to create a new process for the purpose of executing a new program (step 2 at the end of the previous section). <u>The `vfork` function creates the new process, just like `fork`, without copying the address space of the parent into the child</u>, as the child won’t reference that address space; the child simply calls `exec` (or `exit`) right after the `vfork`. Instead, <u>the child runs in the address space of the parent until it calls either `exec` or `exit`.</u>
+
+This optimization is more efficient on some implementations of the UNIX System, but leads to undefined results if the child:
+
+* modifies any data (except the variable used to hold the return value from `vfork`)
+* makes function calls
+* returns without calling `exec` or `exit`
+
+Another difference between the two functions is that `vfork` guarantees that the child runs first, until the child calls `exec` or `exit`. When the child calls either of these functions, the parent resumes. (This can lead to deadlock if the child depends on further actions of the parent before calling either of these two functions.)
+
+
+Example ([vfork1.c](https://github.com/shichao-an/apue.3e/blob/master/proc/vfork1.c))
+
+The program is a modified version of the program from [fork1.c](https://github.com/shichao-an/apue.3e/blob/master/proc/fork1.c). We’ve replaced the call to `fork` with `vfork` and removed the write to standard output. Also, we don’t need to have the parent call `sleep`, as we’re guaranteed that it is put to sleep by the kernel until the child calls either `exec` or `exit`.
+
+```c
+#include "apue.h"
+
+int globvar = 6; /* external variable in initialized data */
+
+int
+main(void)
+{
+    int var; /* automatic variable on the stack */
+    pid_t pid;
+
+    var = 88;
+    printf("before vfork\n"); /* we don’t flush stdio */
+    if ((pid = vfork()) < 0) {
+        err_sys("vfork error");
+    } else if (pid == 0) { /* child */
+        globvar++; /* modify parent’s variables */
+        var++;
+        _exit(0); /* child terminates */
+    }
+
+    /* parent continues here */
+    printf("pid = %ld, glob = %d, var = %d\n", (long)getpid(), globvar,
+           var);
+    exit(0);
+}
+```
+Running this program gives us
+
+```text
+$ ./a.out
+before vfork
+pid = 29039, glob = 7, var = 89
+```
+
+Analysis:
+
+* The incrementing of the variables done by the child changes the values in the parent. Because the child runs in the address space of the parent.
+* `_exit` is called instead of `exit`, because `_exit` does not perform any flushing of standard I/O buffers. If we call `exit` instead, the results are indeterminate. Depending on the implementation of the standard I/O library, we might see no difference in the output, or we might find that the output from the <u>first `printf`</u> (see [Doubts and Solutions](#doubts-and-solutions)) in the parent has disappeared.
+    * If the implementation only flushes the standard I/O streams, then we will see no difference from the output generated if the child called `_exit`.
+    * If the implementation also closes the standard I/O streams, however, the memory representing the `FILE` object for the standard output will be cleared out. Because the child is borrowing the parent’s address space, when the parent resumes and calls `printf`, no output will appear and `printf` will return −1.
+    * The parent’s `STDOUT_FILENO` is still valid, as the child gets a copy of the parent’s file descriptor array
+
+
+Most modern implementations of `exit` do not close the streams. Because the process is about to exit, the kernel will close all the file descriptors open in the process. Closing them in the library simply adds overhead without any benefit.
+
+### `exit` Functions
+
+A process can terminate normally in five ways (as described in [Section 7.3](ch7/#process-termination)):
+
+1. Executing a return from the `main` function. This is equivalent to calling `exit`.
+2. Calling the exit function, which includes the calling of all exit handlers that have been registered by calling `atexit` and closing all standard I/O streams. 
+    * ISO C does not deal with file descriptors, multiple processes (parents and children), and job control. The definition of this function is incomplete for a UNIX system.
+3. Calling the `_exit` or `_Exit` function.
+    * `_Exit`: defined by ISO C to provide a way for a process to terminate without running exit handlers or signal handlers
+    * `_exit`: called by `exit` and handles the UNIX system-specific details; `_exit` is specified by POSIX.1.
+    * Whether standard I/O streams are flushed depends on the implementation.
+    * On UNIX systems, `_Exit` and `_exit` are synonymous and do not flush standard I/O streams.
+4. Executing a `return` from the start routine of the last thread in the process.
+    * The return value of the thread is not used as the return value of the process. When the last thread returns from its start routine, the process exits with a termination status of 0.
+5. Calling the `pthread_exit` function from the last thread in the process.
+
+
+
+
+
+
+
+
+
+
+
+### Doubts and Solutions
+#### Verbatim
+
+p235 on `vfork`
+> If we call `exit` instead, the results are indeterminate. Depending on the implementation of the standard I/O library, we might see no difference in the output, or we might find that the output from the first `printf` in the parent has disappeared.
+
+I think "first `printf`" should be "second `printf`", because the output of the first `printf` is flushed. For the second `printf`, it says "no output will appear and `printf` will return −1".
