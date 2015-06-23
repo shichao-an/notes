@@ -265,6 +265,21 @@
         
             <li><a href="#file-sharing">File Sharing</a></li>
         
+            <li><a href="#the-two-main-reasons-for-fork-to-fail">The two main reasons for fork to fail</a></li>
+        
+            <li><a href="#the-two-uses-for-fork">The two uses for fork</a></li>
+        
+    
+        <li class="main "><a href="#vfork-function">vfork Function</a></li>
+        
+    
+        <li class="main "><a href="#exit-functions">exit Functions</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -396,7 +411,108 @@ pid = 431, glob = 6, var = 88
 <li>File locks set by the parent are not inherited by the child.</li>
 <li>Pending alarms are cleared for the child.</li>
 <li>The set of pending signals for the child is set to the empty set</li>
-</ul></div>
+</ul>
+<h4 id="the-two-main-reasons-for-fork-to-fail">The two main reasons for <code>fork</code> to fail</h4>
+<ol>
+<li>If too many processes are already in the system, which usually means that something else is wrong</li>
+<li>If the total number of processes for this real user ID exceeds the system’s limit. (<code>CHILD_MAX</code> specifies the maximum number of simultaneous processes per real user ID.)</li>
+</ol>
+<h4 id="the-two-uses-for-fork">The two uses for <code>fork</code></h4>
+<ol>
+<li>When a process wants to duplicate itself so that the parent and the child can each execute different sections of code at the same time.<ul>
+<li>This is common for network servers—the parent waits for a service request from a client. When the request arrives, the parent calls <code>fork</code> and lets the child handle the request. The parent goes back to waiting for the next service request to arrive.</li>
+</ul>
+</li>
+<li>When a process wants to execute a different program.<ul>
+<li>This is common for shells. In this case, the child does an <code>exec</code> right after it returns from the <code>fork</code>.</li>
+</ul>
+</li>
+</ol>
+<p>Some operating systems combine the operations from step 2, a <code>fork</code> followed by an <code>exec</code>, into a single operation called a <code>spawn</code>. The UNIX System separates the two, as there are numerous cases where it is useful to <code>fork</code> without doing an <code>exec</code>. Also, separating the two operations allows the child to change the per-process attributes between the <code>fork</code> and the <code>exec</code>, such as I/O redirection, user ID, signal disposition, and so on</p>
+<h3 id="vfork-function"><code>vfork</code> Function</h3>
+<p>The function <code>vfork</code> has the same calling sequence and same return values as <code>fork</code>, but the semantics of the two functions differ.</p>
+<p>The <code>vfork</code> function was intended to create a new process for the purpose of executing a new program (step 2 at the end of the previous section). <u>The <code>vfork</code> function creates the new process, just like <code>fork</code>, without copying the address space of the parent into the child</u>, as the child won’t reference that address space; the child simply calls <code>exec</code> (or <code>exit</code>) right after the <code>vfork</code>. Instead, <u>the child runs in the address space of the parent until it calls either <code>exec</code> or <code>exit</code>.</u></p>
+<p>This optimization is more efficient on some implementations of the UNIX System, but leads to undefined results if the child:</p>
+<ul>
+<li>modifies any data (except the variable used to hold the return value from <code>vfork</code>)</li>
+<li>makes function calls</li>
+<li>returns without calling <code>exec</code> or <code>exit</code></li>
+</ul>
+<p>Another difference between the two functions is that <code>vfork</code> guarantees that the child runs first, until the child calls <code>exec</code> or <code>exit</code>. When the child calls either of these functions, the parent resumes. (This can lead to deadlock if the child depends on further actions of the parent before calling either of these two functions.)</p>
+<p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/vfork1.c">vfork1.c</a>)</p>
+<p>The program is a modified version of the program from <a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork1.c">fork1.c</a>. We’ve replaced the call to <code>fork</code> with <code>vfork</code> and removed the write to standard output. Also, we don’t need to have the parent call <code>sleep</code>, as we’re guaranteed that it is put to sleep by the kernel until the child calls either <code>exec</code> or <code>exit</code>.</p>
+<pre><code class="c">#include &quot;apue.h&quot;
+
+int globvar = 6; /* external variable in initialized data */
+
+int
+main(void)
+{
+    int var; /* automatic variable on the stack */
+    pid_t pid;
+
+    var = 88;
+    printf(&quot;before vfork\n&quot;); /* we don’t flush stdio */
+    if ((pid = vfork()) &lt; 0) {
+        err_sys(&quot;vfork error&quot;);
+    } else if (pid == 0) { /* child */
+        globvar++; /* modify parent’s variables */
+        var++;
+        _exit(0); /* child terminates */
+    }
+
+    /* parent continues here */
+    printf(&quot;pid = %ld, glob = %d, var = %d\n&quot;, (long)getpid(), globvar,
+           var);
+    exit(0);
+}
+</code></pre>
+
+<p>Running this program gives us</p>
+<pre><code class="text">$ ./a.out
+before vfork
+pid = 29039, glob = 7, var = 89
+</code></pre>
+
+<p>Analysis:</p>
+<ul>
+<li>The incrementing of the variables done by the child changes the values in the parent. Because the child runs in the address space of the parent.</li>
+<li><code>_exit</code> is called instead of <code>exit</code>, because <code>_exit</code> does not perform any flushing of standard I/O buffers. If we call <code>exit</code> instead, the results are indeterminate. Depending on the implementation of the standard I/O library, we might see no difference in the output, or we might find that the output from the <u>first <code>printf</code></u> (see <a href="#doubts-and-solutions">Doubts and Solutions</a>) in the parent has disappeared.<ul>
+<li>If the implementation only flushes the standard I/O streams, then we will see no difference from the output generated if the child called <code>_exit</code>.</li>
+<li>If the implementation also closes the standard I/O streams, however, the memory representing the <code>FILE</code> object for the standard output will be cleared out. Because the child is borrowing the parent’s address space, when the parent resumes and calls <code>printf</code>, no output will appear and <code>printf</code> will return −1.</li>
+<li>The parent’s <code>STDOUT_FILENO</code> is still valid, as the child gets a copy of the parent’s file descriptor array</li>
+</ul>
+</li>
+</ul>
+<p>Most modern implementations of <code>exit</code> do not close the streams. Because the process is about to exit, the kernel will close all the file descriptors open in the process. Closing them in the library simply adds overhead without any benefit.</p>
+<h3 id="exit-functions"><code>exit</code> Functions</h3>
+<p>A process can terminate normally in five ways (as described in <a href="../ch7/#process-termination">Section 7.3</a>):</p>
+<ol>
+<li>Executing a return from the <code>main</code> function. This is equivalent to calling <code>exit</code>.</li>
+<li>Calling the exit function, which includes the calling of all exit handlers that have been registered by calling <code>atexit</code> and closing all standard I/O streams. <ul>
+<li>ISO C does not deal with file descriptors, multiple processes (parents and children), and job control. The definition of this function is incomplete for a UNIX system.</li>
+</ul>
+</li>
+<li>Calling the <code>_exit</code> or <code>_Exit</code> function.<ul>
+<li><code>_Exit</code>: defined by ISO C to provide a way for a process to terminate without running exit handlers or signal handlers</li>
+<li><code>_exit</code>: called by <code>exit</code> and handles the UNIX system-specific details; <code>_exit</code> is specified by POSIX.1.</li>
+<li>Whether standard I/O streams are flushed depends on the implementation.</li>
+<li>On UNIX systems, <code>_Exit</code> and <code>_exit</code> are synonymous and do not flush standard I/O streams.</li>
+</ul>
+</li>
+<li>Executing a <code>return</code> from the start routine of the last thread in the process.<ul>
+<li>The return value of the thread is not used as the return value of the process. When the last thread returns from its start routine, the process exits with a termination status of 0.</li>
+</ul>
+</li>
+<li>Calling the <code>pthread_exit</code> function from the last thread in the process.</li>
+</ol>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p235 on <code>vfork</code></p>
+<blockquote>
+<p>If we call <code>exit</code> instead, the results are indeterminate. Depending on the implementation of the standard I/O library, we might see no difference in the output, or we might find that the output from the first <code>printf</code> in the parent has disappeared.</p>
+</blockquote>
+<p>I think "first <code>printf</code>" should be "second <code>printf</code>", because the output of the first <code>printf</code> is flushed. For the second <code>printf</code>, it says "no output will appear and <code>printf</code> will return −1".</p></div>
         </div>
 
         <footer class="col-md-12">
