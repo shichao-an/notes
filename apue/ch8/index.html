@@ -284,6 +284,11 @@
             <li><a href="#inits-children">init's children</a></li>
         
     
+        <li class="main "><a href="#wait-and-waitpid-functions">wait and waitpid Functions</a></li>
+        
+            <li><a href="#wait-for-a-specific-process-waitpid">wait for a specific process: waitpid</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -547,6 +552,177 @@ as <em>Z</em>.</p>
 <li>A process that <code>init</code> generates directly (e.g. <code>getty</code>)</li>
 <li>A process whose parent has terminated and has been subsequently inherited by <code>init</code>.</li>
 </ul>
+<h3 id="wait-and-waitpid-functions"><code>wait</code> and <code>waitpid</code> Functions</h3>
+<p><u>When a process terminates, either normally or abnormally, the kernel notifies the parent by sending the <code>SIGCHLD</code> signal to the parent.</u> Because the termination of a child is an asynchronous event (it can happen at any time while the parent is running). This signal is the asynchronous notification from the kernel to the parent. The parent can choose to ignore this signal, or it can provide a function that is called when the signal occurs: a signal handler. <u>The default action for this signal is to be ignored.</u></p>
+<p>A process that calls <code>wait</code> or <code>waitpid</code> can:</p>
+<ul>
+<li>Block, if all of its children are still running</li>
+<li>Return immediately with the termination status of a child, if a child has terminated and is waiting for its termination status to be fetched</li>
+<li>Return immediately with an error, if it doesn’t have any child processes</li>
+</ul>
+<p>If the process is calling <code>wait</code> because it received the <code>SIGCHLD</code> signal, we expect wait to return immediately. But if we call it at any random point in time, it can block.</p>
+<script src="https://gist.github.com/shichao-an/8eef8437e6dd5a045c18.js"></script>
+
+<p>The differences between these two functions are:</p>
+<ul>
+<li>The <code>wait</code> function can block the caller until a child process terminates, whereas <code>waitpid</code> has an option that prevents it from blocking.</li>
+<li>The <code>waitpid</code> function doesn’t wait for the child that terminates first; it has a number of options that control which process it waits for.</li>
+</ul>
+<p>If a child has already terminated and is a zombie, <code>wait</code> returns immediately with that child’s status. Otherwise, it blocks the caller until a child terminates. If the caller blocks and has multiple children, <code>wait</code> returns when one terminates. We can always tell which child terminated, because the process ID is returned by the function.</p>
+<p>The argument <code>statloc</code> is is a pointer to an integer. If this argument is not a null pointer, the termination status of the terminated process is stored in the location pointed to by the argument.</p>
+<p>The integer status that these two functions return has been defined by the implementation, with certain bits indicating the exit status (for a normal return), other bits indicating the signal number (for an abnormal return), one bit indicating whether a core file was generated, and so on.</p>
+<p>Four mutually exclusive macros are defined in <code>&lt;sys/wait.h&gt;</code> to tell us how the process terminated, and they all begin with <code>WIF</code>. Based on which of these four macros is true, other macros are used to obtain the exit status, signal number, and the like.</p>
+<p>Macros to examine the termination status returned by <code>wait</code> and <code>waitpid</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Macro</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WIFEXITED(status)</code></td>
+<td>True if status was returned for a child that terminated normally. In this case, we can execute <code>WEXITSTATUS(status)</code> to fetch the low-order 8 bits of the argument that the child passed to <code>exit</code>, <code>_exit</code>, or <code>_Exit</code>.</td>
+</tr>
+<tr>
+<td><code>WIFSIGNALED(status)</code></td>
+<td>True if status was returned for a child that terminated abnormally, by receipt of a signal that it didn’t catch. In this case, we can execute <code>WTERMSIG(status)</code> to fetch the signal number that caused the termination. Additionally, some implementations (but not the Single UNIX Specification) define the macro <code>WCOREDUMP(status)</code> that returns true if a core file of the terminated process was generated.</td>
+</tr>
+<tr>
+<td><code>WIFSTOPPED(status)</code></td>
+<td>True if status was returned for a child that is currently stopped. In this case, we can execute <code>WSTOPSIG(status)</code> to fetch the signal number that caused the child to stop.</td>
+</tr>
+<tr>
+<td><code>WIFCONTINUED(status)</code></td>
+<td>True if status was returned for a child that has been continued after a job control stop (XSI option; <code>waitpid</code> only).</td>
+</tr>
+</tbody>
+</table>
+<p>The function <code>pr_exit</code> uses these macros (above) to print a description of the termination status.</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/prexit.c">lib/prexit.c</a></li>
+</ul>
+<pre><code class="c">#include &quot;apue.h&quot;
+#include &lt;sys/wait.h&gt;
+
+void
+pr_exit(int status)
+{
+    if (WIFEXITED(status))
+        printf(&quot;normal termination, exit status = %d\n&quot;,
+                WEXITSTATUS(status));
+    else if (WIFSIGNALED(status))
+        printf(&quot;abnormal termination, signal number = %d%s\n&quot;,
+                WTERMSIG(status),
+#ifdef  WCOREDUMP
+                WCOREDUMP(status) ? &quot; (core file generated)&quot; : &quot;&quot;);
+#else
+                &quot;&quot;);
+#endif
+    else if (WIFSTOPPED(status))
+        printf(&quot;child stopped, signal number = %d\n&quot;,
+                WSTOPSIG(status));
+}
+</code></pre>
+
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/wait1.c">wait1.c</a></li>
+</ul>
+<pre><code class="c">#include &quot;apue.h&quot;
+#include &lt;sys/wait.h&gt;
+
+int
+main(void)
+{
+    pid_t   pid;
+    int     status;
+
+    if ((pid = fork()) &lt; 0)
+        err_sys(&quot;fork error&quot;);
+    else if (pid == 0)              /* child */
+        exit(7);
+
+    if (wait(&amp;status) != pid)       /* wait for child */
+        err_sys(&quot;wait error&quot;);
+    pr_exit(status);                /* and print its status */
+
+    if ((pid = fork()) &lt; 0)
+        err_sys(&quot;fork error&quot;);
+    else if (pid == 0)              /* child */
+        abort();                    /* generates SIGABRT */
+
+    if (wait(&amp;status) != pid)       /* wait for child */
+        err_sys(&quot;wait error&quot;);
+    pr_exit(status);                /* and print its status */
+
+    if ((pid = fork()) &lt; 0)
+        err_sys(&quot;fork error&quot;);
+    else if (pid == 0)              /* child */
+        status /= 0;                /* divide by 0 generates SIGFPE */
+
+    if (wait(&amp;status) != pid)       /* wait for child */
+        err_sys(&quot;wait error&quot;);
+    pr_exit(status);                /* and print its status */
+
+    exit(0);
+}
+</code></pre>
+
+<p>Results:</p>
+<pre><code class="text">$ ./a.out
+normal termination, exit status = 7
+abnormal termination, signal number = 6 (core file generated)
+abnormal termination, signal number = 8 (core file generated)
+</code></pre>
+
+<p>We print the signal number from <code>WTERMSIG</code>. We can look at the <code>&lt;signal.h&gt;</code> header to verify that <code>SIGABRT</code> has a value of 6 and that <code>SIGFPE</code> has a value of 8.</p>
+<h4 id="wait-for-a-specific-process-waitpid"><code>wait</code> for a specific process: <code>waitpid</code></h4>
+<p>If we have more than one child, <code>wait</code> returns on termination of any of the children. If we want to wait for a specific process to terminate (assuming we know which process ID we want to wait for), in older versions of the UNIX System, we would have to call <code>wait</code> and compare the returned process ID with the one we’re interested in. The POSIX.1 <code>waitpid</code> function can be used to wait for a specific process.</p>
+<p>The interpretation of the pid argument for waitpid depends on its value:</p>
+<ul>
+<li><em>pid</em> == −1 - Waits for any child process. In this respect, <code>waitpid</code> is equivalent to <code>wait</code>.</li>
+<li><em>pid</em> &gt; 0 - Waits for the child whose process ID equals <em>pid</em>.</li>
+<li><em>pid</em> == 0 - Waits for any child whose process group ID equals that of the calling process.</li>
+<li><em>pid</em> &lt; −1 - Waits for any child whose process group ID equals the absolute value of <em>pid</em>.</li>
+</ul>
+<p>The <code>waitpid</code> function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by <em>statloc</em>. </p>
+<h5 id="errors-of-wait-and-waitpid">Errors of <code>wait</code> and <code>waitpid</code></h5>
+<ul>
+<li>With <code>wait</code>, the only real error is if the calling process has no children. (Another error return is possible, in case the function call is interrupted by a signal) [p242]</li>
+<li>With <code>waitpid</code>, it’s possible to get an error if the specified process or process group does not exist or is not a child of the calling process</li>
+</ul>
+<h5 id="options-argument-of-waitpid"><em>options</em> argument of <code>waitpid</code></h5>
+<p>The <em>options</em> argument either is 0 or is constructed from the bitwise OR of the constants in the table below.</p>
+<p>The <em>options</em> constants for <code>waitpid</code></p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WCONTINUED</td>
+<td>If the implementation supports job control, the status of any child specified by <em>pid</em> that has been continued after being stopped, but whose status has not yet been reported, is returned (XSI option).</td>
+</tr>
+<tr>
+<td>WNOHANG</td>
+<td>The <code>waitpid</code> function will not block if a child specified by <em>pid</em> is not immediately available. In this case, the return value is 0.</td>
+</tr>
+<tr>
+<td>WUNTRACED</td>
+<td>If the implementation supports job control, the status of any child specified by <em>pid</em> that has stopped, and whose status has not been reported since it has stopped, is returned. The <code>WIFSTOPPED</code> macro determines whether the return value corresponds to a stopped child process.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>waitpid</code> function provides three features that aren’t provided by the <code>wait</code> function:</p>
+<ol>
+<li>The <code>waitpid</code> function lets us wait for one particular process, whereas the <code>wait</code> function returns the status of any terminated child (<code>popen</code> function)</li>
+<li>The <code>waitpid</code> function provides a nonblocking version of <code>wait</code>. There are times when we want to fetch a child’s status, but we don’t want to block.</li>
+<li>The <code>waitpid</code> function provides support for job control with the <code>WUNTRACED</code> and <code>WCONTINUED</code> options.</li>
+</ol>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on <code>vfork</code></p>
