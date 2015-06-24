@@ -511,8 +511,7 @@ Like `waitpid`, `waitid` allows a process to specify which children to wait for.
 
     At least one of `WCONTINUED`, `WEXITED`, or `WSTOPPED` must be specified in the options argument.
 
-* The *infop* argument is a pointer to a `siginfo` structure. This structure contains detailed information about the signal generated that caused the state change in the child process. (Section 10.14)
-
+* The *infop* argument is a pointer to a `siginfo` structure. This structure contains detailed information about the signal generated that caused the state change in the child process (Section 10.14)
 
 
 
