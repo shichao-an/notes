@@ -273,6 +273,166 @@ One of init’s children refers to either of the following:
 * A process whose parent has terminated and has been subsequently inherited by `init`.
 
 
+### `wait` and `waitpid` Functions
+<u>When a process terminates, either normally or abnormally, the kernel notifies the parent by sending the `SIGCHLD` signal to the parent.</u> Because the termination of a child is an asynchronous event (it can happen at any time while the parent is running). This signal is the asynchronous notification from the kernel to the parent. The parent can choose to ignore this signal, or it can provide a function that is called when the signal occurs: a signal handler. <u>The default action for this signal is to be ignored.</u>
+
+A process that calls `wait` or `waitpid` can:
+
+* Block, if all of its children are still running
+* Return immediately with the termination status of a child, if a child has terminated and is waiting for its termination status to be fetched
+* Return immediately with an error, if it doesn’t have any child processes
+
+If the process is calling `wait` because it received the `SIGCHLD` signal, we expect wait to return immediately. But if we call it at any random point in time, it can block.
+
+<script src="https://gist.github.com/shichao-an/8eef8437e6dd5a045c18.js"></script>
+
+The differences between these two functions are:
+
+* The `wait` function can block the caller until a child process terminates, whereas `waitpid` has an option that prevents it from blocking.
+* The `waitpid` function doesn’t wait for the child that terminates first; it has a number of options that control which process it waits for.
+
+If a child has already terminated and is a zombie, `wait` returns immediately with that child’s status. Otherwise, it blocks the caller until a child terminates. If the caller blocks and has multiple children, `wait` returns when one terminates. We can always tell which child terminated, because the process ID is returned by the function.
+
+The argument `statloc` is is a pointer to an integer. If this argument is not a null pointer, the termination status of the terminated process is stored in the location pointed to by the argument.
+
+The integer status that these two functions return has been defined by the implementation, with certain bits indicating the exit status (for a normal return), other bits indicating the signal number (for an abnormal return), one bit indicating whether a core file was generated, and so on.
+
+Four mutually exclusive macros are defined in `<sys/wait.h>` to tell us how the process terminated, and they all begin with `WIF`. Based on which of these four macros is true, other macros are used to obtain the exit status, signal number, and the like.
+
+Macros to examine the termination status returned by `wait` and `waitpid`:
+
+Macro | Description
+----- | -----------
+`WIFEXITED(status)` | True if status was returned for a child that terminated normally. In this case, we can execute `WEXITSTATUS(status)` to fetch the low-order 8 bits of the argument that the child passed to `exit`, `_exit`, or `_Exit`.
+`WIFSIGNALED(status)` | True if status was returned for a child that terminated abnormally, by receipt of a signal that it didn’t catch. In this case, we can execute `WTERMSIG(status)` to fetch the signal number that caused the termination. Additionally, some implementations (but not the Single UNIX Specification) define the macro `WCOREDUMP(status)` that returns true if a core file of the terminated process was generated.
+`WIFSTOPPED(status)` | True if status was returned for a child that is currently stopped. In this case, we can execute `WSTOPSIG(status)` to fetch the signal number that caused the child to stop.
+`WIFCONTINUED(status)` | True if status was returned for a child that has been continued after a job control stop (XSI option; `waitpid` only).
+
+The function `pr_exit` uses these macros (above) to print a description of the termination status.
+
+* [lib/prexit.c](https://github.com/shichao-an/apue.3e/blob/master/lib/prexit.c)
+
+```c
+#include "apue.h"
+#include <sys/wait.h>
+
+void
+pr_exit(int status)
+{
+	if (WIFEXITED(status))
+		printf("normal termination, exit status = %d\n",
+				WEXITSTATUS(status));
+	else if (WIFSIGNALED(status))
+		printf("abnormal termination, signal number = %d%s\n",
+				WTERMSIG(status),
+#ifdef	WCOREDUMP
+				WCOREDUMP(status) ? " (core file generated)" : "");
+#else
+				"");
+#endif
+	else if (WIFSTOPPED(status))
+		printf("child stopped, signal number = %d\n",
+				WSTOPSIG(status));
+}
+```
+
+* [wait1.c](https://github.com/shichao-an/apue.3e/blob/master/proc/wait1.c)
+
+```c
+#include "apue.h"
+#include <sys/wait.h>
+
+int
+main(void)
+{
+	pid_t	pid;
+	int		status;
+
+	if ((pid = fork()) < 0)
+		err_sys("fork error");
+	else if (pid == 0)				/* child */
+		exit(7);
+
+	if (wait(&status) != pid)		/* wait for child */
+		err_sys("wait error");
+	pr_exit(status);				/* and print its status */
+
+	if ((pid = fork()) < 0)
+		err_sys("fork error");
+	else if (pid == 0)				/* child */
+		abort();					/* generates SIGABRT */
+
+	if (wait(&status) != pid)		/* wait for child */
+		err_sys("wait error");
+	pr_exit(status);				/* and print its status */
+
+	if ((pid = fork()) < 0)
+		err_sys("fork error");
+	else if (pid == 0)				/* child */
+		status /= 0;				/* divide by 0 generates SIGFPE */
+
+	if (wait(&status) != pid)		/* wait for child */
+		err_sys("wait error");
+	pr_exit(status);				/* and print its status */
+
+	exit(0);
+}
+```
+
+Results:
+
+```text
+$ ./a.out
+normal termination, exit status = 7
+abnormal termination, signal number = 6 (core file generated)
+abnormal termination, signal number = 8 (core file generated)
+```
+
+We print the signal number from `WTERMSIG`. We can look at the `<signal.h>` header to verify that `SIGABRT` has a value of 6 and that `SIGFPE` has a value of 8.
+
+
+#### `wait` for a specific process: `waitpid`
+
+If we have more than one child, `wait` returns on termination of any of the children. If we want to wait for a specific process to terminate (assuming we know which process ID we want to wait for), in older versions of the UNIX System, we would have to call `wait` and compare the returned process ID with the one we’re interested in. The POSIX.1 `waitpid` function can be used to wait for a specific process.
+
+The interpretation of the pid argument for waitpid depends on its value:
+
+* *pid* == −1 - Waits for any child process. In this respect, `waitpid` is equivalent to `wait`.
+* *pid* > 0 - Waits for the child whose process ID equals *pid*.
+* *pid* == 0 - Waits for any child whose process group ID equals that of the calling process.
+* *pid* < −1 - Waits for any child whose process group ID equals the absolute value of *pid*.
+
+The `waitpid` function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by *statloc*. 
+
+##### Errors of `wait` and `waitpid`
+
+* With `wait`, the only real error is if the calling process has no children. (Another error return is possible, in case the function call is interrupted by a signal) [p242]
+* With `waitpid`, it’s possible to get an error if the specified process or process group does not exist or is not a child of the calling process
+
+##### *options* argument of `waitpid`
+
+The *options* argument either is 0 or is constructed from the bitwise OR of the constants in the table below.
+
+The *options* constants for `waitpid`
+
+Constant | Description
+-------- | -----------
+WCONTINUED |  If the implementation supports job control, the status of any child specified by *pid* that has been continued after being stopped, but whose status has not yet been reported, is returned (XSI option).
+WNOHANG | The `waitpid` function will not block if a child specified by *pid* is not immediately available. In this case, the return value is 0.
+WUNTRACED | If the implementation supports job control, the status of any child specified by *pid* that has stopped, and whose status has not been reported since it has stopped, is returned. The `WIFSTOPPED` macro determines whether the return value corresponds to a stopped child process.
+
+The `waitpid` function provides three features that aren’t provided by the `wait` function:
+
+1. The `waitpid` function lets us wait for one particular process, whereas the `wait` function returns the status of any terminated child (`popen` function)
+2. The `waitpid` function provides a nonblocking version of `wait`. There are times when we want to fetch a child’s status, but we don’t want to block.
+3. The `waitpid` function provides support for job control with the `WUNTRACED` and `WCONTINUED` options.
+
+
+
+
+
+
+
 
 
 
