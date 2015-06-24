@@ -289,6 +289,9 @@
             <li><a href="#wait-for-a-specific-process-waitpid">wait for a specific process: waitpid</a></li>
         
     
+        <li class="main "><a href="#waitid-function">waitid Function</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -683,7 +686,7 @@ abnormal termination, signal number = 8 (core file generated)
 <ul>
 <li><em>pid</em> == −1 - Waits for any child process. In this respect, <code>waitpid</code> is equivalent to <code>wait</code>.</li>
 <li><em>pid</em> &gt; 0 - Waits for the child whose process ID equals <em>pid</em>.</li>
-<li><em>pid</em> == 0 - Waits for any child whose process group ID equals that of the calling process.</li>
+<li><em>pid</em> == 0 - Waits for any child whose <strong>process group ID</strong> equals that of the calling process.</li>
 <li><em>pid</em> &lt; −1 - Waits for any child whose process group ID equals the absolute value of <em>pid</em>.</li>
 </ul>
 <p>The <code>waitpid</code> function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by <em>statloc</em>. </p>
@@ -723,6 +726,123 @@ abnormal termination, signal number = 8 (core file generated)
 <li>The <code>waitpid</code> function provides a nonblocking version of <code>wait</code>. There are times when we want to fetch a child’s status, but we don’t want to block.</li>
 <li>The <code>waitpid</code> function provides support for job control with the <code>WUNTRACED</code> and <code>WCONTINUED</code> options.</li>
 </ol>
+<p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork2.c">fork2.c</a>)</p>
+<p>If we want to write a process so that it <code>fork</code>s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call fork twice.</u></p>
+<pre><code class="c">#include &quot;apue.h&quot;
+#include &lt;sys/wait.h&gt;
+
+int
+main(void)
+{
+    pid_t   pid;
+
+    if ((pid = fork()) &lt; 0) {
+        err_sys(&quot;fork error&quot;);
+    } else if (pid == 0) {      /* first child */
+        if ((pid = fork()) &lt; 0)
+            err_sys(&quot;fork error&quot;);
+        else if (pid &gt; 0)
+            exit(0);    /* parent from second fork == first child */
+
+        /*
+         * We're the second child; our parent becomes init as soon
+         * as our real parent calls exit() in the statement above.
+         * Here's where we'd continue executing, knowing that when
+         * we're done, init will reap our status.
+         */
+        sleep(2);
+        printf(&quot;second child, parent pid = %ld\n&quot;, (long)getppid());
+        exit(0);
+    }
+
+    if (waitpid(pid, NULL, 0) != pid)   /* wait for first child */
+        err_sys(&quot;waitpid error&quot;);
+
+    /*
+     * We're the parent (the original process); we continue executing,
+     * knowing that we're not the parent of the second child.
+     */
+    exit(0);
+}
+</code></pre>
+
+<p>Results:</p>
+<pre><code class="text">$ ./a.out
+$ second child, parent pid = 1
+</code></pre>
+
+<p>Analysis:</p>
+<p>We call <code>sleep</code> in the second child to ensure that the first child terminates before printing the parent process ID. After a <code>fork</code>, either the parent or the child can continue executing; we never know which will resume execution first. If we didn’t put the second child to sleep, and if it resumed execution after the <code>fork</code> before its parent, the parent process ID that it printed would be that of its parent, not process ID 1.</p>
+<p><u>Note that the shell prints its prompt when the original process terminates, which is before the second child prints its parent process ID.</u></p>
+<h3 id="waitid-function"><code>waitid</code> Function</h3>
+<p>The Single UNIX Specification includes an additional <code>waitid</code> function to retrieve the exit status of a process.</p>
+<script src="https://gist.github.com/shichao-an/30873cd97704d1465d3f.js"></script>
+
+<p>Like <code>waitpid</code>, <code>waitid</code> allows a process to specify which children to wait for. Instead of encoding this information in a single argument combined with the process ID or process group ID, two separate arguments are used. The <code>id</code> parameter is interpreted based on the value of <em>idtype</em>.</p>
+<ul>
+<li>
+<p>The <em>idtype</em> constants for <code>waitid</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>P_PID</code></td>
+<td>Wait for a particular process: <em>id</em> contains the process ID of the child to wait for.</td>
+</tr>
+<tr>
+<td><code>P_PGID</code></td>
+<td>Wait for any child process in a particular process group: <em>id</em> contains the process group ID of the children to wait for.</td>
+</tr>
+<tr>
+<td><code>P_ALL</code></td>
+<td>Wait for any child process: <em>id</em> is ignored.</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>The <em>options</em> argument is a bitwise OR of the flags shown below:</p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WCONTINUED</code></td>
+<td>Wait for a process that has previously stopped and has been continued, and whose status has not yet been reported.</td>
+</tr>
+<tr>
+<td><code>WEXITED</code></td>
+<td>Wait for processes that have exited.</td>
+</tr>
+<tr>
+<td><code>WNOHANG</code></td>
+<td>Return immediately instead of blocking if there is no child exit status available.</td>
+</tr>
+<tr>
+<td><code>WNOWAIT</code></td>
+<td>Don’t destroy the child exit status. The child’s exit status can be retrieved by a subsequent call to <code>wait</code>, <code>waitid</code>, or <code>waitpid</code>.</td>
+</tr>
+<tr>
+<td><code>WSTOPPED</code></td>
+<td>Wait for a process that has stopped and whose status has not yet been reported.</td>
+</tr>
+</tbody>
+</table>
+<p>At least one of <code>WCONTINUED</code>, <code>WEXITED</code>, or <code>WSTOPPED</code> must be specified in the options argument.</p>
+</li>
+<li>
+<p>The <em>infop</em> argument is a pointer to a <code>siginfo</code> structure. This structure contains detailed information about the signal generated that caused the state change in the child process. (Section 10.14)</p>
+</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on <code>vfork</code></p>
