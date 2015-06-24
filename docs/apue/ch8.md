@@ -413,13 +413,13 @@ The `waitpid` function returns the process ID of the child that terminated and s
 
 The *options* argument either is 0 or is constructed from the bitwise OR of the constants in the table below.
 
-The *options* constants for `waitpid`
+The *options* constants for `waitpid`:
 
 Constant | Description
 -------- | -----------
-WCONTINUED |  If the implementation supports job control, the status of any child specified by *pid* that has been continued after being stopped, but whose status has not yet been reported, is returned (XSI option).
-WNOHANG | The `waitpid` function will not block if a child specified by *pid* is not immediately available. In this case, the return value is 0.
-WUNTRACED | If the implementation supports job control, the status of any child specified by *pid* that has stopped, and whose status has not been reported since it has stopped, is returned. The `WIFSTOPPED` macro determines whether the return value corresponds to a stopped child process.
+`WCONTINUED` |  If the implementation supports job control, the status of any child specified by *pid* that has been continued after being stopped, but whose status has not yet been reported, is returned (XSI option).
+`WNOHANG` | The `waitpid` function will not block if a child specified by *pid* is not immediately available. In this case, the return value is 0.
+`WUNTRACED` | If the implementation supports job control, the status of any child specified by *pid* that has stopped, and whose status has not been reported since it has stopped, is returned. The `WIFSTOPPED` macro determines whether the return value corresponds to a stopped child process.
 
 The `waitpid` function provides three features that aren’t provided by the `wait` function:
 
