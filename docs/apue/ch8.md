@@ -399,7 +399,7 @@ The interpretation of the pid argument for waitpid depends on its value:
 
 * *pid* == −1 - Waits for any child process. In this respect, `waitpid` is equivalent to `wait`.
 * *pid* > 0 - Waits for the child whose process ID equals *pid*.
-* *pid* == 0 - Waits for any child whose process group ID equals that of the calling process.
+* *pid* == 0 - Waits for any child whose **process group ID** equals that of the calling process.
 * *pid* < −1 - Waits for any child whose process group ID equals the absolute value of *pid*.
 
 The `waitpid` function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by *statloc*. 
@@ -427,6 +427,91 @@ The `waitpid` function provides three features that aren’t provided by the `wa
 2. The `waitpid` function provides a nonblocking version of `wait`. There are times when we want to fetch a child’s status, but we don’t want to block.
 3. The `waitpid` function provides support for job control with the `WUNTRACED` and `WCONTINUED` options.
 
+Example ([fork2.c](https://github.com/shichao-an/apue.3e/blob/master/proc/fork2.c))
+
+If we want to write a process so that it `fork`s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call fork twice.</u>
+
+```c
+#include "apue.h"
+#include <sys/wait.h>
+
+int
+main(void)
+{
+	pid_t	pid;
+
+	if ((pid = fork()) < 0) {
+		err_sys("fork error");
+	} else if (pid == 0) {		/* first child */
+		if ((pid = fork()) < 0)
+			err_sys("fork error");
+		else if (pid > 0)
+			exit(0);	/* parent from second fork == first child */
+
+		/*
+		 * We're the second child; our parent becomes init as soon
+		 * as our real parent calls exit() in the statement above.
+		 * Here's where we'd continue executing, knowing that when
+		 * we're done, init will reap our status.
+		 */
+		sleep(2);
+		printf("second child, parent pid = %ld\n", (long)getppid());
+		exit(0);
+	}
+
+	if (waitpid(pid, NULL, 0) != pid)	/* wait for first child */
+		err_sys("waitpid error");
+
+	/*
+	 * We're the parent (the original process); we continue executing,
+	 * knowing that we're not the parent of the second child.
+	 */
+	exit(0);
+}
+```
+
+Results:
+
+```text
+$ ./a.out
+$ second child, parent pid = 1
+```
+
+Analysis:
+
+We call `sleep` in the second child to ensure that the first child terminates before printing the parent process ID. After a `fork`, either the parent or the child can continue executing; we never know which will resume execution first. If we didn’t put the second child to sleep, and if it resumed execution after the `fork` before its parent, the parent process ID that it printed would be that of its parent, not process ID 1.
+
+<u>Note that the shell prints its prompt when the original process terminates, which is before the second child prints its parent process ID.</u>
+
+### `waitid` Function
+
+The Single UNIX Specification includes an additional `waitid` function to retrieve the exit status of a process.
+
+<script src="https://gist.github.com/shichao-an/30873cd97704d1465d3f.js"></script>
+
+Like `waitpid`, `waitid` allows a process to specify which children to wait for. Instead of encoding this information in a single argument combined with the process ID or process group ID, two separate arguments are used. The `id` parameter is interpreted based on the value of *idtype*.
+
+* The *idtype* constants for `waitid`:
+
+    Constant | Description
+    -------- | -----------
+    `P_PID` | Wait for a particular process: *id* contains the process ID of the child to wait for.
+    `P_PGID` | Wait for any child process in a particular process group: *id* contains the process group ID of the children to wait for.
+    `P_ALL` | Wait for any child process: *id* is ignored.
+
+* The *options* argument is a bitwise OR of the flags shown below:
+
+    Constant | Description
+    -------- | -----------
+    `WCONTINUED` | Wait for a process that has previously stopped and has been continued, and whose status has not yet been reported.
+    `WEXITED` | Wait for processes that have exited.
+    `WNOHANG` | Return immediately instead of blocking if there is no child exit status available.
+    `WNOWAIT` | Don’t destroy the child exit status. The child’s exit status can be retrieved by a subsequent call to `wait`, `waitid`, or `waitpid`.
+    `WSTOPPED` | Wait for a process that has stopped and whose status has not yet been reported.
+
+    At least one of `WCONTINUED`, `WEXITED`, or `WSTOPPED` must be specified in the options argument.
+
+* The *infop* argument is a pointer to a `siginfo` structure. This structure contains detailed information about the signal generated that caused the state change in the child process. (Section 10.14)
 
 
 
