@@ -98,6 +98,12 @@ if sv, ok := v.(Stringer); ok {
 
 Writing functions so that they accept an interface variable as a parameter makes them more general. Use interfaces to make code more generally applicable.
 
+#### Variables of interface type
+
+A variable of interface type stores a pair: the concrete value assigned to the variable, and that value's type descriptor.
+
+* [The representation of an interface](http://blog.golang.org/laws-of-reflection#TOC_3.)
+
 #### Using method sets with interfaces
 
 1. Pointer methods can be called with pointers.
@@ -142,8 +148,40 @@ Example:
 
 #### Setting a value through reflection
 
-* [Settability](http://golang.org/pkg/reflect/#Value.CanSet): a `Value` can be changed only if it is addressable and was not obtained by the use of unexported struct fields.
+* [Settability](http://golang.org/pkg/reflect/#Value.CanSet): a `Value` can be changed only if it is addressable and was not obtained by the use of unexported struct fields, [reflect2.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/reflect2.go)
 
+#### Reflection on structs
+
+* [reflect_struct.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/reflect_struct.go)
+
+#### `Printf` and reflection
+
+`Printf` uses the reflection package to unpack it and discover the argument list, [print.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/print.go)
+
+#### Interfaces and dynamic typing
+
+* In Go there are no classes: data (structures, or more general types) and methods are treated *orthogonally*, they are much more <u>loosely coupled</u>.
+* There is no requirement for explicitly declaring that a type satisfies an interface. This allows interfaces to be defined and used without having to modify existing code.
+* Types implementing an interface can be passed to any function which takes that interface as an argument. This resembles much more the **duck typing** in dynamic languages.
+* Extraction of an interface reduces thereby the number of types and methods needed [TWTG p301]: [multi_interfaces_poly.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_11/multi_interfaces_poly.go)
+    * If a type must implement a new interface, the type itself doesn’t have to be changed, you must only make the new method(s) on the type. [TWTG p303]
+* Empty interface and function overloading [TWTG p304]
+* Inheritance of interfaces:
+    * A type includes (embeds) another type (which implements one or more interfaces) as a pointer, then the type can use all of the interfaces-methods. [TWTG p304]
+    * A type can also inherit from multiple interfaces providing something like **multiple inheritance**. [TWTG p305]
+
+#### Summary of object-orientedness of Go
+
+[TWTG p306]
+
+* Encapsulation (data hiding): visibility rule
+    * **Package scope**: lowercase
+    * **Exported**: uppercase
+* Inheritance: embedding one or multiple types
+* Polymorphism: a variable of a type can be assigned to a variable of any interface it implements. Types and interfaces are loosely coupled; multiple inheritance is possible through implementing multiple interfaces
+
+#### Higher order functions
+[TWTG p306-309]
 
 - - -
 
