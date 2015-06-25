@@ -427,9 +427,11 @@ The `waitpid` function provides three features that aren’t provided by the `wa
 2. The `waitpid` function provides a nonblocking version of `wait`. There are times when we want to fetch a child’s status, but we don’t want to block.
 3. The `waitpid` function provides support for job control with the `WUNTRACED` and `WCONTINUED` options.
 
+##### `fork` twice
+
 Example ([fork2.c](https://github.com/shichao-an/apue.3e/blob/master/proc/fork2.c))
 
-If we want to write a process so that it `fork`s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call fork twice.</u>
+If we want to write a process so that it `fork`s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call `fork` twice.</u>
 
 ```c
 #include "apue.h"
@@ -487,6 +489,8 @@ We call `sleep` in the second child to ensure that the first child terminates be
 
 The Single UNIX Specification includes an additional `waitid` function to retrieve the exit status of a process.
 
+* [apue_waitid.h](https://gist.github.com/shichao-an/30873cd97704d1465d3f)
+
 <script src="https://gist.github.com/shichao-an/30873cd97704d1465d3f.js"></script>
 
 Like `waitpid`, `waitid` allows a process to specify which children to wait for. Instead of encoding this information in a single argument combined with the process ID or process group ID, two separate arguments are used. The `id` parameter is interpreted based on the value of *idtype*.
@@ -513,10 +517,161 @@ Like `waitpid`, `waitid` allows a process to specify which children to wait for.
 
 * The *infop* argument is a pointer to a `siginfo` structure. This structure contains detailed information about the signal generated that caused the state change in the child process (Section 10.14)
 
+### `wait3` and `wait4` Functions
 
+Most UNIX system implementations provide two additional functions: `wait3` and `wait4`, with an additional argument *rusage* that allows the kernel to return a summary of the resources used by the terminated process and all its child processes.
 
+* [apue_wait3.h](https://gist.github.com/shichao-an/5cb7ed8df3666337a292)
 
+<script src="https://gist.github.com/shichao-an/5cb7ed8df3666337a292.js"></script>
 
+The resource information includes such statistics as the amount of user CPU time, amount of system CPU time, number of page faults, number of signals received, and the like. Refer to the `getrusage(2)` manual page for additional details.
+
+### Race Conditions
+
+A **race condition** occurs when multiple processes are trying to do something with shared data and the final outcome depends on the order in which the processes run. The `fork` function is a lively breeding ground for race conditions, <u>if any of the logic after the `fork` depends on whether the parent or child runs first. In general, we cannot predict which process runs first. Even if we knew which process would run first, what happens after that process starts running depends on the system load and the kernel’s scheduling algorithm.</u>
+
+We saw a potential race condition in the program in [Figure 8.8](#fork-twice) when the second child printed its parent process ID.
+
+* If the second child runs before the first child, then its parent process will be the first child. 
+* If the first child runs first and has enough time to `exit`, then the parent process of the second child is init.
+* If the system was heavily loaded, the second child could resume after sleep returns, before the first child has a chance to run, calling `sleep`  guarantees nothing. 
+    
+Problems of this form can be difficult to debug because they tend to work "most of the time".
+
+* A process that wants to wait for a child to terminate must call one of the `wait` functions. 
+* A process that wants to wait for its parent to terminate can use a loop in the following form:
+
+```c
+while (getppid() != 1)
+    sleep(1);
+```
+
+The problem with this type of loop, called **polling**, is that it wastes CPU time, as the caller is awakened every second to test the condition.
+
+To avoid race conditions and to avoid polling, some form of signaling is required between multiple processes:
+
+* Signals can be used for this purpose
+* Interprocess communication (IPC) can also be used
+
+For a parent and child relationship, we often have the following scenario. After the `fork`, both the parent and the child have something to do. For example, the parent could update a record in a log file with the child’s process ID, and the child might have to create a file for the parent. In this example, we require that each process tell the other when it has finished its initial set of operations, and that each wait for the other to complete, before heading off on its own. The following code illustrates this scenario: 
+
+```c
+#include "apue.h"
+
+TELL_WAIT(); /* set things up for TELL_xxx & WAIT_xxx */
+
+if ((pid = fork()) < 0) {
+    err_sys("fork error");
+} else if (pid == 0) { /* child */
+
+    /* child does whatever is necessary ... */
+
+    TELL_PARENT(getppid()); /* tell parent we’re done */
+    WAIT_PARENT(); /* and wait for parent */
+
+    /* and the child continues on its way ... */
+
+    exit(0);
+}
+
+/* parent does whatever is necessary ... */
+
+TELL_CHILD(pid); /* tell child we’re done */
+WAIT_CHILD(); /* and wait for child */
+
+/* and the parent continues on its way ... */
+exit(0);
+```
+
+We assume that the header [`apue.h`](https://github.com/shichao-an/apue.3e/blob/master/include/apue.h) defines whatever variables are required. The five routines `TELL_WAIT`, `TELL_PARENT`, `TELL_CHILD`, `WAIT_PARENT`, and `WAIT_CHILD` can be either macros or functions ([lib/tellwait.c](https://github.com/shichao-an/apue.3e/blob/master/lib/tellwait.c)). We’ll show various ways to implement these `TELL` and `WAIT` routines in later chapters: Section 10.16 shows an implementation using signals; Figure 15.7 shows an implementation using pipes.
+
+The program below contains a race condition because the output depends on the order in which the processes are run by the kernel and the length of time for which each process runs.
+
+* [tellwait1.c](https://github.com/shichao-an/apue.3e/blob/master/proc/tellwait1.c)
+
+```c
+#include "apue.h"
+
+static void charatatime(char *);
+
+int
+main(void)
+{
+	pid_t	pid;
+
+	if ((pid = fork()) < 0) {
+		err_sys("fork error");
+	} else if (pid == 0) {
+		charatatime("output from child\n");
+	} else {
+		charatatime("output from parent\n");
+	}
+	exit(0);
+}
+
+static void
+charatatime(char *str)
+{
+	char	*ptr;
+	int		c;
+
+	setbuf(stdout, NULL);			/* set unbuffered */
+	for (ptr = str; (c = *ptr++) != 0; )
+		putc(c, stdout);
+}
+```
+
+Results:
+
+```text
+$ ./a.out
+ooutput from child
+utput from parent
+$ ./a.out
+ooutput from child
+utput from parent
+$ ./a.out
+output from child
+output from parent
+```
+
+Analysis:
+We set the standard output unbuffered, so every character output generates a write.  The goal in this example is to allow the kernel to switch between the two processes as often as possible to demonstrate the race condition.
+
+We need to change (part of) the above program in to use the `TELL` and `WAIT` functions.
+
+* The parent goes first:
+
+```c
+	} else if (pid == 0) {
+		WAIT_PARENT();		/* parent goes first */
+		charatatime("output from child\n");
+	} else {
+		charatatime("output from parent\n");
+		TELL_CHILD(pid);
+	}
+```
+
+* The child goes first:
+
+```c
+	} else if (pid == 0) {
+		charatatime("output from child\n");
+		TELL_PARENT(getppid());
+	} else {
+		WAIT_CHILD(); /* child goes first */
+		charatatime("output from parent\n");
+	}
+```
+
+### `exec` Functions
+
+One use of the fork function is to create a new process (the child) that then causes another program to be executed by calling one of the `exec` functions. 
+
+* [apue_execl.h](https://gist.github.com/shichao-an/5e094ad41cdca4af53da)
+
+<script src="https://gist.github.com/shichao-an/5e094ad41cdca4af53da.js"></script>
 
 
 
