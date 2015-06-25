@@ -292,6 +292,15 @@
         <li class="main "><a href="#waitid-function">waitid Function</a></li>
         
     
+        <li class="main "><a href="#wait3-and-wait4-functions">wait3 and wait4 Functions</a></li>
+        
+    
+        <li class="main "><a href="#race-conditions">Race Conditions</a></li>
+        
+    
+        <li class="main "><a href="#exec-functions">exec Functions</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -726,8 +735,9 @@ abnormal termination, signal number = 8 (core file generated)
 <li>The <code>waitpid</code> function provides a nonblocking version of <code>wait</code>. There are times when we want to fetch a child’s status, but we don’t want to block.</li>
 <li>The <code>waitpid</code> function provides support for job control with the <code>WUNTRACED</code> and <code>WCONTINUED</code> options.</li>
 </ol>
+<h5 id="fork-twice"><code>fork</code> twice</h5>
 <p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork2.c">fork2.c</a>)</p>
-<p>If we want to write a process so that it <code>fork</code>s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call fork twice.</u></p>
+<p>If we want to write a process so that it <code>fork</code>s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call <code>fork</code> twice.</u></p>
 <pre><code class="c">#include &quot;apue.h&quot;
 #include &lt;sys/wait.h&gt;
 
@@ -776,6 +786,9 @@ $ second child, parent pid = 1
 <p><u>Note that the shell prints its prompt when the original process terminates, which is before the second child prints its parent process ID.</u></p>
 <h3 id="waitid-function"><code>waitid</code> Function</h3>
 <p>The Single UNIX Specification includes an additional <code>waitid</code> function to retrieve the exit status of a process.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/30873cd97704d1465d3f">apue_waitid.h</a></li>
+</ul>
 <script src="https://gist.github.com/shichao-an/30873cd97704d1465d3f.js"></script>
 
 <p>Like <code>waitpid</code>, <code>waitid</code> allows a process to specify which children to wait for. Instead of encoding this information in a single argument combined with the process ID or process group ID, two separate arguments are used. The <code>id</code> parameter is interpreted based on the value of <em>idtype</em>.</p>
@@ -843,6 +856,147 @@ $ second child, parent pid = 1
 <p>The <em>infop</em> argument is a pointer to a <code>siginfo</code> structure. This structure contains detailed information about the signal generated that caused the state change in the child process (Section 10.14)</p>
 </li>
 </ul>
+<h3 id="wait3-and-wait4-functions"><code>wait3</code> and <code>wait4</code> Functions</h3>
+<p>Most UNIX system implementations provide two additional functions: <code>wait3</code> and <code>wait4</code>, with an additional argument <em>rusage</em> that allows the kernel to return a summary of the resources used by the terminated process and all its child processes.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/5cb7ed8df3666337a292">apue_wait3.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/5cb7ed8df3666337a292.js"></script>
+
+<p>The resource information includes such statistics as the amount of user CPU time, amount of system CPU time, number of page faults, number of signals received, and the like. Refer to the <code>getrusage(2)</code> manual page for additional details.</p>
+<h3 id="race-conditions">Race Conditions</h3>
+<p>A <strong>race condition</strong> occurs when multiple processes are trying to do something with shared data and the final outcome depends on the order in which the processes run. The <code>fork</code> function is a lively breeding ground for race conditions, <u>if any of the logic after the <code>fork</code> depends on whether the parent or child runs first. In general, we cannot predict which process runs first. Even if we knew which process would run first, what happens after that process starts running depends on the system load and the kernel’s scheduling algorithm.</u></p>
+<p>We saw a potential race condition in the program in <a href="#fork-twice">Figure 8.8</a> when the second child printed its parent process ID.</p>
+<ul>
+<li>If the second child runs before the first child, then its parent process will be the first child. </li>
+<li>If the first child runs first and has enough time to <code>exit</code>, then the parent process of the second child is init.</li>
+<li>If the system was heavily loaded, the second child could resume after sleep returns, before the first child has a chance to run, calling <code>sleep</code>  guarantees nothing. </li>
+</ul>
+<p>Problems of this form can be difficult to debug because they tend to work "most of the time".</p>
+<ul>
+<li>A process that wants to wait for a child to terminate must call one of the <code>wait</code> functions. </li>
+<li>A process that wants to wait for its parent to terminate can use a loop in the following form:</li>
+</ul>
+<pre><code class="c">while (getppid() != 1)
+    sleep(1);
+</code></pre>
+
+<p>The problem with this type of loop, called <strong>polling</strong>, is that it wastes CPU time, as the caller is awakened every second to test the condition.</p>
+<p>To avoid race conditions and to avoid polling, some form of signaling is required between multiple processes:</p>
+<ul>
+<li>Signals can be used for this purpose</li>
+<li>Interprocess communication (IPC) can also be used</li>
+</ul>
+<p>For a parent and child relationship, we often have the following scenario. After the <code>fork</code>, both the parent and the child have something to do. For example, the parent could update a record in a log file with the child’s process ID, and the child might have to create a file for the parent. In this example, we require that each process tell the other when it has finished its initial set of operations, and that each wait for the other to complete, before heading off on its own. The following code illustrates this scenario: </p>
+<pre><code class="c">#include &quot;apue.h&quot;
+
+TELL_WAIT(); /* set things up for TELL_xxx &amp; WAIT_xxx */
+
+if ((pid = fork()) &lt; 0) {
+    err_sys(&quot;fork error&quot;);
+} else if (pid == 0) { /* child */
+
+    /* child does whatever is necessary ... */
+
+    TELL_PARENT(getppid()); /* tell parent we’re done */
+    WAIT_PARENT(); /* and wait for parent */
+
+    /* and the child continues on its way ... */
+
+    exit(0);
+}
+
+/* parent does whatever is necessary ... */
+
+TELL_CHILD(pid); /* tell child we’re done */
+WAIT_CHILD(); /* and wait for child */
+
+/* and the parent continues on its way ... */
+exit(0);
+</code></pre>
+
+<p>We assume that the header <a href="https://github.com/shichao-an/apue.3e/blob/master/include/apue.h"><code>apue.h</code></a> defines whatever variables are required. The five routines <code>TELL_WAIT</code>, <code>TELL_PARENT</code>, <code>TELL_CHILD</code>, <code>WAIT_PARENT</code>, and <code>WAIT_CHILD</code> can be either macros or functions (<a href="https://github.com/shichao-an/apue.3e/blob/master/lib/tellwait.c">lib/tellwait.c</a>). We’ll show various ways to implement these <code>TELL</code> and <code>WAIT</code> routines in later chapters: Section 10.16 shows an implementation using signals; Figure 15.7 shows an implementation using pipes.</p>
+<p>The program below contains a race condition because the output depends on the order in which the processes are run by the kernel and the length of time for which each process runs.</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/tellwait1.c">tellwait1.c</a></li>
+</ul>
+<pre><code class="c">#include &quot;apue.h&quot;
+
+static void charatatime(char *);
+
+int
+main(void)
+{
+    pid_t   pid;
+
+    if ((pid = fork()) &lt; 0) {
+        err_sys(&quot;fork error&quot;);
+    } else if (pid == 0) {
+        charatatime(&quot;output from child\n&quot;);
+    } else {
+        charatatime(&quot;output from parent\n&quot;);
+    }
+    exit(0);
+}
+
+static void
+charatatime(char *str)
+{
+    char    *ptr;
+    int     c;
+
+    setbuf(stdout, NULL);           /* set unbuffered */
+    for (ptr = str; (c = *ptr++) != 0; )
+        putc(c, stdout);
+}
+</code></pre>
+
+<p>Results:</p>
+<pre><code class="text">$ ./a.out
+ooutput from child
+utput from parent
+$ ./a.out
+ooutput from child
+utput from parent
+$ ./a.out
+output from child
+output from parent
+</code></pre>
+
+<p>Analysis:
+We set the standard output unbuffered, so every character output generates a write.  The goal in this example is to allow the kernel to switch between the two processes as often as possible to demonstrate the race condition.</p>
+<p>We need to change (part of) the above program in to use the <code>TELL</code> and <code>WAIT</code> functions.</p>
+<ul>
+<li>The parent goes first:</li>
+</ul>
+<pre><code class="c">    } else if (pid == 0) {
+        WAIT_PARENT();      /* parent goes first */
+        charatatime(&quot;output from child\n&quot;);
+    } else {
+        charatatime(&quot;output from parent\n&quot;);
+        TELL_CHILD(pid);
+    }
+</code></pre>
+
+<ul>
+<li>The child goes first:</li>
+</ul>
+<pre><code class="c">    } else if (pid == 0) {
+        charatatime(&quot;output from child\n&quot;);
+        TELL_PARENT(getppid());
+    } else {
+        WAIT_CHILD(); /* child goes first */
+        charatatime(&quot;output from parent\n&quot;);
+    }
+</code></pre>
+
+<h3 id="exec-functions"><code>exec</code> Functions</h3>
+<p>One use of the fork function is to create a new process (the child) that then causes another program to be executed by calling one of the <code>exec</code> functions. </p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/5e094ad41cdca4af53da">apue_execl.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/5e094ad41cdca4af53da.js"></script>
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on <code>vfork</code></p>

@@ -38,14 +38,16 @@ Conflicting names [TWTG p239]
 #### Methods on embedded types and inheritance
 
 * Overriding: [method4.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_10/method4.go) [TWTG p250]
-* Embedding multiple anonymous types
+* Embedding multiple anonymous types: [mult_inheritance.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_10/mult_inheritance.go) [TWTG p253-254]
 
 #### Embed functionality in a type
 
-1. Aggregation (or composition): include a named field of the type of the wanted functionality
-2. Embedding
+1. Aggregation (or composition): include a named field of the type of the wanted functionality, [embed_func1.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_10/embed_func1.go)
+2. Embedding: [embed_func2.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_10/embed_func2.go)
 
 #### Format specifiers
+
+`String()`-method on a type [TWTG p259]:
 
 * `%T`: complete type specification
 * `%#v` complete output of the instance with its fields
