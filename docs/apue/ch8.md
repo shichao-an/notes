@@ -868,7 +868,7 @@ HOME=/home/sar
 ```
 Analysis:
 
-* The program `echoall` that is executed twice in the program.
+* The program `echoall` is executed twice in the program.
 * We set the first argument, `argv[0]` in the new program, to be the filename component of the pathname. Some shells set this argument to be the complete pathname. This is a convention only; we can set `argv[0]` to any string we like.
     * The `login` command does this when it executes the shell. Before executing the shell, login adds a dash as a prefix to `argv[0]` to indicate to the shell that it is being invoked as a login shell. A login shell will execute the start-up profile commands, whereas a nonlogin shell will not.
 * The shell prompt (`$`) appeared before the printing of `argv[0]` from the second exec. This occurred because the parent did not wait for this child process to finish.
