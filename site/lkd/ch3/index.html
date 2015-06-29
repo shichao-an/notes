@@ -275,6 +275,10 @@
     
         <li class="main "><a href="#process-descriptor-and-the-task-structure">Process Descriptor and the Task Structure</a></li>
         
+            <li><a href="#allocating-the-process-descriptor">Allocating the Process Descriptor</a></li>
+        
+            <li><a href="#storing-the-process-descriptor">Storing the Process Descriptor</a></li>
+        
     
     </ul>
 </div></div>
@@ -326,7 +330,48 @@
 <p>The <code>exec()</code> family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u><code>fork()</code> is actually implemented via the <code>clone()</code> system call</u>, which is discussed in a following section.  </p>
 <p>The <code>exit()</code> system call terminates the process and frees all its resources. A parent process can inquire about the status of a terminated child via the <code>wait4()</code> system call. A process can wait for the termination of a specific process. <u>When a process exits, it is placed into a special zombie state that represents terminated processes until the parent calls <code>wait()</code> or <code>waitpid()</code>.</u> The kernel implements the <code>wait4()</code> system call. Linux systems, via the C library, typically provide the <code>wait()</code>, <code>waitpid()</code>, <code>wait3()</code>, and <code>wait4()</code> functions.</p>
 <h3 id="process-descriptor-and-the-task-structure">Process Descriptor and the Task Structure</h3>
-<p>Another name for a process is a <strong>task</strong>. The Linux kernel internally refers to processes as tasks. In this book, the terms are used interchangeably, though <u>"task" generally refers to a process from the kernel’s point of view.</u></p></div>
+<p>Another name for a process is a <strong>task</strong>. The Linux kernel internally refers to processes as tasks. In this book, the terms are used interchangeably, though <u>"task" generally refers to a process from the kernel’s point of view.</u></p>
+<p>The kernel stores the list of processes in a circular doubly linked list called the <strong>task list</strong>.</p>
+<p>A <strong>process descriptor</strong> of the type <code>struct task_struct</code> (defined in <code>&lt;linux/sched.h&gt;</code>) is an element in the task list. It contains all the information about a specific process.</p>
+<p>The <code>task_struct</code> is a relatively large data structure, at around 1.7 kilobytes on a 32-bit machine. The process descriptor contains the data that describes the executing program: open files, the process’s address space, pending signals, the process’s state, etc. See the figure below.</p>
+<p><a href="../figure_3.1.png" title="Figure 3.1 The process descriptor and task list."><img alt="Figure 3.1 The process descriptor and task list." src="../figure_3.1.png" /></a></p>
+<h4 id="allocating-the-process-descriptor">Allocating the Process Descriptor</h4>
+<p>The <code>task_struct</code> structure is allocated via the <strong>slab allocator</strong> to provide object reuse and cache coloring (see <a href="../../lkd/ch12/">Chapter 12</a>). The structure <code>struct thread_info</code> lives at the bottom of the stack (for stacks that grow down) and at the top of the stack (for stacks that grow up)</p>
+<p><a href="../figure_3.2.png" title="Figure 3.2 The process descriptor and kernel stack."><img alt="Figure 3.2 The process descriptor and kernel stack." src="../figure_3.2.png" /></a></p>
+<p><a href="http://www.crashcourse.ca/wiki/index.php/Updates_to_LKD3#Figure_3.2_.28p._26.29">Errata</a>: "struct thread_struct" should read "struct thread_info"</p>
+<p>The thread_info structure is defined on x86 in <code>&lt;asm/thread_info.h&gt;</code> (see below code). Each task’s <code>thread_info</code> structure is allocated at the end of its stack.The task element of the structure is a pointer to the task’s actual <code>task_struct</code>:</p>
+<ul>
+<li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h</a></li>
+</ul>
+<pre><code class="c">struct thread_info {
+    struct task_struct *task;
+    struct exec_domain *exec_domain;
+    __u32 flags;
+    __u32 status;
+    __u32 cpu;
+    int preempt_count;
+    mm_segment_t addr_limit;
+    struct restart_block restart_block;
+    void *sysenter_return;
+    int uaccess_err;
+};
+</code></pre>
+
+<h4 id="storing-the-process-descriptor">Storing the Process Descriptor</h4>
+<p>The <strong>process identification</strong> (PID) is numerical value, represented by the <a href="https://en.wikipedia.org/wiki/Opaque_data_type">opaque type</a> <code>pid_t</code> (typically <code>int</code>), for the system to identify processes. The default maximum value is only 32,768 (that of a <code>short int</code>), although the value optionally can be increased as high as four million (this is controlled in <code>&lt;linux/threads.h&gt;</code>). The kernel stores this value as <code>pid</code> inside each process descriptor. [p26]</p>
+<p>Large servers may require many more than 32,768 (maximum value) processes. <u>The lower the value, the sooner the values will wrap around, destroying the useful notion that higher values indicate later-run processes than lower values.</u> The administrator may increase the maximum value via <code>/proc/sys/kernel/pid_max</code>.</p>
+<p>Inside the kernel, tasks are typically referenced directly by a pointer to their <code>task_struct</code> structure. In fact, most kernel code that deals with processes works directly with <code>struct task_struct</code>. Consequently, it is useful to be able to quickly look up the process descriptor of the currently executing task, which is done via the <code>current</code> macro. This macro must be independently implemented by each architecture:</p>
+<ul>
+<li>Some architectures save a pointer to the <code>task_struct</code> structure of the currently running process in a register, enabling for efficient access. </li>
+<li>Other architectures, such as x86 (which has few registers to waste), make use of the fact that struct <code>thread_info</code> is stored on the kernel stack to calculate the location of <code>thread_info</code> and subsequently the <code>task_struct</code>.</li>
+</ul>
+<h5 id="the-current_thread_info-function">The <code>current_thread_info()</code> function</h5>
+<p>On x86, <code>current</code> is calculated by masking out the 13 least-significant bits of the stack pointer to obtain the <code>thread_info</code> structure. This is done by the <code>current_thread_info()</code> function (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L184">arch/x86/include/asm/thread_info.h#L184</a>). The assembly is shown here:</p>
+<pre><code class="nasm">movl $-8192, %eax
+andl %esp, %eax
+</code></pre>
+
+<p>This assumes that the stack size is 8KB. When 4KB stacks are enabled, 4096 is used in lieu of 8192.</p></div>
         </div>
 
         <footer class="col-md-12">
