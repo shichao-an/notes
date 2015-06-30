@@ -279,6 +279,12 @@
         
             <li><a href="#storing-the-process-descriptor">Storing the Process Descriptor</a></li>
         
+            <li><a href="#process-state">Process State</a></li>
+        
+            <li><a href="#manipulating-the-current-process-state">Manipulating the Current Process State</a></li>
+        
+            <li><a href="#process-context">Process Context</a></li>
+        
     
     </ul>
 </div></div>
@@ -371,7 +377,50 @@
 andl %esp, %eax
 </code></pre>
 
-<p>This assumes that the stack size is 8KB. When 4KB stacks are enabled, 4096 is used in lieu of 8192.</p></div>
+<p>This assumes that the stack size is 8KB. When 4KB stacks are enabled, 4096 is used in lieu of 8192.</p>
+<p><code>current</code> dereferences the task member of <code>thread_info</code> to return the <code>task_struct</code>:</p>
+<ul>
+<li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/current.h">include/asm-generic/current.h</a></li>
+</ul>
+<pre><code class="c">current_thread_info()-&gt;task;
+</code></pre>
+
+<h4 id="process-state">Process State</h4>
+<p>The <code>state</code> field of the process descriptor describes the current condition of the process.</p>
+<p><a href="../figure_3.3.png" title="Figure 3.3 Flow chart of process states."><img alt="Figure 3.3 Flow chart of process states." src="../figure_3.3_600.png" /></a></p>
+<p>Each process on the system is in exactly one of five different states. This value is represented by one of five flags:</p>
+<ul>
+<li><code>TASK_RUNNING</code>: The process is runnable; it is either currently running or on a runqueue waiting to run. This is the only possible state for a process executing in user-space; it can also apply to a process in kernel-space that is actively running.</li>
+<li><code>TASK_INTERRUPTIBLE</code>: The process is sleeping (blocked), waiting for some condition to exist. The process also awakes prematurely and becomes runnable if it receives a signal.</li>
+<li><code>TASK_UNINTERRUPTIBLE</code>: This state is identical to <code>TASK_INTERRUPTIBLE</code> except that it does not wake up and become runnable if it receives a signal. This is used in situations where the process must wait without interruption or when the event is expected to occur quite quickly. Because the task does not respond to signals in this state, <code>TASK_UNINTERRUPTIBLE</code> is less often used than <code>TASK_INTERRUPTIBLE</code>.</li>
+<li><code>__TASK_TRACED</code>: The process is being traced by another process, such as a debugger, via <strong>ptrace</strong>.</li>
+<li><code>__TASK_STOPPED</code>: Process execution has stopped; the task is not running nor is it eligible to run. This occurs if the task receives the <code>SIGSTOP</code>, <code>SIGTSTP</code>, <code>SIGTTIN</code>, or <code>SIGTTOU</code> signal or if it receives any signal while it is being debugged.</li>
+</ul>
+<h4 id="manipulating-the-current-process-state">Manipulating the Current Process State</h4>
+<p>Kernel code often needs to change a process’s state. The preferred mechanism is using:</p>
+<pre><code class="c">set_task_state(task, state); /* set task ‘task’ to state ‘state’ */
+</code></pre>
+
+<p>This function sets the given task to the given state. If applicable, it also provides a memory barrier to force ordering on other processors (only needed on SMP systems). Otherwise, it is equivalent to:</p>
+<pre><code class="c">task-&gt;state = state;
+</code></pre>
+
+<p>The method <code>set_current_state(state)</code> is synonymous to <code>set_task_state(current, state)</code>. See <code>&lt;linux/sched.h&gt;</code> for the implementation of these and related functions.</p>
+<ul>
+<li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L226">include/linux/sched.h#L226</a></li>
+</ul>
+<h4 id="process-context">Process Context</h4>
+<p>The program code is read in from an <strong>executable file</strong> and executed within the program’s address space.</p>
+<ul>
+<li><strong>User-space</strong>: Normal program execution occurs in user-space.</li>
+<li><strong>Kernel-space</strong>: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in <strong>process context</strong>. When in process context, the <code>current</code> macro is valid.</li>
+</ul>
+<p>Upon exiting the kernel, the process resumes execution in user-space, unless a higher-priority process has become runnable in the interim, in which case the scheduler is invoked to select the higher priority process.</p>
+<p>A process can begin executing in kernel-space only through one of the following well-defined interfaces:</p>
+<ul>
+<li>System calls</li>
+<li>Exception handlers</li>
+</ul></div>
         </div>
 
         <footer class="col-md-12">

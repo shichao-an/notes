@@ -119,3 +119,58 @@ andl %esp, %eax
 ```
 
 This assumes that the stack size is 8KB. When 4KB stacks are enabled, 4096 is used in lieu of 8192.
+
+`current` dereferences the task member of `thread_info` to return the `task_struct`:
+
+* [include/asm-generic/current.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/current.h)
+
+```c
+current_thread_info()->task;
+```
+
+#### Process State
+
+The `state` field of the process descriptor describes the current condition of the process.
+
+
+[![Figure 3.3 Flow chart of process states.](figure_3.3_600.png)](figure_3.3.png "Figure 3.3 Flow chart of process states.")
+
+Each process on the system is in exactly one of five different states. This value is represented by one of five flags:
+
+* `TASK_RUNNING`: The process is runnable; it is either currently running or on a runqueue waiting to run. This is the only possible state for a process executing in user-space; it can also apply to a process in kernel-space that is actively running.
+* `TASK_INTERRUPTIBLE`: The process is sleeping (blocked), waiting for some condition to exist. The process also awakes prematurely and becomes runnable if it receives a signal.
+* `TASK_UNINTERRUPTIBLE`: This state is identical to `TASK_INTERRUPTIBLE` except that it does not wake up and become runnable if it receives a signal. This is used in situations where the process must wait without interruption or when the event is expected to occur quite quickly. Because the task does not respond to signals in this state, `TASK_UNINTERRUPTIBLE` is less often used than `TASK_INTERRUPTIBLE`.
+* `__TASK_TRACED`: The process is being traced by another process, such as a debugger, via **ptrace**.
+* `__TASK_STOPPED`: Process execution has stopped; the task is not running nor is it eligible to run. This occurs if the task receives the `SIGSTOP`, `SIGTSTP`, `SIGTTIN`, or `SIGTTOU` signal or if it receives any signal while it is being debugged.
+
+#### Manipulating the Current Process State
+
+Kernel code often needs to change a process’s state. The preferred mechanism is using:
+
+```c
+set_task_state(task, state); /* set task ‘task’ to state ‘state’ */
+```
+
+This function sets the given task to the given state. If applicable, it also provides a memory barrier to force ordering on other processors (only needed on SMP systems). Otherwise, it is equivalent to:
+
+```c
+task->state = state;
+```
+
+The method `set_current_state(state)` is synonymous to `set_task_state(current, state)`. See `<linux/sched.h>` for the implementation of these and related functions.
+
+* [include/linux/sched.h#L226](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L226)
+
+#### Process Context
+
+The program code is read in from an **executable file** and executed within the program’s address space.
+
+* **User-space**: Normal program execution occurs in user-space.
+* **Kernel-space**: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in **process context**. When in process context, the `current` macro is valid.
+
+Upon exiting the kernel, the process resumes execution in user-space, unless a higher-priority process has become runnable in the interim, in which case the scheduler is invoked to select the higher priority process.
+
+A process can begin executing in kernel-space only through one of the following well-defined interfaces:
+
+* System calls
+* Exception handlers
