@@ -167,6 +167,7 @@ The program code is read in from an **executable file** and executed within the 
 
 * **User-space**: Normal program execution occurs in user-space.
 * **Kernel-space**: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in **process context**. When in process context, the `current` macro is valid.
+    * Other than process context there is **interrupt context** (discussed in [Chapter 7](/lkd/ch7/). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
 
 Upon exiting the kernel, the process resumes execution in user-space, unless a higher-priority process has become runnable in the interim, in which case the scheduler is invoked to select the higher priority process.
 
@@ -174,3 +175,24 @@ A process can begin executing in kernel-space only through one of the following 
 
 * System calls
 * Exception handlers
+
+#### The Process Family Tree
+
+All processes are descendants of the `init` process (PID 1). The kernel starts init in the last step of the boot process. The init process reads the system **initscripts** and executes more programs, eventually completing the boot process.
+
+* Every process on the system has exactly one **parent**.
+* Every process has zero or more **children**.
+* Processes that are all direct children of the same parent are called **siblings**.
+
+The relationship between processes is stored in the process descriptor.
+
+Each `task_struct` has:
+
+* `parent`: pointer to the parent's `task_struct`
+* `children`: list of children
+
+To obtain the process descriptor of a given process' parent:
+
+```c
+struct task_struct *my_parent = current->parent;
+```
