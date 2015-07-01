@@ -79,7 +79,7 @@ The `task_struct` structure is allocated via the **slab allocator** to provide o
 
 [Errata](http://www.crashcourse.ca/wiki/index.php/Updates_to_LKD3#Figure_3.2_.28p._26.29): "struct thread_struct" should read "struct thread_info"
 
-The thread_info structure is defined on x86 in `<asm/thread_info.h>` (see below code). Each task’s `thread_info` structure is allocated at the end of its stack.The task element of the structure is a pointer to the task’s actual `task_struct`:
+The `thread_info` structure is defined on x86 in `<asm/thread_info.h>` (see below code). Each task’s `thread_info` structure is allocated at the end of its stack.The task element of the structure is a pointer to the task’s actual `task_struct`:
 
 * [arch/x86/include/asm/thread_info.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L26)
 
