@@ -288,6 +288,14 @@
             <li><a href="#the-process-family-tree">The Process Family Tree</a></li>
         
     
+        <li class="main "><a href="#process-creation">Process Creation</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -433,15 +441,83 @@ andl %esp, %eax
 <li>Every process has zero or more <strong>children</strong>.</li>
 <li>Processes that are all direct children of the same parent are called <strong>siblings</strong>.</li>
 </ul>
+<hr />
+<p>[UTLK p87-88]</p>
+<p>The pointers (<code>next</code> and <code>prev</code>) in a <code>list_head</code> field store the addresses of other <code>list_head</code> fields rather than the addresses of the whole data structures in which the <code>list_head</code> structure is included. See figure below: </p>
+<p><a href="../../utlk/figure_3-3.png" title="Figure 3-3. Doubly linked lists built with list_head data structures"><img alt="Figure 3-3. Doubly linked lists built with list_head data structures" src="../../utlk/figure_3-3_600.png" /></a></p>
+<ul>
+<li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h">include/linux/list.h</a></li>
+</ul>
+<hr />
 <p>The relationship between processes is stored in the process descriptor.</p>
-<p>Each <code>task_struct</code> has:</p>
+<p>Each <code>task_struct</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1170">include/linux/sched.h#L1170</a>) has:</p>
 <ul>
 <li><code>parent</code>: pointer to the parent's <code>task_struct</code></li>
-<li><code>children</code>: list of children</li>
+<li><code>children</code>: list of children (<code>struct list_head</code>)</li>
 </ul>
-<p>To obtain the process descriptor of a given process' parent:</p>
+<p>To obtain the process descriptor of a given process's parent:</p>
 <pre><code class="c">struct task_struct *my_parent = current-&gt;parent;
-</code></pre></div>
+</code></pre>
+
+<p>To iterate over a process’s children:</p>
+<pre><code class="c">struct task_struct *task;
+struct list_head *list;
+
+list_for_each(list, &amp;current-&gt;children) {
+    task = list_entry(list, struct task_struct, sibling);
+    /* task now points to one of current’s children */
+}
+</code></pre>
+
+<ul>
+<li><code>list_for_each</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L367">include/linux/list.h#L367</a></li>
+</ul>
+<p>The <code>init</code> task’s process descriptor is statically allocated as <code>init_task</code>. The following code will always succeed:</p>
+<pre><code class="c">struct task_struct *task;
+
+for (task = current; task != &amp;init_task; task = task-&gt;parent)
+;
+/* task now points to init */
+</code></pre>
+
+<p>You can follow the process hierarchy from any one process in the system to any other.  Oftentimes, it is desirable simply to iterate over all processes in the system. This is easy because the task list is a circular, doubly linked list.</p>
+<p>To obtain the next task in the list, given any valid task, use:</p>
+<pre><code class="c">list_entry(task-&gt;tasks.next, struct task_struct, tasks)
+</code></pre>
+
+<p>To obtain the previous task works the same way:</p>
+<pre><code class="c">list_entry(task-&gt;tasks.prev, struct task_struct, tasks)
+</code></pre>
+
+<ul>
+<li><code>list_entry</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L348">include/linux/list.h</a></li>
+</ul>
+<p>These two routines are provided by the macros <code>next_task(task)</code> and <code>prev_task(task)</code>. (See <a href="">Doubts and Solutions</a>)</p>
+<p>The macro <code>for_each_process(task)</code> iterates over the entire task list. On each iteration, task points to the next task in the list:</p>
+<pre><code class="c">struct task_struct *task;
+
+for_each_process(task) {
+    /* this pointlessly prints the name and PID of each task */
+    printk(“%s[%d]\n”, task-&gt;comm, task-&gt;pid);
+}
+</code></pre>
+
+<ul>
+<li><code>for_each_process</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L2139">include/linux/sched.h#L2139</a></li>
+</ul>
+<p>It is expensive to iterate over every task in a system with many processes; code should have good reason (and no alternative) before doing so.</p>
+<h3 id="process-creation">Process Creation</h3>
+<p>Most operating systems implement a <strong>spawn</strong> mechanism to create a new process in a new address space, read in an executable, and begin executing it. Unix separates these steps into two distinct functions: <code>fork()</code> and <code>exec()</code>.</p>
+<ul>
+<li><code>fork()</code>: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited</li>
+</ul>
+<hr />
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<blockquote>
+<p>These two routines are provided by the macros <code>next_task(task)</code> and <code>prev_task(task)</code>, respectively.</p>
+</blockquote>
+<p>I didn't find any relevant appearance for <code>prev_task</code> macro in the <a href="https://github.com/shichao-an/linux-2.6.34.7">Linux 2.6.34.7 source code</a>.</p></div>
         </div>
 
         <footer class="col-md-12">
