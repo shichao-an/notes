@@ -184,15 +184,135 @@ All processes are descendants of the `init` process (PID 1). The kernel starts i
 * Every process has zero or more **children**.
 * Processes that are all direct children of the same parent are called **siblings**.
 
+- - -
+[UTLK p87-88]
+
+The pointers (`next` and `prev`) in a `list_head` field store the addresses of other `list_head` fields rather than the addresses of the whole data structures in which the `list_head` structure is included. See figure below: 
+
+[![Figure 3-3. Doubly linked lists built with list_head data structures](/utlk/figure_3-3_600.png)](/utlk/figure_3-3.png "Figure 3-3. Doubly linked lists built with list_head data structures")
+
+* [include/linux/list.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h)
+
+- - -
+
 The relationship between processes is stored in the process descriptor.
 
-Each `task_struct` has:
+Each `task_struct` ([include/linux/sched.h#L1170](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1170)) has:
 
 * `parent`: pointer to the parent's `task_struct`
-* `children`: list of children
+* `children`: list of children (`struct list_head`)
 
-To obtain the process descriptor of a given process' parent:
+To obtain the process descriptor of a given process's parent:
 
 ```c
 struct task_struct *my_parent = current->parent;
 ```
+
+To iterate over a process’s children:
+
+```c
+struct task_struct *task;
+struct list_head *list;
+
+list_for_each(list, &current->children) {
+    task = list_entry(list, struct task_struct, sibling);
+    /* task now points to one of current’s children */
+}
+```
+
+* `list_for_each`: [include/linux/list.h#L367](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L367)
+
+The `init` task’s process descriptor is statically allocated as `init_task`. The following code will always succeed:
+
+```c
+struct task_struct *task;
+
+for (task = current; task != &init_task; task = task->parent)
+;
+/* task now points to init */
+```
+
+You can follow the process hierarchy from any one process in the system to any other.  Oftentimes, it is desirable simply to iterate over all processes in the system. This is easy because the task list is a circular, doubly linked list.
+
+To obtain the next task in the list, given any valid task, use:
+
+```c
+list_entry(task->tasks.next, struct task_struct, tasks)
+```
+
+To obtain the previous task works the same way:
+
+```c
+list_entry(task->tasks.prev, struct task_struct, tasks)
+```
+
+* `list_entry`: [include/linux/list.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L348)
+
+These two routines are provided by the macros `next_task(task)` and `prev_task(task)`. (See [Doubts and Solutions]())
+
+The macro `for_each_process(task)` iterates over the entire task list. On each iteration, task points to the next task in the list:
+
+```c
+struct task_struct *task;
+
+for_each_process(task) {
+    /* this pointlessly prints the name and PID of each task */
+    printk(“%s[%d]\n”, task->comm, task->pid);
+}
+```
+
+* `for_each_process`: [include/linux/sched.h#L2139](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L2139)
+
+It is expensive to iterate over every task in a system with many processes; code should have good reason (and no alternative) before doing so.
+
+### Process Creation
+
+Most operating systems implement a **spawn** mechanism to create a new process in a new address space, read in an executable, and begin executing it. Unix separates these steps into two distinct functions: `fork()` and `exec()`.
+
+* `fork()`: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- - - 
+
+### Doubts and Solutions
+#### Verbatim
+
+> These two routines are provided by the macros `next_task(task)` and `prev_task(task)`, respectively.
+
+I didn't find any relevant appearance for `prev_task` macro in the [Linux 2.6.34.7 source code](https://github.com/shichao-an/linux-2.6.34.7).
