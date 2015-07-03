@@ -290,6 +290,10 @@
     
         <li class="main "><a href="#process-creation">Process Creation</a></li>
         
+            <li><a href="#copy-on-write">Copy-on-Write</a></li>
+        
+            <li><a href="#forking">Forking</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -509,7 +513,27 @@ for_each_process(task) {
 <h3 id="process-creation">Process Creation</h3>
 <p>Most operating systems implement a <strong>spawn</strong> mechanism to create a new process in a new address space, read in an executable, and begin executing it. Unix separates these steps into two distinct functions: <code>fork()</code> and <code>exec()</code>.</p>
 <ul>
-<li><code>fork()</code>: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited</li>
+<li><code>fork()</code>: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited.</li>
+<li><code>exec()</code>: loads a new executable into the address space and begins executing it.</li>
+</ul>
+<h4 id="copy-on-write">Copy-on-Write</h4>
+<p>If upon <code>fork()</code> all resources owned by the parent are duplicated and the copy is given to the child, it is naive and inefficient in that it copies much data that might otherwise be shared. Worse still, if the new process were to immediately execute a new image, all that copying would go to waste.</p>
+<p>In Linux, <code>fork()</code> is implemented through the use of copy-on-write pages.</p>
+<p><strong>Copy-on-write</strong> (COW) can delay or prevent copying data. Rather than duplicating the process address space, the parent and the child can share a single copy.</p>
+<ul>
+<li>If the data is written to, it is marked and a duplicate is made and each process receives a unique copy. The duplication of resources occurs only when they are written; until then, they are shared read-only.</li>
+<li>In the case that the pages are never written (if <code>exec()</code> is called immediately after <code>fork()</code>), they never need to be copied.</li>
+</ul>
+<p>The only overhead incurred by <code>fork()</code> is the duplication of the parent’s page tables and the creation of a unique process descriptor for the child. In the common case that a process executes a new executable image immediately after forking, this optimization prevents the wasted copying of large amounts of data (with the address space, easily tens of megabytes). This is an important optimization because the Unix philosophy encourages quick process execution.</p>
+<h4 id="forking">Forking</h4>
+<p>Linux implements <code>fork()</code> via the <code>clone()</code> system call which takes a series of flags that specify which resources the parent and child process should share.</p>
+<ul>
+<li>The <code>fork()</code>, <code>vfork()</code>, and <code>__clone()</code> library calls all invoke the <code>clone()</code> system call with the requisite flags.</li>
+<li>The <code>clone()</code> system call calls <code>do_fork()</code>.</li>
+</ul>
+<p>The bulk of the work in forking is handled by <code>do_fork()</code>, which is defined in <code>kernel/fork.c</code>:</p>
+<ul>
+<li><code>do_fork()</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L1354">kernel/fork.c#L1354</a></li>
 </ul>
 <hr />
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>

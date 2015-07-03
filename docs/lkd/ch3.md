@@ -269,10 +269,32 @@ It is expensive to iterate over every task in a system with many processes; code
 
 Most operating systems implement a **spawn** mechanism to create a new process in a new address space, read in an executable, and begin executing it. Unix separates these steps into two distinct functions: `fork()` and `exec()`.
 
-* `fork()`: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited
- 
+* `fork()`: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited.
+* `exec()`: loads a new executable into the address space and begins executing it.
 
+#### Copy-on-Write
 
+If upon `fork()` all resources owned by the parent are duplicated and the copy is given to the child, it is naive and inefficient in that it copies much data that might otherwise be shared. Worse still, if the new process were to immediately execute a new image, all that copying would go to waste.
+
+In Linux, `fork()` is implemented through the use of copy-on-write pages.
+
+**Copy-on-write** (COW) can delay or prevent copying data. Rather than duplicating the process address space, the parent and the child can share a single copy.
+
+* If the data is written to, it is marked and a duplicate is made and each process receives a unique copy. The duplication of resources occurs only when they are written; until then, they are shared read-only.
+* In the case that the pages are never written (if `exec()` is called immediately after `fork()`), they never need to be copied.
+
+The only overhead incurred by `fork()` is the duplication of the parent’s page tables and the creation of a unique process descriptor for the child. In the common case that a process executes a new executable image immediately after forking, this optimization prevents the wasted copying of large amounts of data (with the address space, easily tens of megabytes). This is an important optimization because the Unix philosophy encourages quick process execution.
+
+#### Forking
+
+Linux implements `fork()` via the `clone()` system call which takes a series of flags that specify which resources the parent and child process should share.
+
+* The `fork()`, `vfork()`, and `__clone()` library calls all invoke the `clone()` system call with the requisite flags.
+* The `clone()` system call calls `do_fork()`.
+
+The bulk of the work in forking is handled by `do_fork()`, which is defined in `kernel/fork.c`:
+
+* `do_fork()`: [kernel/fork.c#L1354](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L1354)
 
 
 
