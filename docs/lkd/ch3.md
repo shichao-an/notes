@@ -292,13 +292,12 @@ Linux implements `fork()` via the `clone()` system call which takes a series of 
 * The `fork()`, `vfork()`, and `__clone()` library calls all invoke the `clone()` system call with the requisite flags.
 * The `clone()` system call calls `do_fork()`.
 
-The bulk of the work in forking is handled by `do_fork()`, which is defined in `kernel/fork.c`:
+The bulk of the work in forking is handled by `do_fork()`, which is defined in `kernel/fork.c`. `do_fork()` function calls `copy_process()` and then starts the process running. 
 
 * `do_fork()`: [kernel/fork.c#L1354](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L1354)
+* `copy_process()`: [kernel/fork.c#L957](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L957)
 
-
-
-
+The interesting work is done by `copy_process()`:
 
 
 
