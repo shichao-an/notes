@@ -299,10 +299,32 @@ The bulk of the work in forking is handled by `do_fork()`, which is defined in `
 
 The interesting work is done by `copy_process()`:
 
+1. It calls `dup_task_struct()` that creates following for the new process with identical values to those of the current task:
+    * Kernel stack
+    * `thread_info` structure
+    * `task_struct`
+    * (At this point, the child and parent process descriptors are identical)
+2. It then checks that the new child will not exceed the resource limits on the number of processes for the current user.
+3. Various members of the process descriptor are cleared or set to initial values, <u>to differentiate the child from its parent.</u>
+    * Members of the process descriptor not inherited are primarily statistically information.
+    * The bulk of the values in `task_struct` remain unchanged.
+4. The child’s state is set to `TASK_UNINTERRUPTIBLE` to ensure that it does not yet run.
+5. It calls `copy_flags()` to update the flags member of the `task_struct` (per process flags: [include/linux/sched.h#L1693](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1693)).
+    * The `PF_SUPERPRIV` flag, which denotes whether a task used superuser privileges, is cleared
+    * The `PF_FORKNOEXEC` flag, which denotes a process that has not called `exec()`, is set.
+6. It calls `alloc_pid()` to assign an available PID to the new task.
+7. Depending on the flags passed to `clone()`, `copy_process()` either duplicates or shares:
+    * Open files
+    * Filesystem information
+    * Signal handlers
+    * Process address space
+    * Namespace
+    * (These resources are typically shared between threads in a given process; otherwise they are unique and thus copied here)
+8. Finally, `copy_process()` cleans up and returns to the caller <u>a pointer to the new child</u>.
 
+Back in `do_fork()`, if `copy_process()` returns successfully, the new child is woken up and run.
 
-
-
+<u>Deliberately, the kernel runs the child process first. In the case of the child calling `exec()` immediately, this eliminates any copy-on-write overhead that would occur if the parent ran first and began writing to the address space.</u>
 
 
 

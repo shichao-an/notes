@@ -537,6 +537,40 @@ for_each_process(task) {
 <li><code>copy_process()</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L957">kernel/fork.c#L957</a></li>
 </ul>
 <p>The interesting work is done by <code>copy_process()</code>:</p>
+<ol>
+<li>It calls <code>dup_task_struct()</code> that creates following for the new process with identical values to those of the current task:<ul>
+<li>Kernel stack</li>
+<li><code>thread_info</code> structure</li>
+<li><code>task_struct</code></li>
+<li>(At this point, the child and parent process descriptors are identical)</li>
+</ul>
+</li>
+<li>It then checks that the new child will not exceed the resource limits on the number of processes for the current user.</li>
+<li>Various members of the process descriptor are cleared or set to initial values, <u>to differentiate the child from its parent.</u><ul>
+<li>Members of the process descriptor not inherited are primarily statistically information.</li>
+<li>The bulk of the values in <code>task_struct</code> remain unchanged.</li>
+</ul>
+</li>
+<li>The child’s state is set to <code>TASK_UNINTERRUPTIBLE</code> to ensure that it does not yet run.</li>
+<li>It calls <code>copy_flags()</code> to update the flags member of the <code>task_struct</code> (per process flags: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1693">include/linux/sched.h#L1693</a>).<ul>
+<li>The <code>PF_SUPERPRIV</code> flag, which denotes whether a task used superuser privileges, is cleared</li>
+<li>The <code>PF_FORKNOEXEC</code> flag, which denotes a process that has not called <code>exec()</code>, is set.</li>
+</ul>
+</li>
+<li>It calls <code>alloc_pid()</code> to assign an available PID to the new task.</li>
+<li>Depending on the flags passed to <code>clone()</code>, <code>copy_process()</code> either duplicates or shares:<ul>
+<li>Open files</li>
+<li>Filesystem information</li>
+<li>Signal handlers</li>
+<li>Process address space</li>
+<li>Namespace</li>
+<li>(These resources are typically shared between threads in a given process; otherwise they are unique and thus copied here)</li>
+</ul>
+</li>
+<li>Finally, <code>copy_process()</code> cleans up and returns to the caller <u>a pointer to the new child</u>.</li>
+</ol>
+<p>Back in <code>do_fork()</code>, if <code>copy_process()</code> returns successfully, the new child is woken up and run.</p>
+<p><u>Deliberately, the kernel runs the child process first. In the case of the child calling <code>exec()</code> immediately, this eliminates any copy-on-write overhead that would occur if the parent ran first and began writing to the address space.</u></p>
 <hr />
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
