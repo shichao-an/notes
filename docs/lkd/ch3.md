@@ -327,6 +327,22 @@ Back in `do_fork()`, if `copy_process()` returns successfully, the new child is 
 <u>Deliberately, the kernel runs the child process first. In the case of the child calling `exec()` immediately, this eliminates any copy-on-write overhead that would occur if the parent ran first and began writing to the address space.</u>
 
 
+#### `vfork()`
+
+The `vfork()` system call has the same effect as `fork()`, except that the page table entries of the parent process are not copied. The child executes as the sole thread in the parent’s address space, and the parent is blocked until the child either calls `exec()` or exits. The child is not allowed to write to the address space. [p33]
+
+Today, with copy-on-write and child-runs-first semantics, the only benefit to `vfork()` is not copying the parent page tables entries. [p33]
+
+The `vfork()` system call is implemented via a special flag to the `clone()` system call:
+
+1. In `copy_process()`, the `task_struct` member `vfork_done` is set to NULL.
+2. In `do_fork()`, if the special flag was given, `vfork_done` is pointed at a specific address.
+3. After the child is first run, the parent (instead of returning) waits for the child to signal it through the `vfork_done` pointer.
+4. In the `mm_release()` function, which is used when a task exits a memory address space, `vfork_done` is checked to see whether it is NULL. If it is not, the parent is signaled.
+5. Back in `do_fork()`, the parent wakes up and returns.
+
+If this all goes as planned, the child is now executing in a new address space, and the parent is again executing in its original address space. The overhead is lower, but the implementation is not pretty.
+
 
 
 
