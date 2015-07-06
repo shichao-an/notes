@@ -294,6 +294,8 @@
         
             <li><a href="#forking">Forking</a></li>
         
+            <li><a href="#vfork">vfork()</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -571,6 +573,18 @@ for_each_process(task) {
 </ol>
 <p>Back in <code>do_fork()</code>, if <code>copy_process()</code> returns successfully, the new child is woken up and run.</p>
 <p><u>Deliberately, the kernel runs the child process first. In the case of the child calling <code>exec()</code> immediately, this eliminates any copy-on-write overhead that would occur if the parent ran first and began writing to the address space.</u></p>
+<h4 id="vfork"><code>vfork()</code></h4>
+<p>The <code>vfork()</code> system call has the same effect as <code>fork()</code>, except that the page table entries of the parent process are not copied. The child executes as the sole thread in the parent’s address space, and the parent is blocked until the child either calls <code>exec()</code> or exits. The child is not allowed to write to the address space. [p33]</p>
+<p>Today, with copy-on-write and child-runs-first semantics, the only benefit to <code>vfork()</code> is not copying the parent page tables entries. [p33]</p>
+<p>The <code>vfork()</code> system call is implemented via a special flag to the <code>clone()</code> system call:</p>
+<ol>
+<li>In <code>copy_process()</code>, the <code>task_struct</code> member <code>vfork_done</code> is set to NULL.</li>
+<li>In <code>do_fork()</code>, if the special flag was given, <code>vfork_done</code> is pointed at a specific address.</li>
+<li>After the child is first run, the parent (instead of returning) waits for the child to signal it through the <code>vfork_done</code> pointer.</li>
+<li>In the <code>mm_release()</code> function, which is used when a task exits a memory address space, <code>vfork_done</code> is checked to see whether it is NULL. If it is not, the parent is signaled.</li>
+<li>Back in <code>do_fork()</code>, the parent wakes up and returns.</li>
+</ol>
+<p>If this all goes as planned, the child is now executing in a new address space, and the parent is again executing in its original address space. The overhead is lower, but the implementation is not pretty.</p>
 <hr />
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
