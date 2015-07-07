@@ -297,6 +297,18 @@
             <li><a href="#vfork">vfork()</a></li>
         
     
+        <li class="main "><a href="#the-linux-implementation-of-threads">The Linux Implementation of Threads</a></li>
+        
+            <li><a href="#creating-threads">Creating Threads</a></li>
+        
+            <li><a href="#kernel-threads">Kernel Threads</a></li>
+        
+    
+        <li class="main "><a href="#process-termination">Process Termination</a></li>
+        
+            <li><a href="#removing-the-process-descriptor">Removing the Process Descriptor</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -585,6 +597,212 @@ for_each_process(task) {
 <li>Back in <code>do_fork()</code>, the parent wakes up and returns.</li>
 </ol>
 <p>If this all goes as planned, the child is now executing in a new address space, and the parent is again executing in its original address space. The overhead is lower, but the implementation is not pretty.</p>
+<h3 id="the-linux-implementation-of-threads">The Linux Implementation of Threads</h3>
+<ul>
+<li>Threads are a programming abstraction that provide multiple threads of execution within the same program in a shared memory address space.</li>
+<li>Threads can also share open files and other resources.</li>
+<li>Threads enable <strong>concurrent programming</strong> and, on multiple processor systems, true <strong>parallelism</strong>.</li>
+</ul>
+<p>Linux has a unique implementation of threads:</p>
+<ul>
+<li>To the Linux kernel, there is no concept of a thread. Linux implements all threads as standard processes.</li>
+<li>The kernel does not provide any special scheduling semantics or data structures to represent threads. Instead, a thread is merely a process that shares certain resources with other processes.</li>
+<li>Each thread has a unique <code>task_struct</code> and appears to the kernel as a normal process. Threads just happen to share resources, such as an address space, with other processes.</li>
+</ul>
+<p>This approach to threads contrasts greatly with operating systems such as Microsoft Windows or Sun Solaris, which have explicit kernel support for threads (and sometimes call threads lightweight processes). [p34]</p>
+<h4 id="creating-threads">Creating Threads</h4>
+<p>Threads are created the same as normal tasks, with the exception that the <code>clone()</code> system call is passed flags corresponding to the specific resources to be shared:</p>
+<pre><code class="c">clone(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND, 0);
+</code></pre>
+
+<p>The above code is identical to <code>fork()</code> except that the address space (<code>CLONE_VM</code>), filesystem resources (<code>CLONE_FS</code>), file descriptors (<code>CLONE_FILES</code>), and signal handlers (<code>CLONE_SIGHAND</code>) are shared.</p>
+<p><code>fork()</code> can be implemented as:</p>
+<pre><code class="c">clone(SIGCHLD, 0);
+</code></pre>
+
+<p><code>vfork()</code> is implemented as:</p>
+<pre><code class="c">clone(CLONE_VFORK | CLONE_VM | SIGCHLD, 0);
+</code></pre>
+
+<p>The flags, which are defined in <code>&lt;linux/sched.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L5">include/linux/sched.h#L5</a>),  to <code>clone()</code> specify the behavior of the new process and detail what resources the parent and child will share.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLONE_FILES</code></td>
+<td>Parent and child share open files.</td>
+</tr>
+<tr>
+<td><code>CLONE_FS</code></td>
+<td>Parent and child share filesystem information.</td>
+</tr>
+<tr>
+<td><code>CLONE_IDLETASK</code></td>
+<td>Set PID to zero (used only by the idle tasks).</td>
+</tr>
+<tr>
+<td><code>CLONE_NEWNS</code></td>
+<td>Create a new namespace for the child.</td>
+</tr>
+<tr>
+<td><code>CLONE_PARENT</code></td>
+<td>Child is to have same parent as its parent.</td>
+</tr>
+<tr>
+<td><code>CLONE_PTRACE</code></td>
+<td>Continue tracing child.</td>
+</tr>
+<tr>
+<td><code>CLONE_SETTID</code></td>
+<td>Write the TID back to user-space.</td>
+</tr>
+<tr>
+<td><code>CLONE_SETTLS</code></td>
+<td>Create a new TLS (thread-local storage) for the child.</td>
+</tr>
+<tr>
+<td><code>CLONE_SIGHAND</code></td>
+<td>Parent and child share signal handlers and blocked signals.</td>
+</tr>
+<tr>
+<td><code>CLONE_SYSVSEM</code></td>
+<td>Parent and child share System V SEM_UNDO semantics.</td>
+</tr>
+<tr>
+<td><code>CLONE_THREAD</code></td>
+<td>Parent and child are in the same thread group.</td>
+</tr>
+<tr>
+<td><code>CLONE_VFORK</code></td>
+<td>vfork() was used and the parent will sleep until the child wakes it.</td>
+</tr>
+<tr>
+<td><code>CLONE_UNTRACED</code></td>
+<td>Do not let the tracing process force CLONE_PTRACE on the child.</td>
+</tr>
+<tr>
+<td><code>CLONE_STOP</code></td>
+<td>Start process in the TASK_STOPPED state.</td>
+</tr>
+<tr>
+<td><code>CLONE_CHILD_CLEARTID</code></td>
+<td>Clear the TID in the child.</td>
+</tr>
+<tr>
+<td><code>CLONE_CHILD_SETTID</code></td>
+<td>Set the TID in the child.</td>
+</tr>
+<tr>
+<td><code>CLONE_PARENT_SETTID</code></td>
+<td>Set the TID in the parent.</td>
+</tr>
+<tr>
+<td><code>CLONE_VM</code></td>
+<td>Parent and child share address space.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="kernel-threads">Kernel Threads</h4>
+<p><strong>Kernel threads</strong> are standard processes that exist solely in kernel-space. They are useful for the kernel to perform some operations in the background.</p>
+<p>Difference from normal threads:</p>
+<ul>
+<li>Kernel threads do not have an address space. Their <code>mm</code> pointer, which points at their address space, is <code>NULL</code>.</li>
+<li>Kernel threads operate only in kernel-space and do not context switch into user-space.</li>
+</ul>
+<p>Similarity with normal threads:</p>
+<ul>
+<li>Kernel threads are schedulable and preemptable.</li>
+</ul>
+<p>Linux delegates several tasks to kernel threads, most notably the <code>flush</code> tasks and the <code>ksoftirqd</code> task. Use <code>ps -ef</code> command to see them.</p>
+<ul>
+<li>Kernel threads are created on system boot by other kernel threads. </li>
+<li>A kernel thread can be created only by another kernel thread. The kernel handles this automatically by forking all new kernel threads off of the <code>kthreadd</code> kernel process.</li>
+</ul>
+<p>The interfaces of kernel threads defined in <code>&lt;linux/kthread.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/kthread.h">include/linux/kthread.h</a>)</p>
+<p><code>kthread_create()</code> spawns a new kernel thread from an existing one:</p>
+<pre><code>struct task_struct *kthread_create(int (*threadfn)(void *data),
+                                   void *data,
+                                   const char namefmt[],
+                                   ...)
+</code></pre>
+
+<p>The new task is created via the <code>clone()</code> system call by the <code>kthread</code> kernel process:</p>
+<ul>
+<li>The new process will run the <code>threadfn</code> function, which is passed the data argument.</li>
+<li>The process will be named <code>namefmt</code>, which takes printf-style formatting arguments in the variable argument list.</li>
+<li>The process is created in an unrunnable state; it will not start running until explicitly woken up via <code>wake_up_process()</code>.</li>
+</ul>
+<p>A process can be created and made runnable with a single function, <code>kthread_run()</code>:</p>
+<pre><code class="c">struct task_struct *kthread_run(int (*threadfn)(void *data),
+                                void *data,
+                                const char namefmt[],
+                                ...)
+</code></pre>
+
+<p>This routine (<code>kthread_run()</code>), implemented as a macro, simply calls both <code>kthread_create()</code> and <code>wake_up_process()</code>:</p>
+<pre><code class="c">#define kthread_run(threadfn, data, namefmt, ...)                 \
+({                                                                \
+    struct task_struct *k;                                        \
+                                                                  \
+    k = kthread_create(threadfn, data, namefmt, ## __VA_ARGS__);  \
+    if (!IS_ERR(k))                                               \
+        wake_up_process(k);                                       \
+    k;                                                            \
+})
+</code></pre>
+
+<p>When started, a kernel thread continues to exist until it calls <code>do_exit()</code> or another part of the kernel calls <code>kthread_stop()</code>, passing in the address of the <code>task_struct</code> structure returned by <code>kthread_create()</code>:</p>
+<pre><code class="c">int kthread_stop(struct task_struct *k)
+</code></pre>
+
+<h3 id="process-termination">Process Termination</h3>
+<p>When a process terminates, the kernel releases the resources owned by the process and notifies the child’s parent of its demise.</p>
+<p>Self-induced process termination occurs when the process calls the <code>exit()</code> system call, which is either:</p>
+<ul>
+<li>Explicitly: the process calls <code>exit()</code> system call.</li>
+<li>Implicitly: the process return from the main subroutine of any program. The C compiler places a call to <code>exit()</code> after <code>main()</code> returns.</li>
+</ul>
+<p>Involuntary process termination occurs when the process receives a signal or exception it cannot handle or ignore.</p>
+<p>Regardless of how a process terminates, the bulk of the work is handled by <code>do_exit()</code>, defined in <code>kernel/exit.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/exit.c#L900">kernel/exit.c#L900</a>), which does the following:</p>
+<ol>
+<li>It sets the <code>PF_EXITING</code> flag in the flags member of the <code>task_struct</code>.</li>
+<li>It calls <code>del_timer_sync()</code> to remove any kernel timers. Upon return, it is guaranteed that no timer is queued and that no timer handler is running.</li>
+<li>If BSD process accounting is enabled, <code>do_exit()</code> calls <code>acct_update_integrals()</code> to write out accounting information.</li>
+<li>It calls <code>exit_mm()</code> to release the <code>mm_struct</code> held by this process. If no other process is using this address space (if the address space is not shared) the kernel then destroys it.</li>
+<li>It calls <code>exit_sem()</code>. If the process is queued waiting for an IPC semaphore, it is dequeued here.</li>
+<li>It then calls <code>exit_files()</code> and <code>exit_fs()</code> to decrement the usage count of objects related to file descriptors and filesystem data, respectively.</li>
+<li>It sets the task’s exit code (stored in the <code>exit_code</code> member of the <code>task_struct</code>) to that provided by <code>exit()</code> or whatever kernel mechanism forced the termination. <u>The exit code is stored here for optional retrieval by the parent.</u></li>
+<li>It send signals and reparents children:<ul>
+<li>Calls <code>exit_notify()</code> to send signals to the task’s parent</li>
+<li>Reparents any of the task’s children to another thread in their thread group or the init process</li>
+<li>Sets the task’s exit state (stored in <code>exit_state</code> in the <code>task_struct</code> structure) to <code>EXIT_ZOMBIE</code>.</li>
+</ul>
+</li>
+<li>It calls <code>schedule()</code> to switch to a new process.<ul>
+<li>Because the process is now not schedulable, this is the last code the task will ever execute. <code>do_exit()</code> never returns.</li>
+</ul>
+</li>
+</ol>
+<p>At this point:</p>
+<ul>
+<li>All objects associated with the task (assuming the task was the sole user) are freed.</li>
+<li>The task is not runnable (and no longer has an address space in which to run) and is in the <code>EXIT_ZOMBIE</code> exit state.</li>
+<li>The only memory it occupies is its kernel stack, the <code>thread_info</code> structure, and the <code>task_struct</code> structure.</li>
+<li><u>The task exists solely to provide information to its parent. After the parent retrieves the information, or notifies the kernel that it is uninterested, the remaining memory held by the process is freed and returned to the system for use.</u></li>
+</ul>
+<h4 id="removing-the-process-descriptor">Removing the Process Descriptor</h4>
+<p>After <code>do_exit()</code> completes, the process descriptor for the terminated process still exists, but the process is a zombie and is unable to run. </p>
+<p>Cleaning up after a process and removing its process descriptor are separate steps. This enables the system to obtain information about a child process after it has terminated.</p>
+<p>The terminated child’s <code>task_struct</code> is deallocated after any of the following:</p>
+<ul>
+<li>The parent has obtained information on its terminated child.</li>
+<li>The parent has signified to the kernel that it does not care (about the terminated child).</li>
+</ul>
 <hr />
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
