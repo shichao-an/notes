@@ -514,17 +514,106 @@ The terminated child’s `task_struct` is deallocated after any of the following
 * The parent has obtained information on its terminated child.
 * The parent has signified to the kernel that it does not care (about the terminated child).
 
+The `wait()` family of functions are implemented via a system call `wait4()`.
+
+The standard behavior is to suspend execution of the calling task until one of its children exits, at which time the function returns with the PID of the exited child. On return, a pointer (as an argument to a `wait()` function) holds the exit code of the terminated child. [p38]
+
+`release_task()` is invoked to finally deallocate the process descriptor:
+
+1. It calls `__exit_signal()`, which calls `__unhash_process()`, which in turns calls detach_pid() to remove the process from the pidhash and remove the process from the task list.
+2. `__exit_signal()` releases any remaining resources used by the now dead process and finalizes statistics and bookkeeping.
+3. If the task was the last member of a thread group, and the leader is a zombie, then `release_task()` notifies the zombie leader’s parent.
+4. `release_task()` calls `put_task_struct()` to free the pages containing the process’s kernel stack and `thread_info` structure and deallocate the slab cache containing the `task_struct`.
+
+At this point, the process descriptor and all resources belonging solely to the process have been freed.
+
+#### The Dilemma of the Parentless Task
+
+<u>If a parent exits before its children, any of its child tasks must be reparented to a new process, otherwise parentless terminated processes would forever remain zombies, wasting system memory.</u>
+
+The solution is to reparent a task’s children on exit to another process in the current thread group, or (if that fails) the init process.
+
+`do_exit()` calls `exit_notify()`, which calls `forget_original_parent()`, which calls `find_new_reaper()` to perform the reparenting:
+
+```c
+static struct task_struct *find_new_reaper(struct task_struct *father)
+{
+    struct pid_namespace *pid_ns = task_active_pid_ns(father);
+    struct task_struct *thread;
+
+    thread = father;
+    while_each_thread(father, thread) {
+      if (thread->flags & PF_EXITING)
+          continue;
+      if (unlikely(pid_ns->child_reaper == father))
+          pid_ns->child_reaper = thread;
+      return thread;
+    }
+
+    if (unlikely(pid_ns->child_reaper == father)) {
+        write_unlock_irq(&tasklist_lock);
+        if (unlikely(pid_ns == &init_pid_ns))
+        panic("Attempted to kill init!");
+
+        zap_pid_ns_processes(pid_ns);
+        write_lock_irq(&tasklist_lock);
+
+        /*
+        * We can not clear ->child_reaper or leave it alone.
+        * There may by stealth EXIT_DEAD tasks on ->children,
+        * forget_original_parent() must move them somewhere.
+        */
+        pid_ns->child_reaper = init_pid_ns.child_reaper;
+    }
+
+    return pid_ns->child_reaper;
+}
+```
+
+The above code attempts to find and return another task in the process’s thread group. If another task is not in the thread group, it finds and returns the `init` process.
+
+After a suitable new parent for the children is found, each child needs to be located and reparented to `reaper`:
 
 
+```c
+reaper = find_new_reaper(father);
+list_for_each_entry_safe(p, n, &father->children, sibling) {
+    p->real_parent = reaper;
+    if (p->parent == father) {
+        BUG_ON(p->ptrace);
+        p->parent = p->real_parent;
+    }
+    reparent_thread(p, father);
+}
+```
+`ptrace_exit_finish()` is then called to do the same reparenting but to a list of *ptraced* children:
 
+```c
+void exit_ptrace(struct task_struct *tracer)
+{
+    struct task_struct *p, *n;
+    LIST_HEAD(ptrace_dead);
 
+    write_lock_irq(&tasklist_lock);
+    list_for_each_entry_safe(p, n, &tracer->ptraced, ptrace_entry) {
+        if (__ptrace_detach(tracer, p))
+        list_add(&p->ptrace_entry, &ptrace_dead);
+    }
+    write_unlock_irq(&tasklist_lock);
 
+    BUG_ON(!list_empty(&tracer->ptraced));
 
+    list_for_each_entry_safe(p, n, &ptrace_dead, ptrace_entry) {
+    list_del_init(&p->ptrace_entry);
+    release_task(p);
+    }
+}
 
+```
 
+When a task is *ptraced*, it is temporarily reparented to the debugging process. When the task’s parent exits, however, it must be reparented along with its other siblings. In previous kernels, this resulted in a loop over every process in the system looking for children. The solution is simply to keep a separate list of a process’s children being ptraced, reducing the search for one’s children from every process to just two relatively small lists
 
-
-
+After the process are successfully reparented, there is no risk of stray zombie processes. The `init` process routinely calls `wait()` on its children, cleaning up any zombies assigned to it.
 
 
 
