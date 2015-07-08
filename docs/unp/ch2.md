@@ -117,6 +117,13 @@ All three transport layers (UDP, SCTP and TCP) use 16-bit integer port numbers t
 * The **registered ports**: 1024 through 49151
 * The **dynamic ports** or **private ports**, 49152 through 65535. Also called **ephemeral ports**.
 
+[![Figure 2.10. Allocation of port numbers.](figure_2.10.png)](figure_2.10.png "Figure 2.10. Allocation of port numbers.")
+
+Some notes from the figure above:
+
+* On Unix, **reserved port** is any port less than 1024. These ports can only be assigned to a socket by an appropriately privileged process. All the IANA well-known ports are reserved ports. The server allocating this port must have superuser privileges when it starts.
+* Historically, Berkeley-derived implementations (starting with 4.3BSD) have allocated **ephemeral ports** in the range 1024–5000. Many newer systems allocate ephemeral ports differently to provide more ephemeral ports, either using the IANA-defined ephemeral range or a larger range
+
 #### Socket Pair
 
 * **Socket pair**: the four-tuple that defines the two endpoints of a TCP connection: the local IP address, local port, foreign IP address, and foreign port. A socket pair uniquely identifies every TCP connection on a network.
