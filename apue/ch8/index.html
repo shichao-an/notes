@@ -319,6 +319,10 @@
     
         <li class="main "><a href="#changing-user-ids-and-group-ids">Changing User IDs and Group IDs</a></li>
         
+            <li><a href="#setreuid-and-setregid-functions">setreuid and setregid Functions</a></li>
+        
+            <li><a href="#seteuid-and-setegid-functions">seteuid and setegid Functions</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1304,10 +1308,54 @@ HOME=/home/sar
 
 <p>The rules for who can change the IDs, considering only the user ID now (Everything we describe for the user ID also applies to the group ID.)</p>
 <ol>
-<li>If the process has superuser privileges, the <code>setuid</code> function sets the real user ID, effective user ID, and saved set-user-ID to <em>uid</em>.</li>
+<li><u>If the process has superuser privileges, the <code>setuid</code> function sets the real user ID, effective user ID, and saved set-user-ID to <em>uid</em>.</u></li>
 <li><u>If the process does not have superuser privileges, but <em>uid</em> equals either the real user ID or the saved set-user-ID, setuid sets only the effective user ID to <em>uid</em>. The real user ID and the saved set-user-ID are not changed.</u></li>
 <li>If neither of these two conditions is true, <code>errno</code> is set to <code>EPERM</code> and −1 is returned.</li>
 </ol>
+<p>We are assuming that <code>_POSIX_SAVED_IDS</code> is true. The saved IDs areamandatory feature in the 2001 version of POSIX.1.</p>
+<p>The statements about the three user IDs that the kernel maintains:</p>
+<ol>
+<li>Only a superuser process can change the real user ID.<ul>
+<li>Normally, the real user ID is set by the <code>login(1)</code> program when we log in and never changes. Because <code>login</code> is a superuser process, it sets all three user IDs when it calls <code>setuid</code>.</li>
+</ul>
+</li>
+<li>The effective user ID is set by the <code>exec</code> functions only if the set-user-ID bit is set for the program file.<ul>
+<li>If the set-user-ID bit is not set, the <code>exec</code> functions leave the effective user ID as its current value.</li>
+<li>We can call <code>setuid</code> at any time to set the effective user ID to either the real user ID or the saved set-user-ID. </li>
+<li>Naturally, we can’t set the effective user ID to any random value.</li>
+</ul>
+</li>
+<li>The saved set-user-ID is copied from the effective user ID by <code>exec</code>. If the file’s set-user-ID bit is set, this copy is saved after <code>exec</code> stores the effective user ID from the file’s user ID.</li>
+</ol>
+<p>The following figure summarizes the various ways these three user IDs can be changed:</p>
+<p><a href="../figure_8.18.png" title="Figure 8.18 Ways to change the three user IDs"><img alt="Figure 8.18 Ways to change the three user IDs" src="../figure_8.18_600.png" /></a></p>
+<p>We can obtain only the current value of the real user ID and the effective user ID with the functions <code>getuid</code> and <code>geteuid</code> (<a href="https://gist.github.com/shichao-an/4afacfab973219fb4721">apue_getpid.h</a>). There is no portable way to obtain the current value of the saved set-user-ID. FreeBSD 8.0 and LINUX 3.2.0 provide the <code>getresuid</code> and <code>getresgid</code> functions, which can be used to get the saved set-user-ID and saved set-group-ID, respectively.</p>
+<h4 id="setreuid-and-setregid-functions"><code>setreuid</code> and <code>setregid</code> Functions</h4>
+<p>Historically, BSD supported the swapping of the real user ID and the effective user ID with the setreuid function.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9">apue_setreuid.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9.js"></script>
+
+<ul>
+<li>A value of −1 for any of the arguments indicates that the corresponding ID should remain unchanged.</li>
+<li>An unprivileged user can always swap between the real user ID and the effective user ID. This allows a set-user-ID program to swap to the user’s normal permissions and swap back again later for set-user-ID operations.</li>
+<li>When the saved set-user-ID feature was introduced with POSIX.1, the rule was enhanced to also allow an unprivileged user to set its effective user ID to its saved set-user-ID.</li>
+</ul>
+<p>[p257]</p>
+<h4 id="seteuid-and-setegid-functions"><code>seteuid</code> and <code>setegid</code> Functions</h4>
+<p>POSIX.1 includes <code>seteuid</code> and <code>setegid</code> that only change the effective user ID or effective group ID.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba">apue_seteuid.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba.js"></script>
+
+<ul>
+<li>An unprivileged user can set its effective user ID to either its real user ID or its saved set-user-ID. </li>
+<li><u>For a privileged user, only the effective user ID is set to <em>uid</em>. This differs from <code>setuid</code> function, which changes all three user IDs.</u></li>
+</ul>
+<p>The figure below summarizes all the functions that we’ve described here that modify the three user IDs:</p>
+<p><a href="../figure_8.19.png" title="Figure 8.19 Summary of all the functions that set the various user IDs"><img alt="Figure 8.19 Summary of all the functions that set the various user IDs" src="../figure_8.19_600.png" /></a></p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on <code>vfork</code></p>
