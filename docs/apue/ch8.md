@@ -873,7 +873,23 @@ Analysis:
     * The `login` command does this when it executes the shell. Before executing the shell, login adds a dash as a prefix to `argv[0]` to indicate to the shell that it is being invoked as a login shell. A login shell will execute the start-up profile commands, whereas a nonlogin shell will not.
 * The shell prompt (`$`) appeared before the printing of `argv[0]` from the second exec. This occurred because the parent did not wait for this child process to finish.
 
+### Changing User IDs and Group IDs
 
+In the UNIX System, privileges and access control are on user and group IDs. When programs need additional privileges or access to unallowed resources, they need to change their user or group ID to an ID that has the appropriate privilege or access. It is similar when the programs need to lower their privileges or prevent access to certain resources. [p255]
+
+When designing applications, we try to use the **least-privilege** model, which means our programs should use the least privilege necessary to accomplish any given task. This reduces the risk that security might be compromised by a malicious user trying to trick our programs into using their privileges in unintended ways.
+
+We can set the real user ID and effective user ID with the `setuid` function and set the real group ID and the effective group ID with the `setgid` function.
+
+* [apue_setuid.h](https://gist.github.com/shichao-an/1df2f6a9e252b679bf37)
+
+<script src="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37.js"></script>
+
+The rules for who can change the IDs, considering only the user ID now (Everything we describe for the user ID also applies to the group ID.)
+
+1. If the process has superuser privileges, the `setuid` function sets the real user ID, effective user ID, and saved set-user-ID to *uid*.
+2. <u>If the process does not have superuser privileges, but *uid* equals either the real user ID or the saved set-user-ID, setuid sets only the effective user ID to *uid*. The real user ID and the saved set-user-ID are not changed.</u>
+3. If neither of these two conditions is true, `errno` is set to `EPERM` and −1 is returned.
 
 
 
