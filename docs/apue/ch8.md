@@ -887,9 +887,56 @@ We can set the real user ID and effective user ID with the `setuid` function and
 
 The rules for who can change the IDs, considering only the user ID now (Everything we describe for the user ID also applies to the group ID.)
 
-1. If the process has superuser privileges, the `setuid` function sets the real user ID, effective user ID, and saved set-user-ID to *uid*.
+1. <u>If the process has superuser privileges, the `setuid` function sets the real user ID, effective user ID, and saved set-user-ID to *uid*.</u>
 2. <u>If the process does not have superuser privileges, but *uid* equals either the real user ID or the saved set-user-ID, setuid sets only the effective user ID to *uid*. The real user ID and the saved set-user-ID are not changed.</u>
 3. If neither of these two conditions is true, `errno` is set to `EPERM` and −1 is returned.
+
+We are assuming that `_POSIX_SAVED_IDS` is true. The saved IDs areamandatory feature in the 2001 version of POSIX.1.
+
+The statements about the three user IDs that the kernel maintains:
+
+1. Only a superuser process can change the real user ID.
+    *  Normally, the real user ID is set by the `login(1)` program when we log in and never changes. Because `login` is a superuser process, it sets all three user IDs when it calls `setuid`.
+2. The effective user ID is set by the `exec` functions only if the set-user-ID bit is set for the program file.
+    * If the set-user-ID bit is not set, the `exec` functions leave the effective user ID as its current value.
+    * We can call `setuid` at any time to set the effective user ID to either the real user ID or the saved set-user-ID. 
+    * Naturally, we can’t set the effective user ID to any random value.
+3. The saved set-user-ID is copied from the effective user ID by `exec`. If the file’s set-user-ID bit is set, this copy is saved after `exec` stores the effective user ID from the file’s user ID.
+
+The following figure summarizes the various ways these three user IDs can be changed:
+
+[![Figure 8.18 Ways to change the three user IDs](figure_8.18_600.png)](figure_8.18.png "Figure 8.18 Ways to change the three user IDs")
+
+We can obtain only the current value of the real user ID and the effective user ID with the functions `getuid` and `geteuid` ([apue_getpid.h](https://gist.github.com/shichao-an/4afacfab973219fb4721)). There is no portable way to obtain the current value of the saved set-user-ID. FreeBSD 8.0 and LINUX 3.2.0 provide the `getresuid` and `getresgid` functions, which can be used to get the saved set-user-ID and saved set-group-ID, respectively.
+
+#### `setreuid` and `setregid` Functions
+
+Historically, BSD supported the swapping of the real user ID and the effective user ID with the setreuid function.
+
+* [apue_setreuid.h](https://gist.github.com/shichao-an/2228040fa94d5bf40fb9)
+
+<script src="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9.js"></script>
+
+* A value of −1 for any of the arguments indicates that the corresponding ID should remain unchanged.
+* An unprivileged user can always swap between the real user ID and the effective user ID. This allows a set-user-ID program to swap to the user’s normal permissions and swap back again later for set-user-ID operations.
+* When the saved set-user-ID feature was introduced with POSIX.1, the rule was enhanced to also allow an unprivileged user to set its effective user ID to its saved set-user-ID.
+
+[p257]
+
+#### `seteuid` and `setegid` Functions
+
+POSIX.1 includes `seteuid` and `setegid` that only change the effective user ID or effective group ID.
+
+* [apue_seteuid.h](https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba)
+
+<script src="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba.js"></script>
+
+* An unprivileged user can set its effective user ID to either its real user ID or its saved set-user-ID. 
+* <u>For a privileged user, only the effective user ID is set to *uid*. This differs from `setuid` function, which changes all three user IDs.</u>
+
+The figure below summarizes all the functions that we’ve described here that modify the three user IDs:
+
+[![Figure 8.19 Summary of all the functions that set the various user IDs](figure_8.19_600.png)](figure_8.19.png "Figure 8.19 Summary of all the functions that set the various user IDs")
 
 
 
