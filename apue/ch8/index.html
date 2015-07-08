@@ -309,6 +309,9 @@
             <li><a href="#exec-library-functions-and-system-call">exec library functions and system call</a></li>
         
     
+        <li class="main "><a href="#changing-user-ids-and-group-ids">Changing User IDs and Group IDs</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1282,6 +1285,21 @@ HOME=/home/sar
 </li>
 <li>The shell prompt (<code>$</code>) appeared before the printing of <code>argv[0]</code> from the second exec. This occurred because the parent did not wait for this child process to finish.</li>
 </ul>
+<h3 id="changing-user-ids-and-group-ids">Changing User IDs and Group IDs</h3>
+<p>In the UNIX System, privileges and access control are on user and group IDs. When programs need additional privileges or access to unallowed resources, they need to change their user or group ID to an ID that has the appropriate privilege or access. It is similar when the programs need to lower their privileges or prevent access to certain resources. [p255]</p>
+<p>When designing applications, we try to use the <strong>least-privilege</strong> model, which means our programs should use the least privilege necessary to accomplish any given task. This reduces the risk that security might be compromised by a malicious user trying to trick our programs into using their privileges in unintended ways.</p>
+<p>We can set the real user ID and effective user ID with the <code>setuid</code> function and set the real group ID and the effective group ID with the <code>setgid</code> function.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37">apue_setuid.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37.js"></script>
+
+<p>The rules for who can change the IDs, considering only the user ID now (Everything we describe for the user ID also applies to the group ID.)</p>
+<ol>
+<li>If the process has superuser privileges, the <code>setuid</code> function sets the real user ID, effective user ID, and saved set-user-ID to <em>uid</em>.</li>
+<li><u>If the process does not have superuser privileges, but <em>uid</em> equals either the real user ID or the saved set-user-ID, setuid sets only the effective user ID to <em>uid</em>. The real user ID and the saved set-user-ID are not changed.</u></li>
+<li>If neither of these two conditions is true, <code>errno</code> is set to <code>EPERM</code> and −1 is returned.</li>
+</ol>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on <code>vfork</code></p>
