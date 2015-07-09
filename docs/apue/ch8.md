@@ -1201,8 +1201,55 @@ The structure of the accounting records is defined in the header <sys/acct.h>, w
 
 <script src="https://gist.github.com/shichao-an/75e863104cb1e5f6891f.js"></script>
 
+* Times are recorded in units of clock ticks on most platforms, but FreeBSD stores microseconds instead.
+* The `ac_flag` member records certain events during the execution of the process. See table below.
+
+`ac_flag` | Description | FreeBSD 8.0 | Linux 3.2.0 | Mac OS X 10.6.8 | Solaris 10
+--------- | ----------- | ----------- | ----------- | --------------- | ----------
+`AFORK` | process is the result of `fork`, but never called `exec` | x | x | x | x
+`ASU` | process used superuser privileges | | x | x | x
+`ACORE` | process dumped core | x | x | x |
+`AXSIG` | process was killed by a signal | x | x | x |
+`AEXPND` | expanded accounting entry | | | | x
+`ANVER` | new record format | x | | |
+
+The data required for the accounting record (e.g. CPU times and number of characters transferred) is kept by the kernel in the process table and initialized whenever a new process is created, as in the child after a `fork`. Each accounting record is written when the process terminates. This has two consequences:
+
+* We cannot get accounting records for processes that never terminate, such as `init` and kernel daemons.
+* The order of the records in the accounting file corresponds to the termination order of the processes, not the order in which they were started. [p270]. We can’t reconstruct the exact starting order of various processes, given the data in the accounting file.
+
+The accounting records correspond to processes, not programs. A new record is initialized by the kernel for the child after a `fork`, not when a new program is executed. Although exec doesn’t create a new accounting record, the command name changes, and the `AFORK` flag is cleared. For example, if A `exec`s B, then B `exec`s C, and C `exit`, only a single accounting record is written.  The command name in the record corresponds to program C, but the CPU times are the sum for programs A, B, and C.
 
 
+### User Identification
+
+Any process can find out its real and effective user ID and group ID. `getpwuid(getuid())` can be used to find out the login name of the user who’s running the program. However, a single user can have multiple login names, that is, a person might have multiple entries in the password file with the same user ID to have a different login shell for each entry. The system normally keeps track of the name we log in under the `utmp` file (see [Section 6.8](/apue/ch6/#login-accounting)), and the `getlogin` function provides a way to fetch that login name.
+
+* [apue_getlogin.h](https://gist.github.com/shichao-an/c77a9e8660a3405a983c)
+
+<script src="https://gist.github.com/shichao-an/c77a9e8660a3405a983c.js"></script>
+
+This function can fail if the process is not attached to a terminal that a user logged in to. We normally call these processes **daemons**.
+
+Given the login name, we can then use it to look up the user in the password file (e.g. to determine the login shell) using `getpwnam`.
+
+The environment variable `LOGNAME` is usually initialized with the user’s login name by `login(1)` and inherited by the login shell. However, a user can modify an environment variable, so we shouldn’t use `LOGNAME` to validate the user in any way. Instead, we should use `getlogin`.
+
+### Process Scheduling
+
+Historically, the UNIX System provided processes with only coarse control over their scheduling priority. The scheduling policy and priority were determined by the kernel.
+
+* A process could choose to run with lower priority by adjusting its **nice value**
+    * A process could be "nice" and reduce its share of the CPU by adjusting its nice value
+* Only a privileged process was allowed to increase its scheduling priority.
+
+In the Single UNIX Specification, nice values range from 0 to `(2*NZERO)−1`, although some implementations support a range from 0 to `2*NZERO`. Lower nice values have higher scheduling priority. Lower nice values have higher scheduling priority. <u>"The more nice you are, the lower your scheduling priority is."</u> `NZERO` is the default nice value of the system. [p276]
+
+A process can retrieve and change its nice value with the `nice` function. With this function, a process can affect only its own nice value; it can’t affect the nice value of any other process.
+
+* [apue_nice.h](https://gist.github.com/shichao-an/3c3be1b450591dc9488f)
+
+<script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
 
 
 
