@@ -345,6 +345,12 @@
         <li class="main "><a href="#process-accounting">Process Accounting</a></li>
         
     
+        <li class="main "><a href="#user-identification">User Identification</a></li>
+        
+    
+        <li class="main "><a href="#process-scheduling">Process Scheduling</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1601,6 +1607,104 @@ system(const char *cmdstring)   /* version without signal handling */
 <li><a href="https://gist.github.com/shichao-an/75e863104cb1e5f6891f">apue_acct.h</a></li>
 </ul>
 <script src="https://gist.github.com/shichao-an/75e863104cb1e5f6891f.js"></script>
+
+<ul>
+<li>Times are recorded in units of clock ticks on most platforms, but FreeBSD stores microseconds instead.</li>
+<li>The <code>ac_flag</code> member records certain events during the execution of the process. See table below.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><code>ac_flag</code></th>
+<th>Description</th>
+<th>FreeBSD 8.0</th>
+<th>Linux 3.2.0</th>
+<th>Mac OS X 10.6.8</th>
+<th>Solaris 10</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AFORK</code></td>
+<td>process is the result of <code>fork</code>, but never called <code>exec</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+</tr>
+<tr>
+<td><code>ASU</code></td>
+<td>process used superuser privileges</td>
+<td></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+</tr>
+<tr>
+<td><code>ACORE</code></td>
+<td>process dumped core</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td><code>AXSIG</code></td>
+<td>process was killed by a signal</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td><code>AEXPND</code></td>
+<td>expanded accounting entry</td>
+<td></td>
+<td></td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td><code>ANVER</code></td>
+<td>new record format</td>
+<td>x</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The data required for the accounting record (e.g. CPU times and number of characters transferred) is kept by the kernel in the process table and initialized whenever a new process is created, as in the child after a <code>fork</code>. Each accounting record is written when the process terminates. This has two consequences:</p>
+<ul>
+<li>We cannot get accounting records for processes that never terminate, such as <code>init</code> and kernel daemons.</li>
+<li>The order of the records in the accounting file corresponds to the termination order of the processes, not the order in which they were started. [p270]. We can’t reconstruct the exact starting order of various processes, given the data in the accounting file.</li>
+</ul>
+<p>The accounting records correspond to processes, not programs. A new record is initialized by the kernel for the child after a <code>fork</code>, not when a new program is executed. Although exec doesn’t create a new accounting record, the command name changes, and the <code>AFORK</code> flag is cleared. For example, if A <code>exec</code>s B, then B <code>exec</code>s C, and C <code>exit</code>, only a single accounting record is written.  The command name in the record corresponds to program C, but the CPU times are the sum for programs A, B, and C.</p>
+<h3 id="user-identification">User Identification</h3>
+<p>Any process can find out its real and effective user ID and group ID. <code>getpwuid(getuid())</code> can be used to find out the login name of the user who’s running the program. However, a single user can have multiple login names, that is, a person might have multiple entries in the password file with the same user ID to have a different login shell for each entry. The system normally keeps track of the name we log in under the <code>utmp</code> file (see <a href="../../apue/ch6/#login-accounting">Section 6.8</a>), and the <code>getlogin</code> function provides a way to fetch that login name.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/c77a9e8660a3405a983c">apue_getlogin.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/c77a9e8660a3405a983c.js"></script>
+
+<p>This function can fail if the process is not attached to a terminal that a user logged in to. We normally call these processes <strong>daemons</strong>.</p>
+<p>Given the login name, we can then use it to look up the user in the password file (e.g. to determine the login shell) using <code>getpwnam</code>.</p>
+<p>The environment variable <code>LOGNAME</code> is usually initialized with the user’s login name by <code>login(1)</code> and inherited by the login shell. However, a user can modify an environment variable, so we shouldn’t use <code>LOGNAME</code> to validate the user in any way. Instead, we should use <code>getlogin</code>.</p>
+<h3 id="process-scheduling">Process Scheduling</h3>
+<p>Historically, the UNIX System provided processes with only coarse control over their scheduling priority. The scheduling policy and priority were determined by the kernel.</p>
+<ul>
+<li>A process could choose to run with lower priority by adjusting its <strong>nice value</strong><ul>
+<li>A process could be "nice" and reduce its share of the CPU by adjusting its nice value</li>
+</ul>
+</li>
+<li>Only a privileged process was allowed to increase its scheduling priority.</li>
+</ul>
+<p>In the Single UNIX Specification, nice values range from 0 to <code>(2*NZERO)−1</code>, although some implementations support a range from 0 to <code>2*NZERO</code>. Lower nice values have higher scheduling priority. Lower nice values have higher scheduling priority. <u>"The more nice you are, the lower your scheduling priority is."</u> <code>NZERO</code> is the default nice value of the system. [p276]</p>
+<p>A process can retrieve and change its nice value with the <code>nice</code> function. With this function, a process can affect only its own nice value; it can’t affect the nice value of any other process.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/3c3be1b450591dc9488f">apue_nice.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
 
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
