@@ -938,6 +938,279 @@ The figure below summarizes all the functions that we’ve described here that m
 
 [![Figure 8.19 Summary of all the functions that set the various user IDs](figure_8.19_600.png)](figure_8.19.png "Figure 8.19 Summary of all the functions that set the various user IDs")
 
+#### Group IDs
+
+Everything covered so far for user IDs in this section also applies in a similar fashion to group IDs. The [supplementary group IDs](/apue/ch6/#supplementary-group-ids) are not affected by `setgid`, `setregid`, or `setegid`.
+
+
+#### Example of set-user-ID programs: `at`
+
+On Linux 3.2.0, the `at` program is installed set-user-ID to user `daemon` and the programs are run by the `atd(8)` daemon. This allows the at command to write privileged files owned by the daemon that will run the commands on behalf of the user running the `at` command.
+
+To prevent privilege breach, the daemon that run the commands on users's behalf have to switch between sets of privileges: users and those of the daemon. The following steps take place [p259-260]:
+
+1. Assuming that the `at` program file is owned by `root` with set-user-ID bit set. When we run it, we have:
+    * real user ID = our user ID (unchanged)
+    * effective user ID = root
+    * saved set-user-ID = root
+2. `at` command reduces its privileges by calling `seteuid` function to set the effective user ID to our read user ID:
+    * real user ID = our user ID (unchanged)
+    * effective user ID = our user ID
+    * saved set-user-ID = root (unchanged)
+3. When `at` needs to access the configuration files (these files are owned by the daemon that will run the commands for us) that control which commands are to be run and the time at which they need to run, it calls `seteuid` to set the effective user ID to root, which is allowed because the argument to seteuid equals the saved set-user-ID:
+    * real user ID = our user ID (unchanged)
+    * effective user ID = root
+    * saved set-user-ID = root (unchanged)
+4. After the files are modified to record the commands to be run and the time at which they are to be run, the `at` command lowers its privileges by calling `seteuid` to set its effective user ID to our user ID:
+    * real user ID = our user ID (unchanged)
+    * effective user ID = our user ID
+    * saved set-user-ID = root (unchanged)
+5. The daemon starts out running with root privileges. To run commands on our behalf, the daemon calls `fork` and the child calls `setuid` to change its user ID to our user ID. Because the child is running with root privileges, this changes all of the IDs. We have:
+    * real user ID = our user ID
+    * effective user ID = our user ID
+    * saved set-user-ID = our user ID
+
+Then the daemon safely executes commands on our behalf, because it can access only the files to which we normally have access.
+
+By using the saved set-user-ID in this fashion, we can use the extra privileges granted to us by the set-user-ID of the program file only when we need elevated privileges. Any other time, however, the process runs with our normal permissions. [p260]
+
+### Interpreter Files
+
+On contemporary UNIX systems, **interpreter files** are text files that begin with a line of the form ([shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))):
+
+```sh
+#! pathname [ optional-argument ]
+```
+
+The space between the exclamation point and the pathname is optional. The most common of these interpreter files begin with the line:
+
+```sh
+#!/bin/sh
+```
+
+* *pathname* is normally an absolute pathname, since no special operations are performed on it (`PATH` is not used)
+* The recognition of interpreter files is done within the kernel as part of processing the `exec` system call
+* The actual file that gets executed by the kernel is not the interpreter file, but rather the file specified by the *pathname* on the first line of the interpreter file.
+
+
+##### Interpreter file vs. Interpreter
+
+* Interpreter file: is a text file that begins with `#!`.
+* Interpreter: is specified by the *pathname* on the first line of the interpreter file.
+
+Be aware that systems place a size limit on the first line of an interpreter file. This limit includes the `#!`, the *pathname*, the optional argument, the terminating newline, and any spaces. On Linux 3.2.0, the limit is 128 bytes.
+
+
+##### Example: A program that `exec`s an interpreter file
+
+* [exec2.c](https://github.com/shichao-an/apue.3e/blob/master/proc/exec2.c)
+
+```c
+#include "apue.h"
+#include <sys/wait.h>
+
+int
+main(void)
+{
+    pid_t pid;
+
+    if ((pid = fork()) < 0) {
+        err_sys("fork error");
+    } else if (pid == 0) { /* child */
+        if (execl("/home/sar/bin/testinterp",
+                  "testinterp", "myarg1", "MY ARG2", (char *)0) < 0)
+            err_sys("execl error");
+    }
+    if (waitpid(pid, NULL, 0) < 0) /* parent */
+        err_sys("waitpid error");
+    exit(0);
+}
+```
+
+Results:
+
+```text
+$ cat /home/sar/bin/testinterp
+#!/home/sar/bin/echoarg foo
+$ ./a.out
+argv[0]: /home/sar/bin/echoarg
+argv[1]: foo
+argv[2]: /home/sar/bin/testinterp
+argv[3]: myarg1
+argv[4]: MY ARG2
+```
+
+Analysis:
+
+The program (from [Section 7.4](/apue/ch7/#command-line-arguments)) `echoarg` is the interpreter that echoes each of its command-line arguments.
+
+When the kernel `exec`s the interpreter (`/home/sar/bin/echoarg`):
+
+* `argv[0]` is *pathname* of the interpreter
+* `argv[1]` is the optional argument from the interpreter file (`foo`)
+* The remaining arguments are the *pathname* (`/home/sar/bin/testinterp`) and the second and third arguments from the call to `execl` in the program (`myarg1` and `MY ARG2`)
+* Both `argv[1]` and `argv[2]` from the call to `execl` have been shifted right two positions.
+* The kernel takes the *pathname* from the `execl` call instead of the first argument (`testinterp`), on the assumption that the *pathname* might contain more information than the first argument.
+
+##### Example: `awk`
+
+A common use for the optional argument following the interpreter pathname is to specify the `-f` option for programs that support this option. For example, an `awk(1)` program can be executed as:
+
+```sh
+awk -f myfile
+```
+
+It tells `awk` to read the `awk` program from the file `myfile`.
+
+Using the `-f` option with an interpreter file lets us write
+
+```sh
+#!/bin/awk -f
+# (awk program follows in the interpreter file)
+```
+
+* [awkexample](https://github.com/shichao-an/apue.3e/blob/master/proc/awkexample)
+
+```sh
+#!/usr/bin/awk -f
+BEGIN {
+    for (i = 0; i < ARGC; i++)
+        printf "ARGV[%d] = %s\n", i, ARGV[i]
+    exit
+}
+```
+
+Assume the above interpreter file is  `/usr/local/bin/awkexample` and one of the path prefixes is `/usr/local/bin`, we can execute the program:
+
+```text
+$ awkexample file1 FILENAME2 f3
+ARGV[0] = awk
+ARGV[1] = file1
+ARGV[2] = FILENAME2
+ARGV[3] = f3
+```
+
+When `/bin/awk` is executed, its command-line arguments are:
+
+```sh
+/bin/awk -f /usr/local/bin/awkexample file1 FILENAME2 f3
+```
+
+[p263]
+
+Interpreter files provide an efficiency gain for the user at some expense in the kernel, since it’s the kernel that recognizes these files. They are useful for the following reasons:
+
+First, they hide that certain programs are scripts in some other language. For example, use `awkexample optional-arguments` instead of `awk -f awkexample optional-argument`, we do not need to know that the program is really an `awk` script.
+
+Second, interpreter scripts provide an efficiency gain. For example, if we place the previous `awk` program into a shell script like this:
+
+```sh
+awk 'BEGIN {
+    for (i = 0; i < ARGC; i++)
+        printf "ARGV[%d] = %s\n", i, ARGV[i]
+    exit
+}' $*
+```
+More work is required when executing this script:
+
+1. The shell reads the command and tries to `execlp` the filename (shell script). Since the shell script is an executable file but isn't a machine executable, an error is returned and `execlp` assumes that the file is a shell script.
+2. `/bin/sh` is executed with the pathname of the shell script as its argument.
+3. The shell correctly runs the script, but to run the `awk` programs, the shell does `fork`, `exec` and `wait`.
+
+Third, interpreter scripts let us write shell scripts using shells other than `/bin/sh`. When it finds an executable file that isn’t a machine executable, `execlp` has to choose a shell to invoke, and it always uses `/bin/sh`.
+
+### `system` Function
+
+It is convenient to execute a command string from within a program.
+
+* [apue_system.h](https://gist.github.com/shichao-an/37133deff99ae0661101)
+
+<script src="https://gist.github.com/shichao-an/37133deff99ae0661101.js"></script>
+
+Arguments:
+
+If *cmdstring* is a null pointer, system returns nonzero only if a command processor is available, which determines whether the `system` function is supported on a given platform. Under UNIX systems, it is always available.
+
+Return values:
+
+Since `system` is implemented by calling `fork`, `exec`, and `waitpid`, there are three types of return values:
+
+1. If either the `fork` fails or `waitpid` returns an error other than `EINTR`, `system` returns −1 with `errno` set to indicate the error.
+2. If the `exec` fails, implying that the shell can’t be executed, the return value is as if the shell had executed `exit(127)`.
+3. If all three functions succeed, the return value is the termination status of the shell, in the format specified for `waitpid`.
+
+The code below is an implementation of the `system` function, which doesn't handle is signals.
+
+```c
+#include	<sys/wait.h>
+#include	<errno.h>
+#include	<unistd.h>
+
+int
+system(const char *cmdstring)	/* version without signal handling */
+{
+	pid_t	pid;
+	int		status;
+
+	if (cmdstring == NULL)
+		return(1);		/* always a command processor with UNIX */
+
+	if ((pid = fork()) < 0) {
+		status = -1;	/* probably out of processes */
+	} else if (pid == 0) {				/* child */
+		execl("/bin/sh", "sh", "-c", cmdstring, (char *)0);
+		_exit(127);		/* execl error */
+	} else {							/* parent */
+		while (waitpid(pid, &status, 0) < 0) {
+			if (errno != EINTR) {
+				status = -1; /* error other than EINTR from waitpid() */
+				break;
+			}
+		}
+	}
+
+	return(status);
+}
+```
+* The shell’s `-c` option tells it to take the next command-line argument, *cmdstring*, as its command input instead of reading from standard input or from a given file. The shell parses this null-terminated C string and breaks it up into separate command-line arguments for the command. The actual command string that is passed to the shell can contain any valid shell commands.
+* `_exit` is called instead of `exit`. This prevents any standard I/O buffers, which would have been copied from the parent to the child across the fork, from being flushed in the child.
+
+[p266-267]
+
+#### Set-User-ID Programs
+
+<u>Calling `system` from a set-user-ID program creates a security hole and should never be attempted.</u>
+
+[p267-269]
+
+The superuser permissions that we gave the set-user-ID program are retained across the `fork` and `exec` that are done by `system`.
+
+If it is running with special permissions (set-user-ID or set-group-ID), and wants to spawn another process, a process should use `fork` and `exec` directly, being certain to change back to normal permissions after the `fork`, before calling `exec`. The `system` function should never be used from a set-user-ID or a set-group-ID program.
+
+### Process Accounting
+
+On UNIX systems, process accounting can be enabled so that kernel writes an accounting record each time a process terminates, which typically contain a small amount of binary data with the name of the command, the amount of CPU time used, the user ID and group ID, the starting time.
+
+The function `acct` enables and disables process accounting. The only use of this function is from the `accton(8)` command.
+
+A superuser executes accton with a pathname argument to enable accounting. The accounting records are written to the specified file, which is usually `/var/account/acct` on FreeBSD and Mac OS X, `/var/log/account/pacct` on Linux, and `/var/adm/pacct` on Solaris. Accounting is turned off by executing accton without any arguments.
+
+The structure of the accounting records is defined in the header <sys/acct.h>, which look something like:
+
+* [apue_acct.h](https://gist.github.com/shichao-an/75e863104cb1e5f6891f)
+
+<script src="https://gist.github.com/shichao-an/75e863104cb1e5f6891f.js"></script>
+
+
+
+
+
+
+
+
+
+
+
 
 
 
