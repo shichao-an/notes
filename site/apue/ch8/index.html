@@ -351,6 +351,12 @@
         <li class="main "><a href="#process-scheduling">Process Scheduling</a></li>
         
     
+        <li class="main "><a href="#process-times">Process Times</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1602,11 +1608,31 @@ system(const char *cmdstring)   /* version without signal handling */
 <p>On UNIX systems, process accounting can be enabled so that kernel writes an accounting record each time a process terminates, which typically contain a small amount of binary data with the name of the command, the amount of CPU time used, the user ID and group ID, the starting time.</p>
 <p>The function <code>acct</code> enables and disables process accounting. The only use of this function is from the <code>accton(8)</code> command.</p>
 <p>A superuser executes accton with a pathname argument to enable accounting. The accounting records are written to the specified file, which is usually <code>/var/account/acct</code> on FreeBSD and Mac OS X, <code>/var/log/account/pacct</code> on Linux, and <code>/var/adm/pacct</code> on Solaris. Accounting is turned off by executing accton without any arguments.</p>
-<p>The structure of the accounting records is defined in the header <sys/acct.h>, which look something like:</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/75e863104cb1e5f6891f">apue_acct.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/75e863104cb1e5f6891f.js"></script>
+<p>The structure of the accounting records is defined in the header <code>&lt;sys/acct.h&gt;</code>, which look something like:</p>
+<pre><code class="c">typedef u_short comp_t; /* 3-bit base 8 exponent; 13-bit fraction */
+
+struct acct
+{
+    char ac_flag; /* flag (see Figure 8.26) */
+    char ac_stat; /* termination status (signal &amp; core flag only) */
+    /* (Solaris only) */
+    uid_t ac_uid; /* real user ID */
+    gid_t ac_gid; /* real group ID */
+    dev_t ac_tty; /* controlling terminal */
+    time_t ac_btime; /* starting calendar time */
+    comp_t ac_utime; /* user CPU time */
+    comp_t ac_stime; /* system CPU time */
+    comp_t ac_etime; /* elapsed time */
+    comp_t ac_mem; /* average memory usage */
+    comp_t ac_io; /* bytes transferred (by read and write) */
+    /* &quot;blocks&quot; on BSD systems */
+    comp_t ac_rw; /* blocks read or written */
+    /* (not present on BSD systems) */
+    char ac_comm[8]; /* command name: [8] for Solaris, */
+    /* [10] for Mac OS X, [16] for FreeBSD, and */
+    /* [17] for Linux */
+};
+</code></pre>
 
 <ul>
 <li>Times are recorded in units of clock ticks on most platforms, but FreeBSD stores microseconds instead.</li>
@@ -1706,6 +1732,91 @@ system(const char *cmdstring)   /* version without signal handling */
 </ul>
 <script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
 
+<ul>
+<li>The <em>incr</em> argument is added to the nice value of the calling process. <ul>
+<li>If <em>incr</em> is too large or too small, the system silently reduces it to the maximum or minimum legal value.</li>
+<li>-1 is a legal successful return value. We need to clear <code>errno</code> before calling nice and check its value if nice returns −1. If the call to nice succeeds and the return value is −1, then errno will still be zero. If <code>errno</code> is nonzero, it means that the call to nice failed. </li>
+</ul>
+</li>
+</ul>
+<p>The <code>getpriority</code> function can be used to get the nice value for a process and for a group of related processes.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/fade39d67294333ef22b">apue_getpriority.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/fade39d67294333ef22b.js"></script>
+
+<ul>
+<li>The <em>which</em> argument can take on one of three following values; it controls how the <em>who</em> argument is interpreted:<ul>
+<li><code>PRIO_PROCESS</code>: a process</li>
+<li><code>PRIO_PGRP</code>: a process group</li>
+<li><code>PRIO_USER</code>: a user ID</li>
+</ul>
+</li>
+<li>The <em>who</em> argument:<ul>
+<li>0 (a value of zero): the calling process, process group, or user (depending on the value of the <em>which</em> argument).</li>
+</ul>
+</li>
+</ul>
+<p>When the which argument applies to more than one process, the highest priority (lowest value) of all the applicable processes is returned.</p>
+<p>The <code>setpriority</code> function can be used to set the priority of a process, a process group, or all the processes belonging to a particular user ID.  </p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6">apue_setpriority.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6.js"></script>
+
+<p>The <em>which</em> and <em>who</em> arguments are the same as in the <em>getpriority</em> function. The <em>value</em> is added to <code>NZERO</code> and this becomes the new nice value.</p>
+<p>A child process inherits the nice value from its parent process in FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10.</p>
+<h3 id="process-times">Process Times</h3>
+<p>Three times can be measured:</p>
+<ul>
+<li><strong>Wall clock time</strong></li>
+<li><strong>User CPU time</strong></li>
+<li><strong>System CPU time</strong></li>
+</ul>
+<p>Any process can call the <code>times</code> function to obtain these values for itself and any terminated children.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02">apue_times.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02.js"></script>
+
+<p>This function fills in the <code>tms</code> structure pointed to by <em>buf</em>:</p>
+<pre><code class="c">struct tms {
+    clock_t tms_utime; /* user CPU time */
+    clock_t tms_stime; /* system CPU time */
+    clock_t tms_cutime; /* user CPU time, terminated children */
+    clock_t tms_cstime; /* system CPU time, terminated children */
+};
+</code></pre>
+
+<p>The <code>tms</code> structure does not contain any measurement for the wall clock time. Instead, the function returns the wall clock time as the value of the function. This value is measured from some arbitrary point in the past, so we can’t use its absolute value; instead, we use its relative value. We call <code>times</code> and save the return value. At some later time, we call <code>times</code> again and subtract the earlier return value from the new return value. The difference is the wall clock time.</p>
+<p>The two structure fields for child processes contain values only for children that we have waited for with one of the <code>wait</code> functions.</p>
+<p>All the <code>clock_t</code> values returned by this function are converted to seconds using the number of clock ticks per second, the <code>_SC_CLK_TCK</code> value returned by <code>sysconf</code>, that is, divide the <code>clock_t</code> value by the <code>_SC_CLK_TCK</code> value. For example, </p>
+<p>[p280-282]</p>
+<pre><code class="c">#include &quot;apue.h&quot;
+#include &lt;sys/times.h&gt;
+
+clock_t start, end;
+long clktck = 0;
+struct tms tmsstart, tmsend
+
+if ((clktck = sysconf(_SC_CLK_TCK)) &lt; 0)
+    err_sys(&quot;sysconf error&quot;);
+
+if ((start = times(&amp;tmsstart)) == -1) /* starting values */
+    err_sys(&quot;times error&quot;);
+
+/* do some work */
+
+if ((end = times(&amp;tmsend)) == -1) /* ending values */
+    err_sys(&quot;times error&quot;);
+
+printf(&quot; real: %7.2f\n&quot;, real / (double) clktck);
+</code></pre>
+
+<h3 id="summary">Summary</h3>
+<p>A thorough understanding of process control is essential for advanced UNIX programming. There are only a few functions to master: <code>fork</code>, the <code>exec</code> family, <code>_exit</code>, <code>wait</code>, and <code>waitpid</code>. These primitives are used in many applications. </p>
+<p>Examination of the <code>system</code> function and process accounting gave us another look at all these process control functions.</p>
+<p>An understanding of the various user IDs and group IDs that are provided (real, effective, and saved) is critical to writing safe set-user-ID programs.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on <code>vfork</code></p>
