@@ -1195,11 +1195,33 @@ The function `acct` enables and disables process accounting. The only use of thi
 
 A superuser executes accton with a pathname argument to enable accounting. The accounting records are written to the specified file, which is usually `/var/account/acct` on FreeBSD and Mac OS X, `/var/log/account/pacct` on Linux, and `/var/adm/pacct` on Solaris. Accounting is turned off by executing accton without any arguments.
 
-The structure of the accounting records is defined in the header <sys/acct.h>, which look something like:
+The structure of the accounting records is defined in the header `<sys/acct.h>`, which look something like:
 
-* [apue_acct.h](https://gist.github.com/shichao-an/75e863104cb1e5f6891f)
+```c
+typedef u_short comp_t; /* 3-bit base 8 exponent; 13-bit fraction */
 
-<script src="https://gist.github.com/shichao-an/75e863104cb1e5f6891f.js"></script>
+struct acct
+{
+    char ac_flag; /* flag (see Figure 8.26) */
+    char ac_stat; /* termination status (signal & core flag only) */
+    /* (Solaris only) */
+    uid_t ac_uid; /* real user ID */
+    gid_t ac_gid; /* real group ID */
+    dev_t ac_tty; /* controlling terminal */
+    time_t ac_btime; /* starting calendar time */
+    comp_t ac_utime; /* user CPU time */
+    comp_t ac_stime; /* system CPU time */
+    comp_t ac_etime; /* elapsed time */
+    comp_t ac_mem; /* average memory usage */
+    comp_t ac_io; /* bytes transferred (by read and write) */
+    /* "blocks" on BSD systems */
+    comp_t ac_rw; /* blocks read or written */
+    /* (not present on BSD systems) */
+    char ac_comm[8]; /* command name: [8] for Solaris, */
+    /* [10] for Mac OS X, [16] for FreeBSD, and */
+    /* [17] for Linux */
+};
+```
 
 * Times are recorded in units of clock ticks on most platforms, but FreeBSD stores microseconds instead.
 * The `ac_flag` member records certain events during the execution of the process. See table below.
@@ -1251,14 +1273,97 @@ A process can retrieve and change its nice value with the `nice` function. With 
 
 <script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
 
+* The *incr* argument is added to the nice value of the calling process. 
+    * If *incr* is too large or too small, the system silently reduces it to the maximum or minimum legal value.
+    * -1 is a legal successful return value. We need to clear `errno` before calling nice and check its value if nice returns −1. If the call to nice succeeds and the return value is −1, then errno will still be zero. If `errno` is nonzero, it means that the call to nice failed. 
+
+The `getpriority` function can be used to get the nice value for a process and for a group of related processes.
+
+* [apue_getpriority.h](https://gist.github.com/shichao-an/fade39d67294333ef22b)
+
+<script src="https://gist.github.com/shichao-an/fade39d67294333ef22b.js"></script>
+
+* The *which* argument can take on one of three following values; it controls how the *who* argument is interpreted:
+    * `PRIO_PROCESS`: a process
+    * `PRIO_PGRP`: a process group
+    * `PRIO_USER`: a user ID
+* The *who* argument:
+    * 0 (a value of zero): the calling process, process group, or user (depending on the value of the *which* argument).
+
+When the which argument applies to more than one process, the highest priority (lowest value) of all the applicable processes is returned.
+
+The `setpriority` function can be used to set the priority of a process, a process group, or all the processes belonging to a particular user ID.  
+
+* [apue_setpriority.h](https://gist.github.com/shichao-an/3b435940e3b7c43df4d6)
+
+<script src="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6.js"></script>
+
+The *which* and *who* arguments are the same as in the *getpriority* function. The *value* is added to `NZERO` and this becomes the new nice value.
+
+A child process inherits the nice value from its parent process in FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10.
 
 
+### Process Times
 
+Three times can be measured:
 
+* **Wall clock time**
+* **User CPU time**
+* **System CPU time**
 
+Any process can call the `times` function to obtain these values for itself and any terminated children.
 
+* [apue_times.h](https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02)
 
+<script src="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02.js"></script>
 
+This function fills in the `tms` structure pointed to by *buf*:
+
+```c
+struct tms {
+    clock_t tms_utime; /* user CPU time */
+    clock_t tms_stime; /* system CPU time */
+    clock_t tms_cutime; /* user CPU time, terminated children */
+    clock_t tms_cstime; /* system CPU time, terminated children */
+};
+```
+The `tms` structure does not contain any measurement for the wall clock time. Instead, the function returns the wall clock time as the value of the function. This value is measured from some arbitrary point in the past, so we can’t use its absolute value; instead, we use its relative value. We call `times` and save the return value. At some later time, we call `times` again and subtract the earlier return value from the new return value. The difference is the wall clock time.
+
+The two structure fields for child processes contain values only for children that we have waited for with one of the `wait` functions.
+
+All the `clock_t` values returned by this function are converted to seconds using the number of clock ticks per second, the `_SC_CLK_TCK` value returned by `sysconf`, that is, divide the `clock_t` value by the `_SC_CLK_TCK` value. For example, 
+
+[p280-282]
+
+```c
+#include "apue.h"
+#include <sys/times.h>
+
+clock_t start, end;
+long clktck = 0;
+struct tms tmsstart, tmsend
+
+if ((clktck = sysconf(_SC_CLK_TCK)) < 0)
+    err_sys("sysconf error");
+
+if ((start = times(&tmsstart)) == -1) /* starting values */
+    err_sys("times error");
+
+/* do some work */
+
+if ((end = times(&tmsend)) == -1) /* ending values */
+    err_sys("times error");
+
+printf(" real: %7.2f\n", real / (double) clktck);
+```
+
+### Summary
+
+A thorough understanding of process control is essential for advanced UNIX programming. There are only a few functions to master: `fork`, the `exec` family, `_exit`, `wait`, and `waitpid`. These primitives are used in many applications. 
+
+Examination of the `system` function and process accounting gave us another look at all these process control functions.
+
+An understanding of the various user IDs and group IDs that are provided (real, effective, and saved) is critical to writing safe set-user-ID programs.
 
 
 
