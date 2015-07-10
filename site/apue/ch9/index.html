@@ -281,6 +281,15 @@
         
             <li><a href="#bsd-terminal-logins">BSD Terminal Logins</a></li>
         
+            <li><a href="#mac-os-x-terminal-logins">Mac OS X Terminal Logins</a></li>
+        
+            <li><a href="#linux-terminal-logins">Linux Terminal Logins</a></li>
+        
+            <li><a href="#solaris-terminal-logins">Solaris Terminal Logins</a></li>
+        
+    
+        <li class="main "><a href="#network-logins">Network Logins</a></li>
+        
     
     </ul>
 </div></div>
@@ -290,7 +299,7 @@
 <h3 id="introduction">Introduction</h3>
 <p>Every process has a parent process (the initial kernel-level process is usually its own parent). The parent is notified when the child terminates, and the parent can obtain the child’s exit status.</p>
 <p>This chapter details process groups and the concept of session introduced by POSIX.1, as well as relationship between the login shell that is invoked when a user logs in and all the processes that are started from the login shell.</p>
-<p>The concept of UNIX system signal mechanism in <a href="/apue/ch10.md">Chapter 10</a> is needed.</p>
+<p>The concept of UNIX system signal mechanism in <a href="../../apue/ch10/">Chapter 10</a> is needed.</p>
 <h3 id="terminal-logins">Terminal Logins</h3>
 <p>In early UNIX systems, the terminals (dumb terminals that are hard-wired connected to the host) were either local (directly connected) or remote (connected through a modem). These logins came through a terminal device driver in the kernel. [p285]</p>
 <p>As bitmapped graphical terminals became available, windowing systems were developed to provide users with new ways to interact with host computers.  Applications were developed to create "terminal windows" to emulate character-based terminals, allowing users to interact with hosts in familiar ways (i.e., via the shell command line).</p>
@@ -304,13 +313,70 @@
 <h4 id="bsd-terminal-logins">BSD Terminal Logins</h4>
 <p>The file <code>/etc/ttys</code> (created by the system administrator) has one line per terminal device. Each line specifies the name of the device and other parameters (e.g. baud rate) that are passed to the <code>getty</code> program.</p>
 <p>After the system is bootstrapped, the kernel creates the <code>init</code> process (PID 1) which brings the system up in multiuser mode. The <code>init</code> process reads the file <code>/etc/ttys</code> and, for every terminal device that allows a login, does a <code>fork</code> followed by an <code>exec</code> of the program <code>getty</code>.</p>
-<p><a href="../figure_9.1.png" title="Figure 9.1 Processes invoked by init to allow terminal logins"><img alt="Figure 9.1 Processes invoked by init to allow terminal logins" src="../figure_9.1.png" /></a></p>
-<p>All the processes shown in the figure above have a real user ID of 0 and an effective user ID of 0 (they all have superuser privileges).</p>
+<p><a href="../figure_9.2.png" title="Figure 9.2 State of processes after login has been invoked"><img alt="Figure 9.2 State of processes after login has been invoked" src="../figure_9.2.png" /></a></p>
+<p>All the processes shown in the figure above have a real user ID of 0 and an effective user ID of 0 (they all have superuser privileges). All the processes other than the original <code>init</code> process have a parent process ID of 1.</p>
 <ul>
 <li>The <code>init</code> process <code>exec</code>s the <code>getty</code> program with an empty environment.</li>
 <li><code>getty</code> calls <code>open</code> to open terminal device for reading and writing. File descriptors 0, 1, and 2 are set to the device.</li>
 <li>Then, <code>getty</code> outputs something like <code>login:</code> and waits for us to enter our user name. <code>getty</code> can detect special characters to change the terminal's speed (baud rate). [p287]</li>
-</ul></div>
+<li>
+<p>When we enter our user name, <code>getty</code>’s job is complete, and it then invokes the <code>login</code> program, similar to:</p>
+<pre><code>execle("/bin/login", "login", "-p", username, (char *)0, envp);
+</code></pre>
+</li>
+<li>
+<p>Though <code>init</code> invokes <code>getty</code> with an empty environment, <code>getty</code> creates an environment for <code>login</code> (the <code>envp</code> argument) with the name of the terminal (something like <code>TERM=foo</code>, where the type of terminal <code>foo</code> is taken from the <code>gettytab</code> file) and any environment strings that are specified in the <code>gettytab</code>. The <code>-p</code> flag to <code>login</code> tells it to preserve the environment that it is passed and to add to that environment, not replace it.</p>
+</li>
+<li><code>login</code> does the following things:<ul>
+<li>It calls <code>getpwnam</code> to fetch our password file entry.</li>
+<li>It calls <code>getpass(3)</code> to display the prompt <code>Password:</code> and read our password (with echoing disabled).</li>
+<li>It calls <code>crypt(3)</code> to encrypt the password that we entered and compares the encrypted result to the <code>pw_passwd</code> field from our shadow password file entry.</li>
+<li>If the login attempt fails because of an invalid password (after a few tries), <code>login</code> calls <code>exit</code> with an argument of 1. This termination will be noticed by the parent (<code>init</code>), and it will do another <code>fork</code> followed by an <code>exec</code> of <code>getty</code>, starting the procedure over again for this terminal.</li>
+</ul>
+</li>
+</ul>
+<p>This is the traditional authentication procedure used on UNIX systems. Modern UNIX systems have evolved to support multiple authentication procedures. FreeBSD, Linux, Mac OS X, and Solaris all support a more flexible scheme known as PAM (<a href="https://en.wikipedia.org/wiki/Pluggable_authentication_module">Pluggable Authentication Modules</a>). PAM allows an administrator to configure the authentication methods to be used to access services that are written to use the PAM library. [p288]</p>
+<p>If we log in correctly, <code>login</code> will:</p>
+<ul>
+<li>Change to our home directory (<code>chdir</code>)</li>
+<li>Change the ownership of our terminal device (<code>chown</code>) so we own it</li>
+<li>Change the access permissions for our terminal device so we have permission to read from and write to it</li>
+<li>Set our group IDs by calling <code>setgid</code> and <code>initgroups</code></li>
+<li>Initialize the environment with all the information that login has:<ul>
+<li>our home directory (<code>HOME</code>),</li>
+<li>shell (<code>SHELL</code>),</li>
+<li>user name (<code>USER</code> and <code>LOGNAME</code>),</li>
+<li>and a default path (<code>PATH</code>).</li>
+</ul>
+</li>
+<li>
+<p>Change to our user ID (<code>setuid</code>) and invoke our login shell, as in</p>
+<pre><code>execl("/bin/sh", "-sh", (char *)0);
+</code></pre>
+<p>The minus sign as the first character of <code>argv[0]</code> is a flag to all the shells that indicates they are being invoked as a <strong>login shell</strong>. The shells can look at this character and modify their start-up accordingly.</p>
+</li>
+</ul>
+<p>The <code>login</code> can optionally print the <a href="https://en.wikipedia.org/wiki/Motd_(Unix)">message-of-the-day</a> file, check for new mail, and performs other tasks.</p>
+<p>Since it is called by a superuser process, <code>setuid</code> changes all three user IDs: the real user ID, effective user ID, and saved set-user-ID. The call to <code>setgid</code> that was done earlier by <code>login</code> has the same effect on all three group IDs.</p>
+<p>At this point, our login shell is running. Its parent process ID is the original <code>init</code> process (process ID 1), so when our login shell terminates, <code>init</code> is sent a <code>SIGCHLD</code> signal and it starts the whole procedure over again for this terminal. File descriptors 0, 1, and 2 for our login shell are set to the terminal device.</p>
+<p>Our login shell now reads its start-up files (<code>.profile</code> for the Bourne shell and Korn shell; <code>.bash_profile</code>, <code>.bash_login</code>, or <code>.profile</code> for the GNU Bourne-again shell; and <code>.cshrc</code> and <code>.login</code> for the C shell). These start-up files usually change some of the environment variables and add many other variables to the environment. For example, most users set their own <code>PATH</code> and often prompt for the actual terminal type (<code>TERM</code>). When the start-up files are done, we finally get the shell’s prompt and can enter commands.</p>
+<h4 id="mac-os-x-terminal-logins">Mac OS X Terminal Logins</h4>
+<p>On Mac OS X, the terminal login process follows essentially the same steps as in the BSD login process (since Mac OS X is based in part on FreeBSD) with the following differences:</p>
+<ul>
+<li>The work of <code>init</code> is performed by <code>launchd</code>.</li>
+<li>We are presented with a graphical-based login screen from the start.</li>
+</ul>
+<h4 id="linux-terminal-logins">Linux Terminal Logins</h4>
+<p>The Linux login procedure is very similar to the BSD procedure. The login command is derived from 4.3BSD. The main difference is in terminal configuration.</p>
+<p>Some Linux distributions ship with a version of the <code>init</code> program that uses administrative files patterned after System V’s <code>init</code> file formats. where <code>/etc/inittab</code> specifies the terminal devices for which <code>init</code> should start a <code>getty</code> process. Other Linux distributions, such as Ubuntu, ship with a version of init that is known as "<a href="https://en.wikipedia.org/wiki/Upstart">Upstart</a>". It uses configuration files named <code>*.conf</code> that are
+stored in the <code>/etc/init</code> directory. For example, the specifications for running <code>getty</code> on <code>/dev/tty1</code> might be found in the file <code>/etc/init/tty1.conf</code>.</p>
+<p>Depending on the version of <code>getty</code> in use, the terminal characteristics are specified either on the command line (as with <code>agetty</code>) or in the file <code>/etc/gettydefs</code> (as with <code>mgetty</code>).</p>
+<h4 id="solaris-terminal-logins">Solaris Terminal Logins</h4>
+<p>[p290]</p>
+<h3 id="network-logins">Network Logins</h3>
+<p>The main difference between a serial terminal login and a network login is that the connection between the terminal and the computer isn’t point-to-point. In this case, <code>login</code> is simply a service available, just like any other network service, such as FTP or SMTP.</p>
+<p>With the terminal logins, <code>init</code> knows which terminal devices are enabled for logins and spawns a <code>getty</code> process for each device. In the case of network logins, however, all the logins come through the kernel’s network interface drivers (e.g., the Ethernet driver), and we don’t know ahead of time how many of these will occur. Instead of having a process waiting for each possible login, we now have to wait for a network connection request to arrive.</p>
+<p>To allow the same software to process logins over both terminal logins and network logins, a software driver called a <strong>pseudo terminal</strong> (detailed in <a href="../../apue/ch19/">Chapter 19</a>) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.</p></div>
         </div>
 
         <footer class="col-md-12">
