@@ -102,3 +102,10 @@ The main difference between a serial terminal login and a network login is that 
 With the terminal logins, `init` knows which terminal devices are enabled for logins and spawns a `getty` process for each device. In the case of network logins, however, all the logins come through the kernel’s network interface drivers (e.g., the Ethernet driver), and we don’t know ahead of time how many of these will occur. Instead of having a process waiting for each possible login, we now have to wait for a network connection request to arrive.
 
 To allow the same software to process logins over both terminal logins and network logins, a software driver called a **pseudo terminal** (detailed in [Chapter 19](/apue/ch19/)) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.
+
+
+#### BSD Network Logins
+
+In BSD, the `inetd` process, sometimes called the *Internet superserver*, waits for most network connections.
+
+As part of the system start-up, `init` invokes a shell that executes the shell script `/etc/rc`, which starts `inetd` along with other daemons. Once the shell script terminates, the parent process of `inetd` becomes `init`; inetd waits for TCP/IP connection requests to arrive at the host. When a connection request arrives for it to handle, `inetd` does a `fork` and `exec` of the appropriate program.
