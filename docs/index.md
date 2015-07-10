@@ -1,8 +1,10 @@
-## Shichao's Notes
+### **Shichao's Notes**
 
-This site documents reading notes of the following books. Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
+This site documents reading and learning notes of the following books and materials.
 
 ### Reading Notes
+
+Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
 
 #### Advanced Programming in the UNIX Environment, 3rd Edition
 
@@ -16,6 +18,7 @@ by W. Richard Stevens and Stephen A. Rago
 6. [System Data Files and Information](apue/ch6.md)
 7. [Process Environment](apue/ch7.md)
 8. [Process Control](apue/ch8.md)
+8. [Process Relationships](apue/ch9.md)
 
 #### Understanding the Linux Kernel, Third Edition
 
@@ -65,6 +68,8 @@ by Jon Erickson
 2. [Programming](htae/index.md)
 
 ### Learning Notes
+
+Each topic is included in a single page and references one or more books and materials.
 
 #### Programming Languages
 
