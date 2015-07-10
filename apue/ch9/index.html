@@ -290,6 +290,8 @@
     
         <li class="main "><a href="#network-logins">Network Logins</a></li>
         
+            <li><a href="#bsd-network-logins">BSD Network Logins</a></li>
+        
     
     </ul>
 </div></div>
@@ -376,7 +378,10 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
 <h3 id="network-logins">Network Logins</h3>
 <p>The main difference between a serial terminal login and a network login is that the connection between the terminal and the computer isn’t point-to-point. In this case, <code>login</code> is simply a service available, just like any other network service, such as FTP or SMTP.</p>
 <p>With the terminal logins, <code>init</code> knows which terminal devices are enabled for logins and spawns a <code>getty</code> process for each device. In the case of network logins, however, all the logins come through the kernel’s network interface drivers (e.g., the Ethernet driver), and we don’t know ahead of time how many of these will occur. Instead of having a process waiting for each possible login, we now have to wait for a network connection request to arrive.</p>
-<p>To allow the same software to process logins over both terminal logins and network logins, a software driver called a <strong>pseudo terminal</strong> (detailed in <a href="../../apue/ch19/">Chapter 19</a>) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.</p></div>
+<p>To allow the same software to process logins over both terminal logins and network logins, a software driver called a <strong>pseudo terminal</strong> (detailed in <a href="../../apue/ch19/">Chapter 19</a>) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.</p>
+<h4 id="bsd-network-logins">BSD Network Logins</h4>
+<p>In BSD, the <code>inetd</code> process, sometimes called the <em>Internet superserver</em>, waits for most network connections.</p>
+<p>As part of the system start-up, <code>init</code> invokes a shell that executes the shell script <code>/etc/rc</code>, which starts <code>inetd</code> along with other daemons. Once the shell script terminates, the parent process of <code>inetd</code> becomes <code>init</code>; inetd waits for TCP/IP connection requests to arrive at the host. When a connection request arrives for it to handle, <code>inetd</code> does a <code>fork</code> and <code>exec</code> of the appropriate program.</p></div>
         </div>
 
         <footer class="col-md-12">
@@ -389,5 +394,6 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
         <script src="../../js/bootstrap-3.0.3.min.js"></script>
         <script src="../../js/highlight.pack.js"></script>
         <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
     </body>
 </html>
