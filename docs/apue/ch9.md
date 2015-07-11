@@ -70,7 +70,9 @@ The `login` can optionally print the [message-of-the-day](https://en.wikipedia.o
 
 Since it is called by a superuser process, `setuid` changes all three user IDs: the real user ID, effective user ID, and saved set-user-ID. The call to `setgid` that was done earlier by `login` has the same effect on all three group IDs.
 
-At this point, our login shell is running. Its parent process ID is the original `init` process (process ID 1), so when our login shell terminates, `init` is sent a `SIGCHLD` signal and it starts the whole procedure over again for this terminal. File descriptors 0, 1, and 2 for our login shell are set to the terminal device.
+At this point, our login shell is running. Its parent process ID is the original `init` process (process ID 1), so when our login shell terminates, `init` is sent a `SIGCHLD` signal and it starts the whole procedure over again for this terminal. File descriptors 0, 1, and 2 for our login shell are set to the terminal device. See the figure below:
+
+[![Figure 9.3 Arrangement of processes after everything is set for a terminal login](figure_9.3.png)](figure_9.3.png "Figure 9.3 Arrangement of processes after everything is set for a terminal login")
 
 Our login shell now reads its start-up files (`.profile` for the Bourne shell and Korn shell; `.bash_profile`, `.bash_login`, or `.profile` for the GNU Bourne-again shell; and `.cshrc` and `.login` for the C shell). These start-up files usually change some of the environment variables and add many other variables to the environment. For example, most users set their own `PATH` and often prompt for the actual terminal type (`TERM`). When the start-up files are done, we finally get the shell’s prompt and can enter commands.
 
@@ -109,3 +111,90 @@ To allow the same software to process logins over both terminal logins and netwo
 In BSD, the `inetd` process, sometimes called the *Internet superserver*, waits for most network connections.
 
 As part of the system start-up, `init` invokes a shell that executes the shell script `/etc/rc`, which starts `inetd` along with other daemons. Once the shell script terminates, the parent process of `inetd` becomes `init`; inetd waits for TCP/IP connection requests to arrive at the host. When a connection request arrives for it to handle, `inetd` does a `fork` and `exec` of the appropriate program.
+
+Assume a TCP connection request arrives for the TELNET server (a remote login application). The remote user initiates the login by starting the TELNET client:
+
+```sh
+telnet hostname
+```
+
+The client opens a TCP connection to *hostname* and the user who started the client program is now logged in to the server’s host. The figure below shows the sequence of processes involved in executing the TELNET server, called `telnetd`:
+
+[![Figure 9.4 Sequence of processes involved in executing TELNET server](figure_9.4.png)](figure_9.4.png "Figure 9.4 Sequence of processes involved in executing TELNET server")
+
+Then, <u>the `telnetd` process then opens a pseudo terminal device and splits into two processes using `fork`,</u> which do the following:
+
+* The parent (`telnetd`) handles the communication across the network connection.
+* The child `exec`s the `login` program.
+* The parent and the child are connected through the pseudo terminal. Before doing the `exec`, the child sets up file descriptors 0, 1, and 2 to the pseudo terminal.
+* If we log in correctly, login performs the same steps described in [Section 9.2](#bsd-terminal-logins): it changes to our home directory and sets our group IDs, user ID, and our initial environment. Then `login` replaces itself with our login shell by calling `exec`.
+
+[![Figure 9.5 Arrangement of processes after everything is set for a network login](figure_9.5.png)](figure_9.5.png "Figure 9.5 Arrangement of processes after everything is set for a network login")
+
+Whether we log in through a terminal ([Figure 9.3](figure_9.3.png)) or a network ([Figure 9.5](figure_9.5.png)), we have a login shell with its standard input, standard output, and standard error connected to either a terminal device or a pseudo terminal device.
+
+In the coming sections, we'll see that the login shell is the start of a POSIX.1 session, and that the terminal or pseudo terminal is the controlling terminal for the session.
+
+#### Mac OS X Network Logins
+
+The network login on Mac OS X is identical to that on BSD, except that the `telnet` daemon is run from `launchd`. By default, the `telnet` daemon is disabled on Mac OS X (although it can be enabled with the `launchctl(1)` command). The preferred way to perform a network login on Mac OS X is with `ssh`, the secure shell command.
+
+#### Linux Network Logins
+
+Network logins under Linux are the same as under BSD, except that some distributions use an alternative `inetd` process called the extended Internet services daemon, `xinetd`. The `xinetd` process provides a finer level of control over services it starts compared to `inetd`.
+
+#### Solaris Network Logins
+
+[p293]
+
+### Process Groups
+
+In addition to having a process ID, each process belongs to a **process group**.
+
+* A process group is a collection of one or more processes (usually associated with the same job) that can receive signals from the same terminal.
+* Each process group has a unique process group ID. Process group IDs are similar to process IDs: they are positive integers and can be stored in a `pid_t` data type.
+
+The function `getpgrp` returns the process group ID of the calling process. The `getpgid` function took a *pid* argument and returned the process group for that process.
+
+* [apue_getpgrp.h](https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a)
+
+<script src="https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a.js"></script>
+
+For `getpgid`, if *pid* is 0, the process group ID of the calling process is returned. Thus, 
+
+```c
+getpgid(0);
+```
+
+is equivalent to:
+
+```c
+getpgrp();
+```
+
+Each process group can have a **process group leader**, whose process group ID equals to its process ID.
+
+#### Process group lifetime
+
+The process group life time is the period of time that begins when the group is created and ends when the last remaining process leaves the group. It is possible for a process group leader to create a process group, create processes in the group, and then terminate. The process group still exists, as long as at least one process is in the group, regardless of whether the group leader terminates. The last remaining process in the process group can either terminate or enter some other process group.
+
+#### `setpgid` function
+
+A process can join an existing process group or creates a new process group by calling `setpgid`.
+
+* [apue_setpgid.h](https://gist.github.com/shichao-an/0b1832544be00d3a9490)
+
+<script src="https://gist.github.com/shichao-an/0b1832544be00d3a9490.js"></script>
+
+The `setpgid` function sets the process group ID of the process whose process ID equals *pid* to *pgid*.
+
+Arguments:
+
+* If *pid* == *pgid*, the process specified by *pid* becomes a process group leader.
+* If *pid* == 0, the process ID of the caller is used.
+* If *pgid* == 0, then the specified *pid* is used as the process group ID.
+
+Rules:
+
+* A process can set the process group ID of only itself or any of its children.
+* A process cannot change the process group ID of one of its children after that child has called one of the `exec` functions.
