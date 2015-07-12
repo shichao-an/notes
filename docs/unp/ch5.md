@@ -73,11 +73,104 @@ main(int argc, char **argv)
 
 The above code does the following:
 
-* Create socket, bind server's well-known port.
+* **Create socket, bind server's well-known port**
     * A TCP socket is created.
     * An Internet socket address structure is filled in with the wildcard address (`INADDR_ANY`) and the server's well-known port (`SERV_PORT`, which is defined as 9877 in our [unp.h](https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L200) header). Binding the wildcard address tells the system that we will accept a connection destined for any local interface, in case the system is multihomed. Our choice of the TCP port number is based on [Figure 2.10](figure_2.10.png) in [Section 2.9](/unp/ch2/#port-numbers). It should be greater than 1023 (we do not need a reserved port), greater than 5000 (to avoid conflict with the ephemeral ports allocated by many Berkeley-derived implementations), less than 49152 (to avoid conflict with the "correct" range of ephemeral ports), and it should not conflict with any registered port.  [p122]
     * The socket is converted into a listening socket by `listen`.
-* Wait for client connection to complete
+* **Wait for client connection to complete**
     * The server blocks in the call to `accept`, waiting for a client connection to complete.
-* Concurrent server
+* **Concurrent server**
     * For each client, `fork` spawns a child, and the child handles the new client. The child closes the listening socket and the parent closes the connected socket. ([Section 4.8](/unp/ch4/#concurrent-servers))
+
+### TCP Echo Server: `str_echo` Function
+
+The function `str_echo` performs the server processing for each client: It reads data from the client and echoes it back to the client.
+
+* [lib/str_echo.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_echo.c)
+
+```c
+#include	"unp.h"
+
+void
+str_echo(int sockfd)
+{
+	ssize_t		n;
+	char		buf[MAXLINE];
+
+again:
+	while ( (n = read(sockfd, buf, MAXLINE)) > 0)
+		Writen(sockfd, buf, n);
+
+	if (n < 0 && errno == EINTR)
+		goto again;
+	else if (n < 0)
+		err_sys("str_echo: read error");
+}
+```
+
+The above code does the following:
+
+* **Read a buffer and echo the buffer**
+    * `read` reads data from the socket and the line is echoed back to the client by `writen`. If the client closes the connection (the normal scenario), <u>the receipt of the client's FIN causes the child's read to return 0.</u> This causes the `str_echo` function to return, which terminates the child.
+
+### TCP Echo Client: `main` Function
+
+* [tcpcliserv/tcpcli01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpcli01.c)
+
+```c
+#include	"unp.h"
+
+int
+main(int argc, char **argv)
+{
+	int					sockfd;
+	struct sockaddr_in	servaddr;
+
+	if (argc != 2)
+		err_quit("usage: tcpcli <IPaddress>");
+
+	sockfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(SERV_PORT);
+	Inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
+
+	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+
+	str_cli(stdin, sockfd);		/* do it all */
+
+	exit(0);
+}
+```
+
+The above code does the following:
+
+* **Create socket, fill in Internet socket address structure**
+    * A TCP socket is created and an Internet socket address structure is filled in with the server's IP address and port number. The server's IP address is taken from the command-line argument and the server's well-known port (`SERV_PORT`) is from our `unp.h` header.
+* **Connect to server**
+    * `connect` establishes the connection with the server. The function `str_cli` handles the rest of the client processing.
+
+### TCP Echo Client: `str_cli` Function
+
+* [lib/str_cli.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_cli.c)
+
+```c
+#include	"unp.h"
+
+void
+str_cli(FILE *fp, int sockfd)
+{
+	char	sendline[MAXLINE], recvline[MAXLINE];
+
+	while (Fgets(sendline, MAXLINE, fp) != NULL) {
+
+		Writen(sockfd, sendline, strlen(sendline));
+
+		if (Readline(sockfd, recvline, MAXLINE) == 0)
+			err_quit("str_cli: server terminated prematurely");
+
+		Fputs(recvline, stdout);
+	}
+}
+```
