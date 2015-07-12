@@ -153,6 +153,8 @@ The above code does the following:
 
 ### TCP Echo Client: `str_cli` Function
 
+The `str_cli` function handles the client processing loop: It reads a line of text from standard input, writes it to the server, reads back the server's echo of the line, and outputs the echoed line to standard output.
+
 * [lib/str_cli.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_cli.c)
 
 ```c
@@ -174,3 +176,12 @@ str_cli(FILE *fp, int sockfd)
 	}
 }
 ```
+
+The above code does the following:
+
+* **Read a line, write to server**
+    * `fgets` reads a line of text and `writen` sends the line to the server.
+* **Read echoed line from server, write to standard output**
+    * `readline` reads the line echoed back from the server and `fputs` writes it to standard output.
+* **Return to main**
+  * The loop terminates when `fgets` returns a null pointer, which occurs when it encounters either an end-of-file (EOF) or an error. Our `Fgets` wrapper function checks for an error and aborts if one occurs, so `Fgets` returns a null pointer only when an end-of-file is encountered.
