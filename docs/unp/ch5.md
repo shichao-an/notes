@@ -185,3 +185,17 @@ The above code does the following:
     * `readline` reads the line echoed back from the server and `fputs` writes it to standard output.
 * **Return to main**
   * The loop terminates when `fgets` returns a null pointer, which occurs when it encounters either an end-of-file (EOF) or an error. Our `Fgets` wrapper function checks for an error and aborts if one occurs, so `Fgets` returns a null pointer only when an end-of-file is encountered.
+
+### Normal Startup
+
+Although the TCP example is small, it is essential that we understand:
+
+* How the client and server start and end, 
+* What happens when something goes wrong:
+    * the client host crashes,
+    * the client process crashes,
+    * network connectivity is lost
+
+Only by understanding these boundary conditions, and their interaction with the TCP/IP protocols, can we write robust clients and servers that can handle these conditions.
+
+
