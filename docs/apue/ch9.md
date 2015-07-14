@@ -283,6 +283,16 @@ Systems derived from UNIX System V allocate the controlling terminal for a sessi
 
 BSD-based systems allocate the controlling terminal for a session when the session leader calls `ioctl` with a request argument of `TIOCSCTTY` (the third argument is a null pointer). The session cannot already have a controlling terminal for this call to succeed. Normally, this call to `ioctl` follows a call to `setsid`, which guarantees that the process is a session leader without a controlling terminal.
 
+Note that although Mac OS X 10.6.8 is derived from BSD, it behaves like System V when allocating a controlling terminal.
+
+Method | FreeBSD 8.0 | Linux 3.2.0 | Mac OS X 10.6.8 | Solaris 10
+------ | ----------- | ----------- | --------------- | ----------
+`open` without `O_NOCTTY` | | x | x | x
+`TIOCSCTTY` `ioctl` command | x | x | x | x
+
+When a program wants to talk to the controlling terminal, regardless of whether the standard input or standard output is redirected, it can `open` the file `/dev/tty`. This special file is a synonym within the kernel for the controlling terminal. If the program doesn’t have a controlling terminal, the `open` of this device will fail.
+
+The classic example is the `getpass(3)` function, which reads a password (with terminal echoing turned off, of course). [p298]
 
 
 
