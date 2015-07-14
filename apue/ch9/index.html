@@ -538,6 +538,36 @@ proc3 | proc4 | proc5
 <p>Systems derived from UNIX System V allocate the controlling terminal for a session when the session leader opens the first terminal device that is not already associated with a session, as long as the call to <code>open</code> does not specify the <code>O_NOCTTY</code> flag.</p>
 <h5 id="bsd">BSD</h5>
 <p>BSD-based systems allocate the controlling terminal for a session when the session leader calls <code>ioctl</code> with a request argument of <code>TIOCSCTTY</code> (the third argument is a null pointer). The session cannot already have a controlling terminal for this call to succeed. Normally, this call to <code>ioctl</code> follows a call to <code>setsid</code>, which guarantees that the process is a session leader without a controlling terminal.</p>
+<p>Note that although Mac OS X 10.6.8 is derived from BSD, it behaves like System V when allocating a controlling terminal.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>FreeBSD 8.0</th>
+<th>Linux 3.2.0</th>
+<th>Mac OS X 10.6.8</th>
+<th>Solaris 10</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>open</code> without <code>O_NOCTTY</code></td>
+<td></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+</tr>
+<tr>
+<td><code>TIOCSCTTY</code> <code>ioctl</code> command</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+</tr>
+</tbody>
+</table>
+<p>When a program wants to talk to the controlling terminal, regardless of whether the standard input or standard output is redirected, it can <code>open</code> the file <code>/dev/tty</code>. This special file is a synonym within the kernel for the controlling terminal. If the program doesn’t have a controlling terminal, the <code>open</code> of this device will fail.</p>
+<p>The classic example is the <code>getpass(3)</code> function, which reads a password (with terminal echoing turned off, of course). [p298]</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p294 on <code>fork</code>'s race condition concerning <code>setpgid</code></p>
