@@ -321,6 +321,14 @@
             <li><a href="#mechanisms-of-allocating-a-controlling-terminal">Mechanisms of allocating a controlling terminal</a></li>
         
     
+        <li class="main "><a href="#tcgetpgrp-tcsetpgrp-and-tcgetsid-functions">tcgetpgrp, tcsetpgrp, and tcgetsid Functions</a></li>
+        
+    
+        <li class="main "><a href="#job-control">Job Control</a></li>
+        
+            <li><a href="#korn-shell-example">Korn shell example</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -451,7 +459,7 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
 </ul>
 <script src="https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a.js"></script>
 
-<p>For <code>getpgid</code>, if <em>pid</em> is 0, the process group ID of the calling process is returned. Thus, </p>
+<p>For <code>getpgid</code>, if <em>pid</em> is 0, the process group ID of the calling process is returned. Thus,</p>
 <pre><code class="c">getpgid(0);
 </code></pre>
 
@@ -568,6 +576,83 @@ proc3 | proc4 | proc5
 </table>
 <p>When a program wants to talk to the controlling terminal, regardless of whether the standard input or standard output is redirected, it can <code>open</code> the file <code>/dev/tty</code>. This special file is a synonym within the kernel for the controlling terminal. If the program doesn’t have a controlling terminal, the <code>open</code> of this device will fail.</p>
 <p>The classic example is the <code>getpass(3)</code> function, which reads a password (with terminal echoing turned off, of course). [p298]</p>
+<h3 id="tcgetpgrp-tcsetpgrp-and-tcgetsid-functions"><code>tcgetpgrp</code>, <code>tcsetpgrp</code>, and <code>tcgetsid</code> Functions</h3>
+<p>We need a way to tell the kernel which process group is the foreground process group, so that the terminal device driver knows where to send the terminal input and the terminal-generated signals. (<a href="../figure_9.7.png">Figure 9.7</a>)</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/93937e8a69a6f2971055">apue_tcgetpgrp.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/93937e8a69a6f2971055.js"></script>
+
+<ul>
+<li>The function <code>tcgetpgrp</code> returns the process group ID of the foreground process group associated with the terminal open on <em>fd</em>.</li>
+<li>If the process has a controlling terminal, the process can call <code>tcsetpgrp</code> to set the foreground process group ID to <em>pgrpid</em>. The value of <em>pgrpid</em> must be the process group ID of a process group in the same session, and <em>fd</em> must refer to the controlling terminal of the session.</li>
+</ul>
+<p>These two functions are normally called by job-control shells.</p>
+<p>The <code>tcgetsid</code> function allows an application to obtain the process group ID for the session leader given a file descriptor for the controlling TTY.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84">apue_tcgetsid.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84.js"></script>
+
+<p>Applications that need to manage controlling terminals can use <code>tcgetsid</code> to identify the session ID of the controlling terminal’s session leader, which is equivalent to the session leader’s process group ID.</p>
+<h3 id="job-control">Job Control</h3>
+<p>Job control allows us to start multiple jobs (groups of processes) from a single terminal and to control which jobs can access the terminal and which jobs are run in the background. Job control requires three forms of support:</p>
+<ol>
+<li>A shell that supports job control</li>
+<li>The terminal driver in the kernel must support job control</li>
+<li>The kernel must support certain job-control signals</li>
+</ol>
+<p>From our perspective, when using job control from a shell, we can start a job in either the foreground or the background. A job is simply a collection of processes, often a pipeline of processes.</p>
+<p>For example, start a job consisting of one process in the foreground:</p>
+<pre><code class="sh">vi main.c
+</code></pre>
+
+<p>Start two jobs in the background (all the processes invoked by these background jobs are in the background.):</p>
+<pre><code class="sh">pr *.c | lpr &amp;
+make all &amp;
+</code></pre>
+
+<h4 id="korn-shell-example">Korn shell example</h4>
+<p>When we start a background job, the shell assigns it a job identifier and prints one or more of the process IDs.</p>
+<pre><code class="text">$ make all &gt; Make.out &amp;
+[1] 1475
+$ pr *.c | lpr &amp;
+[2] 1490
+$   # just press RETURN
+[2] + Done pr *.c | lpr &amp;
+[1] + Done make all &gt; Make.out &amp;
+</code></pre>
+
+<ul>
+<li>The <code>make</code> is job number 1 and the starting process ID is 1475. The next pipeline is job number 2 and the process ID of the first process is 1490.</li>
+<li>When the jobs are done and we press RETURN, the shell tells us that the jobs are complete. The reason we have to press RETURN is to have the shell print its prompt. The shell doesn’t print the changed status of background jobs at any random time (only after we press RETURN and right before it prints its prompt, to let us enter a new command line). If the shell didn’t do this, it could produce output while we were entering an input line.</li>
+<li>The interaction with the terminal driver arises because a special terminal character affects the foreground job. The terminal driver looks for three special characters, which generate signals to (all processes in ) the foreground process group:<ul>
+<li><code>SIGINT</code>: The interrupt character (typically DELETE or Control-C) generates <code>SIGINT</code>.</li>
+<li><code>SIGQUIT</code>: The quit character (typically Control-backslash) generates <code>SIGQUIT</code>.</li>
+<li><code>SIGTSTP</code>: The suspend character (typically Control-Z) generates <code>SIGTSTP</code>.</li>
+</ul>
+</li>
+</ul>
+<p>While we can have a foreground job and one or more background jobs, only the foreground job receives terminal input (the characters that we enter at the terminal). It is not an error for a background job to try to read from the terminal, but the terminal driver detects this and sends a special signal to the background job: <code>SIGTTIN</code>. This signal normally stops the background job; by using the shell, we are notified of this event and can bring the job into the foreground so that it can read from the terminal.</p>
+<pre><code class="text">cat &gt; temp.foo &amp;   # start in background, but it’ll read from standard input
+[1] 1681
+$                  # we press RETURN
+[1] + Stopped (SIGTTIN) cat &gt; temp.foo &amp;
+$ fg %1            # bring job number 1 into the foreground
+cat &gt; temp.foo     # the shell tells us which job is now in the foreground
+hello, world       # enter one line
+ˆD                 # type the end-of-file character
+$ cat temp.foo     # check that the one line was put into the file
+hello, world
+</code></pre>
+
+<ul>
+<li><code>SIGTTIN</code>: When the background <code>cat</code> tries to read its standard input (the controlling terminal), the terminal driver, knowing that it is a background job, sends the <code>SIGTTIN</code> signal to the background job.</li>
+<li>The shell detects the change in status of its child (see <code>wait</code> and <code>waitpid</code> function in <a href="../../apue/ch8/#wait-and-waitpid-functions">Section 8.6</a>) and tells us that the job has been stopped.</li>
+<li>The shell’s <code>fg</code> command move the stopped job into the foreground, which causes the shell to place the job into the foreground process group (tcsetpgrp) and send the continue signal (<code>SIGCONT</code>) to the process group.</li>
+<li>Since it is now in the foreground process group, the job can read from the controlling terminal.</li>
+</ul>
+<p>Note that this example doesn’t work on Mac OS X 10.6.8. When we try to bring the cat command into the foreground, the read fails with errno set to EINTR. Since Mac OS X is based on FreeBSD, and FreeBSD works as expected, this must be a bug in Mac OS X.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p294 on <code>fork</code>'s race condition concerning <code>setpgid</code></p>
