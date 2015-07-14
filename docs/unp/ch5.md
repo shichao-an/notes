@@ -198,4 +198,89 @@ Although the TCP example is small, it is essential that we understand:
 
 Only by understanding these boundary conditions, and their interaction with the TCP/IP protocols, can we write robust clients and servers that can handle these conditions.
 
+#### Start the server in the background
 
+First, we start the server in the background:
+
+```text
+linux % tcpserv01 &
+[1] 17870
+```
+
+When the server starts, it calls `socket`, `bind`, `listen`, and `accept`, blocking in the call to accept.
+
+#### Run `netstat`
+
+Before starting the client, we run the `netstat` program to verify the state of the server's listening socket.
+
+```text
+linux % netstat -a
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address       Foreign Address      State
+tcp        0      0 *:9877              *:*                  LISTEN
+```
+
+This command shows the status of all sockets on the system. We must specify the `-a` flag to see listening sockets.
+
+In the output, a socket is in the LISTEN state with a wildcard for the local IP address and a local port of 9877. `netstat` prints an asterisk for an IP address of 0 (`INADDR_ANY`, the wildcard) or for a port of 0.
+
+#### Start the client on the same host
+
+We then start the client on the same host, specifying the server's IP address of 127.0.0.1 (the loopback address). We could have also specified the server's normal (nonloopback) IP address.
+
+```text
+linux % tcpcli01 127.0.0.1
+```
+
+The client calls `socket`, and `connect` which causes TCP's three-way handshake. When the three-way handshake completes, `connect` returns in the client and `accept` returns in the server. The connection is established. The following steps then take place:
+
+1. The client calls `str_cli`, which will block in the call to `fgets`.
+2. When `accept` returns in the server, it calls `fork` and the child calls `str_echo`. This function calls `readline`, which calls `read`, which blocks while waiting for a line to be sent from the client.
+3. The server parent, on the other hand, calls `accept` again, and blocks while waiting for the next client connection.
+
+Notes from the previous three steps:
+
+* All three processes are asleep (blocked): client, server parent, and server child.
+* We purposely list the client step first, and then the server steps when the three-way handshake completes. This is because `accept` returns one-half of the RTT after `connect` returns (see [Figure 2.5](figure_2.5.png)):
+    * On the client side, `connect` returns when the second segment of the handshake is received
+    * On the server side, `accept` does not return until the third segment of the handshake is received
+
+#### Run `netstat` after connection completes
+
+Since we are running the client and server on the same host, `netstat` now shows two additional lines of output, corresponding to the TCP connection:
+
+```text
+linux % netstat -a
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address          State
+tcp        0      0 local host:9877         localhost:42758          ESTABLISHED
+tcp        0      0 local host:42758        localhost:9877           ESTABLISHED
+tcp        0      0 *:9877                  *:*                      LISTEN
+```
+
+* The first ESTABLISHED line corresponds to the server child's socket, since the local port is 9877.
+* The second ESTABLISHED lines is the client's socket, since the local port is 42758
+
+If we were running the client and server on different hosts, the client host would display only the client's socket, and the server host would display only the two server sockets.
+
+#### Run `ps` to check process status and relationship
+
+```text
+linux % ps -t pts/6 -o pid,ppid,tty,stat,args,wchan
+  PID  PPID TT       STAT COMMAND          WCHAN
+22038 22036 pts/6    S    -bash            wait4
+17870 22038 pts/6    S    ./tcpserv01      wait_for_connect
+19315 17870 pts/6    S    ./tcpserv01      tcp_data_wait
+19314 22038 pts/6    S    ./tcpcli01 127.0 read_chan
+```
+
+Very specific arguments to `ps` are used:
+
+* The TT column (`pts/6`): client and server are run from the same window, pseudo-terminal number 6.
+* The PID and PPID columns show the parent and child relationships.
+    * The first `tcpserv01` line is the parent and the second tcpserv01 line is the child since the PPID of the child is the parent's PID.
+    * The PPID of the parent is the shell (bash).
+* The STAT column for all three of our network processes is "S", meaning the process is sleeping (waiting for something). 
+* The WCHAN column specifies the condition when a process is asleep.
+    * Linux prints `wait_for_connect` when a process is blocked in either `accept` or `connect`, `tcp_data_wait` when a process is blocked on socket input or output, or `read_chan` when a process is blocked on terminal I/O.
+    * In [`ps(1)`](http://man7.org/linux/man-pages/man1/ps.1.html), WCHAN column indicates the name of the kernel function in which the process is sleeping, a "-" if the process is running, or a "*" if the process is multi-threaded and ps is not displaying threads.
