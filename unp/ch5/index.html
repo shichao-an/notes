@@ -290,6 +290,16 @@
     
         <li class="main "><a href="#normal-startup">Normal Startup</a></li>
         
+            <li><a href="#start-the-server-in-the-background">Start the server in the background</a></li>
+        
+            <li><a href="#run-netstat">Run netstat</a></li>
+        
+            <li><a href="#start-the-client-on-the-same-host">Start the client on the same host</a></li>
+        
+            <li><a href="#run-netstat-after-connection-completes">Run netstat after connection completes</a></li>
+        
+            <li><a href="#run-ps-to-check-process-status-and-relationship">Run ps to check process status and relationship</a></li>
+        
     
     </ul>
 </div></div>
@@ -498,6 +508,82 @@ str_cli(FILE *fp, int sockfd)
 </li>
 </ul>
 <p>Only by understanding these boundary conditions, and their interaction with the TCP/IP protocols, can we write robust clients and servers that can handle these conditions.</p>
+<h4 id="start-the-server-in-the-background">Start the server in the background</h4>
+<p>First, we start the server in the background:</p>
+<pre><code class="text">linux % tcpserv01 &amp;
+[1] 17870
+</code></pre>
+
+<p>When the server starts, it calls <code>socket</code>, <code>bind</code>, <code>listen</code>, and <code>accept</code>, blocking in the call to accept.</p>
+<h4 id="run-netstat">Run <code>netstat</code></h4>
+<p>Before starting the client, we run the <code>netstat</code> program to verify the state of the server's listening socket.</p>
+<pre><code class="text">linux % netstat -a
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address       Foreign Address      State
+tcp        0      0 *:9877              *:*                  LISTEN
+</code></pre>
+
+<p>This command shows the status of all sockets on the system. We must specify the <code>-a</code> flag to see listening sockets.</p>
+<p>In the output, a socket is in the LISTEN state with a wildcard for the local IP address and a local port of 9877. <code>netstat</code> prints an asterisk for an IP address of 0 (<code>INADDR_ANY</code>, the wildcard) or for a port of 0.</p>
+<h4 id="start-the-client-on-the-same-host">Start the client on the same host</h4>
+<p>We then start the client on the same host, specifying the server's IP address of 127.0.0.1 (the loopback address). We could have also specified the server's normal (nonloopback) IP address.</p>
+<pre><code class="text">linux % tcpcli01 127.0.0.1
+</code></pre>
+
+<p>The client calls <code>socket</code>, and <code>connect</code> which causes TCP's three-way handshake. When the three-way handshake completes, <code>connect</code> returns in the client and <code>accept</code> returns in the server. The connection is established. The following steps then take place:</p>
+<ol>
+<li>The client calls <code>str_cli</code>, which will block in the call to <code>fgets</code>.</li>
+<li>When <code>accept</code> returns in the server, it calls <code>fork</code> and the child calls <code>str_echo</code>. This function calls <code>readline</code>, which calls <code>read</code>, which blocks while waiting for a line to be sent from the client.</li>
+<li>The server parent, on the other hand, calls <code>accept</code> again, and blocks while waiting for the next client connection.</li>
+</ol>
+<p>Notes from the previous three steps:</p>
+<ul>
+<li>All three processes are asleep (blocked): client, server parent, and server child.</li>
+<li>We purposely list the client step first, and then the server steps when the three-way handshake completes. This is because <code>accept</code> returns one-half of the RTT after <code>connect</code> returns (see <a href="../figure_2.5.png">Figure 2.5</a>):<ul>
+<li>On the client side, <code>connect</code> returns when the second segment of the handshake is received</li>
+<li>On the server side, <code>accept</code> does not return until the third segment of the handshake is received</li>
+</ul>
+</li>
+</ul>
+<h4 id="run-netstat-after-connection-completes">Run <code>netstat</code> after connection completes</h4>
+<p>Since we are running the client and server on the same host, <code>netstat</code> now shows two additional lines of output, corresponding to the TCP connection:</p>
+<pre><code class="text">linux % netstat -a
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address          State
+tcp        0      0 local host:9877         localhost:42758          ESTABLISHED
+tcp        0      0 local host:42758        localhost:9877           ESTABLISHED
+tcp        0      0 *:9877                  *:*                      LISTEN
+</code></pre>
+
+<ul>
+<li>The first ESTABLISHED line corresponds to the server child's socket, since the local port is 9877.</li>
+<li>The second ESTABLISHED lines is the client's socket, since the local port is 42758</li>
+</ul>
+<p>If we were running the client and server on different hosts, the client host would display only the client's socket, and the server host would display only the two server sockets.</p>
+<h4 id="run-ps-to-check-process-status-and-relationship">Run <code>ps</code> to check process status and relationship</h4>
+<pre><code class="text">linux % ps -t pts/6 -o pid,ppid,tty,stat,args,wchan
+  PID  PPID TT       STAT COMMAND          WCHAN
+22038 22036 pts/6    S    -bash            wait4
+17870 22038 pts/6    S    ./tcpserv01      wait_for_connect
+19315 17870 pts/6    S    ./tcpserv01      tcp_data_wait
+19314 22038 pts/6    S    ./tcpcli01 127.0 read_chan
+</code></pre>
+
+<p>Very specific arguments to <code>ps</code> are used:</p>
+<ul>
+<li>The TT column (<code>pts/6</code>): client and server are run from the same window, pseudo-terminal number 6.</li>
+<li>The PID and PPID columns show the parent and child relationships.<ul>
+<li>The first <code>tcpserv01</code> line is the parent and the second tcpserv01 line is the child since the PPID of the child is the parent's PID.</li>
+<li>The PPID of the parent is the shell (bash).</li>
+</ul>
+</li>
+<li>The STAT column for all three of our network processes is "S", meaning the process is sleeping (waiting for something). </li>
+<li>The WCHAN column specifies the condition when a process is asleep.<ul>
+<li>Linux prints <code>wait_for_connect</code> when a process is blocked in either <code>accept</code> or <code>connect</code>, <code>tcp_data_wait</code> when a process is blocked on socket input or output, or <code>read_chan</code> when a process is blocked on terminal I/O.</li>
+<li>In <a href="http://man7.org/linux/man-pages/man1/ps.1.html"><code>ps(1)</code></a>, WCHAN column indicates the name of the kernel function in which the process is sleeping, a "-" if the process is running, or a "*" if the process is multi-threaded and ps is not displaying threads.</li>
+</ul>
+</li>
+</ul>
             </div>
         </div>
 
