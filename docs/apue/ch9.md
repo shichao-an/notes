@@ -160,7 +160,7 @@ The function `getpgrp` returns the process group ID of the calling process. The 
 
 <script src="https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a.js"></script>
 
-For `getpgid`, if *pid* is 0, the process group ID of the calling process is returned. Thus, 
+For `getpgid`, if *pid* is 0, the process group ID of the calling process is returned. Thus,
 
 ```c
 getpgid(0);
@@ -293,6 +293,98 @@ Method | FreeBSD 8.0 | Linux 3.2.0 | Mac OS X 10.6.8 | Solaris 10
 When a program wants to talk to the controlling terminal, regardless of whether the standard input or standard output is redirected, it can `open` the file `/dev/tty`. This special file is a synonym within the kernel for the controlling terminal. If the program doesn’t have a controlling terminal, the `open` of this device will fail.
 
 The classic example is the `getpass(3)` function, which reads a password (with terminal echoing turned off, of course). [p298]
+
+### `tcgetpgrp`, `tcsetpgrp`, and `tcgetsid` Functions
+
+We need a way to tell the kernel which process group is the foreground process group, so that the terminal device driver knows where to send the terminal input and the terminal-generated signals. ([Figure 9.7](figure_9.7.png))
+
+* [apue_tcgetpgrp.h](https://gist.github.com/shichao-an/93937e8a69a6f2971055)
+
+<script src="https://gist.github.com/shichao-an/93937e8a69a6f2971055.js"></script>
+
+* The function `tcgetpgrp` returns the process group ID of the foreground process group associated with the terminal open on *fd*.
+* If the process has a controlling terminal, the process can call `tcsetpgrp` to set the foreground process group ID to *pgrpid*. The value of *pgrpid* must be the process group ID of a process group in the same session, and *fd* must refer to the controlling terminal of the session.
+
+These two functions are normally called by job-control shells.
+
+The `tcgetsid` function allows an application to obtain the process group ID for the session leader given a file descriptor for the controlling TTY.
+
+* [apue_tcgetsid.h](https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84)
+
+<script src="https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84.js"></script>
+
+Applications that need to manage controlling terminals can use `tcgetsid` to identify the session ID of the controlling terminal’s session leader, which is equivalent to the session leader’s process group ID.
+
+### Job Control
+
+Job control allows us to start multiple jobs (groups of processes) from a single terminal and to control which jobs can access the terminal and which jobs are run in the background. Job control requires three forms of support:
+
+1. A shell that supports job control
+2. The terminal driver in the kernel must support job control
+3. The kernel must support certain job-control signals
+
+From our perspective, when using job control from a shell, we can start a job in either the foreground or the background. A job is simply a collection of processes, often a pipeline of processes.
+
+For example, start a job consisting of one process in the foreground:
+
+```sh
+vi main.c
+```
+
+Start two jobs in the background (all the processes invoked by these background jobs are in the background.):
+
+```sh
+pr *.c | lpr &
+make all &
+```
+
+#### Korn shell example
+
+When we start a background job, the shell assigns it a job identifier and prints one or more of the process IDs.
+
+```text
+$ make all > Make.out &
+[1] 1475
+$ pr *.c | lpr &
+[2] 1490
+$   # just press RETURN
+[2] + Done pr *.c | lpr &
+[1] + Done make all > Make.out &
+```
+
+* The `make` is job number 1 and the starting process ID is 1475. The next pipeline is job number 2 and the process ID of the first process is 1490.
+* When the jobs are done and we press RETURN, the shell tells us that the jobs are complete. The reason we have to press RETURN is to have the shell print its prompt. The shell doesn’t print the changed status of background jobs at any random time (only after we press RETURN and right before it prints its prompt, to let us enter a new command line). If the shell didn’t do this, it could produce output while we were entering an input line.
+* The interaction with the terminal driver arises because a special terminal character affects the foreground job. The terminal driver looks for three special characters, which generate signals to (all processes in ) the foreground process group:
+    * `SIGINT`: The interrupt character (typically DELETE or Control-C) generates `SIGINT`.
+    * `SIGQUIT`: The quit character (typically Control-backslash) generates `SIGQUIT`.
+    * `SIGTSTP`: The suspend character (typically Control-Z) generates `SIGTSTP`.
+
+While we can have a foreground job and one or more background jobs, only the foreground job receives terminal input (the characters that we enter at the terminal). It is not an error for a background job to try to read from the terminal, but the terminal driver detects this and sends a special signal to the background job: `SIGTTIN`. This signal normally stops the background job; by using the shell, we are notified of this event and can bring the job into the foreground so that it can read from the terminal.
+
+```text
+cat > temp.foo &   # start in background, but it’ll read from standard input
+[1] 1681
+$                  # we press RETURN
+[1] + Stopped (SIGTTIN) cat > temp.foo &
+$ fg %1            # bring job number 1 into the foreground
+cat > temp.foo     # the shell tells us which job is now in the foreground
+hello, world       # enter one line
+ˆD                 # type the end-of-file character
+$ cat temp.foo     # check that the one line was put into the file
+hello, world
+```
+
+* `SIGTTIN`: When the background `cat` tries to read its standard input (the controlling terminal), the terminal driver, knowing that it is a background job, sends the `SIGTTIN` signal to the background job.
+* The shell detects the change in status of its child (see `wait` and `waitpid` function in [Section 8.6](/apue/ch8/#wait-and-waitpid-functions)) and tells us that the job has been stopped.
+* The shell’s `fg` command move the stopped job into the foreground, which causes the shell to place the job into the foreground process group (tcsetpgrp) and send the continue signal (`SIGCONT`) to the process group.
+* Since it is now in the foreground process group, the job can read from the controlling terminal.
+
+
+Note that this example doesn’t work on Mac OS X 10.6.8. When we try to bring the cat command into the foreground, the read fails with errno set to EINTR. Since Mac OS X is based on FreeBSD, and FreeBSD works as expected, this must be a bug in Mac OS X.
+
+
+
+
 
 
 
