@@ -218,7 +218,7 @@ Most modern implementations of `exit` do not close the streams. Because the proc
 A process can terminate normally in five ways (as described in [Section 7.3](ch7/#process-termination)):
 
 1. Executing a return from the `main` function. This is equivalent to calling `exit`.
-2. Calling the exit function, which includes the calling of all exit handlers that have been registered by calling `atexit` and closing all standard I/O streams. 
+2. Calling the exit function, which includes the calling of all exit handlers that have been registered by calling `atexit` and closing all standard I/O streams.
     * ISO C does not deal with file descriptors, multiple processes (parents and children), and job control. The definition of this function is incomplete for a UNIX system.
 3. Calling the `_exit` or `_Exit` function.
     * `_Exit`: defined by ISO C to provide a way for a process to terminate without running exit handlers or signal handlers
@@ -402,7 +402,7 @@ The interpretation of the pid argument for waitpid depends on its value:
 * *pid* == 0 - Waits for any child whose **process group ID** equals that of the calling process.
 * *pid* < −1 - Waits for any child whose process group ID equals the absolute value of *pid*.
 
-The `waitpid` function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by *statloc*. 
+The `waitpid` function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by *statloc*.
 
 ##### Errors of `wait` and `waitpid`
 
@@ -533,13 +533,13 @@ A **race condition** occurs when multiple processes are trying to do something w
 
 We saw a potential race condition in the program in [Figure 8.8](#fork-twice) when the second child printed its parent process ID.
 
-* If the second child runs before the first child, then its parent process will be the first child. 
+* If the second child runs before the first child, then its parent process will be the first child.
 * If the first child runs first and has enough time to `exit`, then the parent process of the second child is init.
-* If the system was heavily loaded, the second child could resume after sleep returns, before the first child has a chance to run, calling `sleep`  guarantees nothing. 
-    
+* If the system was heavily loaded, the second child could resume after sleep returns, before the first child has a chance to run, calling `sleep`  guarantees nothing.
+
 Problems of this form can be difficult to debug because they tend to work "most of the time".
 
-* A process that wants to wait for a child to terminate must call one of the `wait` functions. 
+* A process that wants to wait for a child to terminate must call one of the `wait` functions.
 * A process that wants to wait for its parent to terminate can use a loop in the following form:
 
 ```c
@@ -554,7 +554,7 @@ To avoid race conditions and to avoid polling, some form of signaling is require
 * Signals can be used for this purpose
 * Interprocess communication (IPC) can also be used
 
-For a parent and child relationship, we often have the following scenario. After the `fork`, both the parent and the child have something to do. For example, the parent could update a record in a log file with the child’s process ID, and the child might have to create a file for the parent. In this example, we require that each process tell the other when it has finished its initial set of operations, and that each wait for the other to complete, before heading off on its own. The following code illustrates this scenario: 
+For a parent and child relationship, we often have the following scenario. After the `fork`, both the parent and the child have something to do. For example, the parent could update a record in a log file with the child’s process ID, and the child might have to create a file for the parent. In this example, we require that each process tell the other when it has finished its initial set of operations, and that each wait for the other to complete, before heading off on its own. The following code illustrates this scenario:
 
 ```c
 #include "apue.h"
@@ -669,7 +669,7 @@ We need to change (part of) the above program in to use the `TELL` and `WAIT` fu
 
 One use of the `fork` function is to create a new process (the child) that then causes another program to be executed by calling one of the `exec` functions.
 
-* When a process calls one of the `exec` functions, that process is completely replaced by the new program which starts executing at its `main` function. 
+* When a process calls one of the `exec` functions, that process is completely replaced by the new program which starts executing at its `main` function.
 * The process ID does not change across an `exec`, because a new process is not created.
 * `exec` merely replaces the current process (its text, data, heap, and stack segments) with a brand-new program from disk.
 
@@ -899,7 +899,7 @@ The statements about the three user IDs that the kernel maintains:
     *  Normally, the real user ID is set by the `login(1)` program when we log in and never changes. Because `login` is a superuser process, it sets all three user IDs when it calls `setuid`.
 2. The effective user ID is set by the `exec` functions only if the set-user-ID bit is set for the program file.
     * If the set-user-ID bit is not set, the `exec` functions leave the effective user ID as its current value.
-    * We can call `setuid` at any time to set the effective user ID to either the real user ID or the saved set-user-ID. 
+    * We can call `setuid` at any time to set the effective user ID to either the real user ID or the saved set-user-ID.
     * Naturally, we can’t set the effective user ID to any random value.
 3. The saved set-user-ID is copied from the effective user ID by `exec`. If the file’s set-user-ID bit is set, this copy is saved after `exec` stores the effective user ID from the file’s user ID.
 
@@ -931,7 +931,7 @@ POSIX.1 includes `seteuid` and `setegid` that only change the effective user ID 
 
 <script src="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba.js"></script>
 
-* An unprivileged user can set its effective user ID to either its real user ID or its saved set-user-ID. 
+* An unprivileged user can set its effective user ID to either its real user ID or its saved set-user-ID.
 * <u>For a privileged user, only the effective user ID is set to *uid*. This differs from `setuid` function, which changes all three user IDs.</u>
 
 The figure below summarizes all the functions that we’ve described here that modify the three user IDs:
@@ -1273,9 +1273,9 @@ A process can retrieve and change its nice value with the `nice` function. With 
 
 <script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
 
-* The *incr* argument is added to the nice value of the calling process. 
+* The *incr* argument is added to the nice value of the calling process.
     * If *incr* is too large or too small, the system silently reduces it to the maximum or minimum legal value.
-    * -1 is a legal successful return value. We need to clear `errno` before calling nice and check its value if nice returns −1. If the call to nice succeeds and the return value is −1, then errno will still be zero. If `errno` is nonzero, it means that the call to nice failed. 
+    * -1 is a legal successful return value. We need to clear `errno` before calling nice and check its value if nice returns −1. If the call to nice succeeds and the return value is −1, then errno will still be zero. If `errno` is nonzero, it means that the call to nice failed.
 
 The `getpriority` function can be used to get the nice value for a process and for a group of related processes.
 
@@ -1292,7 +1292,7 @@ The `getpriority` function can be used to get the nice value for a process and f
 
 When the which argument applies to more than one process, the highest priority (lowest value) of all the applicable processes is returned.
 
-The `setpriority` function can be used to set the priority of a process, a process group, or all the processes belonging to a particular user ID.  
+The `setpriority` function can be used to set the priority of a process, a process group, or all the processes belonging to a particular user ID.
 
 * [apue_setpriority.h](https://gist.github.com/shichao-an/3b435940e3b7c43df4d6)
 
@@ -1331,7 +1331,7 @@ The `tms` structure does not contain any measurement for the wall clock time. In
 
 The two structure fields for child processes contain values only for children that we have waited for with one of the `wait` functions.
 
-All the `clock_t` values returned by this function are converted to seconds using the number of clock ticks per second, the `_SC_CLK_TCK` value returned by `sysconf`, that is, divide the `clock_t` value by the `_SC_CLK_TCK` value. For example, 
+All the `clock_t` values returned by this function are converted to seconds using the number of clock ticks per second, the `_SC_CLK_TCK` value returned by `sysconf`, that is, divide the `clock_t` value by the `_SC_CLK_TCK` value. For example,
 
 [p280-282]
 
@@ -1359,7 +1359,7 @@ printf(" real: %7.2f\n", real / (double) clktck);
 
 ### Summary
 
-A thorough understanding of process control is essential for advanced UNIX programming. There are only a few functions to master: `fork`, the `exec` family, `_exit`, `wait`, and `waitpid`. These primitives are used in many applications. 
+A thorough understanding of process control is essential for advanced UNIX programming. There are only a few functions to master: `fork`, the `exec` family, `_exit`, `wait`, and `waitpid`. These primitives are used in many applications.
 
 Examination of the `system` function and process accounting gave us another look at all these process control functions.
 
