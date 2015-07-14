@@ -1,7 +1,6 @@
 ## C
 > If you think like a computer, writing C actually makes sense. 
->
-> -- *Linus Torvalds*
+> <small> Linus Torvalds </small>
 
 ### First-class ADT
 

@@ -2,6 +2,25 @@
 
 This site documents reading and learning notes of the following books and materials.
 
+<div class="row">
+  <div class="col-md-8">
+    <script>
+      (function() {
+        var cx = '000491777875727507539:_gc3mx7cstg';
+        var gcse = document.createElement('script');
+        gcse.type = 'text/javascript';
+        gcse.async = true;
+        gcse.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') +
+            '//cse.google.com/cse.js?cx=' + cx;
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(gcse, s);
+      })();
+    </script>
+    <gcse:searchbox-only></gcse:searchbox-only>
+  </div>
+</div>
+
+
 ### Reading Notes
 
 Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
