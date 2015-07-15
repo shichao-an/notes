@@ -292,7 +292,17 @@ Method | FreeBSD 8.0 | Linux 3.2.0 | Mac OS X 10.6.8 | Solaris 10
 
 When a program wants to talk to the controlling terminal, regardless of whether the standard input or standard output is redirected, it can `open` the file `/dev/tty`. This special file is a synonym within the kernel for the controlling terminal. If the program doesn’t have a controlling terminal, the `open` of this device will fail.
 
+##### The `crypt` command and `getpass` function
+
 The classic example is the `getpass(3)` function, which reads a password (with terminal echoing turned off, of course). [p298]
+
+The `getpass` function is called by the `crypt(1)` program and can be used in a pipeline. For example:
+
+```sh
+crypt < salaries | lpr
+```
+
+It decrypts the file salaries and pipes the output to the print spooler. Because `crypt` reads its input file on its standard input, the standard input can’t be used to enter the password. Also, `crypt` is designed so that we have to enter the encryption password each time we run the program, to prevent us from saving the password in a file (which could be a security hole).
 
 ### `tcgetpgrp`, `tcsetpgrp`, and `tcgetsid` Functions
 
@@ -342,7 +352,7 @@ make all &
 
 When we start a background job, the shell assigns it a job identifier and prints one or more of the process IDs.
 
-```text
+```shell-session
 $ make all > Make.out &
 [1] 1475
 $ pr *.c | lpr &
@@ -361,7 +371,7 @@ $   # just press RETURN
 
 While we can have a foreground job and one or more background jobs, only the foreground job receives terminal input (the characters that we enter at the terminal). It is not an error for a background job to try to read from the terminal, but the terminal driver detects this and sends a special signal to the background job: `SIGTTIN`. This signal normally stops the background job; by using the shell, we are notified of this event and can bring the job into the foreground so that it can read from the terminal.
 
-```text
+```shell-session
 cat > temp.foo &   # start in background, but it’ll read from standard input
 [1] 1681
 $                  # we press RETURN
@@ -414,10 +424,199 @@ Job control was originally designed and implemented before windowing terminals w
 
 This section examines how the shells execute programs and how this relates to the concepts of process groups, controlling terminals, and sessions
 
+#### The shell without job control: the Bourne shell on Solaris
 
+For example, with the classic Bourne shell running on Solaris, we execute:
 
+```sh
+ps -o pid,ppid,pgid,sid,comm
+```
 
+The output is
 
+```text
+  PID  PPID  PGID  SID COMMAND
+  949   947   949  949 sh
+ 1774   949   949  949 ps
+```
+
+* The parent of the `ps` command is the shell.
+* Both the shell and the `ps` command are in the same session and foreground process group (949), <u>because that is what you get when you execute a command with a shell that doesn’t support job control.</u>
+
+##### Terminal process group ID: `tpgid` option of the `ps(1)` command
+
+[p303]
+
+Some platforms support an `tpgid` option to have the `ps(1)` command print the process group ID associated with the session’s controlling terminal. This value would be shown under the TPGID column:
+
+```sh
+ps -o pid,ppid,pgid,sid,tpgid,comm
+```
+
+Note that it is misleading to associate a process with a terminal process group ID (the TPGID column):
+
+* A process does not have a terminal process control group. A process belongs to a process group, and the process group belongs to a session.
+* The session may or may not have a controlling terminal.
+    * If the session does have a controlling terminal, then the terminal device knows the process group ID of the foreground process. This value can be set in the terminal driver with the `tcsetpgrp` function ([Figure 9.9](figure_9.9.png)).
+* The foreground process group ID is an attribute of the terminal, not the process. This value from the terminal device driver is what ps prints as the TPGID. If it finds that the session doesn’t have a controlling terminal, ps prints either 0 or −1, depending on the platform.
+
+If we execute the command in the background:
+
+```sh
+ps -o pid,ppid,pgid,sid,comm &
+```
+
+The only value that changes is the process ID of the command:
+
+```text
+  PID  PPID  PGID  SID COMMAND
+  949   947   949  949 sh
+ 1812   949   949  949 ps
+```
+
+This shell doesn’t know about job control, so the background job is not put into its own process group and the controlling terminal isn’t taken away from the background job.
+
+To see how this shell handles a pipeline, we execute:
+
+```sh
+ps -o pid,ppid,pgid,sid,comm | cat1
+```
+
+The output is:
+
+```text
+  PID  PPID  PGID  SID COMMAND
+  949   947   949  949 sh
+ 1823   949   949  949 cat1
+ 1824  1823   949  949 ps
+```
+
+The program `cat1` is just a copy of the standard `cat` program, with a different name. The last process in the pipeline (`cat`) is the child of the shell and that the first process in the pipeline (`ps`) is a child of the last process. It appears that <u>the shell `fork`s a copy of itself and that this copy then forks to make each of the previous processes in the pipeline.</u>
+
+If we execute the pipeline in the background:
+
+```sh
+ps -o pid,ppid,pgid,sid,comm | cat1 &
+```
+
+Only the process IDs change. Since the shell doesn’t handle job control, the process group ID of the background processes remains 949, as does the process group ID of the session
+
+If a background process tries to read from its controlling terminal, like:
+
+```sh
+cat > temp.foo &
+```
+
+Without job control, the shell automatically redirects the standard input of a background process to `/dev/null`, if the process doesn’t redirect standard input itself. A read from `/dev/null` generates an end of file. This means that our background `cat` process immediately reads an end of file and terminates normally.
+
+The previous paragraph adequately handles the case of a background process accessing the controlling terminal through its standard input, but what happens if a background process specifically opens `/dev/tty` and reads from the controlling terminal? The answer is "It depends", but the result is probably not what we want. For example:
+
+```sh
+crypt < salaries | lpr &
+```
+
+This pipeline is run in the background, but the `crypt` program opens `/dev/tty`, changes the terminal characteristics (to disable echoing), reads from the device, and resets the terminal characteristics. The prompt `Password:` from `crypt` is printed on the terminal, but what we enter (the encryption password) is read by the shell, which tries to execute a command of that name. The next line we enter to the shell is taken as the password, and the file is not encrypted correctly, sending junk to the printer. Here we have two processes trying to read from the same device at the same time, and the result depends on the system. Job control, as described earlier, handles this multiplexing of a single terminal between multiple processes in a better fashion. [p304]
+
+If we execute three processes in the pipeline, we can examine the process control used by this shell:
+
+```sh
+ps -o pid,ppid,pgid,sid,comm | cat1 | cat2
+```
+
+The output is: [p305]
+
+```text
+  PID  PPID  PGID  SID COMMAND
+  949   947   949  949 sh
+ 1988   949   949  949 cat2
+ 1989  1988   949  949 ps
+ 1990  1988   949  949 cat1
+```
+
+Again, the last process in the pipeline is the child of the shell, and all previous processes in the pipeline are children of the last process. See the figure below:
+
+[![Figure 9.10 Processes in the pipeline ps | cat1 | cat2 when invoked by Bourne shell](figure_9.10.png)](figure_9.10.png "Figure 9.10 Processes in the pipeline ps | cat1 | cat2 when invoked by Bourne shell")
+
+Since the last process in the pipeline is the child of the login shell, the shell is notified when that process (`cat2`) terminates.
+
+#### The shell with job control: Bourne-again shell on Linux
+
+Starting with this example, foreground process group are shown in **`bolder font`**.
+
+The command:
+
+```sh
+ps -o pid,ppid,pgid,sid,tpgid,comm
+```
+gives us:
+
+<pre>
+   PID   PPID   PGID   SID  TPGID  COMMAND
+  2837   2818   2837  2837   5796  bash
+  <b>5796</b>   2837   <b>5796</b>  2837   5796  ps
+</pre>
+
+We can see the result, which is different from the Bourne shell example:
+
+* The Bourne-again shell places the foreground job (`ps`) into its own process group (5796).
+* The `ps` command is the process group leader and the only process in this process group. This process group is the foreground process group, since it has the controlling terminal.
+* The login shell is a background process group while the `ps` command executes.
+* Both process groups, 2837 and 5796, are members of the same session.
+
+Executing this process in the background:
+
+```sh
+ps -o pid,ppid,pgid,sid,tpgid,comm &
+```
+
+gives us:
+
+<pre>
+   PID   PPID   PGID   SID  TPGID  COMMAND
+  <b>2837</b>   2818   <b>2837</b>  2837   2837  bash
+  5797   2837   5797  2837   2837  ps
+</pre>
+
+* `ps` command is again placed into its own process group.
+* The process group (5797) is no longer the foreground process group but a background process group.
+* The foreground process group is our login shell, as indicated by TPGID of 2837.
+
+Executing two processes in a pipeline, as in:
+
+```sh
+ps -o pid,ppid,pgid,sid,tpgid,comm | cat1
+```
+
+gives us:
+
+<pre>
+   PID   PPID   PGID   SID  TPGID  COMMAND
+  2837   2818   2837  2837   5799  bash
+  <b>5799</b>   2837   <b>5799</b>  2837   5799  ps
+  <b>5800</b>   2837   <b>5799</b>  2837   5799  cat1
+</pre>
+
+* Both processes, `ps` and `cat1`, are placed into a new process group (5799), which is the foreground process group.
+* The login shell is the parent of both processes. This is different from the Bourne shell, which created the last process (`cat1`) in the pipeline first, and this process is the parent of first process (`ps`).
+
+If we execute this pipeline in the background:
+
+```sh
+ps -o pid,ppid,pgid,sid,tpgid,comm | cat1 &
+```
+
+The output:
+
+<pre>
+   PID   PPID   PGID   SID  TPGID  COMMAND
+  <b>2837</b>   2818   <b>2837</b>  2837   2837  bash
+  5801   2837   5801  2837   2837  ps
+  5802   2837   5801  2837   2837  cat1
+</pre>
+
+The results are similar, but now `ps` and `cat1` are placed in the same background process group (5801).
+
+[p307]
 
 
 
@@ -438,4 +637,4 @@ Solution:
 The shell (parent) wants and ensures the process to be in the right process group at any time before either of the child and parent continues execution.
 
 * [Stackoverflow](http://stackoverflow.com/a/6026564/1751342)
-* [Launching Jobs](http://www.gnu.org/software/libc/manual/html_node/Launching-Jobs.html#Launching-Jobs) in The GNU C Library
+* [Launching Jobs](http://www.gnu.org/software/libc/manual/html_node/Launching-Jobs.html#Launching-Jobs) in the GNU C Library
