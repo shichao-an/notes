@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="../css/highlight.css">
         <link href="../css/base.css" rel="stylesheet">
         <link href="../custom.css" rel="stylesheet">
+        <link href="../github.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -289,29 +290,30 @@
 </blockquote>
 <h3 id="first-class-adt">First-class ADT</h3>
 <p>Bad:</p>
-<pre><code class="c">/* Include guards and include files omitted. */
+<div class="codehilite"><pre><span class="cm">/* Include guards and include files omitted. */</span>
 
-#define MAX_NO_OF_ORDERS 42
+<span class="cp">#define MAX_NO_OF_ORDERS 42</span>
 
-/* Internal representation of a customer. */
+<span class="cm">/* Internal representation of a customer. */</span>
 
-typedef struct
+<span class="k">typedef</span> <span class="k">struct</span>
 
-{
-    const char* name;
-    Address address;
-    size_t noOfOrders;
-    Order orders[MAX_NO_OF_ORDERS];
-} Customer;
+<span class="p">{</span>
+    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">;</span>
+    <span class="n">Address</span> <span class="n">address</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">noOfOrders</span><span class="p">;</span>
+    <span class="n">Order</span> <span class="n">orders</span><span class="p">[</span><span class="n">MAX_NO_OF_ORDERS</span><span class="p">];</span>
+<span class="p">}</span> <span class="n">Customer</span><span class="p">;</span>
 
-void initCustomer(Customer* theCustomer,
-                  const char* name,
-                  const Address* address);
+<span class="kt">void</span> <span class="nf">initCustomer</span><span class="p">(</span><span class="n">Customer</span><span class="o">*</span> <span class="n">theCustomer</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="n">Address</span><span class="o">*</span> <span class="n">address</span><span class="p">);</span>
 
-void placeOrder(Customer *customer, const Order* order);
+<span class="kt">void</span> <span class="nf">placeOrder</span><span class="p">(</span><span class="n">Customer</span> <span class="o">*</span><span class="n">customer</span><span class="p">,</span> <span class="k">const</span> <span class="n">Order</span><span class="o">*</span> <span class="n">order</span><span class="p">);</span>
 
-/* A lot of other related functions... */
-</code></pre>
+<span class="cm">/* A lot of other related functions... */</span>
+</pre></div>
+
 
 <p>Good:</p>
 <ul>
@@ -322,9 +324,10 @@ void placeOrder(Customer *customer, const Order* order);
 <h4 id="incomplete-types">Incomplete Types</h4>
 <p>The C standard (C99) allows us to declare objects of incomplete types in a context where their sizes aren’t needed. </p>
 <p>In the following code:</p>
-<pre><code class="c">/* Pointer to an incomplete type */
-typedef struct Customer* CustomerPtr;
-</code></pre>
+<div class="codehilite"><pre><span class="cm">/* Pointer to an incomplete type */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">Customer</span><span class="o">*</span> <span class="n">CustomerPtr</span><span class="p">;</span>
+</pre></div>
+
 
 <p>Instances of this pointer will serve as a handle for the clients of a first-class ADT. This mechanism enforces the constraint on clients to use the provided interface functions (<a href="https://github.com/adamtornhill/PatternsInC/blob/master/1_FirstClassADT/Customer.h">Customer.h</a>) because there is no way a client can access a field in the <code>Customer</code> structure (the C language <strong>does not allow an incomplete type to be de-referenced</strong>). The type is considered complete as soon as the compiler detects a subsequent specifier (<a href="https://github.com/adamtornhill/PatternsInC/blob/master/1_FirstClassADT/Customer.c#L5">Customer.c</a>), with the same tag, and a declaration list containing the members.</p>
 <h4 id="copy-semantics">Copy Semantics</h4>
