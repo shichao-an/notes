@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="../../css/highlight.css">
         <link href="../../css/base.css" rel="stylesheet">
         <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -325,40 +326,41 @@
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv01.c">tcpcliserv/tcpserv01.c</a></li>
 </ul>
-<pre><code class="c">#include    &quot;unp.h&quot;
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
 
-int
-main(int argc, char **argv)
-{
-    int                 listenfd, connfd;
-    pid_t               childpid;
-    socklen_t           clilen;
-    struct sockaddr_in  cliaddr, servaddr;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>                 <span class="n">listenfd</span><span class="p">,</span> <span class="n">connfd</span><span class="p">;</span>
+    <span class="kt">pid_t</span>               <span class="n">childpid</span><span class="p">;</span>
+    <span class="kt">socklen_t</span>           <span class="n">clilen</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="n">cliaddr</span><span class="p">,</span> <span class="n">servaddr</span><span class="p">;</span>
 
-    listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+    <span class="n">listenfd</span> <span class="o">=</span> <span class="n">Socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
 
-    bzero(&amp;servaddr, sizeof(servaddr));
-    servaddr.sin_family      = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port        = htons(SERV_PORT);
+    <span class="n">bzero</span><span class="p">(</span><span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_family</span>      <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">htonl</span><span class="p">(</span><span class="n">INADDR_ANY</span><span class="p">);</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_port</span>        <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="n">SERV_PORT</span><span class="p">);</span>
 
-    Bind(listenfd, (SA *) &amp;servaddr, sizeof(servaddr));
+    <span class="n">Bind</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
 
-    Listen(listenfd, LISTENQ);
+    <span class="n">Listen</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="n">LISTENQ</span><span class="p">);</span>
 
-    for ( ; ; ) {
-        clilen = sizeof(cliaddr);
-        connfd = Accept(listenfd, (SA *) &amp;cliaddr, &amp;clilen);
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">clilen</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cliaddr</span><span class="p">);</span>
+        <span class="n">connfd</span> <span class="o">=</span> <span class="n">Accept</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">clilen</span><span class="p">);</span>
 
-        if ( (childpid = Fork()) == 0) {    /* child process */
-            Close(listenfd);    /* close listening socket */
-            str_echo(connfd);   /* process the request */
-            exit(0);
-        }
-        Close(connfd);          /* parent closes connected socket */
-    }
-}
-</code></pre>
+        <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">childpid</span> <span class="o">=</span> <span class="n">Fork</span><span class="p">())</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>    <span class="cm">/* child process */</span>
+            <span class="n">Close</span><span class="p">(</span><span class="n">listenfd</span><span class="p">);</span>    <span class="cm">/* close listening socket */</span>
+            <span class="n">str_echo</span><span class="p">(</span><span class="n">connfd</span><span class="p">);</span>   <span class="cm">/* process the request */</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">Close</span><span class="p">(</span><span class="n">connfd</span><span class="p">);</span>          <span class="cm">/* parent closes connected socket */</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>The above code does the following:</p>
 <ul>
@@ -382,24 +384,25 @@ main(int argc, char **argv)
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/str_echo.c">lib/str_echo.c</a></li>
 </ul>
-<pre><code class="c">#include    &quot;unp.h&quot;
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
 
-void
-str_echo(int sockfd)
-{
-    ssize_t     n;
-    char        buf[MAXLINE];
+<span class="kt">void</span>
+<span class="nf">str_echo</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">ssize_t</span>     <span class="n">n</span><span class="p">;</span>
+    <span class="kt">char</span>        <span class="n">buf</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
 
-again:
-    while ( (n = read(sockfd, buf, MAXLINE)) &gt; 0)
-        Writen(sockfd, buf, n);
+<span class="nl">again</span><span class="p">:</span>
+    <span class="k">while</span> <span class="p">(</span> <span class="p">(</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">Writen</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
 
-    if (n &lt; 0 &amp;&amp; errno == EINTR)
-        goto again;
-    else if (n &lt; 0)
-        err_sys(&quot;str_echo: read error&quot;);
-}
-</code></pre>
+    <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span>
+        <span class="k">goto</span> <span class="n">again</span><span class="p">;</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;str_echo: read error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>The above code does the following:</p>
 <ul>
@@ -412,31 +415,32 @@ again:
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpcli01.c">tcpcliserv/tcpcli01.c</a></li>
 </ul>
-<pre><code class="c">#include    &quot;unp.h&quot;
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
 
-int
-main(int argc, char **argv)
-{
-    int                 sockfd;
-    struct sockaddr_in  servaddr;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>                 <span class="n">sockfd</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="n">servaddr</span><span class="p">;</span>
 
-    if (argc != 2)
-        err_quit(&quot;usage: tcpcli &lt;IPaddress&gt;&quot;);
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;usage: tcpcli &lt;IPaddress&gt;&quot;</span><span class="p">);</span>
 
-    sockfd = Socket(AF_INET, SOCK_STREAM, 0);
+    <span class="n">sockfd</span> <span class="o">=</span> <span class="n">Socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
 
-    bzero(&amp;servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(SERV_PORT);
-    Inet_pton(AF_INET, argv[1], &amp;servaddr.sin_addr);
+    <span class="n">bzero</span><span class="p">(</span><span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_family</span> <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_port</span> <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="n">SERV_PORT</span><span class="p">);</span>
+    <span class="n">Inet_pton</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">servaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">);</span>
 
-    Connect(sockfd, (SA *) &amp;servaddr, sizeof(servaddr));
+    <span class="n">Connect</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
 
-    str_cli(stdin, sockfd);     /* do it all */
+    <span class="n">str_cli</span><span class="p">(</span><span class="n">stdin</span><span class="p">,</span> <span class="n">sockfd</span><span class="p">);</span>     <span class="cm">/* do it all */</span>
 
-    exit(0);
-}
-</code></pre>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>The above code does the following:</p>
 <ul>
@@ -454,24 +458,25 @@ main(int argc, char **argv)
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/str_cli.c">lib/str_cli.c</a></li>
 </ul>
-<pre><code class="c">#include    &quot;unp.h&quot;
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
 
-void
-str_cli(FILE *fp, int sockfd)
-{
-    char    sendline[MAXLINE], recvline[MAXLINE];
+<span class="kt">void</span>
+<span class="nf">str_cli</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">fp</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sockfd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="n">sendline</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">],</span> <span class="n">recvline</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
 
-    while (Fgets(sendline, MAXLINE, fp) != NULL) {
+    <span class="k">while</span> <span class="p">(</span><span class="n">Fgets</span><span class="p">(</span><span class="n">sendline</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
 
-        Writen(sockfd, sendline, strlen(sendline));
+        <span class="n">Writen</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">sendline</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">sendline</span><span class="p">));</span>
 
-        if (Readline(sockfd, recvline, MAXLINE) == 0)
-            err_quit(&quot;str_cli: server terminated prematurely&quot;);
+        <span class="k">if</span> <span class="p">(</span><span class="n">Readline</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">recvline</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;str_cli: server terminated prematurely&quot;</span><span class="p">);</span>
 
-        Fputs(recvline, stdout);
-    }
-}
-</code></pre>
+        <span class="n">Fputs</span><span class="p">(</span><span class="n">recvline</span><span class="p">,</span> <span class="n">stdout</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>The above code does the following:</p>
 <ul>

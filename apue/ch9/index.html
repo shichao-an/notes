@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="../../css/highlight.css">
         <link href="../../css/base.css" rel="stylesheet">
         <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -329,6 +330,9 @@
             <li><a href="#korn-shell-example">Korn shell example</a></li>
         
     
+        <li class="main "><a href="#shell-execution-of-programs">Shell Execution of Programs</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -365,8 +369,10 @@
 <li>Then, <code>getty</code> outputs something like <code>login:</code> and waits for us to enter our user name. <code>getty</code> can detect special characters to change the terminal's speed (baud rate). [p287]</li>
 <li>
 <p>When we enter our user name, <code>getty</code>’s job is complete, and it then invokes the <code>login</code> program, similar to:</p>
-<pre><code>execle("/bin/login", "login", "-p", username, (char *)0, envp);
-</code></pre>
+<div class="codehilite"><pre>execle(&quot;/bin/login&quot;, &quot;login&quot;, &quot;-p&quot;, username, (char *)0, envp);
+</pre></div>
+
+
 </li>
 <li>
 <p>Though <code>init</code> invokes <code>getty</code> with an empty environment, <code>getty</code> creates an environment for <code>login</code> (the <code>envp</code> argument) with the name of the terminal (something like <code>TERM=foo</code>, where the type of terminal <code>foo</code> is taken from the <code>gettytab</code> file) and any environment strings that are specified in the <code>gettytab</code>. The <code>-p</code> flag to <code>login</code> tells it to preserve the environment that it is passed and to add to that environment, not replace it.</p>
@@ -395,8 +401,10 @@
 </li>
 <li>
 <p>Change to our user ID (<code>setuid</code>) and invoke our login shell, as in</p>
-<pre><code>execl("/bin/sh", "-sh", (char *)0);
-</code></pre>
+<div class="codehilite"><pre>execl(&quot;/bin/sh&quot;, &quot;-sh&quot;, (char *)0);
+</pre></div>
+
+
 <p>The minus sign as the first character of <code>argv[0]</code> is a flag to all the shells that indicates they are being invoked as a <strong>login shell</strong>. The shells can look at this character and modify their start-up accordingly.</p>
 </li>
 </ul>
@@ -426,8 +434,9 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
 <p>In BSD, the <code>inetd</code> process, sometimes called the <em>Internet superserver</em>, waits for most network connections.</p>
 <p>As part of the system start-up, <code>init</code> invokes a shell that executes the shell script <code>/etc/rc</code>, which starts <code>inetd</code> along with other daemons. Once the shell script terminates, the parent process of <code>inetd</code> becomes <code>init</code>; <code>inetd</code> waits for TCP/IP connection requests to arrive at the host. When a connection request arrives for it to handle, <code>inetd</code> does a <code>fork</code> and <code>exec</code> of the appropriate program.</p>
 <p>Assume a TCP connection request arrives for the TELNET server (a remote login application). The remote user initiates the login by starting the TELNET client:</p>
-<pre><code class="sh">telnet hostname
-</code></pre>
+<div class="codehilite"><pre>telnet hostname
+</pre></div>
+
 
 <p>The client opens a TCP connection to <em>hostname</em> and the user who started the client program is now logged in to the server’s host. The figure below shows the sequence of processes involved in executing the TELNET server, called <code>telnetd</code>:</p>
 <p><a href="../figure_9.4.png" title="Figure 9.4 Sequence of processes involved in executing TELNET server"><img alt="Figure 9.4 Sequence of processes involved in executing TELNET server" src="../figure_9.4.png" /></a></p>
@@ -460,12 +469,14 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
 <script src="https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a.js"></script>
 
 <p>For <code>getpgid</code>, if <em>pid</em> is 0, the process group ID of the calling process is returned. Thus,</p>
-<pre><code class="c">getpgid(0);
-</code></pre>
+<div class="codehilite"><pre><span class="n">getpgid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</pre></div>
+
 
 <p>is equivalent to:</p>
-<pre><code class="c">getpgrp();
-</code></pre>
+<div class="codehilite"><pre><span class="n">getpgrp</span><span class="p">();</span>
+</pre></div>
+
 
 <p>Each process group can have a <strong>process group leader</strong>, whose process group ID equals to its process ID.</p>
 <h4 id="process-group-lifetime">Process group lifetime</h4>
@@ -497,9 +508,10 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
 <p>A session is a collection of one or more process groups.</p>
 <p><a href="../figure_9.6.png" title="Figure 9.6 Arrangement of processes into process groups and sessions"><img alt="Figure 9.6 Arrangement of processes into process groups and sessions" src="../figure_9.6_600.png" /></a></p>
 <p>The processes in a process group are usually placed there by a shell pipeline. The arrangement in the figure above is generated by the shell commands of the form:</p>
-<pre><code class="sh">proc1 | proc2 &amp;
-proc3 | proc4 | proc5
-</code></pre>
+<div class="codehilite"><pre>proc1 <span class="p">|</span> proc2 <span class="p">&amp;</span>
+proc3 <span class="p">|</span> proc4 <span class="p">|</span> proc5
+</pre></div>
+
 
 <h4 id="the-setsid-function">The <code>setsid</code> function</h4>
 <p>A process establishes a new session by calling the <code>setsid</code> function.</p>
@@ -596,7 +608,7 @@ proc3 | proc4 | proc5
 
 <p>Applications that need to manage controlling terminals can use <code>tcgetsid</code> to identify the session ID of the controlling terminal’s session leader, which is equivalent to the session leader’s process group ID.</p>
 <h3 id="job-control">Job Control</h3>
-<p>Job control allows us to start multiple jobs (groups of processes) from a single terminal and to control which jobs can access the terminal and which jobs are run in the background. Job control requires three forms of support:</p>
+<p><strong>Job control</strong> allows us to start multiple jobs (groups of processes) from a single terminal and to control which jobs can access the terminal and which jobs are run in the background. Job control requires three forms of support:</p>
 <ol>
 <li>A shell that supports job control</li>
 <li>The terminal driver in the kernel must support job control</li>
@@ -604,24 +616,27 @@ proc3 | proc4 | proc5
 </ol>
 <p>From our perspective, when using job control from a shell, we can start a job in either the foreground or the background. A job is simply a collection of processes, often a pipeline of processes.</p>
 <p>For example, start a job consisting of one process in the foreground:</p>
-<pre><code class="sh">vi main.c
-</code></pre>
+<div class="codehilite"><pre>vi main.c
+</pre></div>
+
 
 <p>Start two jobs in the background (all the processes invoked by these background jobs are in the background.):</p>
-<pre><code class="sh">pr *.c | lpr &amp;
-make all &amp;
-</code></pre>
+<div class="codehilite"><pre>pr *.c <span class="p">|</span> lpr <span class="p">&amp;</span>
+make all <span class="p">&amp;</span>
+</pre></div>
+
 
 <h4 id="korn-shell-example">Korn shell example</h4>
 <p>When we start a background job, the shell assigns it a job identifier and prints one or more of the process IDs.</p>
-<pre><code class="text">$ make all &gt; Make.out &amp;
+<div class="codehilite"><pre>$ make all &gt; Make.out &amp;
 [1] 1475
 $ pr *.c | lpr &amp;
 [2] 1490
 $   # just press RETURN
 [2] + Done pr *.c | lpr &amp;
 [1] + Done make all &gt; Make.out &amp;
-</code></pre>
+</pre></div>
+
 
 <ul>
 <li>The <code>make</code> is job number 1 and the starting process ID is 1475. The next pipeline is job number 2 and the process ID of the first process is 1490.</li>
@@ -634,7 +649,7 @@ $   # just press RETURN
 </li>
 </ul>
 <p>While we can have a foreground job and one or more background jobs, only the foreground job receives terminal input (the characters that we enter at the terminal). It is not an error for a background job to try to read from the terminal, but the terminal driver detects this and sends a special signal to the background job: <code>SIGTTIN</code>. This signal normally stops the background job; by using the shell, we are notified of this event and can bring the job into the foreground so that it can read from the terminal.</p>
-<pre><code class="text">cat &gt; temp.foo &amp;   # start in background, but it’ll read from standard input
+<div class="codehilite"><pre>cat &gt; temp.foo &amp;   # start in background, but it’ll read from standard input
 [1] 1681
 $                  # we press RETURN
 [1] + Stopped (SIGTTIN) cat &gt; temp.foo &amp;
@@ -644,7 +659,8 @@ hello, world       # enter one line
 ˆD                 # type the end-of-file character
 $ cat temp.foo     # check that the one line was put into the file
 hello, world
-</code></pre>
+</pre></div>
+
 
 <ul>
 <li><code>SIGTTIN</code>: When the background <code>cat</code> tries to read its standard input (the controlling terminal), the terminal driver, knowing that it is a background job, sends the <code>SIGTTIN</code> signal to the background job.</li>
@@ -653,6 +669,33 @@ hello, world
 <li>Since it is now in the foreground process group, the job can read from the controlling terminal.</li>
 </ul>
 <p>Note that this example doesn’t work on Mac OS X 10.6.8. When we try to bring the cat command into the foreground, the read fails with errno set to EINTR. Since Mac OS X is based on FreeBSD, and FreeBSD works as expected, this must be a bug in Mac OS X.</p>
+<p>There is an option that we can allow or disallow a background job to send its output to the controlling terminal. Normally, we use the <code>stty(1)</code> command to change this option.</p>
+<div class="codehilite"><pre><span class="go">$ cat temp.foo &amp;   # execute in background</span>
+<span class="go">[1] 1719</span>
+<span class="go">$ hello, world     # the output from the background job appears after the prompt</span>
+<span class="go">we press RETURN</span>
+<span class="go">[1] + Done cat temp.foo &amp;</span>
+<span class="go">$ stty tostop      # disable ability of background jobs to output to controlling terminal</span>
+<span class="go">$ cat temp.foo &amp;   # try it again in the background</span>
+<span class="go">[1] 1721</span>
+<span class="go">$                  # we press RETURN and find the job is stopped</span>
+<span class="go">[1] + Stopped(SIGTTOU) cat temp.foo &amp;</span>
+<span class="go">$ fg %1            # resume stopped job in the foreground</span>
+<span class="go">cat temp.foo       # the shell tells us which job is now in the foreground</span>
+<span class="go">hello, world       # and here is its output</span>
+</pre></div>
+
+
+<p>When we disallow background jobs from writing to the controlling terminal, cat will block when it tries to write to its standard output, because the terminal driver identifies the write as coming from a background process and sends the job the <code>SIGTTOU</code> signal. When we use the shell’s <code>fg</code> command to bring the job into the foreground, the job completes.</p>
+<p>The figure below summarizes some of the features of job control that have been described so far:</p>
+<p><a href="../figure_9.9.png" title="Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver"><img alt="Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver" src="../figure_9.9_600.png" /></a></p>
+<ul>
+<li>The solid lines through the terminal driver box mean that the terminal I/O and the terminal-generated signals are always connected from the foreground process group to the actual terminal.</li>
+<li>The dashed line corresponding to the <code>SIGTTOU</code> signal means that whether the output from a process in the background process group appears on the terminal is an option.</li>
+</ul>
+<p>Job control was originally designed and implemented before windowing terminals were widespread. It is a required feature of POSIX.1. [p302-303]</p>
+<h3 id="shell-execution-of-programs">Shell Execution of Programs</h3>
+<p>This section examines how the shells execute programs and how this relates to the concepts of process groups, controlling terminals, and sessions</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p294 on <code>fork</code>'s race condition concerning <code>setpgid</code></p>
