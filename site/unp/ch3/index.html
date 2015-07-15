@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="../../css/highlight.css">
         <link href="../../css/base.css" rel="stylesheet">
         <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -338,21 +339,22 @@
 <p>The name of socket address structures begin with <code>sockaddr_</code> and end with a unique suffix for each protocol suite.</p>
 <h4 id="ipv4-socket-address-structure">IPv4 Socket Address Structure</h4>
 <p>An IPv4 socket address structure, commonly called an "Internet socket address structure", is named <code>sockaddr_in</code> and is defined by including the <code>&lt;netinet/in.h&gt;</code> header.</p>
-<pre><code class="c">struct in_addr {
-  in_addr_t   s_addr;           /* 32-bit IPv4 address */
-                                /* network byte ordered */
-};
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">in_addr</span> <span class="p">{</span>
+  <span class="kt">in_addr_t</span>   <span class="n">s_addr</span><span class="p">;</span>           <span class="cm">/* 32-bit IPv4 address */</span>
+                                <span class="cm">/* network byte ordered */</span>
+<span class="p">};</span>
 
-struct sockaddr_in {
-  uint8_t         sin_len;      /* length of structure (16) */
-  sa_family_t     sin_family;   /* AF_INET */
-  in_port_t       sin_port;     /* 16-bit TCP or UDP port number */
-                                /* network byte ordered */
-  struct in_addr  sin_addr;     /* 32-bit IPv4 address */
-                                /* network byte ordered */
-  char            sin_zero[8];  /* unused */
-};
-</code></pre>
+<span class="k">struct</span> <span class="n">sockaddr_in</span> <span class="p">{</span>
+  <span class="kt">uint8_t</span>         <span class="n">sin_len</span><span class="p">;</span>      <span class="cm">/* length of structure (16) */</span>
+  <span class="kt">sa_family_t</span>     <span class="n">sin_family</span><span class="p">;</span>   <span class="cm">/* AF_INET */</span>
+  <span class="kt">in_port_t</span>       <span class="n">sin_port</span><span class="p">;</span>     <span class="cm">/* 16-bit TCP or UDP port number */</span>
+                                <span class="cm">/* network byte ordered */</span>
+  <span class="k">struct</span> <span class="n">in_addr</span>  <span class="n">sin_addr</span><span class="p">;</span>     <span class="cm">/* 32-bit IPv4 address */</span>
+                                <span class="cm">/* network byte ordered */</span>
+  <span class="kt">char</span>            <span class="n">sin_zero</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>  <span class="cm">/* unused */</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <ul>
 <li><code>sin_len</code>: the length field. We need never set it and need never examine it.<ul>
@@ -368,25 +370,28 @@ struct sockaddr_in {
 <h4 id="generic-socket-address-structure">Generic Socket Address Structure</h4>
 <p>A socket address structures is always passed by reference when passed as an argument to any socket functions. But any socket function that takes one of these pointers as an argument must deal with socket address structures from any of the supported protocol families.</p>
 <p>A generic socket address structure in the <code>&lt;sys/socket.h&gt;</code> header:</p>
-<pre><code class="c">struct sockaddr {
-  uint8_t      sa_len;
-  sa_family_t  sa_family;    /* address family: AF_xxx value */
-  char         sa_data[14];  /* protocol-specific address */
-};
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr</span> <span class="p">{</span>
+  <span class="kt">uint8_t</span>      <span class="n">sa_len</span><span class="p">;</span>
+  <span class="kt">sa_family_t</span>  <span class="n">sa_family</span><span class="p">;</span>    <span class="cm">/* address family: AF_xxx value */</span>
+  <span class="kt">char</span>         <span class="n">sa_data</span><span class="p">[</span><span class="mi">14</span><span class="p">];</span>  <span class="cm">/* protocol-specific address */</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <p>The socket functions are then defined as taking a pointer to the generic socket address structure, as shown here in the ANSI C function prototype for the <code>bind</code> function:</p>
-<pre><code class="c">int bind(int, struct sockaddr *, socklen_t);
-</code></pre>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">bind</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="p">,</span> <span class="kt">socklen_t</span><span class="p">);</span>
+</pre></div>
+
 
 <p>This requires that any calls to these functions must cast the <u>pointer to the <em>protocol-specific socket address structure</em></u> to be a <u>pointer to a <em>generic socket address structure</em>.</u></p>
 <p>For example:</p>
-<pre><code class="c">struct sockaddr_in  serv;      /* IPv4 socket address structure */
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="n">serv</span><span class="p">;</span>      <span class="cm">/* IPv4 socket address structure */</span>
 
-/* fill in serv{} */
+<span class="cm">/* fill in serv{} */</span>
 
-bind(sockfd, (struct sockaddr *) &amp;serv, sizeof(serv));
-</code></pre>
+<span class="n">bind</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="p">(</span><span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">serv</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">serv</span><span class="p">));</span>
+</pre></div>
+
 
 <p><a href="../../unp/ch1/#a-simple-daytime-client">In Chapter 1 in our unp.h header</a>, we define <code>SA</code> to be the string <code>struct sockaddr</code>, just to shorten the code that we must write to cast these pointers.</p>
 <ul>
@@ -395,24 +400,25 @@ bind(sockfd, (struct sockaddr *) &amp;serv, sizeof(serv));
 </ul>
 <h4 id="ipv6-socket-address-structure">IPv6 Socket Address Structure</h4>
 <p>The IPv6 socket address is defined by including the <code>&lt;netinet/in.h&gt;</code> header:</p>
-<pre><code class="c">struct in6_addr {
-  uint8_t  s6_addr[16];          /* 128-bit IPv6 address */
-                                 /* network byte ordered */
-};
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">in6_addr</span> <span class="p">{</span>
+  <span class="kt">uint8_t</span>  <span class="n">s6_addr</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>          <span class="cm">/* 128-bit IPv6 address */</span>
+                                 <span class="cm">/* network byte ordered */</span>
+<span class="p">};</span>
 
-#define SIN6_LEN      /* required for compile-time tests */
+<span class="cp">#define SIN6_LEN      </span><span class="cm">/* required for compile-time tests */</span><span class="cp"></span>
 
-struct sockaddr_in6 {
-  uint8_t         sin6_len;      /* length of this struct (28) */
-  sa_family_t     sin6_family;   /* AF_INET6 */
-  in_port_t       sin6_port;     /* transport layer port# */
-                                 /* network byte ordered */
-  uint32_t        sin6_flowinfo; /* flow information, undefined */
-  struct in6_addr sin6_addr;     /* IPv6 address */
-                                 /* network byte ordered */
-  uint32_t        sin6_scope_id; /* set of interfaces for a scope */
-};
-</code></pre>
+<span class="k">struct</span> <span class="n">sockaddr_in6</span> <span class="p">{</span>
+  <span class="kt">uint8_t</span>         <span class="n">sin6_len</span><span class="p">;</span>      <span class="cm">/* length of this struct (28) */</span>
+  <span class="kt">sa_family_t</span>     <span class="n">sin6_family</span><span class="p">;</span>   <span class="cm">/* AF_INET6 */</span>
+  <span class="kt">in_port_t</span>       <span class="n">sin6_port</span><span class="p">;</span>     <span class="cm">/* transport layer port# */</span>
+                                 <span class="cm">/* network byte ordered */</span>
+  <span class="kt">uint32_t</span>        <span class="n">sin6_flowinfo</span><span class="p">;</span> <span class="cm">/* flow information, undefined */</span>
+  <span class="k">struct</span> <span class="n">in6_addr</span> <span class="n">sin6_addr</span><span class="p">;</span>     <span class="cm">/* IPv6 address */</span>
+                                 <span class="cm">/* network byte ordered */</span>
+  <span class="kt">uint32_t</span>        <span class="n">sin6_scope_id</span><span class="p">;</span> <span class="cm">/* set of interfaces for a scope */</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <ul>
 <li>The <code>SIN6_LEN</code> constant must be defined if the system supports the length member for socket address structures.</li>
@@ -427,17 +433,18 @@ struct sockaddr_in6 {
 </ul>
 <h4 id="new-generic-socket-address-structure">New Generic Socket Address Structure</h4>
 <p>A new generic socket address structure was defined as part of the IPv6 sockets API, to overcome some of the shortcomings of the existing <code>struct sockaddr</code>. Unlike the <code>struct sockaddr</code>, the new <code>struct sockaddr_storage</code> is large enough to hold any socket address type supported by the system. The <code>sockaddr_storage</code> structure is defined by including the <code>&lt;netinet/in.h&gt;</code> header:</p>
-<pre><code class="c">struct sockaddr_storage {
-  uint8_t      ss_len;       /* length of this struct (implementation dependent) */
-  sa_family_t  ss_family;    /* address family: AF_xxx value */
-  /* implementation-dependent elements to provide:
-   * a) alignment sufficient to fulfill the alignment requirements of
-   *    all socket address types that the system supports.
-   * b) enough storage to hold any type of socket address that the
-   *    system supports.
-   */
-};
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_storage</span> <span class="p">{</span>
+  <span class="kt">uint8_t</span>      <span class="n">ss_len</span><span class="p">;</span>       <span class="cm">/* length of this struct (implementation dependent) */</span>
+  <span class="kt">sa_family_t</span>  <span class="n">ss_family</span><span class="p">;</span>    <span class="cm">/* address family: AF_xxx value */</span>
+  <span class="cm">/* implementation-dependent elements to provide:</span>
+<span class="cm">   * a) alignment sufficient to fulfill the alignment requirements of</span>
+<span class="cm">   *    all socket address types that the system supports.</span>
+<span class="cm">   * b) enough storage to hold any type of socket address that the</span>
+<span class="cm">   *    system supports.</span>
+<span class="cm">   */</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <p>The <code>sockaddr_storage</code> type provides a generic socket address structure that is different from <code>struct sockaddr</code> in two ways:</p>
 <ol>
@@ -468,11 +475,12 @@ struct sockaddr_in6 {
 <li>The pointer to the socket address structure</li>
 <li>The integer size of the structure</li>
 </ul>
-<pre><code class="c">struct sockaddr_in serv;
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_in</span> <span class="n">serv</span><span class="p">;</span>
 
-/* fill in serv{} */
-connect (sockfd, (SA *) &amp;serv, sizeof(serv));
-</code></pre>
+<span class="cm">/* fill in serv{} */</span>
+<span class="n">connect</span> <span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">serv</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">serv</span><span class="p">));</span>
+</pre></div>
+
 
 <p><a href="../figure_3.7.png" title="Figure 3.7 Socket address structure passed from process to kernel."><img alt="Figure 3.7 Socket address structure passed from process to kernel." src="../figure_3.7.png" /></a></p>
 <p>The datatype for the size of a socket address structure is actually <code>socklen_t</code> and not <code>int</code>, but the POSIX specification recommends that <code>socklen_t</code> be defined as <code>uint32_t</code>.</p>
@@ -483,13 +491,14 @@ connect (sockfd, (SA *) &amp;serv, sizeof(serv));
 <li>The pointer to the socket address structure </li>
 <li>The pointer to an integer containing the size of the structure.</li>
 </ul>
-<pre><code class="c">struct sockaddr_un  cli;   /* Unix domain */
-socklen_t  len;
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_un</span>  <span class="n">cli</span><span class="p">;</span>   <span class="cm">/* Unix domain */</span>
+<span class="kt">socklen_t</span>  <span class="n">len</span><span class="p">;</span>
 
-len = sizeof(cli);         /* len is a value */
-getpeername(unixfd, (SA *) &amp;cli, &amp;len);
-/* len may have changed */
-</code></pre>
+<span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cli</span><span class="p">);</span>         <span class="cm">/* len is a value */</span>
+<span class="n">getpeername</span><span class="p">(</span><span class="n">unixfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cli</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">len</span><span class="p">);</span>
+<span class="cm">/* len may have changed */</span>
+</pre></div>
+
 
 <p><a href="../figure_3.8.png" title="Figure 3.8 Socket address structure passed from kernel to process."><img alt="Figure 3.8 Socket address structure passed from kernel to process." src="../figure_3.8.png" /></a></p>
 <p><strong>Value-result argument</strong> (Figure 3.8): the size changes from an integer to be a pointer to an integer because the size is both <u>a value when the function is called and a result when the function returns.</u></p>
@@ -524,7 +533,7 @@ getpeername(unixfd, (SA *) &amp;cli, &amp;len);
 
 <p>We store the two-byte value <code>0x0102</code> in the short integer and then look at the two consecutive bytes, <code>c[0]</code> (the address <em>A</em>) and <code>c[1]</code> (the address <em>A+1</em>) to determine the byte order.</p>
 <p>The string <code>CPU_VENDOR_OS</code> is determined by the GNU <code>autoconf</code> program.</p>
-<pre><code class="text">freebsd4 % byteorder
+<div class="codehilite"><pre>freebsd4 % byteorder
 i386-unknown-freebsd4.8: little-endian
 
 macosx % byteorder
@@ -544,7 +553,8 @@ i586-pc-linux-gnu: little-endian
 
 solaris % byteorder
 sparc-sun-solaris2.9: big-endian
-</code></pre>
+</pre></div>
+
 
 <p>Networking protocols must specify a <strong>network byte order</strong>. The sending protocol stack and the receiving protocol stack must agree on the order in which the bytes of these multibyte fields will be transmitted. <u>The Internet protocols use big-endian byte ordering for these multibyte integers.</u></p>
 <p>But, both history and the POSIX specification say that certain fields in the socket address structures must be maintained in network byte order. We use the following four functions to convert between these two byte orders:</p>
@@ -559,12 +569,13 @@ sparc-sun-solaris2.9: big-endian
 <p>When using these functions, we do not care about the actual values (big-endian or little-endian) for the host byte order and the network byte order. What we must do is call the appropriate function to convert a given value between the host and network byte order. On those systems that have the same byte ordering as the Internet protocols (big-endian), these four functions are usually defined as null macros.</p>
 <p>We use the term "byte" to mean an 8-bit quantity since almost all current computer systems use 8-bit bytes. Most Internet standards use the term <strong>octet</strong> instead of byte to mean an 8-bit quantity.</p>
 <p>Bit ordering is an important convention in Internet standards, such as the the first 32 bits of the IPv4 header from RFC 791:</p>
-<pre><code class="text"> 0                   1                   2                   3
+<div class="codehilite"><pre> 0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |Version|  IHL |Type of Service|           Total Length         |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-</code></pre>
+</pre></div>
+
 
 <p>This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. </p>
 <h3 id="byte-manipulation-functions">Byte Manipulation Functions</h3>
@@ -596,8 +607,10 @@ sparc-sun-solaris2.9: big-endian
 <ul>
 <li>
 <p>One way to remember the order of the two pointers for <code>memcpy</code> is to remember that they are written in the same left-to-right order as an assignment statement in C:</p>
-<pre><code>dest = src;
-</code></pre>
+<div class="codehilite"><pre>dest = src;
+</pre></div>
+
+
 </li>
 <li>
 <p>One way to remember the order of the final two arguments to <code>memset</code> is to realize that all of the ANSI C <code>memXXX</code> functions require a length argument, and it is always the final argument. The comparison is done assuming the two unequal bytes are <code>unsigned chars</code>.</p>
@@ -635,89 +648,98 @@ sparc-sun-solaris2.9: big-endian
 </li>
 </ul>
 <p>Size definitions in <code>&lt;netinet/in.h&gt;</code> header for the <em>len</em> argument:</p>
-<pre><code class="c">#define INET_ADDRSTRLEN       16       /* for IPv4 dotted-decimal */
-#define INET6_ADDRSTRLEN      46       /* for IPv6 hex string */
-</code></pre>
+<div class="codehilite"><pre><span class="cp">#define INET_ADDRSTRLEN       16       </span><span class="cm">/* for IPv4 dotted-decimal */</span><span class="cp"></span>
+<span class="cp">#define INET6_ADDRSTRLEN      46       </span><span class="cm">/* for IPv6 hex string */</span><span class="cp"></span>
+</pre></div>
+
 
 <p>The following figure summarizes the five functions on address conversion functions:</p>
 <p><a href="../figure_3.11.png" title="Figure 3.11 Summary of address conversion functions."><img alt="Figure 3.11 Summary of address conversion functions." src="../figure_3.11_600.png" /></a></p>
 <p>Even if your system does not yet include support for IPv6, you can start using these newer functions by replacing calls of the form.</p>
 <h4 id="replacing-inet_addr-to-inet_pton">Replacing <code>inet_addr</code> to <code>inet_pton</code></h4>
 <p>Replace:</p>
-<pre><code class="c">foo.sin_addr.s_addr = inet_addr(cp);
-</code></pre>
+<div class="codehilite"><pre><span class="n">foo</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">inet_addr</span><span class="p">(</span><span class="n">cp</span><span class="p">);</span>
+</pre></div>
+
 
 <p>with</p>
-<pre><code class="c">inet_pton(AF_INET, cp, &amp;foo.sin_addr);
-</code></pre>
+<div class="codehilite"><pre><span class="n">inet_pton</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">cp</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foo</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">);</span>
+</pre></div>
+
 
 <h4 id="replacing-inet_ntoa-to-inet_ntop">Replacing <code>inet_ntoa</code> to <code>inet_ntop</code></h4>
 <p>Replace:</p>
-<pre><code>ptr = inet_ntoa(foo.sin_addr);
-</code></pre>
+<div class="codehilite"><pre>ptr = inet_ntoa(foo.sin_addr);
+</pre></div>
+
 
 <p>with</p>
-<pre><code class="c">char str[INET_ADDRSTRLEN];
-ptr = inet_ntop(AF_INET, &amp;foo.sin_addr, str, sizeof(str));
-</code></pre>
+<div class="codehilite"><pre><span class="kt">char</span> <span class="n">str</span><span class="p">[</span><span class="n">INET_ADDRSTRLEN</span><span class="p">];</span>
+<span class="n">ptr</span> <span class="o">=</span> <span class="n">inet_ntop</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foo</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">str</span><span class="p">));</span>
+</pre></div>
+
 
 <h4 id="simple-definitions-of-inet_pton-and-inet_ntop-that-support-ipv4">Simple definitions of <code>inet_pton</code> and <code>inet_ntop</code> that support IPv4</h4>
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_pton_ipv4.c">libfree/inet_pton_ipv4.c</a></li>
 </ul>
-<pre><code class="c">int
-inet_pton(int family, const char *strptr, void *addrptr)
-{
-    if (family == AF_INET) {
-        struct in_addr  in_val;
+<div class="codehilite"><pre><span class="kt">int</span>
+<span class="nf">inet_pton</span><span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">family</span> <span class="o">==</span> <span class="n">AF_INET</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">in_addr</span>  <span class="n">in_val</span><span class="p">;</span>
 
-        if (inet_aton(strptr, &amp;in_val)) {
-            memcpy(addrptr, &amp;in_val, sizeof(struct in_addr));
-            return (1);
-        }
-        return(0);
-    }
-    errno = EAFNOSUPPORT;
-    return (-1);
-}
-</code></pre>
+        <span class="k">if</span> <span class="p">(</span><span class="n">inet_aton</span><span class="p">(</span><span class="n">strptr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">in_val</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">memcpy</span><span class="p">(</span><span class="n">addrptr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">in_val</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">in_addr</span><span class="p">));</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">errno</span> <span class="o">=</span> <span class="n">EAFNOSUPPORT</span><span class="p">;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_ntop_ipv4.c">inet_ntop_ipv4.c</a></li>
 </ul>
-<pre><code class="c">const char *
-inet_ntop(int family, const void *addrptr, char *strptr, size_t len)
-{
-    const u_char *p = (const u_char *) addrptr;
+<div class="codehilite"><pre><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span>
+<span class="nf">inet_ntop</span><span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">const</span> <span class="n">u_char</span> <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="k">const</span> <span class="n">u_char</span> <span class="o">*</span><span class="p">)</span> <span class="n">addrptr</span><span class="p">;</span>
 
-    if (family == AF_INET) {
-        char    temp[INET_ADDRSTRLEN];
+    <span class="k">if</span> <span class="p">(</span><span class="n">family</span> <span class="o">==</span> <span class="n">AF_INET</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">char</span>    <span class="n">temp</span><span class="p">[</span><span class="n">INET_ADDRSTRLEN</span><span class="p">];</span>
 
-        snprintf(temp, sizeof(temp), &quot;%d.%d.%d.%d&quot;,
-                 p[0], p[1], p[2], p[3]);
-        if (strlen(temp) &gt;= len) {
-            errno = ENOSPC;
-            return (NULL);
-        }
-        strcpy(strptr, temp);
-        return (strptr);
-    }
-    errno = EAFNOSUPPORT;
-    return (NULL);
-}
-</code></pre>
+        <span class="n">snprintf</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">temp</span><span class="p">),</span> <span class="s">&quot;%d.%d.%d.%d&quot;</span><span class="p">,</span>
+                 <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">3</span><span class="p">]);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">strlen</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">len</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">errno</span> <span class="o">=</span> <span class="n">ENOSPC</span><span class="p">;</span>
+            <span class="k">return</span> <span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">strcpy</span><span class="p">(</span><span class="n">strptr</span><span class="p">,</span> <span class="n">temp</span><span class="p">);</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">strptr</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">errno</span> <span class="o">=</span> <span class="n">EAFNOSUPPORT</span><span class="p">;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <h3 id="sock_ntop-and-related-functions"><code>sock_ntop</code> and Related Functions</h3>
 <p>A basic problem with <code>inet_ntop</code> is that it requires the caller to pass a pointer to a binary address. This address is normally contained in a socket address structure, requiring the caller to know the format of the structure and the address family.</p>
 <p>For IPv4:</p>
-<pre><code class="c">struct sockaddr_in   addr;
-inet_ntop(AF_INET, &amp;addr.sin_addr, str, sizeof(str));
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_in</span>   <span class="n">addr</span><span class="p">;</span>
+<span class="n">inet_ntop</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">addr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">str</span><span class="p">));</span>
+</pre></div>
+
 
 <p>For IPv6:</p>
-<pre><code class="c">struct sockaddr_in6   addr6;
-inet_ntop(AF_INET6, &amp;addr6.sin6_addr, str, sizeof(str));
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_in6</span>   <span class="n">addr6</span><span class="p">;</span>
+<span class="n">inet_ntop</span><span class="p">(</span><span class="n">AF_INET6</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">addr6</span><span class="p">.</span><span class="n">sin6_addr</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">str</span><span class="p">));</span>
+</pre></div>
+
 
 <p>This (above) makes our code protocol-dependent.</p>
 <p>To solve this, we will write our own function named <code>sock_ntop</code> that takes a pointer to a socket address structure, looks inside the structure, and calls the appropriate function to return the presentation format of the address.</p>
@@ -741,26 +763,27 @@ null character. Hence, the buffer size must be at least INET_ADDRSTRLEN plus 6 b
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/sock_ntop.c">lib/sock_ntop.c</a></li>
 </ul>
 <p>The source code for only the <code>AF_INET</code> case:</p>
-<pre><code class="c">char *
-sock_ntop(const struct sockaddr *sa, socklen_t salen)
-{
-    char        portstr[8];
-    static char str[128];       /* Unix domain is largest */
+<div class="codehilite"><pre><span class="kt">char</span> <span class="o">*</span>
+<span class="nf">sock_ntop</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sa</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">salen</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>        <span class="n">portstr</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
+    <span class="k">static</span> <span class="kt">char</span> <span class="n">str</span><span class="p">[</span><span class="mi">128</span><span class="p">];</span>       <span class="cm">/* Unix domain is largest */</span>
 
-    switch (sa-&gt;sa_family) {
-    case AF_INET: {
-        struct sockaddr_in  *sin = (struct sockaddr_in *) sa;
+    <span class="k">switch</span> <span class="p">(</span><span class="n">sa</span><span class="o">-&gt;</span><span class="n">sa_family</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nl">AF_INET</span><span class="p">:</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="o">*</span><span class="n">sin</span> <span class="o">=</span> <span class="p">(</span><span class="k">struct</span> <span class="n">sockaddr_in</span> <span class="o">*</span><span class="p">)</span> <span class="n">sa</span><span class="p">;</span>
 
-        if (inet_ntop(AF_INET, &amp;sin-&gt;sin_addr, str, sizeof(str)) == NULL)
-            return(NULL);
-        if (ntohs(sin-&gt;sin_port) != 0) {
-            snprintf(portstr, sizeof(portstr), &quot;:%d&quot;, ntohs(sin-&gt;sin_port));
-            strcat(str, portstr);
-        }
-        return(str);
-    }
-  /* ... */
-</code></pre>
+        <span class="k">if</span> <span class="p">(</span><span class="n">inet_ntop</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sin</span><span class="o">-&gt;</span><span class="n">sin_addr</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">str</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ntohs</span><span class="p">(</span><span class="n">sin</span><span class="o">-&gt;</span><span class="n">sin_port</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">snprintf</span><span class="p">(</span><span class="n">portstr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">portstr</span><span class="p">),</span> <span class="s">&quot;:%d&quot;</span><span class="p">,</span> <span class="n">ntohs</span><span class="p">(</span><span class="n">sin</span><span class="o">-&gt;</span><span class="n">sin_port</span><span class="p">));</span>
+            <span class="n">strcat</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">portstr</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="cm">/* ... */</span>
+</pre></div>
+
 
 <h4 id="related-functions">Related functions</h4>
 <p>There are a few other functions that we define to operate on socket address structures,
@@ -787,32 +810,33 @@ and these will simplify the portability of our code between IPv4 and IPv6.</p>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/test/readline1.c">test/readline1.c</a></li>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/readline.c">lib/readline.c</a></li>
 </ul>
-<pre><code class="c">#include    &quot;unp.h&quot;
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
 
-ssize_t                     /* Read &quot;n&quot; bytes from a descriptor. */
-readn(int fd, void *vptr, size_t n)
-{
-    size_t  nleft;
-    ssize_t nread;
-    char    *ptr;
+<span class="kt">ssize_t</span>                     <span class="cm">/* Read &quot;n&quot; bytes from a descriptor. */</span>
+<span class="n">readn</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">vptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">size_t</span>  <span class="n">nleft</span><span class="p">;</span>
+    <span class="kt">ssize_t</span> <span class="n">nread</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
 
-    ptr = vptr;
-    nleft = n;
-    while (nleft &gt; 0) {
-        if ( (nread = read(fd, ptr, nleft)) &lt; 0) {
-            if (errno == EINTR)
-                nread = 0;      /* and call read() again */
-            else
-                return(-1);
-        } else if (nread == 0)
-            break;              /* EOF */
+    <span class="n">ptr</span> <span class="o">=</span> <span class="n">vptr</span><span class="p">;</span>
+    <span class="n">nleft</span> <span class="o">=</span> <span class="n">n</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">nleft</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">ptr</span><span class="p">,</span> <span class="n">nleft</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span>
+                <span class="n">nread</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>      <span class="cm">/* and call read() again */</span>
+            <span class="k">else</span>
+                <span class="nf">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>              <span class="cm">/* EOF */</span>
 
-        nleft -= nread;
-        ptr   += nread;
-    }
-    return(n - nleft);      /* return &gt;= 0 */
-}
-</code></pre>
+        <span class="n">nleft</span> <span class="o">-=</span> <span class="n">nread</span><span class="p">;</span>
+        <span class="n">ptr</span>   <span class="o">+=</span> <span class="n">nread</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">nleft</span><span class="p">);</span>      <span class="cm">/* return &gt;= 0 */</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Our three functions look for the error <code>EINTR</code> (the system call was interrupted by a caught signal) and continue reading or writing if the error occurs. We handle the error here, instead of forcing the caller to call <code>readn</code> or <code>writen</code> again, since the purpose of these three functions is to prevent the caller from having to handle a short count.</p>
 <p>In Section 14.3, we will mention that the <code>MSG_WAITALL</code> flag can be used with the <code>recv</code> function to replace the need for a separate <code>readn</code> function.</p>

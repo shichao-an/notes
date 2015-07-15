@@ -317,7 +317,7 @@ Applications that need to manage controlling terminals can use `tcgetsid` to ide
 
 ### Job Control
 
-Job control allows us to start multiple jobs (groups of processes) from a single terminal and to control which jobs can access the terminal and which jobs are run in the background. Job control requires three forms of support:
+**Job control** allows us to start multiple jobs (groups of processes) from a single terminal and to control which jobs can access the terminal and which jobs are run in the background. Job control requires three forms of support:
 
 1. A shell that supports job control
 2. The terminal driver in the kernel must support job control
@@ -379,8 +379,43 @@ hello, world
 * The shell’s `fg` command move the stopped job into the foreground, which causes the shell to place the job into the foreground process group (tcsetpgrp) and send the continue signal (`SIGCONT`) to the process group.
 * Since it is now in the foreground process group, the job can read from the controlling terminal.
 
-
 Note that this example doesn’t work on Mac OS X 10.6.8. When we try to bring the cat command into the foreground, the read fails with errno set to EINTR. Since Mac OS X is based on FreeBSD, and FreeBSD works as expected, this must be a bug in Mac OS X.
+
+There is an option that we can allow or disallow a background job to send its output to the controlling terminal. Normally, we use the `stty(1)` command to change this option.
+
+```shell-session
+$ cat temp.foo &   # execute in background
+[1] 1719
+$ hello, world     # the output from the background job appears after the prompt
+we press RETURN
+[1] + Done cat temp.foo &
+$ stty tostop      # disable ability of background jobs to output to controlling terminal
+$ cat temp.foo &   # try it again in the background
+[1] 1721
+$                  # we press RETURN and find the job is stopped
+[1] + Stopped(SIGTTOU) cat temp.foo &
+$ fg %1            # resume stopped job in the foreground
+cat temp.foo       # the shell tells us which job is now in the foreground
+hello, world       # and here is its output
+```
+
+When we disallow background jobs from writing to the controlling terminal, cat will block when it tries to write to its standard output, because the terminal driver identifies the write as coming from a background process and sends the job the `SIGTTOU` signal. When we use the shell’s `fg` command to bring the job into the foreground, the job completes.
+
+The figure below summarizes some of the features of job control that have been described so far:
+
+[![Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver](figure_9.9_600.png)](figure_9.9.png "Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver")
+
+* The solid lines through the terminal driver box mean that the terminal I/O and the terminal-generated signals are always connected from the foreground process group to the actual terminal.
+* The dashed line corresponding to the `SIGTTOU` signal means that whether the output from a process in the background process group appears on the terminal is an option.
+
+Job control was originally designed and implemented before windowing terminals were widespread. It is a required feature of POSIX.1. [p302-303]
+
+### Shell Execution of Programs
+
+This section examines how the shells execute programs and how this relates to the concepts of process groups, controlling terminals, and sessions
+
+
+
 
 
 

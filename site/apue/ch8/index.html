@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="../../css/highlight.css">
         <link href="../../css/base.css" rel="stylesheet">
         <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -403,38 +404,39 @@
 </ul>
 <p>Variations of the <code>fork</code> function are provided by some platforms. All four platforms discussed in this book support the <code>vfork(2)</code> variant discussed in the next section. Linux 3.2.0 also provides new process creation through the <code>clone(2)</code> system call. This is a generalized form of <code>fork</code> that allows the caller to control what is shared between parent and child.</p>
 <p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork1.c">fork1.c</a>):</p>
-<pre><code class="c">#include &quot;apue.h&quot;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 
-int globvar = 6; /* external variable in initialized data */
-char buf[] = &quot;a write to stdout\n&quot;;
+<span class="kt">int</span> <span class="n">globvar</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span> <span class="cm">/* external variable in initialized data */</span>
+<span class="kt">char</span> <span class="n">buf</span><span class="p">[]</span> <span class="o">=</span> <span class="s">&quot;a write to stdout</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
 
-int
-main(void)
-{
-    int var; /* automatic variable on the stack */
-    pid_t pid;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">var</span><span class="p">;</span> <span class="cm">/* automatic variable on the stack */</span>
+    <span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
 
-    var = 88;
-    if (write(STDOUT_FILENO, buf, sizeof(buf)-1) != sizeof(buf)-1)
-        err_sys(&quot;write error&quot;);
-    printf(&quot;before fork\n&quot;); /* we don’t flush stdout */
+    <span class="n">var</span> <span class="o">=</span> <span class="mi">88</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;before fork</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="cm">/* we don’t flush stdout */</span>
 
-    if ((pid = fork()) &lt; 0) {
-        err_sys(&quot;fork error&quot;);
-    } else if (pid == 0) { /* child */
-        globvar++; /* modify variables */
-        var++;
-    } else {
-        sleep(2); /* parent */
-    }
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* child */</span>
+        <span class="n">globvar</span><span class="o">++</span><span class="p">;</span> <span class="cm">/* modify variables */</span>
+        <span class="n">var</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span> <span class="cm">/* parent */</span>
+    <span class="p">}</span>
 
-    printf(&quot;pid = %ld, glob = %d, var = %d\n&quot;, (long)getpid(), globvar,
-           var);
-    exit(0);
-}
-</code></pre>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;pid = %ld, glob = %d, var = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">globvar</span><span class="p">,</span>
+           <span class="n">var</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
 
-<pre><code class="text">$ ./a.out
+
+<div class="codehilite"><pre>$ ./a.out
 a write to stdout
 before fork
 pid = 430, glob = 7, var = 89 # child’s variables were changed
@@ -446,7 +448,8 @@ before fork
 pid = 432, glob = 7, var = 89
 before fork
 pid = 431, glob = 6, var = 88
-</code></pre>
+</pre></div>
+
 
 <p>Analysis:</p>
 <ul>
@@ -526,38 +529,40 @@ pid = 431, glob = 6, var = 88
 <p>Another difference between the two functions is that <code>vfork</code> guarantees that the child runs first, until the child calls <code>exec</code> or <code>exit</code>. When the child calls either of these functions, the parent resumes. (This can lead to deadlock if the child depends on further actions of the parent before calling either of these two functions.)</p>
 <p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/vfork1.c">vfork1.c</a>)</p>
 <p>The program is a modified version of the program from <a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork1.c">fork1.c</a>. We’ve replaced the call to <code>fork</code> with <code>vfork</code> and removed the write to standard output. Also, we don’t need to have the parent call <code>sleep</code>, as we’re guaranteed that it is put to sleep by the kernel until the child calls either <code>exec</code> or <code>exit</code>.</p>
-<pre><code class="c">#include &quot;apue.h&quot;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 
-int globvar = 6; /* external variable in initialized data */
+<span class="kt">int</span> <span class="n">globvar</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span> <span class="cm">/* external variable in initialized data */</span>
 
-int
-main(void)
-{
-    int var; /* automatic variable on the stack */
-    pid_t pid;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">var</span><span class="p">;</span> <span class="cm">/* automatic variable on the stack */</span>
+    <span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
 
-    var = 88;
-    printf(&quot;before vfork\n&quot;); /* we don’t flush stdio */
-    if ((pid = vfork()) &lt; 0) {
-        err_sys(&quot;vfork error&quot;);
-    } else if (pid == 0) { /* child */
-        globvar++; /* modify parent’s variables */
-        var++;
-        _exit(0); /* child terminates */
-    }
+    <span class="n">var</span> <span class="o">=</span> <span class="mi">88</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;before vfork</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="cm">/* we don’t flush stdio */</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">vfork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;vfork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* child */</span>
+        <span class="n">globvar</span><span class="o">++</span><span class="p">;</span> <span class="cm">/* modify parent’s variables */</span>
+        <span class="n">var</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="cm">/* child terminates */</span>
+    <span class="p">}</span>
 
-    /* parent continues here */
-    printf(&quot;pid = %ld, glob = %d, var = %d\n&quot;, (long)getpid(), globvar,
-           var);
-    exit(0);
-}
-</code></pre>
+    <span class="cm">/* parent continues here */</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;pid = %ld, glob = %d, var = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">globvar</span><span class="p">,</span>
+           <span class="n">var</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Running this program gives us</p>
-<pre><code class="text">$ ./a.out
+<div class="codehilite"><pre>$ ./a.out
 before vfork
 pid = 29039, glob = 7, var = 89
-</code></pre>
+</pre></div>
+
 
 <p>Analysis:</p>
 <ul>
@@ -675,78 +680,81 @@ as <em>Z</em>.</p>
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/prexit.c">lib/prexit.c</a></li>
 </ul>
-<pre><code class="c">#include &quot;apue.h&quot;
-#include &lt;sys/wait.h&gt;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
 
-void
-pr_exit(int status)
-{
-    if (WIFEXITED(status))
-        printf(&quot;normal termination, exit status = %d\n&quot;,
-                WEXITSTATUS(status));
-    else if (WIFSIGNALED(status))
-        printf(&quot;abnormal termination, signal number = %d%s\n&quot;,
-                WTERMSIG(status),
-#ifdef  WCOREDUMP
-                WCOREDUMP(status) ? &quot; (core file generated)&quot; : &quot;&quot;);
-#else
-                &quot;&quot;);
-#endif
-    else if (WIFSTOPPED(status))
-        printf(&quot;child stopped, signal number = %d\n&quot;,
-                WSTOPSIG(status));
-}
-</code></pre>
+<span class="kt">void</span>
+<span class="nf">pr_exit</span><span class="p">(</span><span class="kt">int</span> <span class="n">status</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">WIFEXITED</span><span class="p">(</span><span class="n">status</span><span class="p">))</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;normal termination, exit status = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+                <span class="n">WEXITSTATUS</span><span class="p">(</span><span class="n">status</span><span class="p">));</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">WIFSIGNALED</span><span class="p">(</span><span class="n">status</span><span class="p">))</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;abnormal termination, signal number = %d%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+                <span class="n">WTERMSIG</span><span class="p">(</span><span class="n">status</span><span class="p">),</span>
+<span class="cp">#ifdef  WCOREDUMP</span>
+                <span class="n">WCOREDUMP</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="o">?</span> <span class="s">&quot; (core file generated)&quot;</span> <span class="o">:</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
+<span class="cp">#else</span>
+                <span class="s">&quot;&quot;</span><span class="p">);</span>
+<span class="cp">#endif</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">WIFSTOPPED</span><span class="p">(</span><span class="n">status</span><span class="p">))</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;child stopped, signal number = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+                <span class="n">WSTOPSIG</span><span class="p">(</span><span class="n">status</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/wait1.c">wait1.c</a></li>
 </ul>
-<pre><code class="c">#include &quot;apue.h&quot;
-#include &lt;sys/wait.h&gt;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
 
-int
-main(void)
-{
-    pid_t   pid;
-    int     status;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">status</span><span class="p">;</span>
 
-    if ((pid = fork()) &lt; 0)
-        err_sys(&quot;fork error&quot;);
-    else if (pid == 0)              /* child */
-        exit(7);
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>              <span class="cm">/* child */</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">7</span><span class="p">);</span>
 
-    if (wait(&amp;status) != pid)       /* wait for child */
-        err_sys(&quot;wait error&quot;);
-    pr_exit(status);                /* and print its status */
+    <span class="k">if</span> <span class="p">(</span><span class="n">wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">status</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pid</span><span class="p">)</span>       <span class="cm">/* wait for child */</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;wait error&quot;</span><span class="p">);</span>
+    <span class="n">pr_exit</span><span class="p">(</span><span class="n">status</span><span class="p">);</span>                <span class="cm">/* and print its status */</span>
 
-    if ((pid = fork()) &lt; 0)
-        err_sys(&quot;fork error&quot;);
-    else if (pid == 0)              /* child */
-        abort();                    /* generates SIGABRT */
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>              <span class="cm">/* child */</span>
+        <span class="n">abort</span><span class="p">();</span>                    <span class="cm">/* generates SIGABRT */</span>
 
-    if (wait(&amp;status) != pid)       /* wait for child */
-        err_sys(&quot;wait error&quot;);
-    pr_exit(status);                /* and print its status */
+    <span class="k">if</span> <span class="p">(</span><span class="n">wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">status</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pid</span><span class="p">)</span>       <span class="cm">/* wait for child */</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;wait error&quot;</span><span class="p">);</span>
+    <span class="n">pr_exit</span><span class="p">(</span><span class="n">status</span><span class="p">);</span>                <span class="cm">/* and print its status */</span>
 
-    if ((pid = fork()) &lt; 0)
-        err_sys(&quot;fork error&quot;);
-    else if (pid == 0)              /* child */
-        status /= 0;                /* divide by 0 generates SIGFPE */
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>              <span class="cm">/* child */</span>
+        <span class="n">status</span> <span class="o">/=</span> <span class="mi">0</span><span class="p">;</span>                <span class="cm">/* divide by 0 generates SIGFPE */</span>
 
-    if (wait(&amp;status) != pid)       /* wait for child */
-        err_sys(&quot;wait error&quot;);
-    pr_exit(status);                /* and print its status */
+    <span class="k">if</span> <span class="p">(</span><span class="n">wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">status</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pid</span><span class="p">)</span>       <span class="cm">/* wait for child */</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;wait error&quot;</span><span class="p">);</span>
+    <span class="n">pr_exit</span><span class="p">(</span><span class="n">status</span><span class="p">);</span>                <span class="cm">/* and print its status */</span>
 
-    exit(0);
-}
-</code></pre>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Results:</p>
-<pre><code class="text">$ ./a.out
+<div class="codehilite"><pre>$ ./a.out
 normal termination, exit status = 7
 abnormal termination, signal number = 6 (core file generated)
 abnormal termination, signal number = 8 (core file generated)
-</code></pre>
+</pre></div>
+
 
 <p>We print the signal number from <code>WTERMSIG</code>. We can look at the <code>&lt;signal.h&gt;</code> header to verify that <code>SIGABRT</code> has a value of 6 and that <code>SIGFPE</code> has a value of 8.</p>
 <h4 id="wait-for-a-specific-process-waitpid"><code>wait</code> for a specific process: <code>waitpid</code></h4>
@@ -798,48 +806,50 @@ abnormal termination, signal number = 8 (core file generated)
 <h5 id="fork-twice"><code>fork</code> twice</h5>
 <p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork2.c">fork2.c</a>)</p>
 <p>If we want to write a process so that it <code>fork</code>s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call <code>fork</code> twice.</u></p>
-<pre><code class="c">#include &quot;apue.h&quot;
-#include &lt;sys/wait.h&gt;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
 
-int
-main(void)
-{
-    pid_t   pid;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
 
-    if ((pid = fork()) &lt; 0) {
-        err_sys(&quot;fork error&quot;);
-    } else if (pid == 0) {      /* first child */
-        if ((pid = fork()) &lt; 0)
-            err_sys(&quot;fork error&quot;);
-        else if (pid &gt; 0)
-            exit(0);    /* parent from second fork == first child */
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>      <span class="cm">/* first child */</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>    <span class="cm">/* parent from second fork == first child */</span>
 
-        /*
-         * We're the second child; our parent becomes init as soon
-         * as our real parent calls exit() in the statement above.
-         * Here's where we'd continue executing, knowing that when
-         * we're done, init will reap our status.
-         */
-        sleep(2);
-        printf(&quot;second child, parent pid = %ld\n&quot;, (long)getppid());
-        exit(0);
-    }
+        <span class="cm">/*</span>
+<span class="cm">         * We&#39;re the second child; our parent becomes init as soon</span>
+<span class="cm">         * as our real parent calls exit() in the statement above.</span>
+<span class="cm">         * Here&#39;s where we&#39;d continue executing, knowing that when</span>
+<span class="cm">         * we&#39;re done, init will reap our status.</span>
+<span class="cm">         */</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;second child, parent pid = %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getppid</span><span class="p">());</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
 
-    if (waitpid(pid, NULL, 0) != pid)   /* wait for first child */
-        err_sys(&quot;waitpid error&quot;);
+    <span class="k">if</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pid</span><span class="p">)</span>   <span class="cm">/* wait for first child */</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;waitpid error&quot;</span><span class="p">);</span>
 
-    /*
-     * We're the parent (the original process); we continue executing,
-     * knowing that we're not the parent of the second child.
-     */
-    exit(0);
-}
-</code></pre>
+    <span class="cm">/*</span>
+<span class="cm">     * We&#39;re the parent (the original process); we continue executing,</span>
+<span class="cm">     * knowing that we&#39;re not the parent of the second child.</span>
+<span class="cm">     */</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Results:</p>
-<pre><code class="text">$ ./a.out
+<div class="codehilite"><pre>$ ./a.out
 $ second child, parent pid = 1
-</code></pre>
+</pre></div>
+
 
 <p>Analysis:</p>
 <p>We call <code>sleep</code> in the second child to ensure that the first child terminates before printing the parent process ID. After a <code>fork</code>, either the parent or the child can continue executing; we never know which will resume execution first. If we didn’t put the second child to sleep, and if it resumed execution after the <code>fork</code> before its parent, the parent process ID that it printed would be that of its parent, not process ID 1.</p>
@@ -937,9 +947,10 @@ $ second child, parent pid = 1
 <li>A process that wants to wait for a child to terminate must call one of the <code>wait</code> functions.</li>
 <li>A process that wants to wait for its parent to terminate can use a loop in the following form:</li>
 </ul>
-<pre><code class="c">while (getppid() != 1)
-    sleep(1);
-</code></pre>
+<div class="codehilite"><pre><span class="k">while</span> <span class="p">(</span><span class="n">getppid</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</pre></div>
+
 
 <p>The problem with this type of loop, called <strong>polling</strong>, is that it wastes CPU time, as the caller is awakened every second to test the condition.</p>
 <p>To avoid race conditions and to avoid polling, some form of signaling is required between multiple processes:</p>
@@ -948,71 +959,73 @@ $ second child, parent pid = 1
 <li>Interprocess communication (IPC) can also be used</li>
 </ul>
 <p>For a parent and child relationship, we often have the following scenario. After the <code>fork</code>, both the parent and the child have something to do. For example, the parent could update a record in a log file with the child’s process ID, and the child might have to create a file for the parent. In this example, we require that each process tell the other when it has finished its initial set of operations, and that each wait for the other to complete, before heading off on its own. The following code illustrates this scenario:</p>
-<pre><code class="c">#include &quot;apue.h&quot;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 
-TELL_WAIT(); /* set things up for TELL_xxx &amp; WAIT_xxx */
+<span class="n">TELL_WAIT</span><span class="p">();</span> <span class="cm">/* set things up for TELL_xxx &amp; WAIT_xxx */</span>
 
-if ((pid = fork()) &lt; 0) {
-    err_sys(&quot;fork error&quot;);
-} else if (pid == 0) { /* child */
+<span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* child */</span>
 
-    /* child does whatever is necessary ... */
+    <span class="cm">/* child does whatever is necessary ... */</span>
 
-    TELL_PARENT(getppid()); /* tell parent we’re done */
-    WAIT_PARENT(); /* and wait for parent */
+    <span class="n">TELL_PARENT</span><span class="p">(</span><span class="n">getppid</span><span class="p">());</span> <span class="cm">/* tell parent we’re done */</span>
+    <span class="n">WAIT_PARENT</span><span class="p">();</span> <span class="cm">/* and wait for parent */</span>
 
-    /* and the child continues on its way ... */
+    <span class="cm">/* and the child continues on its way ... */</span>
 
-    exit(0);
-}
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
 
-/* parent does whatever is necessary ... */
+<span class="cm">/* parent does whatever is necessary ... */</span>
 
-TELL_CHILD(pid); /* tell child we’re done */
-WAIT_CHILD(); /* and wait for child */
+<span class="n">TELL_CHILD</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span> <span class="cm">/* tell child we’re done */</span>
+<span class="n">WAIT_CHILD</span><span class="p">();</span> <span class="cm">/* and wait for child */</span>
 
-/* and the parent continues on its way ... */
-exit(0);
-</code></pre>
+<span class="cm">/* and the parent continues on its way ... */</span>
+<span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</pre></div>
+
 
 <p>We assume that the header <a href="https://github.com/shichao-an/apue.3e/blob/master/include/apue.h"><code>apue.h</code></a> defines whatever variables are required. The five routines <code>TELL_WAIT</code>, <code>TELL_PARENT</code>, <code>TELL_CHILD</code>, <code>WAIT_PARENT</code>, and <code>WAIT_CHILD</code> can be either macros or functions (<a href="https://github.com/shichao-an/apue.3e/blob/master/lib/tellwait.c">lib/tellwait.c</a>). We’ll show various ways to implement these <code>TELL</code> and <code>WAIT</code> routines in later chapters: Section 10.16 shows an implementation using signals; Figure 15.7 shows an implementation using pipes.</p>
 <p>The program below contains a race condition because the output depends on the order in which the processes are run by the kernel and the length of time for which each process runs.</p>
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/tellwait1.c">tellwait1.c</a></li>
 </ul>
-<pre><code class="c">#include &quot;apue.h&quot;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 
-static void charatatime(char *);
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">charatatime</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">);</span>
 
-int
-main(void)
-{
-    pid_t   pid;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
 
-    if ((pid = fork()) &lt; 0) {
-        err_sys(&quot;fork error&quot;);
-    } else if (pid == 0) {
-        charatatime(&quot;output from child\n&quot;);
-    } else {
-        charatatime(&quot;output from parent\n&quot;);
-    }
-    exit(0);
-}
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">charatatime</span><span class="p">(</span><span class="s">&quot;output from child</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">charatatime</span><span class="p">(</span><span class="s">&quot;output from parent</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
 
-static void
-charatatime(char *str)
-{
-    char    *ptr;
-    int     c;
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">charatatime</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">c</span><span class="p">;</span>
 
-    setbuf(stdout, NULL);           /* set unbuffered */
-    for (ptr = str; (c = *ptr++) != 0; )
-        putc(c, stdout);
-}
-</code></pre>
+    <span class="n">setbuf</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>           <span class="cm">/* set unbuffered */</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span> <span class="p">(</span><span class="n">c</span> <span class="o">=</span> <span class="o">*</span><span class="n">ptr</span><span class="o">++</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">;</span> <span class="p">)</span>
+        <span class="n">putc</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">stdout</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Results:</p>
-<pre><code class="text">$ ./a.out
+<div class="codehilite"><pre>$ ./a.out
 ooutput from child
 utput from parent
 $ ./a.out
@@ -1021,7 +1034,8 @@ utput from parent
 $ ./a.out
 output from child
 output from parent
-</code></pre>
+</pre></div>
+
 
 <p>Analysis:
 We set the standard output unbuffered, so every character output generates a write.  The goal in this example is to allow the kernel to switch between the two processes as often as possible to demonstrate the race condition.</p>
@@ -1029,26 +1043,28 @@ We set the standard output unbuffered, so every character output generates a wri
 <ul>
 <li>The parent goes first:</li>
 </ul>
-<pre><code class="c">    } else if (pid == 0) {
-        WAIT_PARENT();      /* parent goes first */
-        charatatime(&quot;output from child\n&quot;);
-    } else {
-        charatatime(&quot;output from parent\n&quot;);
-        TELL_CHILD(pid);
-    }
-</code></pre>
+<div class="codehilite"><pre>    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">WAIT_PARENT</span><span class="p">();</span>      <span class="cm">/* parent goes first */</span>
+        <span class="n">charatatime</span><span class="p">(</span><span class="s">&quot;output from child</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">charatatime</span><span class="p">(</span><span class="s">&quot;output from parent</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="n">TELL_CHILD</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span>
+    <span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li>The child goes first:</li>
 </ul>
-<pre><code class="c">    } else if (pid == 0) {
-        charatatime(&quot;output from child\n&quot;);
-        TELL_PARENT(getppid());
-    } else {
-        WAIT_CHILD(); /* child goes first */
-        charatatime(&quot;output from parent\n&quot;);
-    }
-</code></pre>
+<div class="codehilite"><pre>    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">charatatime</span><span class="p">(</span><span class="s">&quot;output from child</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="n">TELL_PARENT</span><span class="p">(</span><span class="n">getppid</span><span class="p">());</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">WAIT_CHILD</span><span class="p">();</span> <span class="cm">/* child goes first */</span>
+        <span class="n">charatatime</span><span class="p">(</span><span class="s">&quot;output from parent</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+</pre></div>
+
 
 <h3 id="exec-functions"><code>exec</code> Functions</h3>
 <p>One use of the <code>fork</code> function is to create a new process (the child) that then causes another program to be executed by calling one of the <code>exec</code> functions.</p>
@@ -1091,8 +1107,9 @@ If either <code>execlp</code> or <code>execvp</code> finds an executable file us
 <li><code>execv</code>, <code>execvp</code>, <code>execve</code>, and <code>fexecve</code> require (the address) of an array of pointers to the arguments</li>
 </ul>
 <p>The arguments for <code>execl</code>, <code>execle</code>, and <code>execlp</code> are shown as:</p>
-<pre><code class="c">    char *arg0, char *arg1, ..., char *argn, (char *)0
-</code></pre>
+<div class="codehilite"><pre>    <span class="kt">char</span> <span class="o">*</span><span class="n">arg0</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">arg1</span><span class="p">,</span> <span class="p">...,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argn</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span>
+</pre></div>
+
 
 <p>The final command-line argument is followed by a null pointer. If this null pointer is specified by the constant 0, we must cast it to a pointer; if we don’t, it’s interpreted as an integer argument.</p>
 <p>The passing of the environment list to the new program.</p>
@@ -1101,8 +1118,9 @@ If either <code>execlp</code> or <code>execvp</code> finds an executable file us
 <li><code>execl</code>, <code>execv</code>, <code>execlp</code> and <code>execvp</code> use the <code>environ</code> variable in the calling process to copy the existing environment for the new program. [p251]</li>
 </ul>
 <p>The arguments to <code>execle</code> were shown as:</p>
-<pre><code class="c">char *pathname, char *arg0, ..., char *argn, (char *)0, char *envp[]
-</code></pre>
+<div class="codehilite"><pre><span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">arg0</span><span class="p">,</span> <span class="p">...,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argn</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">envp</span><span class="p">[]</span>
+</pre></div>
+
 
 <h4 id="differences-among-the-seven-exec-functions">Differences among the seven <code>exec</code> functions</h4>
 <table>
@@ -1211,14 +1229,16 @@ If either <code>execlp</code> or <code>execvp</code> finds an executable file us
 </tbody>
 </table>
 <p>Every system has a limit on the total size of the argument list and the environment list. This limit is given by <code>ARG_MAX</code> and its value must be at least 4,096 bytes on a POSIX.1 system. For example, the following command can generate a shell error:</p>
-<pre><code class="console">$ grep getrlimit /usr/share/man/*/*
-Argument list too long
-</code></pre>
+<div class="codehilite"><pre><span class="gp">$</span> grep getrlimit /usr/share/man/*/*
+<span class="go">Argument list too long</span>
+</pre></div>
+
 
 <p>To get around the limitation in argument list size, we can use the <code>xargs(1)</code>:</p>
-<pre><code class="console">$ find /usr/share/man -type f -print | xargs grep getrlimit
-$ find /usr/share/man -type f -print | xargs bzgrep getrlimit
-</code></pre>
+<div class="codehilite"><pre><span class="gp">$</span> find /usr/share/man -type f -print <span class="p">|</span> xargs grep getrlimit
+<span class="gp">$</span> find /usr/share/man -type f -print <span class="p">|</span> xargs bzgrep getrlimit
+</pre></div>
+
 
 <p>The process ID does not change after an <code>exec</code>, but the new program inherits additional properties from the calling process:</p>
 <ul>
@@ -1254,62 +1274,64 @@ $ find /usr/share/man -type f -print | xargs bzgrep getrlimit
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/exec1.c">exec1.c</a></li>
 </ul>
-<pre><code class="c">#include &quot;apue.h&quot;
-#include &lt;sys/wait.h&gt;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
 
-char    *env_init[] = { &quot;USER=unknown&quot;, &quot;PATH=/tmp&quot;, NULL };
+<span class="kt">char</span>    <span class="o">*</span><span class="n">env_init</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&quot;USER=unknown&quot;</span><span class="p">,</span> <span class="s">&quot;PATH=/tmp&quot;</span><span class="p">,</span> <span class="nb">NULL</span> <span class="p">};</span>
 
-int
-main(void)
-{
-    pid_t   pid;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
 
-    if ((pid = fork()) &lt; 0) {
-        err_sys(&quot;fork error&quot;);
-    } else if (pid == 0) {  /* specify pathname, specify environment */
-        if (execle(&quot;/home/sar/bin/echoall&quot;, &quot;echoall&quot;, &quot;myarg1&quot;,
-                &quot;MY ARG2&quot;, (char *)0, env_init) &lt; 0)
-            err_sys(&quot;execle error&quot;);
-    }
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>  <span class="cm">/* specify pathname, specify environment */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">execle</span><span class="p">(</span><span class="s">&quot;/home/sar/bin/echoall&quot;</span><span class="p">,</span> <span class="s">&quot;echoall&quot;</span><span class="p">,</span> <span class="s">&quot;myarg1&quot;</span><span class="p">,</span>
+                <span class="s">&quot;MY ARG2&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">,</span> <span class="n">env_init</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;execle error&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
 
-    if (waitpid(pid, NULL, 0) &lt; 0)
-        err_sys(&quot;wait error&quot;);
+    <span class="k">if</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;wait error&quot;</span><span class="p">);</span>
 
-    if ((pid = fork()) &lt; 0) {
-        err_sys(&quot;fork error&quot;);
-    } else if (pid == 0) {  /* specify filename, inherit environment */
-        if (execlp(&quot;echoall&quot;, &quot;echoall&quot;, &quot;only 1 arg&quot;, (char *)0) &lt; 0)
-            err_sys(&quot;execlp error&quot;);
-    }
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>  <span class="cm">/* specify filename, inherit environment */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">execlp</span><span class="p">(</span><span class="s">&quot;echoall&quot;</span><span class="p">,</span> <span class="s">&quot;echoall&quot;</span><span class="p">,</span> <span class="s">&quot;only 1 arg&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;execlp error&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
 
-    exit(0);
-}
-</code></pre>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/echoall.c">echoall.c</a></li>
 </ul>
-<pre><code class="c">#include &quot;apue.h&quot;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 
-int
-main(int argc, char *argv[])
-{
-    int         i;
-    char        **ptr;
-    extern char **environ;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span>         <span class="n">i</span><span class="p">;</span>
+    <span class="kt">char</span>        <span class="o">**</span><span class="n">ptr</span><span class="p">;</span>
+    <span class="k">extern</span> <span class="kt">char</span> <span class="o">**</span><span class="n">environ</span><span class="p">;</span>
 
-    for (i = 0; i &lt; argc; i++)      /* echo all command-line args */
-        printf(&quot;argv[%d]: %s\n&quot;, i, argv[i]);
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">argc</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>      <span class="cm">/* echo all command-line args */</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;argv[%d]: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
 
-    for (ptr = environ; *ptr != 0; ptr++)   /* and all env strings */
-        printf(&quot;%s\n&quot;, *ptr);
+    <span class="k">for</span> <span class="p">(</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">environ</span><span class="p">;</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">ptr</span><span class="o">++</span><span class="p">)</span>   <span class="cm">/* and all env strings */</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
 
-    exit(0);
-}
-</code></pre>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Results:</p>
-<pre><code class="text">$ ./a.out
+<div class="codehilite"><pre>$ ./a.out
 argv[0]: echoall
 argv[1]: myarg1
 argv[2]: MY ARG2
@@ -1322,8 +1344,8 @@ LOGNAME=sar
 SHELL=/bin/bash
 ...
 HOME=/home/sar
+</pre></div>
 
-</code></pre>
 
 <p>Analysis:</p>
 <ul>
@@ -1434,12 +1456,14 @@ HOME=/home/sar
 <p>By using the saved set-user-ID in this fashion, we can use the extra privileges granted to us by the set-user-ID of the program file only when we need elevated privileges. Any other time, however, the process runs with our normal permissions. [p260]</p>
 <h3 id="interpreter-files">Interpreter Files</h3>
 <p>On contemporary UNIX systems, <strong>interpreter files</strong> are text files that begin with a line of the form (<a href="https://en.wikipedia.org/wiki/Shebang_(Unix)">shebang</a>):</p>
-<pre><code class="sh">#! pathname [ optional-argument ]
-</code></pre>
+<div class="codehilite"><pre><span class="c">#! pathname [ optional-argument ]</span>
+</pre></div>
+
 
 <p>The space between the exclamation point and the pathname is optional. The most common of these interpreter files begin with the line:</p>
-<pre><code class="sh">#!/bin/sh
-</code></pre>
+<div class="codehilite"><pre><span class="c">#!/bin/sh</span>
+</pre></div>
+
 
 <ul>
 <li><em>pathname</em> is normally an absolute pathname, since no special operations are performed on it (<code>PATH</code> is not used)</li>
@@ -1456,29 +1480,30 @@ HOME=/home/sar
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/exec2.c">exec2.c</a></li>
 </ul>
-<pre><code class="c">#include &quot;apue.h&quot;
-#include &lt;sys/wait.h&gt;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
 
-int
-main(void)
-{
-    pid_t pid;
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
 
-    if ((pid = fork()) &lt; 0) {
-        err_sys(&quot;fork error&quot;);
-    } else if (pid == 0) { /* child */
-        if (execl(&quot;/home/sar/bin/testinterp&quot;,
-                  &quot;testinterp&quot;, &quot;myarg1&quot;, &quot;MY ARG2&quot;, (char *)0) &lt; 0)
-            err_sys(&quot;execl error&quot;);
-    }
-    if (waitpid(pid, NULL, 0) &lt; 0) /* parent */
-        err_sys(&quot;waitpid error&quot;);
-    exit(0);
-}
-</code></pre>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* child */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">execl</span><span class="p">(</span><span class="s">&quot;/home/sar/bin/testinterp&quot;</span><span class="p">,</span>
+                  <span class="s">&quot;testinterp&quot;</span><span class="p">,</span> <span class="s">&quot;myarg1&quot;</span><span class="p">,</span> <span class="s">&quot;MY ARG2&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;execl error&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="cm">/* parent */</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;waitpid error&quot;</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>Results:</p>
-<pre><code class="text">$ cat /home/sar/bin/testinterp
+<div class="codehilite"><pre>$ cat /home/sar/bin/testinterp
 #!/home/sar/bin/echoarg foo
 $ ./a.out
 argv[0]: /home/sar/bin/echoarg
@@ -1486,7 +1511,8 @@ argv[1]: foo
 argv[2]: /home/sar/bin/testinterp
 argv[3]: myarg1
 argv[4]: MY ARG2
-</code></pre>
+</pre></div>
+
 
 <p>Analysis:</p>
 <p>The program (from <a href="../../apue/ch7/#command-line-arguments">Section 7.4</a>) <code>echoarg</code> is the interpreter that echoes each of its command-line arguments.</p>
@@ -1500,48 +1526,54 @@ argv[4]: MY ARG2
 </ul>
 <h5 id="example-awk">Example: <code>awk</code></h5>
 <p>A common use for the optional argument following the interpreter pathname is to specify the <code>-f</code> option for programs that support this option. For example, an <code>awk(1)</code> program can be executed as:</p>
-<pre><code class="sh">awk -f myfile
-</code></pre>
+<div class="codehilite"><pre>awk -f myfile
+</pre></div>
+
 
 <p>It tells <code>awk</code> to read the <code>awk</code> program from the file <code>myfile</code>.</p>
 <p>Using the <code>-f</code> option with an interpreter file lets us write</p>
-<pre><code class="sh">#!/bin/awk -f
-# (awk program follows in the interpreter file)
-</code></pre>
+<div class="codehilite"><pre><span class="c">#!/bin/awk -f</span>
+<span class="c"># (awk program follows in the interpreter file)</span>
+</pre></div>
+
 
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/awkexample">awkexample</a></li>
 </ul>
-<pre><code class="sh">#!/usr/bin/awk -f
-BEGIN {
-    for (i = 0; i &lt; ARGC; i++)
-        printf &quot;ARGV[%d] = %s\n&quot;, i, ARGV[i]
-    exit
-}
-</code></pre>
+<div class="codehilite"><pre><span class="c">#!/usr/bin/awk -f</span>
+BEGIN <span class="o">{</span>
+    <span class="k">for</span> <span class="o">(</span><span class="nv">i</span> <span class="o">=</span> 0<span class="p">;</span> i &lt; ARGC<span class="p">;</span> i++<span class="o">)</span>
+        <span class="nb">printf</span> <span class="s2">&quot;ARGV[%d] = %s\n&quot;</span>, i, ARGV<span class="o">[</span>i<span class="o">]</span>
+    <span class="nb">exit</span>
+<span class="o">}</span>
+</pre></div>
+
 
 <p>Assume the above interpreter file is  <code>/usr/local/bin/awkexample</code> and one of the path prefixes is <code>/usr/local/bin</code>, we can execute the program:</p>
-<pre><code class="text">$ awkexample file1 FILENAME2 f3
+<div class="codehilite"><pre>$ awkexample file1 FILENAME2 f3
 ARGV[0] = awk
 ARGV[1] = file1
 ARGV[2] = FILENAME2
 ARGV[3] = f3
-</code></pre>
+</pre></div>
+
 
 <p>When <code>/bin/awk</code> is executed, its command-line arguments are:</p>
-<pre><code class="sh">/bin/awk -f /usr/local/bin/awkexample file1 FILENAME2 f3
-</code></pre>
+<div class="codehilite"><pre>/bin/awk -f /usr/local/bin/awkexample file1 FILENAME2 f3
+</pre></div>
+
 
 <p>[p263]</p>
 <p>Interpreter files provide an efficiency gain for the user at some expense in the kernel, since it’s the kernel that recognizes these files. They are useful for the following reasons:</p>
 <p>First, they hide that certain programs are scripts in some other language. For example, use <code>awkexample optional-arguments</code> instead of <code>awk -f awkexample optional-argument</code>, we do not need to know that the program is really an <code>awk</code> script.</p>
 <p>Second, interpreter scripts provide an efficiency gain. For example, if we place the previous <code>awk</code> program into a shell script like this:</p>
-<pre><code class="sh">awk 'BEGIN {
-    for (i = 0; i &lt; ARGC; i++)
-        printf &quot;ARGV[%d] = %s\n&quot;, i, ARGV[i]
-    exit
-}' $*
-</code></pre>
+<div class="codehilite"><pre>awk <span class="s1">&#39;BEGIN {</span>
+<span class="s1">    for (i = 0; i &lt; ARGC; i++)</span>
+<span class="s1">        printf &quot;ARGV[%d] = %s\n&quot;, i, ARGV[i]</span>
+<span class="s1">    exit</span>
+<span class="s1">}&#39;</span> <span class="nv">$*</span>
+</pre></div>
+
 
 <p>More work is required when executing this script:</p>
 <ol>
@@ -1567,36 +1599,37 @@ ARGV[3] = f3
 <li>If all three functions succeed, the return value is the termination status of the shell, in the format specified for <code>waitpid</code>.</li>
 </ol>
 <p>The code below is an implementation of the <code>system</code> function, which doesn't handle is signals.</p>
-<pre><code class="c">#include    &lt;sys/wait.h&gt;
-#include    &lt;errno.h&gt;
-#include    &lt;unistd.h&gt;
+<div class="codehilite"><pre><span class="cp">#include    &lt;sys/wait.h&gt;</span>
+<span class="cp">#include    &lt;errno.h&gt;</span>
+<span class="cp">#include    &lt;unistd.h&gt;</span>
 
-int
-system(const char *cmdstring)   /* version without signal handling */
-{
-    pid_t   pid;
-    int     status;
+<span class="kt">int</span>
+<span class="nf">system</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmdstring</span><span class="p">)</span>   <span class="cm">/* version without signal handling */</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">status</span><span class="p">;</span>
 
-    if (cmdstring == NULL)
-        return(1);      /* always a command processor with UNIX */
+    <span class="k">if</span> <span class="p">(</span><span class="n">cmdstring</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>      <span class="cm">/* always a command processor with UNIX */</span>
 
-    if ((pid = fork()) &lt; 0) {
-        status = -1;    /* probably out of processes */
-    } else if (pid == 0) {              /* child */
-        execl(&quot;/bin/sh&quot;, &quot;sh&quot;, &quot;-c&quot;, cmdstring, (char *)0);
-        _exit(127);     /* execl error */
-    } else {                            /* parent */
-        while (waitpid(pid, &amp;status, 0) &lt; 0) {
-            if (errno != EINTR) {
-                status = -1; /* error other than EINTR from waitpid() */
-                break;
-            }
-        }
-    }
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>    <span class="cm">/* probably out of processes */</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>              <span class="cm">/* child */</span>
+        <span class="n">execl</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">,</span> <span class="s">&quot;sh&quot;</span><span class="p">,</span> <span class="s">&quot;-c&quot;</span><span class="p">,</span> <span class="n">cmdstring</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+        <span class="n">_exit</span><span class="p">(</span><span class="mi">127</span><span class="p">);</span>     <span class="cm">/* execl error */</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                            <span class="cm">/* parent */</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">EINTR</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span> <span class="cm">/* error other than EINTR from waitpid() */</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
 
-    return(status);
-}
-</code></pre>
+    <span class="k">return</span><span class="p">(</span><span class="n">status</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li>The shell’s <code>-c</code> option tells it to take the next command-line argument, <em>cmdstring</em>, as its command input instead of reading from standard input or from a given file. The shell parses this null-terminated C string and breaks it up into separate command-line arguments for the command. The actual command string that is passed to the shell can contain any valid shell commands.</li>
@@ -1613,30 +1646,31 @@ system(const char *cmdstring)   /* version without signal handling */
 <p>The function <code>acct</code> enables and disables process accounting. The only use of this function is from the <code>accton(8)</code> command.</p>
 <p>A superuser executes accton with a pathname argument to enable accounting. The accounting records are written to the specified file, which is usually <code>/var/account/acct</code> on FreeBSD and Mac OS X, <code>/var/log/account/pacct</code> on Linux, and <code>/var/adm/pacct</code> on Solaris. Accounting is turned off by executing accton without any arguments.</p>
 <p>The structure of the accounting records is defined in the header <code>&lt;sys/acct.h&gt;</code>, which look something like:</p>
-<pre><code class="c">typedef u_short comp_t; /* 3-bit base 8 exponent; 13-bit fraction */
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="n">u_short</span> <span class="kt">comp_t</span><span class="p">;</span> <span class="cm">/* 3-bit base 8 exponent; 13-bit fraction */</span>
 
-struct acct
-{
-    char ac_flag; /* flag (see Figure 8.26) */
-    char ac_stat; /* termination status (signal &amp; core flag only) */
-    /* (Solaris only) */
-    uid_t ac_uid; /* real user ID */
-    gid_t ac_gid; /* real group ID */
-    dev_t ac_tty; /* controlling terminal */
-    time_t ac_btime; /* starting calendar time */
-    comp_t ac_utime; /* user CPU time */
-    comp_t ac_stime; /* system CPU time */
-    comp_t ac_etime; /* elapsed time */
-    comp_t ac_mem; /* average memory usage */
-    comp_t ac_io; /* bytes transferred (by read and write) */
-    /* &quot;blocks&quot; on BSD systems */
-    comp_t ac_rw; /* blocks read or written */
-    /* (not present on BSD systems) */
-    char ac_comm[8]; /* command name: [8] for Solaris, */
-    /* [10] for Mac OS X, [16] for FreeBSD, and */
-    /* [17] for Linux */
-};
-</code></pre>
+<span class="k">struct</span> <span class="n">acct</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="n">ac_flag</span><span class="p">;</span> <span class="cm">/* flag (see Figure 8.26) */</span>
+    <span class="kt">char</span> <span class="n">ac_stat</span><span class="p">;</span> <span class="cm">/* termination status (signal &amp; core flag only) */</span>
+    <span class="cm">/* (Solaris only) */</span>
+    <span class="kt">uid_t</span> <span class="n">ac_uid</span><span class="p">;</span> <span class="cm">/* real user ID */</span>
+    <span class="kt">gid_t</span> <span class="n">ac_gid</span><span class="p">;</span> <span class="cm">/* real group ID */</span>
+    <span class="kt">dev_t</span> <span class="n">ac_tty</span><span class="p">;</span> <span class="cm">/* controlling terminal */</span>
+    <span class="kt">time_t</span> <span class="n">ac_btime</span><span class="p">;</span> <span class="cm">/* starting calendar time */</span>
+    <span class="kt">comp_t</span> <span class="n">ac_utime</span><span class="p">;</span> <span class="cm">/* user CPU time */</span>
+    <span class="kt">comp_t</span> <span class="n">ac_stime</span><span class="p">;</span> <span class="cm">/* system CPU time */</span>
+    <span class="kt">comp_t</span> <span class="n">ac_etime</span><span class="p">;</span> <span class="cm">/* elapsed time */</span>
+    <span class="kt">comp_t</span> <span class="n">ac_mem</span><span class="p">;</span> <span class="cm">/* average memory usage */</span>
+    <span class="kt">comp_t</span> <span class="n">ac_io</span><span class="p">;</span> <span class="cm">/* bytes transferred (by read and write) */</span>
+    <span class="cm">/* &quot;blocks&quot; on BSD systems */</span>
+    <span class="kt">comp_t</span> <span class="n">ac_rw</span><span class="p">;</span> <span class="cm">/* blocks read or written */</span>
+    <span class="cm">/* (not present on BSD systems) */</span>
+    <span class="kt">char</span> <span class="n">ac_comm</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span> <span class="cm">/* command name: [8] for Solaris, */</span>
+    <span class="cm">/* [10] for Mac OS X, [16] for FreeBSD, and */</span>
+    <span class="cm">/* [17] for Linux */</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <ul>
 <li>Times are recorded in units of clock ticks on most platforms, but FreeBSD stores microseconds instead.</li>
@@ -1784,38 +1818,40 @@ struct acct
 <script src="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02.js"></script>
 
 <p>This function fills in the <code>tms</code> structure pointed to by <em>buf</em>:</p>
-<pre><code class="c">struct tms {
-    clock_t tms_utime; /* user CPU time */
-    clock_t tms_stime; /* system CPU time */
-    clock_t tms_cutime; /* user CPU time, terminated children */
-    clock_t tms_cstime; /* system CPU time, terminated children */
-};
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">tms</span> <span class="p">{</span>
+    <span class="kt">clock_t</span> <span class="n">tms_utime</span><span class="p">;</span> <span class="cm">/* user CPU time */</span>
+    <span class="kt">clock_t</span> <span class="n">tms_stime</span><span class="p">;</span> <span class="cm">/* system CPU time */</span>
+    <span class="kt">clock_t</span> <span class="n">tms_cutime</span><span class="p">;</span> <span class="cm">/* user CPU time, terminated children */</span>
+    <span class="kt">clock_t</span> <span class="n">tms_cstime</span><span class="p">;</span> <span class="cm">/* system CPU time, terminated children */</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <p>The <code>tms</code> structure does not contain any measurement for the wall clock time. Instead, the function returns the wall clock time as the value of the function. This value is measured from some arbitrary point in the past, so we can’t use its absolute value; instead, we use its relative value. We call <code>times</code> and save the return value. At some later time, we call <code>times</code> again and subtract the earlier return value from the new return value. The difference is the wall clock time.</p>
 <p>The two structure fields for child processes contain values only for children that we have waited for with one of the <code>wait</code> functions.</p>
 <p>All the <code>clock_t</code> values returned by this function are converted to seconds using the number of clock ticks per second, the <code>_SC_CLK_TCK</code> value returned by <code>sysconf</code>, that is, divide the <code>clock_t</code> value by the <code>_SC_CLK_TCK</code> value. For example,</p>
 <p>[p280-282]</p>
-<pre><code class="c">#include &quot;apue.h&quot;
-#include &lt;sys/times.h&gt;
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/times.h&gt;</span>
 
-clock_t start, end;
-long clktck = 0;
-struct tms tmsstart, tmsend
+<span class="kt">clock_t</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">;</span>
+<span class="kt">long</span> <span class="n">clktck</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">tms</span> <span class="n">tmsstart</span><span class="p">,</span> <span class="n">tmsend</span>
 
-if ((clktck = sysconf(_SC_CLK_TCK)) &lt; 0)
-    err_sys(&quot;sysconf error&quot;);
+<span class="k">if</span> <span class="p">((</span><span class="n">clktck</span> <span class="o">=</span> <span class="n">sysconf</span><span class="p">(</span><span class="n">_SC_CLK_TCK</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;sysconf error&quot;</span><span class="p">);</span>
 
-if ((start = times(&amp;tmsstart)) == -1) /* starting values */
-    err_sys(&quot;times error&quot;);
+<span class="k">if</span> <span class="p">((</span><span class="n">start</span> <span class="o">=</span> <span class="n">times</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tmsstart</span><span class="p">))</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="cm">/* starting values */</span>
+    <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;times error&quot;</span><span class="p">);</span>
 
-/* do some work */
+<span class="cm">/* do some work */</span>
 
-if ((end = times(&amp;tmsend)) == -1) /* ending values */
-    err_sys(&quot;times error&quot;);
+<span class="k">if</span> <span class="p">((</span><span class="n">end</span> <span class="o">=</span> <span class="n">times</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tmsend</span><span class="p">))</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="cm">/* ending values */</span>
+    <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;times error&quot;</span><span class="p">);</span>
 
-printf(&quot; real: %7.2f\n&quot;, real / (double) clktck);
-</code></pre>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot; real: %7.2f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">real</span> <span class="o">/</span> <span class="p">(</span><span class="kt">double</span><span class="p">)</span> <span class="n">clktck</span><span class="p">);</span>
+</pre></div>
+
 
 <h3 id="summary">Summary</h3>
 <p>A thorough understanding of process control is essential for advanced UNIX programming. There are only a few functions to master: <code>fork</code>, the <code>exec</code> family, <code>_exit</code>, <code>wait</code>, and <code>waitpid</code>. These primitives are used in many applications.</p>
