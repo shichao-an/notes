@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="../../css/highlight.css">
         <link href="../../css/base.css" rel="stylesheet">
         <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -391,19 +392,20 @@
 <ul>
 <li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h</a></li>
 </ul>
-<pre><code class="c">struct thread_info {
-    struct task_struct *task;
-    struct exec_domain *exec_domain;
-    __u32 flags;
-    __u32 status;
-    __u32 cpu;
-    int preempt_count;
-    mm_segment_t addr_limit;
-    struct restart_block restart_block;
-    void *sysenter_return;
-    int uaccess_err;
-};
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">thread_info</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">task</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">exec_domain</span> <span class="o">*</span><span class="n">exec_domain</span><span class="p">;</span>
+    <span class="n">__u32</span> <span class="n">flags</span><span class="p">;</span>
+    <span class="n">__u32</span> <span class="n">status</span><span class="p">;</span>
+    <span class="n">__u32</span> <span class="n">cpu</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">preempt_count</span><span class="p">;</span>
+    <span class="kt">mm_segment_t</span> <span class="n">addr_limit</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">restart_block</span> <span class="n">restart_block</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">sysenter_return</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">uaccess_err</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
 
 <h4 id="storing-the-process-descriptor">Storing the Process Descriptor</h4>
 <p>The <strong>process identification</strong> (PID) is numerical value, represented by the <a href="https://en.wikipedia.org/wiki/Opaque_data_type">opaque type</a> <code>pid_t</code> (typically <code>int</code>), for the system to identify processes. The default maximum value is only 32,768 (that of a <code>short int</code>), although the value optionally can be increased as high as four million (this is controlled in <code>&lt;linux/threads.h&gt;</code>). The kernel stores this value as <code>pid</code> inside each process descriptor. [p26]</p>
@@ -415,17 +417,19 @@
 </ul>
 <h5 id="the-current_thread_info-function">The <code>current_thread_info()</code> function</h5>
 <p>On x86, <code>current</code> is calculated by masking out the 13 least-significant bits of the stack pointer to obtain the <code>thread_info</code> structure. This is done by the <code>current_thread_info()</code> function (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L184">arch/x86/include/asm/thread_info.h#L184</a>). The assembly is shown here:</p>
-<pre><code class="nasm">movl $-8192, %eax
-andl %esp, %eax
-</code></pre>
+<div class="codehilite"><pre><span class="nf">movl</span> <span class="kc">$</span><span class="o">-</span><span class="mi">8192</span><span class="p">,</span> <span class="o">%</span><span class="nb">eax</span>
+<span class="nf">andl</span> <span class="o">%</span><span class="nb">esp</span><span class="p">,</span> <span class="o">%</span><span class="nb">eax</span>
+</pre></div>
+
 
 <p>This assumes that the stack size is 8KB. When 4KB stacks are enabled, 4096 is used in lieu of 8192.</p>
 <p><code>current</code> dereferences the task member of <code>thread_info</code> to return the <code>task_struct</code>:</p>
 <ul>
 <li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/current.h">include/asm-generic/current.h</a></li>
 </ul>
-<pre><code class="c">current_thread_info()-&gt;task;
-</code></pre>
+<div class="codehilite"><pre><span class="n">current_thread_info</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">task</span><span class="p">;</span>
+</pre></div>
+
 
 <h4 id="process-state">Process State</h4>
 <p>The <code>state</code> field of the process descriptor describes the current condition of the process.</p>
@@ -440,12 +444,14 @@ andl %esp, %eax
 </ul>
 <h4 id="manipulating-the-current-process-state">Manipulating the Current Process State</h4>
 <p>Kernel code often needs to change a process’s state. The preferred mechanism is using:</p>
-<pre><code class="c">set_task_state(task, state); /* set task ‘task’ to state ‘state’ */
-</code></pre>
+<div class="codehilite"><pre><span class="n">set_task_state</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">state</span><span class="p">);</span> <span class="cm">/* set task ‘task’ to state ‘state’ */</span>
+</pre></div>
+
 
 <p>This function sets the given task to the given state. If applicable, it also provides a memory barrier to force ordering on other processors (only needed on SMP systems). Otherwise, it is equivalent to:</p>
-<pre><code class="c">task-&gt;state = state;
-</code></pre>
+<div class="codehilite"><pre><span class="n">task</span><span class="o">-&gt;</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="p">;</span>
+</pre></div>
+
 
 <p>The method <code>set_current_state(state)</code> is synonymous to <code>set_task_state(current, state)</code>. See <code>&lt;linux/sched.h&gt;</code> for the implementation of these and related functions.</p>
 <ul>
@@ -488,51 +494,57 @@ andl %esp, %eax
 <li><code>children</code>: list of children (<code>struct list_head</code>)</li>
 </ul>
 <p>To obtain the process descriptor of a given process's parent:</p>
-<pre><code class="c">struct task_struct *my_parent = current-&gt;parent;
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">my_parent</span> <span class="o">=</span> <span class="n">current</span><span class="o">-&gt;</span><span class="n">parent</span><span class="p">;</span>
+</pre></div>
+
 
 <p>To iterate over a process’s children:</p>
-<pre><code class="c">struct task_struct *task;
-struct list_head *list;
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">task</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">;</span>
 
-list_for_each(list, &amp;current-&gt;children) {
-    task = list_entry(list, struct task_struct, sibling);
-    /* task now points to one of current’s children */
-}
-</code></pre>
+<span class="n">list_for_each</span><span class="p">(</span><span class="n">list</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">current</span><span class="o">-&gt;</span><span class="n">children</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="n">list_entry</span><span class="p">(</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">task_struct</span><span class="p">,</span> <span class="n">sibling</span><span class="p">);</span>
+    <span class="cm">/* task now points to one of current’s children */</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li><code>list_for_each</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L367">include/linux/list.h#L367</a></li>
 </ul>
 <p>The <code>init</code> task’s process descriptor is statically allocated as <code>init_task</code>. The following code will always succeed:</p>
-<pre><code class="c">struct task_struct *task;
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">task</span><span class="p">;</span>
 
-for (task = current; task != &amp;init_task; task = task-&gt;parent)
-;
-/* task now points to init */
-</code></pre>
+<span class="k">for</span> <span class="p">(</span><span class="n">task</span> <span class="o">=</span> <span class="n">current</span><span class="p">;</span> <span class="n">task</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">init_task</span><span class="p">;</span> <span class="n">task</span> <span class="o">=</span> <span class="n">task</span><span class="o">-&gt;</span><span class="n">parent</span><span class="p">)</span>
+<span class="p">;</span>
+<span class="cm">/* task now points to init */</span>
+</pre></div>
+
 
 <p>You can follow the process hierarchy from any one process in the system to any other.  Oftentimes, it is desirable simply to iterate over all processes in the system. This is easy because the task list is a circular, doubly linked list.</p>
 <p>To obtain the next task in the list, given any valid task, use:</p>
-<pre><code class="c">list_entry(task-&gt;tasks.next, struct task_struct, tasks)
-</code></pre>
+<div class="codehilite"><pre><span class="n">list_entry</span><span class="p">(</span><span class="n">task</span><span class="o">-&gt;</span><span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">,</span> <span class="k">struct</span> <span class="n">task_struct</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span>
+</pre></div>
+
 
 <p>To obtain the previous task works the same way:</p>
-<pre><code class="c">list_entry(task-&gt;tasks.prev, struct task_struct, tasks)
-</code></pre>
+<div class="codehilite"><pre><span class="n">list_entry</span><span class="p">(</span><span class="n">task</span><span class="o">-&gt;</span><span class="n">tasks</span><span class="p">.</span><span class="n">prev</span><span class="p">,</span> <span class="k">struct</span> <span class="n">task_struct</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span>
+</pre></div>
+
 
 <ul>
 <li><code>list_entry</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L348">include/linux/list.h</a></li>
 </ul>
 <p>These two routines are provided by the macros <code>next_task(task)</code> and <code>prev_task(task)</code>. (See <a href="">Doubts and Solutions</a>)</p>
 <p>The macro <code>for_each_process(task)</code> iterates over the entire task list. On each iteration, task points to the next task in the list:</p>
-<pre><code class="c">struct task_struct *task;
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">task</span><span class="p">;</span>
 
-for_each_process(task) {
-    /* this pointlessly prints the name and PID of each task */
-    printk(“%s[%d]\n”, task-&gt;comm, task-&gt;pid);
-}
-</code></pre>
+<span class="n">for_each_process</span><span class="p">(</span><span class="n">task</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* this pointlessly prints the name and PID of each task */</span>
+    <span class="n">printk</span><span class="p">(</span><span class="err">“</span><span class="o">%</span><span class="n">s</span><span class="p">[</span><span class="o">%</span><span class="n">d</span><span class="p">]</span><span class="err">\</span><span class="n">n</span><span class="err">”</span><span class="p">,</span> <span class="n">task</span><span class="o">-&gt;</span><span class="n">comm</span><span class="p">,</span> <span class="n">task</span><span class="o">-&gt;</span><span class="n">pid</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <ul>
 <li><code>for_each_process</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L2139">include/linux/sched.h#L2139</a></li>
@@ -626,17 +638,20 @@ for_each_process(task) {
 <p>This approach to threads contrasts greatly with operating systems such as Microsoft Windows or Sun Solaris, which have explicit kernel support for threads (and sometimes call threads lightweight processes). [p34]</p>
 <h4 id="creating-threads">Creating Threads</h4>
 <p>Threads are created the same as normal tasks, with the exception that the <code>clone()</code> system call is passed flags corresponding to the specific resources to be shared:</p>
-<pre><code class="c">clone(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND, 0);
-</code></pre>
+<div class="codehilite"><pre><span class="n">clone</span><span class="p">(</span><span class="n">CLONE_VM</span> <span class="o">|</span> <span class="n">CLONE_FS</span> <span class="o">|</span> <span class="n">CLONE_FILES</span> <span class="o">|</span> <span class="n">CLONE_SIGHAND</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</pre></div>
+
 
 <p>The above code is identical to <code>fork()</code> except that the address space (<code>CLONE_VM</code>), filesystem resources (<code>CLONE_FS</code>), file descriptors (<code>CLONE_FILES</code>), and signal handlers (<code>CLONE_SIGHAND</code>) are shared.</p>
 <p><code>fork()</code> can be implemented as:</p>
-<pre><code class="c">clone(SIGCHLD, 0);
-</code></pre>
+<div class="codehilite"><pre><span class="n">clone</span><span class="p">(</span><span class="n">SIGCHLD</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</pre></div>
+
 
 <p><code>vfork()</code> is implemented as:</p>
-<pre><code class="c">clone(CLONE_VFORK | CLONE_VM | SIGCHLD, 0);
-</code></pre>
+<div class="codehilite"><pre><span class="n">clone</span><span class="p">(</span><span class="n">CLONE_VFORK</span> <span class="o">|</span> <span class="n">CLONE_VM</span> <span class="o">|</span> <span class="n">SIGCHLD</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</pre></div>
+
 
 <p>The flags, which are defined in <code>&lt;linux/sched.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L5">include/linux/sched.h#L5</a>),  to <code>clone()</code> specify the behavior of the new process and detail what resources the parent and child will share.</p>
 <table>
@@ -739,11 +754,12 @@ for_each_process(task) {
 </ul>
 <p>The interfaces of kernel threads defined in <code>&lt;linux/kthread.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/kthread.h">include/linux/kthread.h</a>)</p>
 <p><code>kthread_create()</code> spawns a new kernel thread from an existing one:</p>
-<pre><code>struct task_struct *kthread_create(int (*threadfn)(void *data),
+<div class="codehilite"><pre>struct task_struct *kthread_create(int (*threadfn)(void *data),
                                    void *data,
                                    const char namefmt[],
                                    ...)
-</code></pre>
+</pre></div>
+
 
 <p>The new task is created via the <code>clone()</code> system call by the <code>kthread</code> kernel process:</p>
 <ul>
@@ -752,27 +768,30 @@ for_each_process(task) {
 <li>The process is created in an unrunnable state; it will not start running until explicitly woken up via <code>wake_up_process()</code>.</li>
 </ul>
 <p>A process can be created and made runnable with a single function, <code>kthread_run()</code>:</p>
-<pre><code class="c">struct task_struct *kthread_run(int (*threadfn)(void *data),
-                                void *data,
-                                const char namefmt[],
-                                ...)
-</code></pre>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">kthread_run</span><span class="p">(</span><span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">threadfn</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">),</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="kt">char</span> <span class="n">namefmt</span><span class="p">[],</span>
+                                <span class="p">...)</span>
+</pre></div>
+
 
 <p>This routine (<code>kthread_run()</code>), implemented as a macro, simply calls both <code>kthread_create()</code> and <code>wake_up_process()</code>:</p>
-<pre><code class="c">#define kthread_run(threadfn, data, namefmt, ...)                 \
-({                                                                \
-    struct task_struct *k;                                        \
-                                                                  \
-    k = kthread_create(threadfn, data, namefmt, ## __VA_ARGS__);  \
-    if (!IS_ERR(k))                                               \
-        wake_up_process(k);                                       \
-    k;                                                            \
-})
-</code></pre>
+<div class="codehilite"><pre><span class="cp">#define kthread_run(threadfn, data, namefmt, ...)                 \</span>
+<span class="cp">({                                                                \</span>
+<span class="cp">    struct task_struct *k;                                        \</span>
+<span class="cp">                                                                  \</span>
+<span class="cp">    k = kthread_create(threadfn, data, namefmt, ## __VA_ARGS__);  \</span>
+<span class="cp">    if (!IS_ERR(k))                                               \</span>
+<span class="cp">        wake_up_process(k);                                       \</span>
+<span class="cp">    k;                                                            \</span>
+<span class="cp">})</span>
+</pre></div>
+
 
 <p>When started, a kernel thread continues to exist until it calls <code>do_exit()</code> or another part of the kernel calls <code>kthread_stop()</code>, passing in the address of the <code>task_struct</code> structure returned by <code>kthread_create()</code>:</p>
-<pre><code class="c">int kthread_stop(struct task_struct *k)
-</code></pre>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">kthread_stop</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">k</span><span class="p">)</span>
+</pre></div>
+
 
 <h3 id="process-termination">Process Termination</h3>
 <p>When a process terminates, the kernel releases the resources owned by the process and notifies the child’s parent of its demise.</p>
@@ -831,75 +850,77 @@ for_each_process(task) {
 <p><u>If a parent exits before its children, any of its child tasks must be reparented to a new process, otherwise parentless terminated processes would forever remain zombies, wasting system memory.</u></p>
 <p>The solution is to reparent a task’s children on exit to another process in the current thread group, or (if that fails) the init process.</p>
 <p><code>do_exit()</code> calls <code>exit_notify()</code>, which calls <code>forget_original_parent()</code>, which calls <code>find_new_reaper()</code> to perform the reparenting:</p>
-<pre><code class="c">static struct task_struct *find_new_reaper(struct task_struct *father)
-{
-    struct pid_namespace *pid_ns = task_active_pid_ns(father);
-    struct task_struct *thread;
+<div class="codehilite"><pre><span class="k">static</span> <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="nf">find_new_reaper</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">father</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">pid_namespace</span> <span class="o">*</span><span class="n">pid_ns</span> <span class="o">=</span> <span class="n">task_active_pid_ns</span><span class="p">(</span><span class="n">father</span><span class="p">);</span>
+    <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="kr">thread</span><span class="p">;</span>
 
-    thread = father;
-    while_each_thread(father, thread) {
-      if (thread-&gt;flags &amp; PF_EXITING)
-          continue;
-      if (unlikely(pid_ns-&gt;child_reaper == father))
-          pid_ns-&gt;child_reaper = thread;
-      return thread;
-    }
+    <span class="kr">thread</span> <span class="o">=</span> <span class="n">father</span><span class="p">;</span>
+    <span class="n">while_each_thread</span><span class="p">(</span><span class="n">father</span><span class="p">,</span> <span class="kr">thread</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="kr">thread</span><span class="o">-&gt;</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">PF_EXITING</span><span class="p">)</span>
+          <span class="k">continue</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">pid_ns</span><span class="o">-&gt;</span><span class="n">child_reaper</span> <span class="o">==</span> <span class="n">father</span><span class="p">))</span>
+          <span class="n">pid_ns</span><span class="o">-&gt;</span><span class="n">child_reaper</span> <span class="o">=</span> <span class="kr">thread</span><span class="p">;</span>
+      <span class="k">return</span> <span class="kr">thread</span><span class="p">;</span>
+    <span class="p">}</span>
 
-    if (unlikely(pid_ns-&gt;child_reaper == father)) {
-        write_unlock_irq(&amp;tasklist_lock);
-        if (unlikely(pid_ns == &amp;init_pid_ns))
-        panic(&quot;Attempted to kill init!&quot;);
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">pid_ns</span><span class="o">-&gt;</span><span class="n">child_reaper</span> <span class="o">==</span> <span class="n">father</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">write_unlock_irq</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tasklist_lock</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">pid_ns</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">init_pid_ns</span><span class="p">))</span>
+        <span class="n">panic</span><span class="p">(</span><span class="s">&quot;Attempted to kill init!&quot;</span><span class="p">);</span>
 
-        zap_pid_ns_processes(pid_ns);
-        write_lock_irq(&amp;tasklist_lock);
+        <span class="n">zap_pid_ns_processes</span><span class="p">(</span><span class="n">pid_ns</span><span class="p">);</span>
+        <span class="n">write_lock_irq</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tasklist_lock</span><span class="p">);</span>
 
-        /*
-        * We can not clear -&gt;child_reaper or leave it alone.
-        * There may by stealth EXIT_DEAD tasks on -&gt;children,
-        * forget_original_parent() must move them somewhere.
-        */
-        pid_ns-&gt;child_reaper = init_pid_ns.child_reaper;
-    }
+        <span class="cm">/*</span>
+<span class="cm">        * We can not clear -&gt;child_reaper or leave it alone.</span>
+<span class="cm">        * There may by stealth EXIT_DEAD tasks on -&gt;children,</span>
+<span class="cm">        * forget_original_parent() must move them somewhere.</span>
+<span class="cm">        */</span>
+        <span class="n">pid_ns</span><span class="o">-&gt;</span><span class="n">child_reaper</span> <span class="o">=</span> <span class="n">init_pid_ns</span><span class="p">.</span><span class="n">child_reaper</span><span class="p">;</span>
+    <span class="p">}</span>
 
-    return pid_ns-&gt;child_reaper;
-}
-</code></pre>
+    <span class="k">return</span> <span class="n">pid_ns</span><span class="o">-&gt;</span><span class="n">child_reaper</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p>The above code attempts to find and return another task in the process’s thread group. If another task is not in the thread group, it finds and returns the <code>init</code> process.</p>
 <p>After a suitable new parent for the children is found, each child needs to be located and reparented to <code>reaper</code>:</p>
-<pre><code class="c">reaper = find_new_reaper(father);
-list_for_each_entry_safe(p, n, &amp;father-&gt;children, sibling) {
-    p-&gt;real_parent = reaper;
-    if (p-&gt;parent == father) {
-        BUG_ON(p-&gt;ptrace);
-        p-&gt;parent = p-&gt;real_parent;
-    }
-    reparent_thread(p, father);
-}
-</code></pre>
+<div class="codehilite"><pre><span class="n">reaper</span> <span class="o">=</span> <span class="n">find_new_reaper</span><span class="p">(</span><span class="n">father</span><span class="p">);</span>
+<span class="n">list_for_each_entry_safe</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">father</span><span class="o">-&gt;</span><span class="n">children</span><span class="p">,</span> <span class="n">sibling</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">p</span><span class="o">-&gt;</span><span class="n">real_parent</span> <span class="o">=</span> <span class="n">reaper</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">parent</span> <span class="o">==</span> <span class="n">father</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">BUG_ON</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">ptrace</span><span class="p">);</span>
+        <span class="n">p</span><span class="o">-&gt;</span><span class="n">parent</span> <span class="o">=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">real_parent</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">reparent_thread</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">father</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
 
 <p><code>ptrace_exit_finish()</code> is then called to do the same reparenting but to a list of <em>ptraced</em> children:</p>
-<pre><code class="c">void exit_ptrace(struct task_struct *tracer)
-{
-    struct task_struct *p, *n;
-    LIST_HEAD(ptrace_dead);
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">exit_ptrace</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">tracer</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">p</span><span class="p">,</span> <span class="o">*</span><span class="n">n</span><span class="p">;</span>
+    <span class="n">LIST_HEAD</span><span class="p">(</span><span class="n">ptrace_dead</span><span class="p">);</span>
 
-    write_lock_irq(&amp;tasklist_lock);
-    list_for_each_entry_safe(p, n, &amp;tracer-&gt;ptraced, ptrace_entry) {
-        if (__ptrace_detach(tracer, p))
-        list_add(&amp;p-&gt;ptrace_entry, &amp;ptrace_dead);
-    }
-    write_unlock_irq(&amp;tasklist_lock);
+    <span class="n">write_lock_irq</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tasklist_lock</span><span class="p">);</span>
+    <span class="n">list_for_each_entry_safe</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tracer</span><span class="o">-&gt;</span><span class="n">ptraced</span><span class="p">,</span> <span class="n">ptrace_entry</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">__ptrace_detach</span><span class="p">(</span><span class="n">tracer</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+        <span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">ptrace_entry</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ptrace_dead</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">write_unlock_irq</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tasklist_lock</span><span class="p">);</span>
 
-    BUG_ON(!list_empty(&amp;tracer-&gt;ptraced));
+    <span class="n">BUG_ON</span><span class="p">(</span><span class="o">!</span><span class="n">list_empty</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tracer</span><span class="o">-&gt;</span><span class="n">ptraced</span><span class="p">));</span>
 
-    list_for_each_entry_safe(p, n, &amp;ptrace_dead, ptrace_entry) {
-    list_del_init(&amp;p-&gt;ptrace_entry);
-    release_task(p);
-    }
-}
+    <span class="n">list_for_each_entry_safe</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ptrace_dead</span><span class="p">,</span> <span class="n">ptrace_entry</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">list_del_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">ptrace_entry</span><span class="p">);</span>
+    <span class="n">release_task</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
 
-</code></pre>
 
 <p>When a task is <em>ptraced</em>, it is temporarily reparented to the debugging process. When the task’s parent exits, however, it must be reparented along with its other siblings. In previous kernels, this resulted in a loop over every process in the system looking for children. The solution is simply to keep a separate list of a process’s children being ptraced, reducing the search for one’s children from every process to just two relatively small lists</p>
 <p>After the process are successfully reparented, there is no risk of stray zombie processes. The <code>init</code> process routinely calls <code>wait()</code> on its children, cleaning up any zombies assigned to it.</p>
