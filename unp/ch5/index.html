@@ -302,6 +302,9 @@
             <li><a href="#run-ps-to-check-process-status-and-relationship">Run ps to check process status and relationship</a></li>
         
     
+        <li class="main "><a href="#normal-termination">Normal Termination</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -594,6 +597,55 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 </ul>
 </li>
 </ul>
+<h3 id="normal-termination">Normal Termination</h3>
+<p>At this point, the connection is established and whatever we type to the client is echoed back.</p>
+<div class="codehilite"><pre><span class="go">linux % tcpcli01 127.0.0.1   # we showed this line earlier</span>
+<span class="go">hello, world                 # we now type this</span>
+<span class="go">hello, world                 # and the line is echoed</span>
+<span class="go">good bye</span>
+<span class="go">good bye</span>
+<span class="go">^D                           # Control-D is our terminal EOF character</span>
+</pre></div>
+
+
+<p>If we immediately execute netstat, we have:</p>
+<div class="codehilite"><pre><span class="go">linux % netstat -a | grep 9877</span>
+<span class="go">tcp        0      0 *:9877               *:*               LISTEN</span>
+<span class="go">tcp        0      0 localhost:42758      localhost:9877    TIME_WAIT</span>
+</pre></div>
+
+
+<p>This time we pipe the output of netstat into <code>grep</code>, printing only the lines with our server's well-known port:</p>
+<ul>
+<li>The client's side of the connection (since the local port is 42758) enters the TIME_WAIT state</li>
+<li>The listening server is still waiting for another client connection. </li>
+</ul>
+<p>The following steps are involved in the normal termination of client and server:</p>
+<ol>
+<li>When we type our EOF character, <code>fgets</code> returns a null pointer and the function <code>str_cli</code> (<a href="#tcp-echo-client-str_cli-function">Section 5.5</a>) returns.</li>
+<li><code>str_cli</code> returns to the client <code>main</code> function (<a href="#tcp-echo-client-main-function">Section 5.5</a>), which terminates by calling <code>exit</code>.</li>
+<li>Part of process termination is the closing of all open descriptors, so the client socket is closed by the kernel. This sends a FIN to the server, to which the server TCP responds with an ACK. This is the first half of the TCP connection termination sequence. At this point, the server socket is in the CLOSE_WAIT state and the client socket is in the FIN_WAIT_2 state (<a href="../figure_2.4.png">Figure 2.4</a> and <a href="../figure_2.5.png">Figure 2.5</a>)</li>
+<li>When the server TCP receives the FIN, the server child is blocked in a call to <code>read</code> (<a href="#tcp-echo-server-str_echo-function">Section 3.8</a>), and <code>read</code> then returns 0. This causes the <code>str_echo</code> function to return to the server child main. [Errata] [p128]</li>
+<li>The server child terminates by calling exit. (<a href="#tcp-echo-server-main-function">Section 5.2</a>)</li>
+<li>All open descriptors in the server child are closed.<ul>
+<li>The closing of the connected socket by the child causes the final two segments of the TCP connection termination to take place: a FIN from the server to the client, and an ACK from the client.</li>
+</ul>
+</li>
+<li>Finally, the <code>SIGCHLD</code> signal is sent to the parent when the server child terminates. <ul>
+<li>This occurs in this example, but we do not catch the signal in our code, and the default action of the signal is to be ignored. Thus, the child enters the zombie state. We can verify this with the <code>ps</code> command.</li>
+</ul>
+</li>
+</ol>
+<div class="codehilite"><pre><span class="go">linux % ps -t pts/6 -o pid,ppid,tty,stat,args,wchan</span>
+<span class="go">  PID  PPID TT       STAT COMMAND          WCHAN</span>
+<span class="go">22038 22036 pts/6    S    -bash            read_chan</span>
+<span class="go">17870 22038 pts/6    S    ./tcpserv01      wait_for_connect</span>
+<span class="go">19315 17870 pts/6    Z    [tcpserv01 &lt;defu do_exit</span>
+</pre></div>
+
+
+<p>The STAT of the child is now <code>Z</code> (for zombie).</p>
+<p>We need to clean up our zombie processes and doing this requires dealing with Unix signals. The next section will give an overview of signal handling.</p>
             </div>
         </div>
 
