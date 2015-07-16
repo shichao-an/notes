@@ -284,3 +284,52 @@ Very specific arguments to `ps` are used:
 * The WCHAN column specifies the condition when a process is asleep.
     * Linux prints `wait_for_connect` when a process is blocked in either `accept` or `connect`, `tcp_data_wait` when a process is blocked on socket input or output, or `read_chan` when a process is blocked on terminal I/O.
     * In [`ps(1)`](http://man7.org/linux/man-pages/man1/ps.1.html), WCHAN column indicates the name of the kernel function in which the process is sleeping, a "-" if the process is running, or a "*" if the process is multi-threaded and ps is not displaying threads.
+
+### Normal Termination
+
+At this point, the connection is established and whatever we type to the client is echoed back.
+
+```shell-session
+linux % tcpcli01 127.0.0.1   # we showed this line earlier
+hello, world                 # we now type this
+hello, world                 # and the line is echoed
+good bye
+good bye
+^D                           # Control-D is our terminal EOF character
+```
+
+If we immediately execute netstat, we have:
+
+```shell-session
+linux % netstat -a | grep 9877
+tcp        0      0 *:9877               *:*               LISTEN
+tcp        0      0 localhost:42758      localhost:9877    TIME_WAIT
+```
+This time we pipe the output of netstat into `grep`, printing only the lines with our server's well-known port:
+
+* The client's side of the connection (since the local port is 42758) enters the TIME_WAIT state
+* The listening server is still waiting for another client connection. 
+
+The following steps are involved in the normal termination of client and server:
+
+1. When we type our EOF character, `fgets` returns a null pointer and the function `str_cli` ([Section 5.5](#tcp-echo-client-str_cli-function)) returns.
+2. `str_cli` returns to the client `main` function ([Section 5.5](#tcp-echo-client-main-function)), which terminates by calling `exit`.
+3. Part of process termination is the closing of all open descriptors, so the client socket is closed by the kernel. This sends a FIN to the server, to which the server TCP responds with an ACK. This is the first half of the TCP connection termination sequence. At this point, the server socket is in the CLOSE_WAIT state and the client socket is in the FIN_WAIT_2 state ([Figure 2.4](figure_2.4.png) and [Figure 2.5](figure_2.5.png))
+4. When the server TCP receives the FIN, the server child is blocked in a call to `read` ([Section 3.8](#tcp-echo-server-str_echo-function)), and `read` then returns 0. This causes the `str_echo` function to return to the server child main. [Errata] [p128]
+5. The server child terminates by calling exit. ([Section 5.2](#tcp-echo-server-main-function))
+6. All open descriptors in the server child are closed.
+    * The closing of the connected socket by the child causes the final two segments of the TCP connection termination to take place: a FIN from the server to the client, and an ACK from the client.
+7. Finally, the `SIGCHLD` signal is sent to the parent when the server child terminates. 
+    * This occurs in this example, but we do not catch the signal in our code, and the default action of the signal is to be ignored. Thus, the child enters the zombie state. We can verify this with the `ps` command.
+
+```shell-session
+linux % ps -t pts/6 -o pid,ppid,tty,stat,args,wchan
+  PID  PPID TT       STAT COMMAND          WCHAN
+22038 22036 pts/6    S    -bash            read_chan
+17870 22038 pts/6    S    ./tcpserv01      wait_for_connect
+19315 17870 pts/6    Z    [tcpserv01 <defu do_exit
+```
+
+The STAT of the child is now `Z` (for zombie).
+
+We need to clean up our zombie processes and doing this requires dealing with Unix signals. The next section will give an overview of signal handling.
