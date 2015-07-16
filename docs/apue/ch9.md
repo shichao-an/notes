@@ -618,6 +618,94 @@ The results are similar, but now `ps` and `cat1` are placed in the same backgrou
 
 [p307]
 
+### Orphaned Process Groups
+
+A process whose parent terminates is called an orphan and is inherited by the `init` process. The entire process groups that can be orphaned and this section discusses how POSIX.1 handles this situation.
+
+#### Example of a process whose child is stopped
+
+The following figure shows a situation: the parent process has `fork`ed a child that stops, and the parent is about to exit.
+
+[![Figure 9.11 Example of a process group about to be orphaned](figure_9.11.png)](figure_9.11.png "Figure 9.11 Example of a process group about to be orphaned")
+
+The program that creates an orphaned process group is shown below:
+
+* [relation/orphan3.c]()
+
+```c
+#include "apue.h"
+#include <errno.h>
+
+static void
+sig_hup(int signo)
+{
+	printf("SIGHUP received, pid = %ld\n", (long)getpid());
+}
+
+static void
+pr_ids(char *name)
+{
+	printf("%s: pid = %ld, ppid = %ld, pgrp = %ld, tpgrp = %ld\n",
+	    name, (long)getpid(), (long)getppid(), (long)getpgrp(),
+	    (long)tcgetpgrp(STDIN_FILENO));
+	fflush(stdout);
+}
+
+int
+main(void)
+{
+	char	c;
+	pid_t	pid;
+
+	pr_ids("parent");
+	if ((pid = fork()) < 0) {
+		err_sys("fork error");
+	} else if (pid > 0) {	/* parent */
+		sleep(5);		/* sleep to let child stop itself */
+	} else {			/* child */
+		pr_ids("child");
+		signal(SIGHUP, sig_hup);	/* establish signal handler */
+		kill(getpid(), SIGTSTP);	/* stop ourself */
+		pr_ids("child");	/* prints only if we're continued */
+		if (read(STDIN_FILENO, &c, 1) != 1)
+			printf("read error %d on controlling TTY\n", errno);
+	}
+	exit(0);
+}
+```
+
+Result in a job-control shell:
+
+```shell-session
+$ ./a.out
+parent: pid = 6099, ppid = 2837, pgrp = 6099, tpgrp = 6099
+child: pid = 6100, ppid = 6099, pgrp = 6099, tpgrp = 6099
+$ SIGHUP received, pid = 6100
+child: pid = 6100, ppid = 1, pgrp = 6099, tpgrp = 2837
+read error 5 on controlling TTY
+```
+
+Analysis: [p307-309]
+
+* The shell places the foreground process into its own process group (6099) and the shell itself stays in its own process group (2837). The child inherits the process group of its parent (6099).
+* After `fork`, the parent sleeps for 5 seconds. This is our (imperfect) way of letting the child execute before the parent terminates.
+* The child establishes a signal handler for the hang-up signal (`SIGHUP`) so we can see whether it is sent to the child. (signal handlers are discuessed in [Chapter 10](/apue/ch10/))
+* The child sends itself the stop signal (`SIGTSTP`) with the `kill` function. This stops the child, similar to our stopping a foreground job with our terminal’s suspend character (Control-Z).
+* When the parent terminates, the child is orphaned, so the child’s parent process ID becomes 1, which is the `init` process ID.
+* At this point, the child is a member of an **orphaned process group**:
+    * The POSIX.1 definition of an orphaned process group: one in which the parent of every member is either itself a member of the group or is not a member of the group’s session. Another way of saying this is: <u>the process group is not orphaned as long as a process in the group has a parent in a different process group but in the same session.</u>
+    * If the process group is not orphaned, there is a chance that one of those parents in a different process group but in the same session will restart a stopped process in the process group that is not orphaned. Here, the parent of every process in the group (e.g., process 1 is the parent of process 6100) belongs to another session.
+*  Since the process group is orphaned when the parent terminates, and the process group contains a stopped process, POSIX.1 requires that every process in the newly orphaned process group be sent the hang-up signal (`SIGHUP`) followed by the continue signal (`SIGCONT`).
+    * This causes the child to be continued, after processing the hang-up signal. The default action for the hang-up signal is to terminate the process, so we have to provide a signal handler to catch the signal. We therefore expect the `printf` in the `sig_hup` function to appear before the `printf` in the `pr_ids` function.
+* Note that the shell prompt appears with the output from the child, because two processes (login shell and the child) are writing to the terminal. The parent process ID of the child has become 1.
+* After calling `pr_ids` in the child, the program tries to read from standard input. POSIX.1 specifies that the `read` is to return an error with errno set to EIO (whose value is 5 on this system) in this situation. [p309]
+    * As discussed earlier in this chapter, when a process in a background process group tries to read from its controlling terminal, `SIGTTIN` is generated for the background process group. But for an orphaned process group, if the kernel were to stop it with this signal, the processes in the process group would probably never be continued.
+* Finally, our child was placed in a background process group when the parent terminated, since the parent was executed as a foreground job by the shell.
+
+
+
+
+
 
 
 

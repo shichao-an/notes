@@ -337,6 +337,11 @@
             <li><a href="#the-shell-with-job-control-bourne-again-shell-on-linux">The shell with job control: Bourne-again shell on Linux</a></li>
         
     
+        <li class="main "><a href="#orphaned-process-groups">Orphaned Process Groups</a></li>
+        
+            <li><a href="#example-of-a-process-whose-child-is-stopped">Example of a process whose child is stopped</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -872,6 +877,90 @@ make all <span class="p">&amp;</span>
 
 <p>The results are similar, but now <code>ps</code> and <code>cat1</code> are placed in the same background process group (5801).</p>
 <p>[p307]</p>
+<h3 id="orphaned-process-groups">Orphaned Process Groups</h3>
+<p>A process whose parent terminates is called an orphan and is inherited by the <code>init</code> process. The entire process groups that can be orphaned and this section discusses how POSIX.1 handles this situation.</p>
+<h4 id="example-of-a-process-whose-child-is-stopped">Example of a process whose child is stopped</h4>
+<p>The following figure shows a situation: the parent process has <code>fork</code>ed a child that stops, and the parent is about to exit.</p>
+<p><a href="../figure_9.11.png" title="Figure 9.11 Example of a process group about to be orphaned"><img alt="Figure 9.11 Example of a process group about to be orphaned" src="../figure_9.11.png" /></a></p>
+<p>The program that creates an orphaned process group is shown below:</p>
+<ul>
+<li><a href="">relation/orphan3.c</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_hup</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;SIGHUP received, pid = %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpid</span><span class="p">());</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">pr_ids</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: pid = %ld, ppid = %ld, pgrp = %ld, tpgrp = %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpid</span><span class="p">(),</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getppid</span><span class="p">(),</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpgrp</span><span class="p">(),</span>
+        <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">tcgetpgrp</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">));</span>
+    <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="n">c</span><span class="p">;</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+
+    <span class="n">pr_ids</span><span class="p">(</span><span class="s">&quot;parent&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>   <span class="cm">/* parent */</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>       <span class="cm">/* sleep to let child stop itself */</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>            <span class="cm">/* child */</span>
+        <span class="n">pr_ids</span><span class="p">(</span><span class="s">&quot;child&quot;</span><span class="p">);</span>
+        <span class="n">signal</span><span class="p">(</span><span class="n">SIGHUP</span><span class="p">,</span> <span class="n">sig_hup</span><span class="p">);</span>    <span class="cm">/* establish signal handler */</span>
+        <span class="n">kill</span><span class="p">(</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">SIGTSTP</span><span class="p">);</span>    <span class="cm">/* stop ourself */</span>
+        <span class="n">pr_ids</span><span class="p">(</span><span class="s">&quot;child&quot;</span><span class="p">);</span>    <span class="cm">/* prints only if we&#39;re continued */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;read error %d on controlling TTY</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Result in a job-control shell:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">parent: pid = 6099, ppid = 2837, pgrp = 6099, tpgrp = 6099</span>
+<span class="go">child: pid = 6100, ppid = 6099, pgrp = 6099, tpgrp = 6099</span>
+<span class="go">$ SIGHUP received, pid = 6100</span>
+<span class="go">child: pid = 6100, ppid = 1, pgrp = 6099, tpgrp = 2837</span>
+<span class="go">read error 5 on controlling TTY</span>
+</pre></div>
+
+
+<p>Analysis: [p307-309]</p>
+<ul>
+<li>The shell places the foreground process into its own process group (6099) and the shell itself stays in its own process group (2837). The child inherits the process group of its parent (6099).</li>
+<li>After <code>fork</code>, the parent sleeps for 5 seconds. This is our (imperfect) way of letting the child execute before the parent terminates.</li>
+<li>The child establishes a signal handler for the hang-up signal (<code>SIGHUP</code>) so we can see whether it is sent to the child. (signal handlers are discuessed in <a href="../../apue/ch10/">Chapter 10</a>)</li>
+<li>The child sends itself the stop signal (<code>SIGTSTP</code>) with the <code>kill</code> function. This stops the child, similar to our stopping a foreground job with our terminal’s suspend character (Control-Z).</li>
+<li>When the parent terminates, the child is orphaned, so the child’s parent process ID becomes 1, which is the <code>init</code> process ID.</li>
+<li>At this point, the child is a member of an <strong>orphaned process group</strong>:<ul>
+<li>The POSIX.1 definition of an orphaned process group: one in which the parent of every member is either itself a member of the group or is not a member of the group’s session. Another way of saying this is: <u>the process group is not orphaned as long as a process in the group has a parent in a different process group but in the same session.</u></li>
+<li>If the process group is not orphaned, there is a chance that one of those parents in a different process group but in the same session will restart a stopped process in the process group that is not orphaned. Here, the parent of every process in the group (e.g., process 1 is the parent of process 6100) belongs to another session.</li>
+</ul>
+</li>
+<li>Since the process group is orphaned when the parent terminates, and the process group contains a stopped process, POSIX.1 requires that every process in the newly orphaned process group be sent the hang-up signal (<code>SIGHUP</code>) followed by the continue signal (<code>SIGCONT</code>).<ul>
+<li>This causes the child to be continued, after processing the hang-up signal. The default action for the hang-up signal is to terminate the process, so we have to provide a signal handler to catch the signal. We therefore expect the <code>printf</code> in the <code>sig_hup</code> function to appear before the <code>printf</code> in the <code>pr_ids</code> function.</li>
+</ul>
+</li>
+<li>Note that the shell prompt appears with the output from the child, because two processes (login shell and the child) are writing to the terminal. The parent process ID of the child has become 1.</li>
+<li>After calling <code>pr_ids</code> in the child, the program tries to read from standard input. POSIX.1 specifies that the <code>read</code> is to return an error with errno set to EIO (whose value is 5 on this system) in this situation. [p309]<ul>
+<li>As discussed earlier in this chapter, when a process in a background process group tries to read from its controlling terminal, <code>SIGTTIN</code> is generated for the background process group. But for an orphaned process group, if the kernel were to stop it with this signal, the processes in the process group would probably never be continued.</li>
+</ul>
+</li>
+<li>Finally, our child was placed in a background process group when the parent terminated, since the parent was executed as a foreground job by the shell.</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p294 on <code>fork</code>'s race condition concerning <code>setpgid</code></p>
