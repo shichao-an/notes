@@ -37,7 +37,8 @@ by W. Richard Stevens and Stephen A. Rago
 6. [System Data Files and Information](apue/ch6.md)
 7. [Process Environment](apue/ch7.md)
 8. [Process Control](apue/ch8.md)
-8. [Process Relationships](apue/ch9.md)
+9. [Process Relationships](apue/ch9.md)
+10. [Signals](apue/ch10.md)
 
 #### Understanding the Linux Kernel, Third Edition
 
@@ -81,7 +82,7 @@ by Kevin R. Fall and W. Richard Stevens
 
 #### Hacking: The Art of Exploitation, 2nd Edition
 
-by Jon Erickson 
+by Jon Erickson
 
 1. Introduction (skipped)
 2. [Programming](htae/index.md)
