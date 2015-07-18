@@ -689,7 +689,7 @@ Analysis: [p307-309]
 
 * The shell places the foreground process into its own process group (6099) and the shell itself stays in its own process group (2837). The child inherits the process group of its parent (6099).
 * After `fork`, the parent sleeps for 5 seconds. This is our (imperfect) way of letting the child execute before the parent terminates.
-* The child establishes a signal handler for the hang-up signal (`SIGHUP`) so we can see whether it is sent to the child. (signal handlers are discuessed in [Chapter 10](/apue/ch10/))
+* The child establishes a signal handler for the hang-up signal (`SIGHUP`) so we can see whether it is sent to the child. (signal handlers are discussed in [Chapter 10](/apue/ch10/))
 * The child sends itself the stop signal (`SIGTSTP`) with the `kill` function. This stops the child, similar to our stopping a foreground job with our terminal’s suspend character (Control-Z).
 * When the parent terminates, the child is orphaned, so the child’s parent process ID becomes 1, which is the `init` process ID.
 * At this point, the child is a member of an **orphaned process group**:
