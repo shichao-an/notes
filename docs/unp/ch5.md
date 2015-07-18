@@ -190,7 +190,7 @@ The above code does the following:
 
 Although the TCP example is small, it is essential that we understand:
 
-* How the client and server start and end, 
+* How the client and server start and end,
 * What happens when something goes wrong:
     * the client host crashes,
     * the client process crashes,
@@ -280,7 +280,7 @@ Very specific arguments to `ps` are used:
 * The PID and PPID columns show the parent and child relationships.
     * The first `tcpserv01` line is the parent and the second tcpserv01 line is the child since the PPID of the child is the parent's PID.
     * The PPID of the parent is the shell (bash).
-* The STAT column for all three of our network processes is "S", meaning the process is sleeping (waiting for something). 
+* The STAT column for all three of our network processes is "S", meaning the process is sleeping (waiting for something).
 * The WCHAN column specifies the condition when a process is asleep.
     * Linux prints `wait_for_connect` when a process is blocked in either `accept` or `connect`, `tcp_data_wait` when a process is blocked on socket input or output, or `read_chan` when a process is blocked on terminal I/O.
     * In [`ps(1)`](http://man7.org/linux/man-pages/man1/ps.1.html), WCHAN column indicates the name of the kernel function in which the process is sleeping, a "-" if the process is running, or a "*" if the process is multi-threaded and ps is not displaying threads.
@@ -308,7 +308,7 @@ tcp        0      0 localhost:42758      localhost:9877    TIME_WAIT
 This time we pipe the output of netstat into `grep`, printing only the lines with our server's well-known port:
 
 * The client's side of the connection (since the local port is 42758) enters the TIME_WAIT state
-* The listening server is still waiting for another client connection. 
+* The listening server is still waiting for another client connection.
 
 The following steps are involved in the normal termination of client and server:
 
@@ -319,7 +319,7 @@ The following steps are involved in the normal termination of client and server:
 5. The server child terminates by calling exit. ([Section 5.2](#tcp-echo-server-main-function))
 6. All open descriptors in the server child are closed.
     * The closing of the connected socket by the child causes the final two segments of the TCP connection termination to take place: a FIN from the server to the client, and an ACK from the client.
-7. Finally, the `SIGCHLD` signal is sent to the parent when the server child terminates. 
+7. Finally, the `SIGCHLD` signal is sent to the parent when the server child terminates.
     * This occurs in this example, but we do not catch the signal in our code, and the default action of the signal is to be ignored. Thus, the child enters the zombie state. We can verify this with the `ps` command.
 
 ```shell-session
@@ -333,3 +333,25 @@ linux % ps -t pts/6 -o pid,ppid,tty,stat,args,wchan
 The STAT of the child is now `Z` (for zombie).
 
 We need to clean up our zombie processes and doing this requires dealing with Unix signals. The next section will give an overview of signal handling.
+
+### POSIX Signal Handling
+
+A **signal** is a notification to a process that an event has occurred. Signals are sometimes called **software interrupts**. Signals usually occur asynchronously, which means that a process doesn't know ahead of time exactly when a signal will occur.
+
+Signals can be sent:
+
+* By one process to another process (or to itself)
+* By the kernel to a process.
+    * For example, whenever a process terminates, the kernel send a `SIGCHLD` signal to the parent of the terminating process.
+
+Every signal has a **disposition**, which is also called the **action** associated with the signal. We set the disposition of a signal by calling the `sigaction` function and we have three choices for the disposition:
+
+1. **Catching a signal**. We can provide a function called a **signal handler** that is called whenever a specific signal occurs. The two signals `SIGKILL` and `SIGSTOP` cannot be caught. Our function is called with a single integer argument that is the signal number and the function returns nothing. Its function prototype is therefore:
+
+        void handler (int signo);
+
+    For most signals, we can call `sigaction` and specify the signal handler to catch it. A few signals, `SIGIO`, `SIGPOLL`, and `SIGURG`, all require additional actions on the part of the process to catch the signal.
+
+2. **Ignoring a signal**. We can ignore a signal by setting its disposition to `SIG_IGN`. The two signals SIGKILL and SIGSTOP cannot be ignored.
+3. **Setting the default disposition for a signal**. This can be done by setting its disposition to `SIG_DFL`. The default is normally to terminate a process on receipt of a signal, with certain signals also generating a core image of the process in its current working directory. There are a few signals whose default disposition is to be ignored: `SIGCHLD` and `SIGURG` (sent on the arrival of out-of-band data) are two that we will encounter in this text.
+
