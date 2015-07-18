@@ -309,6 +309,9 @@
         <li class="main "><a href="#normal-termination">Normal Termination</a></li>
         
     
+        <li class="main "><a href="#posix-signal-handling">POSIX Signal Handling</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -511,7 +514,7 @@
 <h3 id="normal-startup">Normal Startup</h3>
 <p>Although the TCP example is small, it is essential that we understand:</p>
 <ul>
-<li>How the client and server start and end, </li>
+<li>How the client and server start and end,</li>
 <li>What happens when something goes wrong:<ul>
 <li>the client host crashes,</li>
 <li>the client process crashes,</li>
@@ -594,7 +597,7 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 <li>The PPID of the parent is the shell (bash).</li>
 </ul>
 </li>
-<li>The STAT column for all three of our network processes is "S", meaning the process is sleeping (waiting for something). </li>
+<li>The STAT column for all three of our network processes is "S", meaning the process is sleeping (waiting for something).</li>
 <li>The WCHAN column specifies the condition when a process is asleep.<ul>
 <li>Linux prints <code>wait_for_connect</code> when a process is blocked in either <code>accept</code> or <code>connect</code>, <code>tcp_data_wait</code> when a process is blocked on socket input or output, or <code>read_chan</code> when a process is blocked on terminal I/O.</li>
 <li>In <a href="http://man7.org/linux/man-pages/man1/ps.1.html"><code>ps(1)</code></a>, WCHAN column indicates the name of the kernel function in which the process is sleeping, a "-" if the process is running, or a "*" if the process is multi-threaded and ps is not displaying threads.</li>
@@ -622,7 +625,7 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 <p>This time we pipe the output of netstat into <code>grep</code>, printing only the lines with our server's well-known port:</p>
 <ul>
 <li>The client's side of the connection (since the local port is 42758) enters the TIME_WAIT state</li>
-<li>The listening server is still waiting for another client connection. </li>
+<li>The listening server is still waiting for another client connection.</li>
 </ul>
 <p>The following steps are involved in the normal termination of client and server:</p>
 <ol>
@@ -635,7 +638,7 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 <li>The closing of the connected socket by the child causes the final two segments of the TCP connection termination to take place: a FIN from the server to the client, and an ACK from the client.</li>
 </ul>
 </li>
-<li>Finally, the <code>SIGCHLD</code> signal is sent to the parent when the server child terminates. <ul>
+<li>Finally, the <code>SIGCHLD</code> signal is sent to the parent when the server child terminates.<ul>
 <li>This occurs in this example, but we do not catch the signal in our code, and the default action of the signal is to be ignored. Thus, the child enters the zombie state. We can verify this with the <code>ps</code> command.</li>
 </ul>
 </li>
@@ -650,6 +653,31 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 
 <p>The STAT of the child is now <code>Z</code> (for zombie).</p>
 <p>We need to clean up our zombie processes and doing this requires dealing with Unix signals. The next section will give an overview of signal handling.</p>
+<h3 id="posix-signal-handling">POSIX Signal Handling</h3>
+<p>A <strong>signal</strong> is a notification to a process that an event has occurred. Signals are sometimes called <strong>software interrupts</strong>. Signals usually occur asynchronously, which means that a process doesn't know ahead of time exactly when a signal will occur.</p>
+<p>Signals can be sent:</p>
+<ul>
+<li>By one process to another process (or to itself)</li>
+<li>By the kernel to a process.<ul>
+<li>For example, whenever a process terminates, the kernel send a <code>SIGCHLD</code> signal to the parent of the terminating process.</li>
+</ul>
+</li>
+</ul>
+<p>Every signal has a <strong>disposition</strong>, which is also called the <strong>action</strong> associated with the signal. We set the disposition of a signal by calling the <code>sigaction</code> function and we have three choices for the disposition:</p>
+<ol>
+<li>
+<p><strong>Catching a signal</strong>. We can provide a function called a <strong>signal handler</strong> that is called whenever a specific signal occurs. The two signals <code>SIGKILL</code> and <code>SIGSTOP</code> cannot be caught. Our function is called with a single integer argument that is the signal number and the function returns nothing. Its function prototype is therefore:</p>
+<div class="codehilite"><pre>void handler (int signo);
+</pre></div>
+
+
+<p>For most signals, we can call <code>sigaction</code> and specify the signal handler to catch it. A few signals, <code>SIGIO</code>, <code>SIGPOLL</code>, and <code>SIGURG</code>, all require additional actions on the part of the process to catch the signal.</p>
+</li>
+<li>
+<p><strong>Ignoring a signal</strong>. We can ignore a signal by setting its disposition to <code>SIG_IGN</code>. The two signals SIGKILL and SIGSTOP cannot be ignored.</p>
+</li>
+<li><strong>Setting the default disposition for a signal</strong>. This can be done by setting its disposition to <code>SIG_DFL</code>. The default is normally to terminate a process on receipt of a signal, with certain signals also generating a core image of the process in its current working directory. There are a few signals whose default disposition is to be ignored: <code>SIGCHLD</code> and <code>SIGURG</code> (sent on the arrival of out-of-band data) are two that we will encounter in this text.</li>
+</ol>
             </div>
         </div>
 
