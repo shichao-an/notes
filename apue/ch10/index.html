@@ -294,6 +294,9 @@
             <li><a href="#detailed-description-of-signals">Detailed description of signals</a></li>
         
     
+        <li class="main "><a href="#signal-function">signal Function</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -307,13 +310,17 @@
 <p>This chapter starts with an overview of signals and a description of what each signal is normally used for, then discusses problems with earlier implementations, since it is often important to understand what is wrong with an implementation before seeing how to do things correctly. This chapter contains numerous examples that are not entirely correct and a discussion of the defects.</p>
 <h3 id="signal-concepts">Signal Concepts</h3>
 <ul>
-<li>Every signal has a name. They all begin with the three characters <code>SIG</code>. For example:<ul>
+<li>
+<p>Every signal has a name. They all begin with the three characters <code>SIG</code>. For example:</p>
+<ul>
 <li><code>SIGABRT</code> is the abort signal that is generated when a process calls the <code>abort</code> function.</li>
 <li><code>SIGALRM</code> is the alarm signal that is generated when the timer set by the <code>alarm</code> function goes off.</li>
-<li>FreeBSD 8.0 supports 32 different signals. Mac OS X 10.6.8 and Linux 3.2.0 each support 31 different signals, whereas Solaris 10 supports 40 different signals. FreeBSD, Linux, and Solaris, support additional application-defined signals introduced to support <strong>real-time applications</strong>.</li>
 </ul>
+<p>FreeBSD 8.0 supports 32 different signals. Mac OS X 10.6.8 and Linux 3.2.0 each support 31 different signals, whereas Solaris 10 supports 40 different signals. FreeBSD, Linux, and Solaris, support additional application-defined signals introduced to support <strong>real-time applications</strong>.</p>
 </li>
-<li>Signal names are all defined by positive integer constants (the signal number) in the header <code>&lt;signal.h&gt;</code>.<ul>
+<li>
+<p>Signal names are all defined by positive integer constants (the signal number) in the header <code>&lt;signal.h&gt;</code>.</p>
+<ul>
 <li>Implementations actually define the individual signals in a different header file, but this header file is included by <code>&lt;signal.h&gt;</code>.</li>
 <li>It bad for the kernel to include header files meant for user-level applications, so if the applications and the kernel both need the same definitions, the information is placed in a kernel header file that is then included by the user-level header file.<ul>
 <li><code>&lt;sys/signal.h&gt;</code>: FreeBSD 8.0 and Mac OS X 10.6.8</li>
@@ -569,6 +576,17 @@
 <td>x</td>
 <td>x</td>
 <td>x</td>
+<td>x</td>
+<td>terminate</td>
+</tr>
+<tr>
+<td><code>SIGLOST</code></td>
+<td>resource lost</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
 <td>x</td>
 <td>terminate</td>
 </tr>
@@ -882,7 +900,87 @@
 <li>This signal is also generated when an interval timer set by the <code>setitimer(2)</code> function expires.</li>
 </ul>
 </li>
+<li><code>SIGBUS</code>: indicates an implementation-defined hardware fault.  Implementations usually generate this signal on certain types of memory faults.</li>
+<li><span class="text-muted"><code>SIGCANCEL</code>: used internally by the Solaris threads library. It is not meant for general use.</span></li>
+<li><code>SIGCHLD</code>: Whenever a process terminates or stops, the <code>SIGCHLD</code> signal is sent to the parent. By default, this signal is ignored, so the parent must catch this signal if it wants to be notified whenever a child’s status changes. The normal action in the signal-catching function is to call one of the <code>wait</code> functions to fetch the child’s process ID and termination status. [p317]</li>
+<li><code>SIGCONT</code>: this job-control signal is sent to a stopped process when it is continued. The default action is to continue a stopped process, but to ignore the signal if the process wasn’t stopped.</li>
+<li><code>SIGEMT</code>: indicates an implementation-defined hardware fault. Not all platforms support this signal. [p318]</li>
+<li><code>SIGFPE</code>: signals an arithmetic exception, such as divide by 0, floating-point overflow, and so on. The name is derived from "floating-point exception" (<a href="http://www.gnu.org/software/libc/manual/html_node/Program-Error-Signals.html">Program Error Signals</a>).</li>
+<li><span class="text-muted"><code>SIGFREEZE</code>: defined only by Solaris. </span> [p318]</li>
+<li><code>SIGHUP</code>: this signal is sent to the controlling process (session leader) associated with a controlling terminal if a disconnect is detected by the terminal interface.<ul>
+<li>This signal is generated for this condition only if the terminal’s <code>CLOCAL</code> flag is not set. The <code>CLOCAL</code> flag for a terminal is set if the attached terminal is local. The flag tells the terminal driver to ignore all modem status lines.</li>
+<li>The session leader that receives this signal may be in the background (<a href="../figure_9.7.png">Figure 9.7</a>). This differs from the normal terminal-generated signals (interrupt, quit, and suspend), which are always delivered to the foreground process group.</li>
+<li>This signal is also generated if the session leader terminates. In this case, the signal is sent to each process in the foreground process group.</li>
+<li>This signal is commonly used to notify daemon processes (<a href="../../apue/ch13/">Chapter 13</a>) to reread their configuration files. The reason <code>SIGHUP</code> is chosen for this task is that a daemon should not have a controlling terminal and would normally never receive this signal.</li>
 </ul>
+</li>
+<li><code>SIGILL</code>: indicates that the process has executed an illegal hardware instruction.<ul>
+<li>4.3BSD generated this signal from the abort function. <code>SIGABRT</code> is now used for this purpose.</li>
+</ul>
+</li>
+<li><code>SIGINFO</code>: This BSD signal is generated by the terminal driver when we type the status key (often Control-T). This signal is sent to all processes in the foreground process group (Figure 9.9). This signal normally causes status information on processes in the foreground process group to be displayed on the terminal. Linux doesn’t provide support for <code>SIGINFO</code>.</li>
+<li><code>SIGINT</code>: generated by the terminal driver when we press the interrupt key (often DELETE or Control-C). This signal is sent to all processes in the foreground process group (<a href="../figure_9.9.png">Figure 9.9</a>). This signal is often used to terminate a runaway program, especially when it’s generating a lot of unwanted output on the screen.</li>
+<li><code>SIGIO</code>: indicates an asynchronous I/O event.</li>
+<li><code>SIGIOT</code>: indicates an implementation-defined hardware fault. <code>SIGABRT</code> is now used for this purpose. On FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10, <code>SIGIOT</code> is defined to be the same value as <code>SIGABRT</code>.</li>
+<li><span class="text-muted"><code>SIGJVM1</code> and <code>SIGJVM2</code>: reserved for use by the Java virtual machine on Solaris.</span></li>
+<li><code>SIGKILL</code>: one of the two that can’t be caught or ignored. It provides the system administrator with a sure way to kill any process.</li>
+<li><span class="text-muted"><code>SIGLOST</code>: used to notify a process running on a Solaris NFSv4 client system that a lock could not be reacquired during recovery.</span></li>
+<li><code>SIGPIPE</code>: If we write to a pipeline but the reader has terminated, <code>SIGPIPE</code> is generated. This signal is also generated when a process writes to a socket of type <code>SOCK_STREAM</code> that is no longer connected.</li>
+<li><span class="text-muted"><code>SIGPOLL</code>: This signal is marked obsolescent in SUSv4, so it might be removed in a future version of the standard. It can be generated when a specific event occurs on a pollable device.</span></li>
+<li><span class="text-muted"><code>SIGPROF</code>: This signal is marked obsolescent in SUSv4, so it might be removed in a future version of the standard. This signal is generated when a profiling interval timer set by the <code>setitimer(2)</code> function expires.</span></li>
+<li><code>SIGPWR</code>: system dependent, mainly used on a system that has an uninterruptible power supply (UPS).<ul>
+<li>If power fails, the UPS takes over and the software can usually be notified. Nothing needs to be done at this point, as the system continues running on battery power. But if the battery gets low, the software is usually notified again; at this point, it behooves the system to shut everything down. The process that is notified of the low-battery condition sends the <code>SIGPWR</code> signal to the <code>init</code> process, and <code>init</code> handles the system shutdown.</li>
+<li>Solaris 10 and some Linux distributions have entries in the <code>inittab</code> file for this purpose: <code>powerfail</code> and <code>powerwait</code> (or <code>powerokwait</code>).</li>
+<li>The default action for <code>SIGPWR</code> as either "terminate" or "ignore", which depends on the system. The default on Linux is to terminate the process. On Solaris, the signal is ignored by default.</li>
+</ul>
+</li>
+<li><code>SIGQUIT</code>: generated by the terminal driver when we press the terminal quit key (often Control-backslash). This signal is sent to all processes in the foreground process group (<a href="../figure_9.9.png">Figure 9.9</a>). This signal not only terminates the foreground process group (as does <code>SIGINT</code>), but also generates a <code>core</code> file.</li>
+<li><code>SIGSEGV</code>: indicates that the process has made an invalid memory reference (which is usually a sign that the program has a bug, such as dereferencing an uninitialized pointer). The name SEGV stands for "segmentation violation".</li>
+<li><code>SIGSTKFLT</code>: This signal is defined only by Linux. It showed up in the earliest versions of Linux, where it was intended to be used for stack faults taken by the math coprocessor. This signal is not generated by the kernel, but remains for backward compatibility.</li>
+<li><code>SIGSTOP</code>: This job-control signal stops a process. It is similar to the interactive stop signal (<code>SIGTSTP</code>), but <code>SIGSTOP</code> cannot be caught or ignored.</li>
+<li><code>SIGSYS</code>: indicates an invalid system call. The process executed a machine instruction that the kernel thought was a system call, but the parameter with the instruction that indicates the type of system call was invalid. For example, if you build a program that uses a new system call and you then try to run the same binary on an older version of the operating system where the system call doesn’t exist. [p320]</li>
+<li><code>SIGTERM</code>: the termination signal sent by the <code>kill(1)</code> command by default. Because it can be caught by applications, using <code>SIGTERM</code> gives programs a chance to terminate gracefully by cleaning up before exiting (in contrast to <code>SIGKILL</code>, which can’t be caught or ignored).</li>
+<li><span class="text-muted"><code>SIGTHAW</code>: defined only by Solaris and used to notify processes that need to take special action when the system resumes operation after being suspended.</span></li>
+<li><span class="text-muted"><code>SIGTHR</code>: reserved for use by the thread library on FreeBSD. It is defined to have the same value as <code>SIGLWP</code>.</span></li>
+<li><code>SIGTRAP</code>: indicates an implementation-defined hardware fault. The signal name comes from the PDP-11 TRAP instruction. Implementations often use this signal to transfer control to a debugger when a breakpoint instruction is executed.</li>
+<li><code>SIGTSTP</code>: This interactive stop signal is generated by the terminal driver when we press the terminal suspend key (often Control-Z). This signal is sent to all processes in the foreground process group (<a href="../figure_9.9.png">Figure 9.9</a>). [p321]</li>
+<li><code>SIGTTIN</code>: generated by the terminal driver when a process in a background process group tries to read from its controlling terminal. If either of the following case occurs, the signal is not generated; instead, the read operation fails with errno set to <code>EIO</code>:<ul>
+<li>The reading process is ignoring or blocking this signal.</li>
+<li>The process group of the reading process is orphaned.</li>
+</ul>
+</li>
+<li>
+<p><code>SIGTTOU</code>: generated by the terminal driver when a process in a background process group tries to write to its controlling terminal. Unlike the case with background reads, a process can choose to allow background writes to the controlling terminal. If background writes are not allowed, then like the <code>SIGTTIN</code> signal, the signal is not generated if either of the following cases occurs; instead, the read operation fails with errno set to <code>EIO</code>:</p>
+<ul>
+<li>The writing process is ignoring or blocking this signal</li>
+<li>The process group of the writing process is orphaned</li>
+</ul>
+<p>Regardless of whether background writes are allowed, certain terminal operations (other than writing), including <code>tcsetattr</code>, <code>tcsendbreak</code>, <code>tcdrain</code>, <code>tcflush</code>, <code>tcflow</code>, and <code>tcsetpgrp</code> can also generate the <code>SIGTTOU</code> signal.</p>
+</li>
+<li>
+<p><code>SIGURG</code>: notifies the process that an urgent condition has occurred. It is optionally generated when <a href="https://en.wikipedia.org/wiki/Out-of-band_data">out-of-band data</a> is received on a network connection.</p>
+</li>
+<li><code>SIGUSR1</code> and <code>SIGUSR2</code>: user-defined signals, for use in application programs.</li>
+<li><code>SIGVTALRM</code>: generated when a virtual interval timer set by the <code>setitimer(2)</code> function expires.</li>
+<li><span class="text-muted"><code>SIGWAITING</code>: used internally by the Solaris threads library, and is not available for general use.</span></li>
+<li><code>SIGWINCH</code>: The kernel maintains the size of the window associated with each terminal and pseudo terminal. A process can get and set the window size with the <code>ioctl</code> function. If a process changes the window size from its previous value using the <code>ioctl</code> set-window-size command, the kernel generates the <code>SIGWINCH</code> signal for the foreground process group.</li>
+<li><code>SIGXCPU</code>: generated if the process exceeds its soft CPU time limit. The default action depends on the operating system. The Single UNIX Specification requires that the default action be to terminate the process abnormally.<ul>
+<li>Linux 3.2.0 and Solaris 10 support a default action of terminate with a core file</li>
+<li>FreeBSD 8.0 and Mac OS X 10.6.8 support a default action of terminate without generating a core file.</li>
+</ul>
+</li>
+<li><code>SIGXFSZ</code>:  generated if the process exceeds its soft file size limit. The default action depends on the operating system, similar to <code>SIGXCPU</code>.</li>
+<li><span class="text-muted"><code>SIGXRES</code>: defined only by Solaris.</span></li>
+</ul>
+<h3 id="signal-function"><code>signal</code> Function</h3>
+<p>The simplest interface to the signal features of the UNIX System is the signal function</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/73f4115f93c26a852349">apue_signal.h</a></li>
+</ul>
+<script src="https://gist.github.com/shichao-an/73f4115f93c26a852349.js"></script>
+
+<p>Implementations derived from UNIX System V support the <code>signal</code> function, which provides the old unreliable-signal semantics. New applications should not use these unreliable signals. 4.4BSD also provides the <code>signal</code> function, but it is defined in terms of the <code>sigaction</code> function, so using it under 4.4BSD provides the newer reliable-signal semantics. Most current systems follow this strategy except Solaris. [p323]</p>
+<p>Because the semantics of signal differ among implementations, we must use the <code>sigaction</code> function instead. We provide an implementation of <code>signal</code> that uses <code>sigaction</code> (later this chapter).</p>
             </div>
         </div>
 
