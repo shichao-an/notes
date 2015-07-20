@@ -297,6 +297,11 @@
         <li class="main "><a href="#signal-function">signal Function</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -981,6 +986,54 @@
 
 <p>Implementations derived from UNIX System V support the <code>signal</code> function, which provides the old unreliable-signal semantics. New applications should not use these unreliable signals. 4.4BSD also provides the <code>signal</code> function, but it is defined in terms of the <code>sigaction</code> function, so using it under 4.4BSD provides the newer reliable-signal semantics. Most current systems follow this strategy except Solaris. [p323]</p>
 <p>Because the semantics of signal differ among implementations, we must use the <code>sigaction</code> function instead. We provide an implementation of <code>signal</code> that uses <code>sigaction</code> (later this chapter).</p>
+<p>Arguments:</p>
+<ul>
+<li>The <em>signo</em> argument is the name of the signal from <a href="#unix-system-signals">previous table</a>.</li>
+<li>The value of <em>func</em> one of the following:<ul>
+<li>the constant <code>SIG_IGN</code>, which tells the system ignore the signal;</li>
+<li>the constant <code>SIG_DFL</code>, which sets the action associated with the signal to its default value;</li>
+<li>the address of a function to be called when the signal occurs, which arranges to "catch" the signal. This function is called either the <strong>signal handler</strong> or the <strong>signal-catching function</strong>.</li>
+</ul>
+</li>
+</ul>
+<p>The prototype for the <code>signal</code> function states that the function requires two arguments and returns a pointer to a function that returns nothing (<code>void</code>):</p>
+<ul>
+<li>The first argument, <em>signo</em>, is an integer.</li>
+<li>The second argument, <em>func</em>, is a pointer to a function that takes a single integer argument and returns nothing.</li>
+<li>The returned function (function whose address is returned as the value of <code>signal</code>) takes a single integer argument (the final (<code>int</code>)).</li>
+</ul>
+<p>In plain English, this declaration says that the signal handler is passed a single integer argument (the signal number) and that it returns nothing. When we call signal to establish the signal handler, the second argument is a pointer to the function.  The return value from <code>signal</code> is the pointer to the previous signal handler.</p>
+<p>The <code>signal</code> function prototype can be made much simpler through the use of the following <code>typedef</code>:</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="nf">Sigfunc</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Then the prototype becomes:</p>
+<div class="codehilite"><pre><span class="n">Sigfunc</span> <span class="o">*</span><span class="nf">signal</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="n">Sigfunc</span> <span class="o">*</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This <code>typedef</code> is included in <a href="https://github.com/shichao-an/apue.3e/blob/master/include/apue.h#L41">apue.h</a> and is used with the functions in this chapter.</p>
+<p>If we examine the system’s header <code>&lt;signal.h&gt;</code>, we will probably find declarations of the form:</p>
+<div class="codehilite"><pre><span class="cp">#define SIG_ERR (void (*)())-1</span>
+<span class="cp">#define SIG_DFL (void (*)())0</span>
+<span class="cp">#define SIG_IGN (void (*)())1</span>
+</pre></div>
+
+
+<p>These constants can be used in place of the "pointer to a function that takes an integer argument and returns nothing", the second argument to <code>signal</code>, and the return value from <code>signal</code>. The three values used for these constants need not be −1, 0, and 1. They must be three values that can never be the address of any declarable function. Most UNIX systems use the values shown. (See <a href="##doubts-and-solutions">Doubts and Solutions</a> for details)</p>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
+<blockquote>
+<p>These constants can be used in place of the "pointer to a function that takes an integer argument and returns nothing", the second argument to <code>signal</code>, and the return value from <code>signal</code>. The three values used for these constants need not be −1, 0, and 1. They must be three values that can never be the address of any declarable function. Most UNIX systems use the values shown.</p>
+</blockquote>
+<p>Why is the macro in the form <code>SIG_ERR (void (*)())-1</code> and the like?</p>
+<p>Solution:</p>
+<p>They are integer that cast into an address which means the "pointer to a function that takes an integer argument and returns nothing". <code>void (*)()</code> tells the compiler to ignore type-checking for the parameters. See:</p>
+<ul>
+<li><a href="http://stackoverflow.com/questions/22344303">Stack Overflow</a></li>
+</ul>
             </div>
         </div>
 

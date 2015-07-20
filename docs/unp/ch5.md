@@ -355,3 +355,95 @@ Every signal has a **disposition**, which is also called the **action** associat
 2. **Ignoring a signal**. We can ignore a signal by setting its disposition to `SIG_IGN`. The two signals SIGKILL and SIGSTOP cannot be ignored.
 3. **Setting the default disposition for a signal**. This can be done by setting its disposition to `SIG_DFL`. The default is normally to terminate a process on receipt of a signal, with certain signals also generating a core image of the process in its current working directory. There are a few signals whose default disposition is to be ignored: `SIGCHLD` and `SIGURG` (sent on the arrival of out-of-band data) are two that we will encounter in this text.
 
+
+### `signal` Function
+
+The POSIX way to establish the disposition of a signal is to call the `sigaction` function, which is complicated in that one argument to the function is a structure (`struct sigaction`) that we must allocate and fill in.
+
+An easier way to set the disposition of a signal is to call the `signal` function. The first argument is the signal name and the second argument is either a pointer to a function or one of the constants `SIG_IGN` or `SIG_DFL`.
+
+However, `signal` is an historical function that predates POSIX. Different implementations provide different signal semantics when it is called, providing backward compatibility, whereas POSIX explicitly spells out the semantics when `sigaction` is called.
+
+The solution is to define our own function named `signal` that just calls the POSIX `sigaction` function. This provides a simple interface with the desired POSIX semantics. We include this function in our own library, along with our `err`_XXX functions and our wrapper functions. [p130]
+
+
+* [lib/signal.c](https://github.com/shichao-an/unpv13e/blob/master/lib/signal.c)
+
+```c
+#include	"unp.h"
+
+Sigfunc *
+signal(int signo, Sigfunc *func)
+{
+	struct sigaction	act, oact;
+
+	act.sa_handler = func;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	if (signo == SIGALRM) {
+#ifdef	SA_INTERRUPT
+		act.sa_flags |= SA_INTERRUPT;	/* SunOS 4.x */
+#endif
+	} else {
+#ifdef	SA_RESTART
+		act.sa_flags |= SA_RESTART;		/* SVR4, 44BSD */
+#endif
+	}
+	if (sigaction(signo, &act, &oact) < 0)
+		return(SIG_ERR);
+	return(oact.sa_handler);
+}
+/* end signal */
+
+Sigfunc *
+Signal(int signo, Sigfunc *func)	/* for our signal() function */
+{
+	Sigfunc	*sigfunc;
+
+	if ( (sigfunc = signal(signo, func)) == SIG_ERR)
+		err_sys("signal error");
+	return(sigfunc);
+}
+```
+
+#### Simplify function prototype using `typedef`
+
+The normal function prototype for `signal` is complicated by the level of nested parentheses.
+
+```c
+void (*signal (int signo, void (*func) (int))) (int);
+```
+
+To simplify this, we define the `Sigfunc` type in our [unp.h](https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L243) header as
+
+```c
+typedef    void    Sigfunc(int);
+```
+
+stating that signal handlers are functions with an integer argument and the function returns nothing (`void`). The function prototype then becomes
+
+```c
+Sigfunc *signal (int signo, Sigfunc *func);
+```
+
+A pointer to a signal handling function is the second argument to the function, as well as the return value from the function.
+
+#### Set handler
+
+The `sa_handler` member of the `sigaction` structure is set to the *func* argument.
+
+#### Set signal mask for handler
+
+POSIX allows us to specify a set of signals that will be blocked when our signal handler is called. Any signal that is blocked cannot be delivered to a process. We set the `sa_mask` member to the empty set, which means that no additional signals will be blocked while our signal handler is running. <u>POSIX guarantees that the signal being caught is always blocked while its handler is executing.</u>
+
+#### Set `SA_RESTART` flag
+
+`SA_RESTART` is an optional flag. When the flag is set, a system call interrupted by this signal will be automatically restarted by the kernel.
+
+If the signal being caught is not `SIGALRM`, we specify the `SA_RESTART` flag, if defined. This is because the purpose of generating the `SIGALRM` signal is normally to place a timeout on an I/O operation, in which case, we want the blocked system call to be interrupted by the signal. [p131]
+
+#### Call `sigaction`
+
+We call `sigaction` and then <u>return the old action for the signal as the return value of the signal function.</u>
+
+Throughout this text, we will use the `signal` function from the above definition.
