@@ -312,6 +312,19 @@
         <li class="main "><a href="#posix-signal-handling">POSIX Signal Handling</a></li>
         
     
+        <li class="main "><a href="#signal-function">signal Function</a></li>
+        
+            <li><a href="#simplify-function-prototype-using-typedef">Simplify function prototype using typedef</a></li>
+        
+            <li><a href="#set-handler">Set handler</a></li>
+        
+            <li><a href="#set-signal-mask-for-handler">Set signal mask for handler</a></li>
+        
+            <li><a href="#set-sa_restart-flag">Set SA_RESTART flag</a></li>
+        
+            <li><a href="#call-sigaction">Call sigaction</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -678,6 +691,78 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 </li>
 <li><strong>Setting the default disposition for a signal</strong>. This can be done by setting its disposition to <code>SIG_DFL</code>. The default is normally to terminate a process on receipt of a signal, with certain signals also generating a core image of the process in its current working directory. There are a few signals whose default disposition is to be ignored: <code>SIGCHLD</code> and <code>SIGURG</code> (sent on the arrival of out-of-band data) are two that we will encounter in this text.</li>
 </ol>
+<h3 id="signal-function"><code>signal</code> Function</h3>
+<p>The POSIX way to establish the disposition of a signal is to call the <code>sigaction</code> function, which is complicated in that one argument to the function is a structure (<code>struct sigaction</code>) that we must allocate and fill in.</p>
+<p>An easier way to set the disposition of a signal is to call the <code>signal</code> function. The first argument is the signal name and the second argument is either a pointer to a function or one of the constants <code>SIG_IGN</code> or <code>SIG_DFL</code>.</p>
+<p>However, <code>signal</code> is an historical function that predates POSIX. Different implementations provide different signal semantics when it is called, providing backward compatibility, whereas POSIX explicitly spells out the semantics when <code>sigaction</code> is called.</p>
+<p>The solution is to define our own function named <code>signal</code> that just calls the POSIX <code>sigaction</code> function. This provides a simple interface with the desired POSIX semantics. We include this function in our own library, along with our <code>err</code>_XXX functions and our wrapper functions. [p130]</p>
+<ul>
+<li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/signal.c">lib/signal.c</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
+
+<span class="n">Sigfunc</span> <span class="o">*</span>
+<span class="nf">signal</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="n">Sigfunc</span> <span class="o">*</span><span class="n">func</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sigaction</span>    <span class="n">act</span><span class="p">,</span> <span class="n">oact</span><span class="p">;</span>
+
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">act</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signo</span> <span class="o">==</span> <span class="n">SIGALRM</span><span class="p">)</span> <span class="p">{</span>
+<span class="cp">#ifdef  SA_INTERRUPT</span>
+        <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">|=</span> <span class="n">SA_INTERRUPT</span><span class="p">;</span>   <span class="cm">/* SunOS 4.x */</span>
+<span class="cp">#endif</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<span class="cp">#ifdef  SA_RESTART</span>
+        <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">|=</span> <span class="n">SA_RESTART</span><span class="p">;</span>     <span class="cm">/* SVR4, 44BSD */</span>
+<span class="cp">#endif</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">signo</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">act</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oact</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">SIG_ERR</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">oact</span><span class="p">.</span><span class="n">sa_handler</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="cm">/* end signal */</span>
+
+<span class="n">Sigfunc</span> <span class="o">*</span>
+<span class="nf">Signal</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="n">Sigfunc</span> <span class="o">*</span><span class="n">func</span><span class="p">)</span>    <span class="cm">/* for our signal() function */</span>
+<span class="p">{</span>
+    <span class="n">Sigfunc</span> <span class="o">*</span><span class="n">sigfunc</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">sigfunc</span> <span class="o">=</span> <span class="n">signal</span><span class="p">(</span><span class="n">signo</span><span class="p">,</span> <span class="n">func</span><span class="p">))</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal error&quot;</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">sigfunc</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="simplify-function-prototype-using-typedef">Simplify function prototype using <code>typedef</code></h4>
+<p>The normal function prototype for <code>signal</code> is complicated by the level of nested parentheses.</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">signal</span> <span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)</span> <span class="p">(</span><span class="kt">int</span><span class="p">)))</span> <span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</pre></div>
+
+
+<p>To simplify this, we define the <code>Sigfunc</code> type in our <a href="https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L243">unp.h</a> header as</p>
+<div class="codehilite"><pre><span class="k">typedef</span>    <span class="kt">void</span>    <span class="nf">Sigfunc</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</pre></div>
+
+
+<p>stating that signal handlers are functions with an integer argument and the function returns nothing (<code>void</code>). The function prototype then becomes</p>
+<div class="codehilite"><pre><span class="n">Sigfunc</span> <span class="o">*</span><span class="nf">signal</span> <span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="n">Sigfunc</span> <span class="o">*</span><span class="n">func</span><span class="p">);</span>
+</pre></div>
+
+
+<p>A pointer to a signal handling function is the second argument to the function, as well as the return value from the function.</p>
+<h4 id="set-handler">Set handler</h4>
+<p>The <code>sa_handler</code> member of the <code>sigaction</code> structure is set to the <em>func</em> argument.</p>
+<h4 id="set-signal-mask-for-handler">Set signal mask for handler</h4>
+<p>POSIX allows us to specify a set of signals that will be blocked when our signal handler is called. Any signal that is blocked cannot be delivered to a process. We set the <code>sa_mask</code> member to the empty set, which means that no additional signals will be blocked while our signal handler is running. <u>POSIX guarantees that the signal being caught is always blocked while its handler is executing.</u></p>
+<h4 id="set-sa_restart-flag">Set <code>SA_RESTART</code> flag</h4>
+<p><code>SA_RESTART</code> is an optional flag. When the flag is set, a system call interrupted by this signal will be automatically restarted by the kernel.</p>
+<p>If the signal being caught is not <code>SIGALRM</code>, we specify the <code>SA_RESTART</code> flag, if defined. This is because the purpose of generating the <code>SIGALRM</code> signal is normally to place a timeout on an I/O operation, in which case, we want the blocked system call to be interrupted by the signal. [p131]</p>
+<h4 id="call-sigaction">Call <code>sigaction</code></h4>
+<p>We call <code>sigaction</code> and then <u>return the old action for the signal as the return value of the signal function.</u></p>
+<p>Throughout this text, we will use the <code>signal</code> function from the above definition.</p>
             </div>
         </div>
 
