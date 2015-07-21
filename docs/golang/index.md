@@ -57,7 +57,7 @@ Conflicting names [TWTG p239]
 Interfaces in Go provide a way to specify the behavior of an object: if something can do this, then it can be used here.
 
 * A type doesn’t have to state explicitly that it implements an interface: interfaces are satisfied implicitly. Multiple types can implement the same interface.
-* A type that implements an interface can also have other functions. 
+* A type that implements an interface can also have other functions.
 * A type can implement many interfaces.
 * An interface type can contain a reference to an instance of any of the types that implement the interface (an interface has what is called a dynamic type)
 
@@ -83,6 +83,8 @@ if v, ok := varI.(T); ok {
 #### The type switch
 
 * [Type switch](https://golang.org/doc/effective_go.html#type_switch)
+
+<small>[type_switch.go](https://gist.github.com/shichao-an/36c167f2b8f649e4a468)</small>
 
 <script src="https://gist.github.com/shichao-an/36c167f2b8f649e4a468.js"></script>
 
@@ -122,11 +124,14 @@ Examples:
 A variable of empty interface type `interface{}` can through assignment receive a variable of any type.
 
 #### Interface Slice
+
 * [Interface slice](https://github.com/golang/go/wiki/InterfaceSlice)
 
 #### Interface to interface
 
-An interface value can also be assigned to another interface value, as long as the underlying value implements the necessary methods. 
+An interface value can also be assigned to another interface value, as long as the underlying value implements the necessary methods.
+
+<small>[twtg_11.9.5.go](https://gist.github.com/shichao-an/4f97af9d9b7333f95b87)</small>
 
 <script src="https://gist.github.com/shichao-an/4f97af9d9b7333f95b87.js"></script>
 
@@ -136,6 +141,8 @@ Reflection is the ability of a program to examine its own structure, particularl
 
 * `reflect.TypeOf`
 * `reflect.ValueOf`
+
+<small>[twtg_11.10.1.go](https://gist.github.com/shichao-an/2eae3c34f717fb5bdde8)</small>
 
 <script src="https://gist.github.com/shichao-an/2eae3c34f717fb5bdde8.js"></script>
 

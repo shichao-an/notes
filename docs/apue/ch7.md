@@ -37,7 +37,7 @@ There are eight ways for a process to terminate.
 
 Three functions terminate a program normally:
 
-* [apue_exit.h](https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6)
+<small>[apue_exit.h](https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6)</small>
 
 ```c
 #include <stdlib.h>
@@ -72,7 +72,7 @@ Returning an integer value from the main function is equivalent to calling exit 
 
 With ISO C, a process can register at least 32 functions that are automatically called by `exit`. These are called **exit handlers** and are registered by calling the `atexit` function.
 
-* [apue_atexit.h](https://gist.github.com/shichao-an/edfab5a8a91b62b4ba5b)
+<small>[apue_atexit.h](https://gist.github.com/shichao-an/edfab5a8a91b62b4ba5b)</small>
 
 ```c
 #include <stdlib.h>
@@ -157,7 +157,7 @@ Shared libraries remove the common library routines from the executable file and
 
 ### Memory Allocation
 
-* [apue_malloc.h](https://gist.github.com/shichao-an/e4b320547e3c303af467)
+<small>[apue_malloc.h](https://gist.github.com/shichao-an/e4b320547e3c303af467)</small>
 
 ```c
 #include <stdlib.h>
@@ -205,7 +205,7 @@ name=value
 
 The UNIX kernel never looks at these strings; their interpretation is up to the various applications.
 
-* [apue_getenv.h](https://gist.github.com/shichao-an/618104c2fa3a6caba3b3)
+<small>[apue_getenv.h](https://gist.github.com/shichao-an/618104c2fa3a6caba3b3)</small>
 
 ```c
 #include <stdlib.h>
@@ -247,7 +247,7 @@ this list of pointers. We also store a null pointer at the end of this list, of 
 
 In C, we can't `goto` a label that’s in another function. Instead, we must use the `setjmp` and `longjmp` functions to perform this type of branching. These two functions are useful for handling error conditions that occur in a deeply nested function call.
 
-* [apue_setjmp.h](https://gist.github.com/shichao-an/4d30742d979b1b83dc69)
+<small>[apue_setjmp.h](https://gist.github.com/shichao-an/4d30742d979b1b83dc69)</small>
 
 ```c
 #include <setjmp.h>
@@ -318,9 +318,7 @@ The problem is that when `open_data` returns, the space it used on the stack wil
 
 Every process has a set of resource limits, some of which can be queried and changed by the `getrlimit` and `setrlimit` functions.
 
-<script src="https://gist.github.com/shichao-an/4562094dcbbca444ec4b.js"></script>
-
-* [apue_getrlimit.h](https://gist.github.com/shichao-an/4562094dcbbca444ec4b)
+<small>[apue_getrlimit.h](https://gist.github.com/shichao-an/4562094dcbbca444ec4b)</small>
 
 ```c
 #include <sys/resource.h>

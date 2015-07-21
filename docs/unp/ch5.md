@@ -33,7 +33,7 @@ In all these examples, we have "hard-coded" protocol-specific constants such as 
 
 Our TCP client and server follow the flow of functions that we diagrammed in [Figure 4.1](figure_4.1.png). The below code is the concurrent server program:
 
-* [tcpcliserv/tcpserv01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv01.c)
+<small>[tcpcliserv/tcpserv01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv01.c)</small>
 
 ```c
 #include	"unp.h"
@@ -86,7 +86,7 @@ The above code does the following:
 
 The function `str_echo` performs the server processing for each client: It reads data from the client and echoes it back to the client.
 
-* [lib/str_echo.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_echo.c)
+<small>[lib/str_echo.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_echo.c)</small>
 
 ```c
 #include	"unp.h"
@@ -115,7 +115,7 @@ The above code does the following:
 
 ### TCP Echo Client: `main` Function
 
-* [tcpcliserv/tcpcli01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpcli01.c)
+</small>[tcpcliserv/tcpcli01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpcli01.c)</small>
 
 ```c
 #include	"unp.h"
@@ -155,7 +155,7 @@ The above code does the following:
 
 The `str_cli` function handles the client processing loop: It reads a line of text from standard input, writes it to the server, reads back the server's echo of the line, and outputs the echoed line to standard output.
 
-* [lib/str_cli.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_cli.c)
+</small>[lib/str_cli.c](https://github.com/shichao-an/unpv13e/blob/master/lib/str_cli.c)</small>
 
 ```c
 #include	"unp.h"
@@ -366,8 +366,7 @@ However, `signal` is an historical function that predates POSIX. Different imple
 
 The solution is to define our own function named `signal` that just calls the POSIX `sigaction` function. This provides a simple interface with the desired POSIX semantics. We include this function in our own library, along with our `err`_XXX functions and our wrapper functions. [p130]
 
-
-* [lib/signal.c](https://github.com/shichao-an/unpv13e/blob/master/lib/signal.c)
+<small>[lib/signal.c](https://github.com/shichao-an/unpv13e/blob/master/lib/signal.c)</small>
 
 ```c
 #include	"unp.h"

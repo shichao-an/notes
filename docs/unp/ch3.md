@@ -135,17 +135,17 @@ The fields of the `sockaddr_storage` structure are opaque to the user, except fo
 
 In this figure, we assume that:
 
-* Socket address structures all contain a one-byte length field 
+* Socket address structures all contain a one-byte length field
 * The family field also occupies one byte
 * Any field that must be at least some number of bits is exactly that number of bits
 
 [![Figure 3.6 Comparison of various socket address structures.](figure_3.6_600.png)](figure_3.6.png "Figure 3.6 Comparison of various socket address structures.")
 
-To handle variable-length structures, whenever we pass a pointer to a socket address structure as an argument to one of the socket functions, we pass its length as another argument. 
+To handle variable-length structures, whenever we pass a pointer to a socket address structure as an argument to one of the socket functions, we pass its length as another argument.
 
 ### Value-Result Arguments
 
-When a socket address structure is passed to any socket function, it is always passed by reference (a pointer to the structure is passed). The length of the structure is also passed as an argument. 
+When a socket address structure is passed to any socket function, it is always passed by reference (a pointer to the structure is passed). The length of the structure is also passed as an argument.
 
 The way in which the length is passed depends on which direction the structure is being passed:
 
@@ -179,7 +179,7 @@ The datatype for the size of a socket address structure is actually `socklen_t` 
 
 Arguments to these functions:
 
-* The pointer to the socket address structure 
+* The pointer to the socket address structure
 * The pointer to an integer containing the size of the structure.
 
 ```c
@@ -225,7 +225,7 @@ The terms "little-endian" and "big-endian" indicate which end of the multibyte v
 
 **Host byte order** refer to the byte ordering used by a given system. The program below prints the host byte order:
 
-* [byteorder.c](https://github.com/shichao-an/unpv13e/blob/master/intro/byteorder.c)
+<small>[byteorder.c](https://github.com/shichao-an/unpv13e/blob/master/intro/byteorder.c)</small>
 
 <script src="https://gist.github.com/shichao-an/ee430bf440011d96f76a.js"></script>
 
@@ -260,7 +260,21 @@ Networking protocols must specify a **network byte order**. The sending protocol
 
 But, both history and the POSIX specification say that certain fields in the socket address structures must be maintained in network byte order. We use the following four functions to convert between these two byte orders:
 
-<script src="https://gist.github.com/shichao-an/27bb5bebddf78e36198e.js"></script>
+<small>[unp_htons.h](https://gist.github.com/shichao-an/27bb5bebddf78e36198e)</small>
+
+```c
+#include <netinet/in.h>
+
+uint16_t htons(uint16_t host16bitvalue);
+uint32_t htonl(uint32_t host32bitvalue);
+
+/* Both return: value in network byte order */
+
+uint16_t ntohs(uint16_t net16bitvalue);
+uint32_t ntohl(uint32_t net32bitvalue);
+
+/* Both return: value in host byte order */
+```
 
 * `h` stands for *host*
 * `n` stands for *network*
@@ -281,31 +295,53 @@ Bit ordering is an important convention in Internet standards, such as the the f
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. 
+This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit.
 
 
 ### Byte Manipulation Functions
 
 Two types functions differ in whether they deal with null-terminated C strings:
 
-* The functions that operate on multibyte fields, without interpreting the data, and without assuming that the data is a null-terminated C string. These types of functions deal with socket address structures to manipulate fields such as IP addresses, which can contain bytes of 0, but are not C character strings. 
+* The functions that operate on multibyte fields, without interpreting the data, and without assuming that the data is a null-terminated C string. These types of functions deal with socket address structures to manipulate fields such as IP addresses, which can contain bytes of 0, but are not C character strings.
     * The functions whose names begin with `b` (for byte) (from 4.2BSD)
     * The functions whose names begin with `mem` (for memory) (from ANSI C)
 * The functions that deal with null-terminated C character strings (beginning with `str` (for string), defined by including the `<string.h>` header)
 
-<script src="https://gist.github.com/shichao-an/4871b3026c68dc6c4140.js"></script>
+
+
+<small>[unp_bzero.h](https://gist.github.com/shichao-an/4871b3026c68dc6c4140)</small>
+
+```c
+#include <strings.h>
+
+void bzero(void *dest, size_t nbytes);
+void bcopy(const void *src, void *dest, size_t nbytes);
+int bcmp(const void *ptr1, const void *ptr2, size_t nbytes);
+
+/* Returns: 0 if equal, nonzero if unequal */
+```
 
 The memory pointed to by the `const` pointer is read but not modified by the function.
 
 * `bzero` sets the specified number of bytes to 0 in the destination. We often use this function to initialize a socket address structure to 0.
-* `bcopy` moves the specified number of bytes from the source to the destination. 
+* `bcopy` moves the specified number of bytes from the source to the destination.
 * `bcmp` compares two arbitrary byte strings. The return value is zero if the two byte strings are identical; otherwise, it is nonzero
 
-<script src="https://gist.github.com/shichao-an/c229d6cc4ac8d310567b.js"></script>
+<small>[unp_memset.h](https://gist.github.com/shichao-an/c229d6cc4ac8d310567b)</small>
+
+```c
+#include <string.h>
+
+void *memset(void *dest, int c, size_t len);
+void *memcpy(void *dest, const void *src, size_t nbytes);
+int memcmp(const void *ptr1, const void *ptr2, size_t nbytes);
+
+/* Returns: 0 if equal, <0 or >0 if unequal (see text) */
+```
 
 * `memset` sets the specified number of bytes to the value `c` in the destination
 * `memcpy` is similar to `bcopy`, but the order of the two pointer arguments is swapped
-* `memcmp` compares two arbitrary byte strings 
+* `memcmp` compares two arbitrary byte strings
 
 Note:
 
@@ -319,7 +355,20 @@ Note:
 
 These functions convert Internet addresses between ASCII strings (what humans prefer to use) and network byte ordered binary values (values that are stored in socket address structures).
 
-<script src="https://gist.github.com/shichao-an/af1102b95566ee43cde7.js"></script>
+<small>[unp_inet_aton.h](https://gist.github.com/shichao-an/af1102b95566ee43cde7)</small>
+
+```c
+#include <arpa/inet.h>
+
+int inet_aton(const char *strptr, struct in_addr *addrptr);
+/* Returns: 1 if string was valid, 0 on error */
+
+in_addr_t inet_addr(const char *strptr);
+/* Returns: 32-bit binary network byte ordered IPv4 address; INADDR_NONE if error */
+
+char *inet_ntoa(struct in_addr inaddr);
+/* Returns: pointer to dotted-decimal string */
+```
 
 * `inet_aton`: converts the C character string pointed to by *strptr* into its 32-bit binary network byte ordered value, which is stored through the pointer *addrptr*
 * `inet_addr`: does the same conversion, returning the 32-bit binary network byte ordered value as the return value. It is deprecated and any new code should use `inet_aton` instead
@@ -331,17 +380,27 @@ These functions convert Internet addresses between ASCII strings (what humans pr
 
 These two functions are new with IPv6 and work with both IPv4 and IPv6 addresses. We use these two functions throughout the text. The letters "p" and "n" stand for *presentation* and *numeric*. The presentation format for an address is often an ASCII string and the numeric format is the binary value that goes into a socket address structure.
 
-<script src="https://gist.github.com/shichao-an/a4f313716c78362d0b49.js"></script>
+<small>[unp_inet_pton.h](https://gist.github.com/shichao-an/a4f313716c78362d0b49)</small>
+
+```c
+#include <arpa/inet.h>
+
+int inet_pton(int family, const char *strptr, void *addrptr);
+/* Returns: 1 if OK, 0 if input not a valid presentation format, -1 on error */
+
+const char *inet_ntop(int family, const void *addrptr, char *strptr, size_t len);
+/* Returns: pointer to result if OK, NULL on error */
+```
 
 Arguments:
 
 * *family*: is either `AF_INET` or `AF_INET6`. If *family* is not supported, both functions return an error with `errno` set to `EAFNOSUPPORT`.
-    
+
 Functions:
 
 * `inet_pton`: converts the string pointed to by *strptr*, storing the binary result through the pointer *addrptr*. If successful, the return value is 1. If the input string is not a valid presentation format for the specified *family*, 0 is returned.
 * `inet_ntop` does the reverse conversion, from numeric (*addrptr*) to presentation (*strptr*).
-    * *len* argument is the size of the destination. To help specify this size, the following two definitions are defined by including the `<netinet/in.h>` header. 
+    * *len* argument is the size of the destination. To help specify this size, the following two definitions are defined by including the `<netinet/in.h>` header.
     * If *len* is too small to hold the resulting presentation format, including the terminating null, a null pointer is returned and `errno` is set to `ENOSPC`.
     * The *strptr* argument to `inet_ntop` cannot be a null pointer. The caller must allocate memory for the destination and specify its size. On success, this pointer is the return value of the function.
 
@@ -389,7 +448,7 @@ ptr = inet_ntop(AF_INET, &foo.sin_addr, str, sizeof(str));
 
 #### Simple definitions of `inet_pton` and `inet_ntop` that support IPv4
 
-* [libfree/inet_pton_ipv4.c](https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_pton_ipv4.c)
+<small>[libfree/inet_pton_ipv4.c](https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_pton_ipv4.c)</small>
 
 ```c
 int
@@ -409,7 +468,7 @@ inet_pton(int family, const char *strptr, void *addrptr)
 }
 ```
 
-* [inet_ntop_ipv4.c](https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_ntop_ipv4.c)
+<small>[inet_ntop_ipv4.c](https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_ntop_ipv4.c)</small>
 
 ```c
 const char *
@@ -456,7 +515,15 @@ This (above) makes our code protocol-dependent.
 
 To solve this, we will write our own function named `sock_ntop` that takes a pointer to a socket address structure, looks inside the structure, and calls the appropriate function to return the presentation format of the address.
 
-<script src="https://gist.github.com/shichao-an/b0f21ce69e2b8024022e.js"></script>
+<small>[unp_sock_ntop.h](https://gist.github.com/shichao-an/b0f21ce69e2b8024022e)</small>
+
+```c
+#include "unp.h"
+
+char *sock_ntop(const struct sockaddr *sockaddr, socklen_t addrlen);
+
+/* Returns: non-null pointer if OK, NULL on error */
+```
 
 *sockaddr* points to a socket address structure whose length is *addrlen*. The function uses its own static buffer to hold the result and a pointer to this buffer is the return value. Notice that <u>using static storage for the result prevents the function from being **re-entrant** or **thread-safe**.</u>
 
@@ -500,9 +567,40 @@ sock_ntop(const struct sockaddr *sa, socklen_t salen)
 There are a few other functions that we define to operate on socket address structures,
 and these will simplify the portability of our code between IPv4 and IPv6.
 
-<script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script>
+<small>[apue_sock_bind_wild.h](https://gist.github.com/shichao-an/f63ebf361581af641397)</small>
 
-* `sock_bind_wild`: binds the wildcard address and an ephemeral port to a socket. 
+```c
+#include "unp.h"
+
+int sock_bind_wild(int sockfd, int family);
+/* Returns: 0 if OK, -1 on error */
+
+int sock_cmp_addr(const struct sockaddr *sockaddr1,
+                  const struct sockaddr *sockaddr2, socklen_t addrlen);
+/* Returns: 0 if addresses are of the same family and ports are equal,
+   else nonzero
+*/
+
+int sock_cmp_port(const struct sockaddr *sockaddr1,
+                  const struct sockaddr *sockaddr2, socklen_t addrlen);
+/* Returns: 0 if addresses are of the same family and ports are equal,
+   else nonzero
+*/
+
+int sock_get_port(const struct sockaddr *sockaddr, socklen_t addrlen);
+/* Returns: non-negative port number for IPv4 or IPv6 address, else -1 */
+
+char *sock_ntop_host(const struct sockaddr *sockaddr, socklen_t addrlen);
+/* Returns: non-null pointer if OK, NULL on error */
+
+void sock_set_addr(const struct sockaddr *sockaddr, socklen_t addrlen,
+                   void *ptr);
+void sock_set_port(const struct sockaddr *sockaddr, socklen_t addrlen,
+                   int port);
+void sock_set_wild(struct sockaddr *sockaddr, socklen_t addrlen);
+```
+
+* `sock_bind_wild`: binds the wildcard address and an ephemeral port to a socket.
 * `sock_cmp_addr`: compares the address portion of two socket address structures.
 * `sock_cmp_port`: compares the port number of two socket address structures.
 * `sock_get_port`: returns just the port number.
@@ -515,7 +613,17 @@ and these will simplify the portability of our code between IPv4 and IPv6.
 
 Stream sockets (e.g., TCP sockets) exhibit a behavior with the `read` and `write` functions that differs from normal file I/O. A `read` or `write` on a stream socket might input or output fewer bytes than requested, but this is not an error condition. <u>The reason is that buffer limits might be reached for the socket in the kernel. All that is required to input or output the remaining bytes is for the caller to invoke the `read` or `write` function again.</u> This scenario is always a possibility on a stream socket with `read`, but is normally seen with `write` only if the socket is nonblocking.
 
-<script src="https://gist.github.com/shichao-an/26f53ad6de8d2e1a10b2.js"></script>
+<small>[unp_readn.h](https://gist.github.com/shichao-an/26f53ad6de8d2e1a10b2)</small>
+
+```c
+#include "unp.h"
+
+ssize_t readn(int filedes, void *buff, size_t nbytes);
+ssize_t writen(int filedes, const void *buff, size_t nbytes);
+ssize_t readline(int filedes, void *buff, size_t maxlen);
+
+/* All return: number of bytes read or written, –1 on error */
+```
 
 * [lib/readn.c](https://github.com/shichao-an/unpv13e/blob/master/lib/readn.c)
 * [lib/writen.c](https://github.com/shichao-an/unpv13e/blob/master/lib/writen.c)

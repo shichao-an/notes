@@ -10,7 +10,7 @@ The **client** and **server** organization is used by most network-awared applic
 
 ### A Simple Daytime Client
 
-* [daytimetcpcli.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpcli.c)
+<small>[daytimetcpcli.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpcli.c)</small>
 
 <script src="https://gist.github.com/shichao-an/d4b1bae51c0a10a29fe3.js"></script>
 
@@ -68,7 +68,7 @@ Storing errno in a global variable does not work with multiple threads that shar
 
 ### A Simple Daytime Server
 
-* [daytimetcpsrv.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c)
+<small>[daytimetcpsrv.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c)</small>
 
 <script src="https://gist.github.com/shichao-an/bf927f23914b9c20f04c.js"></script>
 

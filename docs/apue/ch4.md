@@ -9,7 +9,7 @@ Added in C99, [`restrict`](https://en.wikipedia.org/wiki/Restrict) keyword is us
 
 ### `stat`, `fstat`, `fstatat`, and `lstat` Functions
 
-* [apue_stat.h](https://gist.github.com/shichao-an/dd0cdd90a54848ff3018)
+<small>[apue_stat.h](https://gist.github.com/shichao-an/dd0cdd90a54848ff3018)</small>
 
 ```c
 #include <sys/stat.h>
@@ -85,7 +85,7 @@ FreeBSD 8.0 and Mac OS X 10.6.8 always copy the new file’s group ID from the d
 
 ### `access` and `faccessat` Functions
 
-* [apue_access.h](https://gist.github.com/shichao-an/a0d8ab4d744d51be289f)
+<small>[apue_access.h](https://gist.github.com/shichao-an/a0d8ab4d744d51be289f)</small>
 
 ```c
 #include <unistd.h>
@@ -118,7 +118,7 @@ u=rwx,g=rx,o=
 
 ### `chmod`, `fchmod`, and `fchmodat` Functions
 
-* [apue_chmod.h](https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1)
+<small>[apue_chmod.h](https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1)</small>
 
 ```c
 #include <sys/stat.h>
@@ -144,7 +144,7 @@ Sticky Bit (`S_ISVTX`), or saved-text bit in the later versions of the UNIX Syst
 
 ### `chown`, `fchown`, `fchownat`, and `lchown` Functions
 
-* [apue_chown.h](https://gist.github.com/shichao-an/233e97d9b3d15aca39b2)
+<small>[apue_chown.h](https://gist.github.com/shichao-an/233e97d9b3d15aca39b2)</small>
 
 ```c
 #include <unistd.h>
@@ -192,7 +192,7 @@ $ du -s core
 
 ### File Truncation
 
-* [apue_truncate.h](https://gist.github.com/shichao-an/df5f6cc1cd7871670b11)
+<small>[apue_truncate.h](https://gist.github.com/shichao-an/df5f6cc1cd7871670b11)</small>
 
 ```c
 #include <unistd.h>
@@ -219,7 +219,7 @@ Most UNIX file systems support **case-sensitive** filenames. On Mac OS X, howeve
 
 ### `link`, `linkat`, `unlink`, `unlinkat`, and `remove` Functions
 
-* [apue_link.h](https://gist.github.com/shichao-an/a05542802e846a5e4a9d)
+<small>[apue_link.h](https://gist.github.com/shichao-an/a05542802e846a5e4a9d)</small>
 
 ```c
 #include <unistd.h>
@@ -235,7 +235,7 @@ When a file is closed, the kernel first checks the count of the number of proces
 
 When the `AT_REMOVEDIR` flag is set, then the `unlinkat` function can be used to remove a directory, similar to using `rmdir`.
 
-* [apue_remove.h](https://gist.github.com/shichao-an/6ed5d4f09ca321b9969d)
+<small>[apue_remove.h](https://gist.github.com/shichao-an/6ed5d4f09ca321b9969d)</small>
 
 ```c
 #include <stdio.h>
@@ -247,7 +247,7 @@ int remove(const char *pathname);
 
 ### `rename` and `renameat` Functions
 
-* [apue_rename.h](https://gist.github.com/shichao-an/b2751a71cdecc9845951)
+<small>[apue_rename.h](https://gist.github.com/shichao-an/b2751a71cdecc9845951)</small>
 
 ```c
 #include <stdio.h>
@@ -267,7 +267,7 @@ On Linux, the [`ftw`](http://linux.die.net/man/3/ftw) and `nftw` functions recor
 * `ls -l`
 * `ls -F`
 
-* [apue_symlink.h](https://gist.github.com/shichao-an/487e3a881014019a5896)
+<small>[apue_symlink.h](https://gist.github.com/shichao-an/487e3a881014019a5896)</small>
 
 ```c
 #include <unistd.h>
@@ -280,7 +280,7 @@ int symlinkat(const char *actualpath, int fd, const char *sympath);
 
 Because the open function follows a symbolic link, we need a way to open the link itself and read the name in the link.
 
-* [apue_readlink.h](https://gist.github.com/shichao-an/8ee1ce45f97503e1eadf)
+<small>[apue_readlink.h](https://gist.github.com/shichao-an/8ee1ce45f97503e1eadf)</small>
 
 ```c
 #include <unistd.h>
@@ -308,7 +308,7 @@ The system does not maintain the last-access time for an i-node. The functions `
 
 ### `futimens`, `utimensat`, and `utimes` Functions
 
-* [apue_futimens.h](https://gist.github.com/shichao-an/cbb255521bbfbd297ffe)
+<small>[apue_futimens.h](https://gist.github.com/shichao-an/cbb255521bbfbd297ffe)</small>
 
 ```c
 #include <sys/stat.h>
@@ -335,7 +335,7 @@ We are unable to specify a value for the **changed-status time**, `st_ctim` (the
 
 ### `mkdir`, `mkdirat`, and `rmdir` Functions
 
-* [apue_rmdir.h](https://gist.github.com/shichao-an/72a28c9446973e80a80a.)
+<small>[apue_rmdir.h](https://gist.github.com/shichao-an/72a28c9446973e80a80a.)</small>
 
 ```c
 #include <unistd.h>
@@ -351,7 +351,7 @@ Solaris 10 and Linux 3.2.0 also have the new directory inherit the set-group-ID 
 
 ### Reading Directories
 
-* [apue_opendir.h](https://gist.github.com/shichao-an/e98f9a012d74b7a96293)
+<small>[apue_opendir.h](https://gist.github.com/shichao-an/e98f9a012d74b7a96293)</small>
 
 ```c
 #include <dirent.h>
@@ -386,7 +386,7 @@ The `DIR` structure is an internal structure used by these seven functions to ma
 
 ### `chdir`, `fchdir`, and `getcwd` Functions
 
-* [apue_chdir.h](https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e)
+<small>[apue_chdir.h](https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e)</small>
 
 ```c
 #include <unistd.h>
@@ -397,7 +397,7 @@ int fchdir(int fd);
 /* Both return: 0 if OK, −1 on error */
 ```
 
-* [apue_getcwd.h](https://gist.github.com/shichao-an/090c8c9281d8da18bed5)
+<small>[apue_getcwd.h](https://gist.github.com/shichao-an/090c8c9281d8da18bed5)</small>
 
 ```c
 #include <unistd.h>

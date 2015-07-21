@@ -23,7 +23,7 @@ Historically, the password file has been stored in `/etc/passwd` and has been an
 
 Some systems provide the `vipw` command to allow administrators to edit the password file.
 
-* [apue_getpwuid.h](https://gist.github.com/shichao-an/00b608f959de8dad0b1b)
+<small>[apue_getpwuid.h](https://gist.github.com/shichao-an/00b608f959de8dad0b1b)</small>
 
 ```c
 #include <pwd.h>
@@ -39,7 +39,7 @@ struct passwd *getpwnam(const char *name);
 
 Both functions return a pointer to a passwd structure that the functions fill in. <u>This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.</u>
 
-* [apue_getpwent.h](https://gist.github.com/shichao-an/ffbbc20702760d6a4fab)
+<small>[apue_getpwent.h](https://gist.github.com/shichao-an/ffbbc20702760d6a4fab)</small>
 
 ```c
 #include <pwd.h>
@@ -70,7 +70,7 @@ Systems store the encrypted password in another file, often called the **shadow 
 
 The shadow password file should not be readable by the world. Only a few programs need to access encrypted passwords, e.g. `login(1)` and `passwd(1)`, and these programs are often set-user-ID root. With shadow passwords, the regular password file, `/etc/passwd`, can be left readable by the world.
 
-* [apue_getspnam.h](https://gist.github.com/shichao-an/bad119e8e6ed442e25bf)
+<small>[apue_getspnam.h](https://gist.github.com/shichao-an/bad119e8e6ed442e25bf)</small>
 
 ```c
 
@@ -93,7 +93,7 @@ The UNIX System’s group file, called the group database by POSIX.1, contains t
 
 The field `gr_mem` is an array of pointers to the user names that belong to this group. This array is terminated by a null pointer.
 
-* [apue_getgrgid.h](https://gist.github.com/shichao-an/c280f5fa5d15b006e8af)
+<small>[apue_getgrgid.h](https://gist.github.com/shichao-an/c280f5fa5d15b006e8af)</small>
 
 ```c
 #include <grp.h>
@@ -106,7 +106,7 @@ struct group *getgrnam(const char *name);
 
 Like the password file functions, both of these functions normally return pointers to a static variable, which is overwritten on each call.
 
-* [apue_getgrent.h](https://gist.github.com/shichao-an/98d14c0850ac1f357993)
+<small>[apue_getgrent.h](https://gist.github.com/shichao-an/98d14c0850ac1f357993)</small>
 
 ```c
 #include <grp.h>
@@ -129,7 +129,7 @@ With 4.2BSD, the concept of **supplementary group IDs** was introduced. The file
 
 The constant `NGROUPS_MAX` specifies the number of supplementary group IDs.
 
-* [apue_getgroups.h](https://gist.github.com/shichao-an/72cd85f9279a4501249c)
+<small>[apue_getgroups.h](https://gist.github.com/shichao-an/72cd85f9279a4501249c)</small>
 
 ```c
 #include <unistd.h>
@@ -211,7 +211,7 @@ The `who(1)` program read the `utmp` file and printed its contents in a readable
 
 ### System Identification
 
-* [apue_uname.h](https://gist.github.com/shichao-an/7477d4a7e401fc628fe9)
+<small>[apue_uname.h](https://gist.github.com/shichao-an/7477d4a7e401fc628fe9)</small>
 
 ```c
 #include <sys/utsname.h>
@@ -231,7 +231,7 @@ struct utsname {
 };
 ```
 
-* [apue_gethostname.h](https://gist.github.com/shichao-an/bd385512d7844d84cf2b)
+<small>[apue_gethostname.h](https://gist.github.com/shichao-an/bd385512d7844d84cf2b)</small>
 
 ```c
 #include <unistd.h>
@@ -262,7 +262,7 @@ There is also a `hostname(1)` command that can fetch or set the host name. (The 
 
 The `time` function returns the current time and date.
 
-* [apue_time.h](https://gist.github.com/shichao-an/2b5d80841cbdf01791cd)
+<small>[apue_time.h](https://gist.github.com/shichao-an/2b5d80841cbdf01791cd)</small>
 
 ```c
 #include <time.h>
@@ -283,7 +283,7 @@ Identifier | Option | Description
 `CLOCK_PROCESS_CPUTIME_ID` | `_POSIX_CPUTIME` | CPU time for calling process
 `CLOCK_THREAD_CPUTIME_ID` | `_POSIX_THREAD_CPUTIME` | CPU time for calling thread
 
-* [apue_clock_gettime.h](https://gist.github.com/shichao-an/83e13fecc886c9653976)
+<small>[apue_clock_gettime.h](https://gist.github.com/shichao-an/83e13fecc886c9653976)</small>
 
 ```c
 #include <sys/time.h>
@@ -328,7 +328,7 @@ struct tm { /* a broken-down time */
 
 The reason that the seconds can be greater than 59 is to allow for a [leap second](http://en.wikipedia.org/wiki/Leap_second).
 
-* [apue_gmtime.h](https://gist.github.com/shichao-an/6be4fa71d74422d28709)
+<small>[apue_gmtime.h](https://gist.github.com/shichao-an/6be4fa71d74422d28709)</small>
 
 ```c
 #include <time.h>

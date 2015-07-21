@@ -394,12 +394,40 @@
 </li>
 </ul>
 <p><u>Each UNIX System implementation has its own set of kernel processes that provide operating system services.</u> For example, on some virtual memory implementations of the UNIX System, process ID 2 is the <em>pagedaemon</em>. This process is responsible for supporting the paging of the virtual memory system.</p>
-<script src="https://gist.github.com/shichao-an/4afacfab973219fb4721.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/4afacfab973219fb4721">apue_getpid.h</a></small></p>
+<div class="codehilite"><pre><span class="n">include</span> <span class="o">&lt;</span><span class="n">unistd</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;</span>
+
+<span class="kt">pid_t</span> <span class="n">getpid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="cm">/* Returns: process ID of calling process */</span>
+
+<span class="kt">pid_t</span> <span class="nf">getppid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="cm">/* Returns: parent process ID of calling process */</span>
+
+<span class="kt">uid_t</span> <span class="nf">getuid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="cm">/* Returns: real user ID of calling process */</span>
+
+<span class="kt">uid_t</span> <span class="nf">geteuid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="cm">/* Returns: effective user ID of calling process */</span>
+
+<span class="kt">gid_t</span> <span class="nf">getgid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="cm">/* Returns: real group ID of calling process */</span>
+
+<span class="kt">gid_t</span> <span class="nf">getegid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="cm">/* Returns: effective group ID of calling process */</span>
+</pre></div>
+
 
 <p>None of these functions has an error return.</p>
 <h3 id="fork-function"><code>fork</code> Function</h3>
 <p>An existing process can create a new one by calling the <code>fork</code> function.</p>
-<script src="https://gist.github.com/shichao-an/1d1bfd83197d3c929164.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/1d1bfd83197d3c929164">apue_fork.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">pid_t</span> <span class="nf">fork</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 in child, process ID of child in parent, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li>The new process created by <code>fork</code> is called the <strong>child process</strong>. This function is called once but returns twice. The only difference in the returns is that the return value in the child is 0, whereas the return value in the parent is the process ID of the new child. [p299]<ul>
@@ -646,7 +674,15 @@ as <em>Z</em>.</p>
 <li>Return immediately with an error, if it doesn’t have any child processes</li>
 </ul>
 <p>If the process is calling <code>wait</code> because it received the <code>SIGCHLD</code> signal, we expect wait to return immediately. But if we call it at any random point in time, it can block.</p>
-<script src="https://gist.github.com/shichao-an/8eef8437e6dd5a045c18.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/8eef8437e6dd5a045c18">apue_wait.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/wait.h&gt;</span>
+
+<span class="kt">pid_t</span> <span class="nf">wait</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">statloc</span><span class="p">);</span>
+<span class="kt">pid_t</span> <span class="nf">waitpid</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">statloc</span><span class="p">,</span> <span class="kt">int</span> <span class="n">options</span><span class="p">);</span>
+
+<span class="cm">/* Both return: process ID if OK, 0 (see later), or −1 on error */</span>
+</pre></div>
+
 
 <p>The differences between these two functions are:</p>
 <ul>
@@ -864,10 +900,14 @@ $ second child, parent pid = 1
 <p><u>Note that the shell prints its prompt when the original process terminates, which is before the second child prints its parent process ID.</u></p>
 <h3 id="waitid-function"><code>waitid</code> Function</h3>
 <p>The Single UNIX Specification includes an additional <code>waitid</code> function to retrieve the exit status of a process.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/30873cd97704d1465d3f">apue_waitid.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/30873cd97704d1465d3f.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/30873cd97704d1465d3f">apue_waitid.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/wait.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">waitid</span><span class="p">(</span><span class="kt">idtype_t</span> <span class="n">idtype</span><span class="p">,</span> <span class="kt">id_t</span> <span class="n">id</span><span class="p">,</span> <span class="kt">siginfo_t</span> <span class="o">*</span><span class="n">infop</span><span class="p">,</span> <span class="kt">int</span> <span class="n">options</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>Like <code>waitpid</code>, <code>waitid</code> allows a process to specify which children to wait for. Instead of encoding this information in a single argument combined with the process ID or process group ID, two separate arguments are used. The <code>id</code> parameter is interpreted based on the value of <em>idtype</em>.</p>
 <ul>
@@ -936,10 +976,18 @@ $ second child, parent pid = 1
 </ul>
 <h3 id="wait3-and-wait4-functions"><code>wait3</code> and <code>wait4</code> Functions</h3>
 <p>Most UNIX system implementations provide two additional functions: <code>wait3</code> and <code>wait4</code>, with an additional argument <em>rusage</em> that allows the kernel to return a summary of the resources used by the terminated process and all its child processes.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/5cb7ed8df3666337a292">apue_wait3.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/5cb7ed8df3666337a292.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/5cb7ed8df3666337a292">apue_wait3.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/types.h&gt;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
+<span class="cp">#include &lt;sys/time.h&gt;</span>
+<span class="cp">#include &lt;sys/resource.h&gt;</span>
+
+<span class="kt">pid_t</span> <span class="nf">wait3</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">statloc</span><span class="p">,</span> <span class="kt">int</span> <span class="n">options</span><span class="p">,</span> <span class="k">struct</span> <span class="n">rusage</span> <span class="o">*</span><span class="n">rusage</span><span class="p">);</span>
+<span class="kt">pid_t</span> <span class="nf">wait4</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">statloc</span><span class="p">,</span> <span class="kt">int</span> <span class="n">options</span><span class="p">,</span> <span class="k">struct</span> <span class="n">rusage</span> <span class="o">*</span><span class="n">rusage</span><span class="p">);</span>
+
+<span class="cm">/* Both return: process ID if OK, 0, or −1 on error */</span>
+</pre></div>
+
 
 <p>The resource information includes such statistics as the amount of user CPU time, amount of system CPU time, number of page faults, number of signals received, and the like. Refer to the <code>getrusage(2)</code> manual page for additional details.</p>
 <h3 id="race-conditions">Race Conditions</h3>
@@ -1090,10 +1138,21 @@ We set the standard output unbuffered, so every character output generates a wri
 </ul>
 <p>We’ll use these primitives in later sections to build additional functions, such as <code>popen</code> and <code>system</code>.</p>
 <p>There are seven different <code>exec</code> functions:</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/5e094ad41cdca4af53da">apue_execl.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/5e094ad41cdca4af53da.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/5e094ad41cdca4af53da">apue_execl.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">execl</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">arg0</span><span class="p">,</span> <span class="p">...</span> <span class="cm">/* (char *)0 */</span> <span class="p">);</span>
+<span class="kt">int</span> <span class="nf">execv</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">argv</span><span class="p">[]);</span>
+<span class="kt">int</span> <span class="nf">execle</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">arg0</span><span class="p">,</span> <span class="p">...</span>
+           <span class="cm">/* (char *)0, char *const envp[] */</span> <span class="p">);</span>
+<span class="kt">int</span> <span class="nf">execve</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">argv</span><span class="p">[],</span> <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">envp</span><span class="p">[]);</span>
+<span class="kt">int</span> <span class="nf">execlp</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">filename</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">arg0</span><span class="p">,</span> <span class="p">...</span> <span class="cm">/* (char *)0 */</span> <span class="p">);</span>
+<span class="kt">int</span> <span class="nf">execvp</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">filename</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">argv</span><span class="p">[]);</span>
+<span class="kt">int</span> <span class="nf">fexecve</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">argv</span><span class="p">[],</span> <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">envp</span><span class="p">[]);</span>
+
+<span class="cm">/* All seven return: −1 on error, no return on success */</span>
+</pre></div>
+
 
 <p>The first four take a pathname argument, the next two take a filename argument, and the last one takes a file descriptor argument.</p>
 <p>When <em>filename</em> argument is specified:</p>
@@ -1368,10 +1427,15 @@ HOME=/home/sar
 <p>In the UNIX System, privileges and access control are on user and group IDs. When programs need additional privileges or access to unallowed resources, they need to change their user or group ID to an ID that has the appropriate privilege or access. It is similar when the programs need to lower their privileges or prevent access to certain resources. [p255]</p>
 <p>When designing applications, we try to use the <strong>least-privilege</strong> model, which means our programs should use the least privilege necessary to accomplish any given task. This reduces the risk that security might be compromised by a malicious user trying to trick our programs into using their privileges in unintended ways.</p>
 <p>We can set the real user ID and effective user ID with the <code>setuid</code> function and set the real group ID and the effective group ID with the <code>setgid</code> function.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37">apue_setuid.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37">apue_setuid.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">setuid</span><span class="p">(</span><span class="kt">uid_t</span> <span class="n">uid</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setgid</span><span class="p">(</span><span class="kt">gid_t</span> <span class="n">gid</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>The rules for who can change the IDs, considering only the user ID now (Everything we describe for the user ID also applies to the group ID.)</p>
 <ol>
@@ -1399,10 +1463,15 @@ HOME=/home/sar
 <p>We can obtain only the current value of the real user ID and the effective user ID with the functions <code>getuid</code> and <code>geteuid</code> (<a href="https://gist.github.com/shichao-an/4afacfab973219fb4721">apue_getpid.h</a>). There is no portable way to obtain the current value of the saved set-user-ID. FreeBSD 8.0 and LINUX 3.2.0 provide the <code>getresuid</code> and <code>getresgid</code> functions, which can be used to get the saved set-user-ID and saved set-group-ID, respectively.</p>
 <h4 id="setreuid-and-setregid-functions"><code>setreuid</code> and <code>setregid</code> Functions</h4>
 <p>Historically, BSD supported the swapping of the real user ID and the effective user ID with the setreuid function.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9">apue_setreuid.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9">apue_setreuid.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">setreuid</span><span class="p">(</span><span class="kt">uid_t</span> <span class="n">ruid</span><span class="p">,</span> <span class="kt">uid_t</span> <span class="n">euid</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setregid</span><span class="p">(</span><span class="kt">gid_t</span> <span class="n">rgid</span><span class="p">,</span> <span class="kt">gid_t</span> <span class="n">egid</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li>A value of −1 for any of the arguments indicates that the corresponding ID should remain unchanged.</li>
@@ -1412,10 +1481,15 @@ HOME=/home/sar
 <p>[p257]</p>
 <h4 id="seteuid-and-setegid-functions"><code>seteuid</code> and <code>setegid</code> Functions</h4>
 <p>POSIX.1 includes <code>seteuid</code> and <code>setegid</code> that only change the effective user ID or effective group ID.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba">apue_seteuid.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba">apue_seteuid.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">seteuid</span><span class="p">(</span><span class="kt">uid_t</span> <span class="n">uid</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setegid</span><span class="p">(</span><span class="kt">gid_t</span> <span class="n">gid</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li>An unprivileged user can set its effective user ID to either its real user ID or its saved set-user-ID.</li>
@@ -1592,10 +1666,12 @@ ARGV[3] = f3
 <p>Third, interpreter scripts let us write shell scripts using shells other than <code>/bin/sh</code>. When it finds an executable file that isn’t a machine executable, <code>execlp</code> has to choose a shell to invoke, and it always uses <code>/bin/sh</code>.</p>
 <h3 id="system-function"><code>system</code> Function</h3>
 <p>It is convenient to execute a command string from within a program.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/37133deff99ae0661101">apue_system.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/37133deff99ae0661101.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/37133deff99ae0661101">apue_system.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">system</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmdstring</span><span class="p">);</span>
+</pre></div>
+
 
 <p>Arguments:</p>
 <p>If <em>cmdstring</em> is a null pointer, system returns nonzero only if a command processor is available, which determines whether the <code>system</code> function is supported on a given platform. Under UNIX systems, it is always available.</p>
@@ -1754,10 +1830,14 @@ ARGV[3] = f3
 <p>The accounting records correspond to processes, not programs. A new record is initialized by the kernel for the child after a <code>fork</code>, not when a new program is executed. Although exec doesn’t create a new accounting record, the command name changes, and the <code>AFORK</code> flag is cleared. For example, if A <code>exec</code>s B, then B <code>exec</code>s C, and C <code>exit</code>, only a single accounting record is written.  The command name in the record corresponds to program C, but the CPU times are the sum for programs A, B, and C.</p>
 <h3 id="user-identification">User Identification</h3>
 <p>Any process can find out its real and effective user ID and group ID. <code>getpwuid(getuid())</code> can be used to find out the login name of the user who’s running the program. However, a single user can have multiple login names, that is, a person might have multiple entries in the password file with the same user ID to have a different login shell for each entry. The system normally keeps track of the name we log in under the <code>utmp</code> file (see <a href="../../apue/ch6/#login-accounting">Section 6.8</a>), and the <code>getlogin</code> function provides a way to fetch that login name.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/c77a9e8660a3405a983c">apue_getlogin.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/c77a9e8660a3405a983c.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/c77a9e8660a3405a983c">apue_getlogin.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">getlogin</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="cm">/* Returns: pointer to string giving login name if OK, NULL on error */</span>
+</pre></div>
+
 
 <p>This function can fail if the process is not attached to a terminal that a user logged in to. We normally call these processes <strong>daemons</strong>.</p>
 <p>Given the login name, we can then use it to look up the user in the password file (e.g. to determine the login shell) using <code>getpwnam</code>.</p>
@@ -1773,10 +1853,14 @@ ARGV[3] = f3
 </ul>
 <p>In the Single UNIX Specification, nice values range from 0 to <code>(2*NZERO)−1</code>, although some implementations support a range from 0 to <code>2*NZERO</code>. Lower nice values have higher scheduling priority. Lower nice values have higher scheduling priority. <u>"The more nice you are, the lower your scheduling priority is."</u> <code>NZERO</code> is the default nice value of the system. [p276]</p>
 <p>A process can retrieve and change its nice value with the <code>nice</code> function. With this function, a process can affect only its own nice value; it can’t affect the nice value of any other process.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/3c3be1b450591dc9488f">apue_nice.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/3c3be1b450591dc9488f">apue_nice.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">nice</span><span class="p">(</span><span class="kt">int</span> <span class="n">incr</span><span class="p">);</span>
+
+<span class="cm">/* Returns: new nice value − NZERO if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li>The <em>incr</em> argument is added to the nice value of the calling process.<ul>
@@ -1786,10 +1870,14 @@ ARGV[3] = f3
 </li>
 </ul>
 <p>The <code>getpriority</code> function can be used to get the nice value for a process and for a group of related processes.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/fade39d67294333ef22b">apue_getpriority.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/fade39d67294333ef22b.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/fade39d67294333ef22b">apue_getpriority.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/resource.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">getpriority</span><span class="p">(</span><span class="kt">int</span> <span class="n">which</span><span class="p">,</span> <span class="kt">id_t</span> <span class="n">who</span><span class="p">);</span>
+
+<span class="cm">/* Returns: nice value between −NZERO and NZERO−1 if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li>The <em>which</em> argument can take on one of three following values; it controls how the <em>who</em> argument is interpreted:<ul>
@@ -1805,10 +1893,14 @@ ARGV[3] = f3
 </ul>
 <p>When the which argument applies to more than one process, the highest priority (lowest value) of all the applicable processes is returned.</p>
 <p>The <code>setpriority</code> function can be used to set the priority of a process, a process group, or all the processes belonging to a particular user ID.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6">apue_setpriority.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6">apue_setpriority.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/resource.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">setpriority</span><span class="p">(</span><span class="kt">int</span> <span class="n">which</span><span class="p">,</span> <span class="kt">id_t</span> <span class="n">who</span><span class="p">,</span> <span class="kt">int</span> <span class="n">value</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>The <em>which</em> and <em>who</em> arguments are the same as in the <em>getpriority</em> function. The <em>value</em> is added to <code>NZERO</code> and this becomes the new nice value.</p>
 <p>A child process inherits the nice value from its parent process in FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10.</p>
@@ -1820,10 +1912,14 @@ ARGV[3] = f3
 <li><strong>System CPU time</strong></li>
 </ul>
 <p>Any process can call the <code>times</code> function to obtain these values for itself and any terminated children.</p>
-<ul>
-<li><a href="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02">apue_times.h</a></li>
-</ul>
-<script src="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02">apue_times.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/times.h&gt;</span>
+
+<span class="kt">clock_t</span> <span class="nf">times</span><span class="p">(</span><span class="k">struct</span> <span class="n">tms</span> <span class="o">*</span><span class="n">buf</span><span class="p">);</span>
+
+<span class="cm">/* Returns: elapsed wall clock time in clock ticks if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>This function fills in the <code>tms</code> structure pointed to by <em>buf</em>:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">tms</span> <span class="p">{</span>
