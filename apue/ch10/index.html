@@ -296,6 +296,23 @@
     
         <li class="main "><a href="#signal-function">signal Function</a></li>
         
+            <li><a href="#program-start-up">Program Start-Up</a></li>
+        
+            <li><a href="#process-creation">Process Creation</a></li>
+        
+    
+        <li class="main "><a href="#unreliable-signals">Unreliable Signals</a></li>
+        
+    
+        <li class="main "><a href="#interrupted-system-calls">Interrupted System Calls</a></li>
+        
+            <li><a href="#slow-system-calls">Slow system calls</a></li>
+        
+            <li><a href="#automatic-restarts-of-interrupted-system-calls">Automatic restarts of interrupted system calls</a></li>
+        
+    
+        <li class="main "><a href="#reentrant-functions">Reentrant Functions</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1022,6 +1039,164 @@
 
 
 <p>These constants can be used in place of the "pointer to a function that takes an integer argument and returns nothing", the second argument to <code>signal</code>, and the return value from <code>signal</code>. The three values used for these constants need not be −1, 0, and 1. They must be three values that can never be the address of any declarable function. Most UNIX systems use the values shown. (See <a href="##doubts-and-solutions">Doubts and Solutions</a> for details)</p>
+<p>Example:</p>
+<p>The following code shows a simple signal handler that catches either of the two user-defined signals and prints the signal number.</p>
+<ul>
+<li><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/sigusr.c">sigusr.c</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">sig_usr</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>   <span class="cm">/* one handler for both signals */</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">sig_usr</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;can&#39;t catch SIGUSR1&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGUSR2</span><span class="p">,</span> <span class="n">sig_usr</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;can&#39;t catch SIGUSR2&quot;</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span>
+        <span class="n">pause</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_usr</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>      <span class="cm">/* argument is signal number */</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signo</span> <span class="o">==</span> <span class="n">SIGUSR1</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;received SIGUSR1</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">signo</span> <span class="o">==</span> <span class="n">SIGUSR2</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;received SIGUSR2</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">else</span>
+        <span class="n">err_dump</span><span class="p">(</span><span class="s">&quot;received signal %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">signo</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We invoke the program in the background and use the <code>kill(1)</code> command to send it signals. The term <em>kill</em> in the UNIX System is a misnomer. The <code>kill(1)</code> command and the <code>kill(2)</code> function just send a signal to a process or process group. Whether that signal terminates the process depends on which signal is sent and whether the process has arranged to catch the signal.</p>
+<p>Result:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out &amp;                # start process in background</span>
+<span class="go">[1] 7216                   # job-control shell prints job number and process ID</span>
+<span class="go">$ kill -USR1 7216          # send it SIGUSR1</span>
+<span class="go">received SIGUSR1</span>
+<span class="go">$ kill -USR2 7216          # send it SIGUSR2</span>
+<span class="go">received SIGUSR2</span>
+<span class="go">$ kill 7216                # now send it SIGTERM</span>
+<span class="go">[1]+ Terminated ./a.out</span>
+</pre></div>
+
+
+<p>When we send the <code>SIGTERM</code> signal, the process is terminated, since it doesn’t catch the signal, and the default action for the signal is termination.</p>
+<h4 id="program-start-up">Program Start-Up</h4>
+<p>When a program is executed, the status of all signals is either default or ignore. All signals are set to their default action, unless the process that calls <code>exec</code> is ignoring the signal. The <code>exec</code> functions change the disposition of any signals being caught to their default action and leave the status of all other signals alone. The reason is that a signal that is being caught by a process that calls <code>exec</code> cannot be caught by the same function in the new program, since the address of the signal-catching function in the caller probably has no meaning in the new program file that is executed. [p325]</p>
+<p>With a shell that doesn’t support job control, when we execute a process in the background:</p>
+<div class="codehilite"><pre>cc main.c <span class="p">&amp;</span>
+</pre></div>
+
+
+<p>The shell automatically sets the disposition of the interrupt and quit signals in the background process to be ignored. This is done so that if we type the interrupt character, it doesn’t affect the background process. If this weren’t done and we typed the interrupt character, it would terminate not only the foreground process, but also all the background processes.</p>
+<p>Many interactive programs that catch these two signals have code that looks like:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">sig_int</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="n">sig_quit</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">SIG_IGN</span><span class="p">)</span> <span class="o">!=</span> <span class="n">SIG_IGN</span><span class="p">)</span>
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">SIG_IGN</span><span class="p">)</span> <span class="o">!=</span> <span class="n">SIG_IGN</span><span class="p">)</span>
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">sig_quit</span><span class="p">);</span>
+</pre></div>
+
+
+<p><u>Following this approach, the process catches the signal only if the signal is not currently being ignored.</u></p>
+<p>The <code>signal</code> function has a limitation: we are not able to determine the current disposition of a signal without changing the disposition. The <code>sigaction</code> function (discussed later in this chapter) allows us to determine a signal’s disposition without changing it.</p>
+<h4 id="process-creation">Process Creation</h4>
+<p>When a process calls <code>fork</code>, the child inherits the parent’s signal dispositions. Here, since the child starts off with a copy of the parent’s memory image, the address of a signal-catching function has meaning in the child.</p>
+<h3 id="unreliable-signals">Unreliable Signals</h3>
+<p>In earlier versions of the UNIX System, signals were unreliable, which means that signals could get lost: a signal could occur and the process would never know about it. [p326]</p>
+<p>One problem with these early versions was that the action for a signal was reset to its default each time the signal occurred. The code that was described usually looked like:</p>
+<div class="codehilite"><pre>    <span class="kt">int</span> <span class="nf">sig_int</span><span class="p">();</span> <span class="cm">/* my signal handling function */</span>
+    <span class="p">...</span>
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">);</span> <span class="cm">/* establish handler */</span>
+    <span class="p">...</span>
+
+<span class="n">sig_int</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">);</span> <span class="cm">/* reestablish handler for next time */</span>
+    <span class="p">...</span> <span class="cm">/* process the signal ... */</span> <span class="p">.</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The problem with this code fragment is that there is a window of time (after the signal has occurred, but before the call to <code>signal</code> in the signal handler) when the interrupt signal could occur another time. This second signal would cause the default action to occur, which terminates the process. This is one of those conditions that works correctly most of the time, causing us to think that it is correct, when it isn’t.</p>
+<p>Another problem with these earlier systems was that the process was unable to turn a signal off when it didn’t want the signal to occur. All the process could do was ignore the signal. There are times when we would like to tell the system "prevent the following signals from interrupting me, but remember if they do occur". The following code catches a signal and sets a flag for the process that indicates that the signal occurred:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">sig_int</span><span class="p">();</span> <span class="cm">/* my signal handling function */</span>
+<span class="kt">int</span> <span class="n">sig_int_flag</span><span class="p">;</span> <span class="cm">/* set nonzero when signal occurs */</span>
+
+<span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">);</span> <span class="cm">/* establish handler */</span>
+    <span class="p">...</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">sig_int_flag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">pause</span><span class="p">();</span> <span class="cm">/* go to sleep, waiting for signal */</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+<span class="n">sig_int</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">);</span> <span class="cm">/* reestablish handler for next time */</span>
+    <span class="n">sig_int_flag</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="cm">/* set flag for main loop to examine */</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The process is calling the <code>pause</code> function to put it to sleep until a signal is caught. When the signal is caught, the signal handler just sets the flag <code>sig_int_flag</code> to a nonzero value. The process is automatically awakened by the kernel after the signal handler returns, notices that the flag is nonzero, and does whatever it needs to do. But there is a window of time when things can go wrong. If the signal occurs after the test of <code>sig_int_flag</code> but before the call to pause, the process could go to sleep forever (assuming that the signal is never generated again). This occurrence of the signal is lost.</p>
+<h3 id="interrupted-system-calls">Interrupted System Calls</h3>
+<p>In earlier UNIX systems, if a process caught a signal while the process was blocked in a "slow" system call, the system call was interrupted. The system call returned an error and <code>errno</code> was set to <code>EINTR</code>. This was done under the assumption that since a signal occurred and the process caught it, there is a good chance that something has happened that should wake up the blocked system call.</p>
+<h4 id="slow-system-calls">Slow system calls</h4>
+<p>The system calls are divided into two categories: the "slow" system calls and all the others. The slow system calls are those that can block forever:</p>
+<ul>
+<li>Reads that can block the caller forever if data isn’t present with certain file types (pipes, terminal devices, and network devices)</li>
+<li>Writes that can block the caller forever if the data can’t be accepted immediately by these same file types</li>
+<li>Opens on certain file types that block the caller until some condition occurs (such as a terminal device open waiting until an attached modem answers the phone)</li>
+<li>The <code>pause</code> function (which by definition puts the calling process to sleep until a signal is caught) and the <code>wait</code> function</li>
+<li>Certain <code>ioctl</code> operations</li>
+<li>Some of the interprocess communication functions</li>
+</ul>
+<p>The notable exception to these slow system calls is anything related to disk I/O. Although a read or a write of a disk file can block the caller temporarily (while the disk driver queues the request and then the request is executed), unless a hardware error occurs, the I/O operation always returns and unblocks the caller quickly.</p>
+<p>Historically, POSIX.1 semantics gave implementations a choice of how to deal with <code>read</code>s and <code>write</code>s that have processed partial amounts of data, implementations derived from System V fail the system call, whereas BSD-derived implementations return partial success. With the 2001 version of the POSIX.1 standard, the BSD-style semantics are required. [p328]</p>
+<p>The problem with interrupted system calls is that we now have to handle the error return explicitly. assuming a read operation and assuming that we want to restart the read even if it’s interrupted, the typical code sequence would be:</p>
+<div class="codehilite"><pre><span class="nl">again</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">BUFFSIZE</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span>
+            <span class="k">goto</span> <span class="n">again</span><span class="p">;</span> <span class="cm">/* just an interrupted system call */</span>
+        <span class="cm">/* handle other errors */</span>
+    <span class="p">}</span>
+</pre></div>
+
+
+<h4 id="automatic-restarts-of-interrupted-system-calls">Automatic restarts of interrupted system calls</h4>
+<p>Automatic restarting of certain interrupted system calls were introducted since 4.2BSD to prevent applications from having to handle interrupted system calls. The system calls that were automatically restarted are:</p>
+<ul>
+<li>Functions that are interrupted by a signal only if they are operating on a slow device:<ul>
+<li><code>ioctl</code></li>
+<li><code>read</code></li>
+<li><code>readv</code></li>
+<li><code>write</code></li>
+<li><code>writev</code></li>
+</ul>
+</li>
+<li>Functions that are always interrupted when a signal is caught.<ul>
+<li><code>wait</code></li>
+<li><code>waitpid</code></li>
+</ul>
+</li>
+</ul>
+<p>Some applications didn’t want the operation restarted if it was interrupted; 4.3BSD allowed the process to disable this feature on a per-signal basis.</p>
+<h5 id="difference-between-the-signal-and-sigaction-functions-on-restarts">Difference between the <code>signal</code> and <code>sigaction</code> functions on restarts</h5>
+<p>POSIX.1 requires an implementation to restart system calls only when the <code>SA_RESTART</code> flag is in effect for the interrupting signal. This flag is used with the <code>sigaction</code> function to allow applications to request that interrupted system calls be restarted.</p>
+<p>Historically, when using the <code>signal</code> function to establish a signal handler, implementations varied with respect to how interrupted system calls were handled. System V never restarted system calls by default. BSD, in contrast, restarted them if the calls were interrupted by signals. On FreeBSD 8.0, Linux 3.2.0, and Mac OS X 10.6.8, when signal handlers are installed with the <code>signal</code> function, interrupted system calls will be restarted. By using our own implementation of the <code>signal</code> function, we avoid having to deal with these differences. [p329]</p>
+<p>One reason 4.2BSD introduced the automatic restart feature is that sometimes we don’t know that the input or output device is a slow device. [p329]</p>
+<p>The figure below summarizes the signal functions and their semantics provided by the various implementations.</p>
+<p><a href="../figure_10.3.png" title="Figure 10.3 Features provided by various signal implementations"><img alt="Figure 10.3 Features provided by various signal implementations" src="../figure_10.3.png" /></a></p>
+<p>Later this chapter, we provide our own version of the <code>signal</code> function that automatically tries to restart interrupted system calls (other than for the <code>SIGALRM</code> signal), and <code>signal_intr</code>, that tries to never do the restart.</p>
+<h3 id="reentrant-functions">Reentrant Functions</h3>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
