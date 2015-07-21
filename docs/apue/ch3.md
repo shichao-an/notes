@@ -10,7 +10,7 @@ This chapter discusses unbuffered I/O, which are not part of ISO C but are part 
 
 ### `open` and `openat` Functions
 
-* [apue_open.h](https://gist.github.com/shichao-an/84b85f42bf03c30fa75b)
+<small>[apue_open.h](https://gist.github.com/shichao-an/84b85f42bf03c30fa75b)</small>
 
 ```c
 #include <fcntl.h>
@@ -57,7 +57,7 @@ Most modern file systems support a maximum of 255 characters for filenames.
 
 ### `creat` Function
 
-* [apue_creat.h](https://gist.github.com/shichao-an/e0ac0fe91b023280e33f)
+<small>[apue_creat.h](https://gist.github.com/shichao-an/e0ac0fe91b023280e33f)</small>
 
 ```c
 #include <fcntl.h>
@@ -81,7 +81,7 @@ open(path, O_RDWR | O_CREAT | O_TRUNC, mode);
 
 ### `close` Function
 
-* [apue_close.h](https://gist.github.com/shichao-an/84758a089b6cb82b7495)
+<small>[apue_close.h](https://gist.github.com/shichao-an/84758a089b6cb82b7495)</small>
 
 ```c
 #include <unistd.h>
@@ -98,7 +98,7 @@ When a process terminates, all of its open files are closed automatically by the
 
 Every open file has a "current file offset", normally a non-negative integer that measures the number of bytes from the beginning of the file.
 
-* [apue_lseek.h](https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6)
+<small>[apue_lseek.h](https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6)</small>
 
 ```c
 #include <unistd.h>
@@ -131,7 +131,7 @@ This technique (above code) can also be used to determine if a file is capable o
 
 ### `read` Function
 
-* [apue_read.h](https://gist.github.com/shichao-an/ed695671abeb99a2a4b4)
+<small>[apue_read.h](https://gist.github.com/shichao-an/ed695671abeb99a2a4b4)</small>
 
 ```c
 #include <unistd.h>
@@ -155,7 +155,7 @@ Several cases in which the number of bytes actually read is less than the amount
 
 ### `write` Function
 
-* [apue_write.h](https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f)
+<small>[apue_write.h](https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f)</small>
 
 ```c
 #include <unistd.h>
@@ -278,7 +278,7 @@ This works fine for a single process, but problems arise if multiple processes (
 
 The Single UNIX Specification includes two functions that allow applications to seek and perform I/O atomically:
 
-* [apue_pread.h](https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3)
+<small>[apue_pread.h](https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3)</small>
 
 ```c
 #include <unistd.h>
@@ -325,7 +325,7 @@ The problem occurs if the file is created by another process between the `open` 
 
 An existing file descriptor is duplicated by either of the following functions:
 
-* [apue_dup.h](https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67)
+<small>[apue_dup.h](https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67)</small>
 
 ```c
 #include <unistd.h>
@@ -392,7 +392,7 @@ Traditional implementations of the UNIX System have a buffer cache or page cache
 
 The kernel eventually writes all the delayed-write blocks to disk, normally when it needs to reuse the buffer for some other disk block. To ensure consistency of the file system on disk with the contents of the buffer cache, the `sync`, `fsync`, and `fdatasync` functions are provided.
 
-* [apue_fsync.h](https://gist.github.com/shichao-an/2b0c9e36de750eb9de05)
+<small>[apue_fsync.h](https://gist.github.com/shichao-an/2b0c9e36de750eb9de05)</small>
 
 ```c
 #include <unistd.h>
@@ -415,7 +415,7 @@ void sync(void);
 
 The `fcntl` function can change the properties of a file that is already open.
 
-* [apue_fcntl.h](https://gist.github.com/shichao-an/45ca16d52791e4ab773d)
+<small>[apue_fcntl.h](https://gist.github.com/shichao-an/45ca16d52791e4ab773d)</small>
 
 ```c
 #include <fcntl.h>
@@ -594,7 +594,7 @@ The [above program](#modifying-file-flags) operates on a descriptor (standard ou
 
 ### `ioctl` Function
 
-* [apue_ioctl.h](https://gist.github.com/shichao-an/26d278ca768f90e8c67a)
+<small>[apue_ioctl.h](https://gist.github.com/shichao-an/26d278ca768f90e8c67a)</small>
 
 ```c
 #include <unistd.h> /* System V */

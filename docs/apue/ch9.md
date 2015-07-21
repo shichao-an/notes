@@ -8,7 +8,6 @@ This chapter details process groups and the concept of session introduced by POS
 
 The concept of UNIX system signal mechanism in [Chapter 10](/apue/ch10/) is needed.
 
-
 ### Terminal Logins
 
 In early UNIX systems, the terminals (dumb terminals that are hard-wired connected to the host) were either local (directly connected) or remote (connected through a modem). These logins came through a terminal device driver in the kernel. [p285]
@@ -156,9 +155,17 @@ In addition to having a process ID, each process belongs to a **process group**.
 
 The function `getpgrp` returns the process group ID of the calling process. The `getpgid` function took a *pid* argument and returned the process group for that process.
 
-* [apue_getpgrp.h](https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a)
+<small>[apue_getpgrp.h](https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a)</small>
 
-<script src="https://gist.github.com/shichao-an/08bcc3cf9a23ca95c00a.js"></script>
+```c
+#include <unistd.h>
+
+pid_t getpgrp(void);
+/* Returns: process group ID of calling process */
+
+pid_t getpgid(pid_t pid);
+/* Returns: process group ID if OK, −1 on error */
+```
 
 For `getpgid`, if *pid* is 0, the process group ID of the calling process is returned. Thus,
 
@@ -182,9 +189,15 @@ The process group life time is the period of time that begins when the group is 
 
 A process can join an existing process group or creates a new process group by calling `setpgid`.
 
-* [apue_setpgid.h](https://gist.github.com/shichao-an/0b1832544be00d3a9490)
+<small>[apue_setpgid.h](https://gist.github.com/shichao-an/0b1832544be00d3a9490)</small>
 
-<script src="https://gist.github.com/shichao-an/0b1832544be00d3a9490.js"></script>
+```c
+#include <unistd.h>
+
+int setpgid(pid_t pid, pid_t pgid);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 The `setpgid` function sets the process group ID of the process whose process ID equals *pid* to *pgid*.
 
@@ -225,9 +238,15 @@ proc3 | proc4 | proc5
 
 A process establishes a new session by calling the `setsid` function.
 
-* [apue_setsid.h](https://gist.github.com/shichao-an/48edc52023515e0df704)
+<small>[apue_setsid.h](https://gist.github.com/shichao-an/48edc52023515e0df704)</small>
 
-<script src="https://gist.github.com/shichao-an/48edc52023515e0df704.js"></script>
+```c
+#include <unistd.h>
+
+pid_t setsid(void);
+
+/* Returns: process group ID if OK, −1 on error */
+```
 
 If the calling process is not a process group leader, this function creates a new session. Three things happen:
 
@@ -249,9 +268,15 @@ The Single UNIX Specification talks only about a "session leader"; there is no "
 
 The `getsid` function returns the process group ID of a process’s session leader.
 
-* [apue_getsid.h](https://gist.github.com/shichao-an/745eaee552865545e529)
+<small>[apue_getsid.h](https://gist.github.com/shichao-an/745eaee552865545e529)</small>
 
-<script src="https://gist.github.com/shichao-an/745eaee552865545e529.js"></script>
+```c
+#include <unistd.h>
+
+pid_t getsid(pid_t pid);
+
+/* Returns: session leader’s process group ID if OK, −1 on error */
+```
 
 If *pid* is 0, `getsid` returns the process group ID of the calling process’s session leader. For security reasons, some implementations may restrict the calling process from obtaining the process group ID of the session leader if *pid* doesn’t belong to the same session as the caller.
 
@@ -308,9 +333,17 @@ It decrypts the file salaries and pipes the output to the print spooler. Because
 
 We need a way to tell the kernel which process group is the foreground process group, so that the terminal device driver knows where to send the terminal input and the terminal-generated signals. ([Figure 9.7](figure_9.7.png))
 
-* [apue_tcgetpgrp.h](https://gist.github.com/shichao-an/93937e8a69a6f2971055)
+<small>[apue_tcgetpgrp.h](https://gist.github.com/shichao-an/93937e8a69a6f2971055)</small>
 
-<script src="https://gist.github.com/shichao-an/93937e8a69a6f2971055.js"></script>
+```c
+#include <unistd.h>
+
+pid_t tcgetpgrp(int fd);
+/* Returns: process group ID of foreground process group if OK, −1 on error */
+
+int tcsetpgrp(int fd, pid_t pgrpid);
+/* Returns: 0 if OK, −1 on error */
+```
 
 * The function `tcgetpgrp` returns the process group ID of the foreground process group associated with the terminal open on *fd*.
 * If the process has a controlling terminal, the process can call `tcsetpgrp` to set the foreground process group ID to *pgrpid*. The value of *pgrpid* must be the process group ID of a process group in the same session, and *fd* must refer to the controlling terminal of the session.
@@ -319,9 +352,15 @@ These two functions are normally called by job-control shells.
 
 The `tcgetsid` function allows an application to obtain the process group ID for the session leader given a file descriptor for the controlling TTY.
 
-* [apue_tcgetsid.h](https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84)
+<small>[apue_tcgetsid.h](https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84)</small>
 
-<script src="https://gist.github.com/shichao-an/16ba6f5516fc48ec7f84.js"></script>
+```c
+#include <termios.h>
+
+pid_t tcgetsid(int fd);
+
+/* Returns: session leader’s process group ID if OK, −1 on error */
+```
 
 Applications that need to manage controlling terminals can use `tcgetsid` to identify the session ID of the controlling terminal’s session leader, which is equivalent to the session leader’s process group ID.
 

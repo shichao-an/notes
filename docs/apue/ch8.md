@@ -15,7 +15,29 @@ There are some special processes, but the details differ from implementation to 
 
 <u>Each UNIX System implementation has its own set of kernel processes that provide operating system services.</u> For example, on some virtual memory implementations of the UNIX System, process ID 2 is the *pagedaemon*. This process is responsible for supporting the paging of the virtual memory system.
 
-<script src="https://gist.github.com/shichao-an/4afacfab973219fb4721.js"></script>
+<small>[apue_getpid.h](https://gist.github.com/shichao-an/4afacfab973219fb4721)</small>
+
+```c
+include <unistd.h>
+
+pid_t getpid(void);
+/* Returns: process ID of calling process */
+
+pid_t getppid(void);
+/* Returns: parent process ID of calling process */
+
+uid_t getuid(void);
+/* Returns: real user ID of calling process */
+
+uid_t geteuid(void);
+/* Returns: effective user ID of calling process */
+
+gid_t getgid(void);
+/* Returns: real group ID of calling process */
+
+gid_t getegid(void);
+/* Returns: effective group ID of calling process */
+```
 
 None of these functions has an error return.
 
@@ -23,7 +45,15 @@ None of these functions has an error return.
 
 An existing process can create a new one by calling the `fork` function.
 
-<script src="https://gist.github.com/shichao-an/1d1bfd83197d3c929164.js"></script>
+<small>[apue_fork.h](https://gist.github.com/shichao-an/1d1bfd83197d3c929164)</small>
+
+```c
+#include <unistd.h>
+
+pid_t fork(void);
+
+/* Returns: 0 in child, process ID of child in parent, −1 on error */
+```
 
 * The new process created by `fork` is called the **child process**. This function is called once but returns twice. The only difference in the returns is that the return value in the child is 0, whereas the return value in the parent is the process ID of the new child. [p299]
     * `fork` returns child's process ID in parent: a process can have more than one child, and <u>there is no function that allows a process to obtain the process IDs of its children</u>
@@ -162,7 +192,6 @@ This optimization is more efficient on some implementations of the UNIX System, 
 
 Another difference between the two functions is that `vfork` guarantees that the child runs first, until the child calls `exec` or `exit`. When the child calls either of these functions, the parent resumes. (This can lead to deadlock if the child depends on further actions of the parent before calling either of these two functions.)
 
-
 Example ([vfork1.c](https://github.com/shichao-an/apue.3e/blob/master/proc/vfork1.c))
 
 The program is a modified version of the program from [fork1.c](https://github.com/shichao-an/apue.3e/blob/master/proc/fork1.c). We’ve replaced the call to `fork` with `vfork` and removed the write to standard output. Also, we don’t need to have the parent call `sleep`, as we’re guaranteed that it is put to sleep by the kernel until the child calls either `exec` or `exit`.
@@ -284,7 +313,16 @@ A process that calls `wait` or `waitpid` can:
 
 If the process is calling `wait` because it received the `SIGCHLD` signal, we expect wait to return immediately. But if we call it at any random point in time, it can block.
 
-<script src="https://gist.github.com/shichao-an/8eef8437e6dd5a045c18.js"></script>
+<small>[apue_wait.h](https://gist.github.com/shichao-an/8eef8437e6dd5a045c18)</small>
+
+```c
+#include <sys/wait.h>
+
+pid_t wait(int *statloc);
+pid_t waitpid(pid_t pid, int *statloc, int options);
+
+/* Both return: process ID if OK, 0 (see later), or −1 on error */
+```
 
 The differences between these two functions are:
 
@@ -489,9 +527,15 @@ We call `sleep` in the second child to ensure that the first child terminates be
 
 The Single UNIX Specification includes an additional `waitid` function to retrieve the exit status of a process.
 
-* [apue_waitid.h](https://gist.github.com/shichao-an/30873cd97704d1465d3f)
+<small>[apue_waitid.h](https://gist.github.com/shichao-an/30873cd97704d1465d3f)</small>
 
-<script src="https://gist.github.com/shichao-an/30873cd97704d1465d3f.js"></script>
+```c
+#include <sys/wait.h>
+
+int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 Like `waitpid`, `waitid` allows a process to specify which children to wait for. Instead of encoding this information in a single argument combined with the process ID or process group ID, two separate arguments are used. The `id` parameter is interpreted based on the value of *idtype*.
 
@@ -521,9 +565,19 @@ Like `waitpid`, `waitid` allows a process to specify which children to wait for.
 
 Most UNIX system implementations provide two additional functions: `wait3` and `wait4`, with an additional argument *rusage* that allows the kernel to return a summary of the resources used by the terminated process and all its child processes.
 
-* [apue_wait3.h](https://gist.github.com/shichao-an/5cb7ed8df3666337a292)
+<small>[apue_wait3.h](https://gist.github.com/shichao-an/5cb7ed8df3666337a292)</small>
 
-<script src="https://gist.github.com/shichao-an/5cb7ed8df3666337a292.js"></script>
+```c
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+
+pid_t wait3(int *statloc, int options, struct rusage *rusage);
+pid_t wait4(pid_t pid, int *statloc, int options, struct rusage *rusage);
+
+/* Both return: process ID if OK, 0, or −1 on error */
+```
 
 The resource information includes such statistics as the amount of user CPU time, amount of system CPU time, number of page faults, number of signals received, and the like. Refer to the `getrusage(2)` manual page for additional details.
 
@@ -684,9 +738,22 @@ We’ll use these primitives in later sections to build additional functions, su
 
 There are seven different `exec` functions:
 
-* [apue_execl.h](https://gist.github.com/shichao-an/5e094ad41cdca4af53da)
+<small>[apue_execl.h](https://gist.github.com/shichao-an/5e094ad41cdca4af53da)</small>
 
-<script src="https://gist.github.com/shichao-an/5e094ad41cdca4af53da.js"></script>
+```c
+#include <unistd.h>
+
+int execl(const char *pathname, const char *arg0, ... /* (char *)0 */ );
+int execv(const char *pathname, char *const argv[]);
+int execle(const char *pathname, const char *arg0, ...
+           /* (char *)0, char *const envp[] */ );
+int execve(const char *pathname, char *const argv[], char *const envp[]);
+int execlp(const char *filename, const char *arg0, ... /* (char *)0 */ );
+int execvp(const char *filename, char *const argv[]);
+int fexecve(int fd, char *const argv[], char *const envp[]);
+
+/* All seven return: −1 on error, no return on success */
+```
 
 The first four take a pathname argument, the next two take a filename argument, and the last one takes a file descriptor argument.
 
@@ -881,9 +948,16 @@ When designing applications, we try to use the **least-privilege** model, which 
 
 We can set the real user ID and effective user ID with the `setuid` function and set the real group ID and the effective group ID with the `setgid` function.
 
-* [apue_setuid.h](https://gist.github.com/shichao-an/1df2f6a9e252b679bf37)
+<small>[apue_setuid.h](https://gist.github.com/shichao-an/1df2f6a9e252b679bf37)</small>
 
-<script src="https://gist.github.com/shichao-an/1df2f6a9e252b679bf37.js"></script>
+```c
+#include <unistd.h>
+
+int setuid(uid_t uid);
+int setgid(gid_t gid);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 The rules for who can change the IDs, considering only the user ID now (Everything we describe for the user ID also applies to the group ID.)
 
@@ -913,9 +987,16 @@ We can obtain only the current value of the real user ID and the effective user 
 
 Historically, BSD supported the swapping of the real user ID and the effective user ID with the setreuid function.
 
-* [apue_setreuid.h](https://gist.github.com/shichao-an/2228040fa94d5bf40fb9)
+<small>[apue_setreuid.h](https://gist.github.com/shichao-an/2228040fa94d5bf40fb9)</small>
 
-<script src="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9.js"></script>
+```c
+#include <unistd.h>
+
+int setreuid(uid_t ruid, uid_t euid);
+int setregid(gid_t rgid, gid_t egid);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 * A value of −1 for any of the arguments indicates that the corresponding ID should remain unchanged.
 * An unprivileged user can always swap between the real user ID and the effective user ID. This allows a set-user-ID program to swap to the user’s normal permissions and swap back again later for set-user-ID operations.
@@ -927,9 +1008,16 @@ Historically, BSD supported the swapping of the real user ID and the effective u
 
 POSIX.1 includes `seteuid` and `setegid` that only change the effective user ID or effective group ID.
 
-* [apue_seteuid.h](https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba)
+<small>[apue_seteuid.h](https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba)</small>
 
-<script src="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba.js"></script>
+```c
+#include <unistd.h>
+
+int seteuid(uid_t uid);
+int setegid(gid_t gid);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 * An unprivileged user can set its effective user ID to either its real user ID or its saved set-user-ID.
 * <u>For a privileged user, only the effective user ID is set to *uid*. This differs from `setuid` function, which changes all three user IDs.</u>
@@ -991,7 +1079,6 @@ The space between the exclamation point and the pathname is optional. The most c
 * *pathname* is normally an absolute pathname, since no special operations are performed on it (`PATH` is not used)
 * The recognition of interpreter files is done within the kernel as part of processing the `exec` system call
 * The actual file that gets executed by the kernel is not the interpreter file, but rather the file specified by the *pathname* on the first line of the interpreter file.
-
 
 ##### Interpreter file vs. Interpreter
 
@@ -1123,9 +1210,13 @@ Third, interpreter scripts let us write shell scripts using shells other than `/
 
 It is convenient to execute a command string from within a program.
 
-* [apue_system.h](https://gist.github.com/shichao-an/37133deff99ae0661101)
+<small>[apue_system.h](https://gist.github.com/shichao-an/37133deff99ae0661101)</small>
 
-<script src="https://gist.github.com/shichao-an/37133deff99ae0661101.js"></script>
+```c
+#include <stdlib.h>
+
+int system(const char *cmdstring);
+```
 
 Arguments:
 
@@ -1247,9 +1338,15 @@ The accounting records correspond to processes, not programs. A new record is in
 
 Any process can find out its real and effective user ID and group ID. `getpwuid(getuid())` can be used to find out the login name of the user who’s running the program. However, a single user can have multiple login names, that is, a person might have multiple entries in the password file with the same user ID to have a different login shell for each entry. The system normally keeps track of the name we log in under the `utmp` file (see [Section 6.8](/apue/ch6/#login-accounting)), and the `getlogin` function provides a way to fetch that login name.
 
-* [apue_getlogin.h](https://gist.github.com/shichao-an/c77a9e8660a3405a983c)
+<small>[apue_getlogin.h](https://gist.github.com/shichao-an/c77a9e8660a3405a983c)</small>
 
-<script src="https://gist.github.com/shichao-an/c77a9e8660a3405a983c.js"></script>
+```c
+#include <unistd.h>
+
+char *getlogin(void);
+
+/* Returns: pointer to string giving login name if OK, NULL on error */
+```
 
 This function can fail if the process is not attached to a terminal that a user logged in to. We normally call these processes **daemons**.
 
@@ -1269,9 +1366,15 @@ In the Single UNIX Specification, nice values range from 0 to `(2*NZERO)−1`, a
 
 A process can retrieve and change its nice value with the `nice` function. With this function, a process can affect only its own nice value; it can’t affect the nice value of any other process.
 
-* [apue_nice.h](https://gist.github.com/shichao-an/3c3be1b450591dc9488f)
+<small>[apue_nice.h](https://gist.github.com/shichao-an/3c3be1b450591dc9488f)</small>
 
-<script src="https://gist.github.com/shichao-an/3c3be1b450591dc9488f.js"></script>
+```c
+#include <unistd.h>
+
+int nice(int incr);
+
+/* Returns: new nice value − NZERO if OK, −1 on error */
+```
 
 * The *incr* argument is added to the nice value of the calling process.
     * If *incr* is too large or too small, the system silently reduces it to the maximum or minimum legal value.
@@ -1279,9 +1382,15 @@ A process can retrieve and change its nice value with the `nice` function. With 
 
 The `getpriority` function can be used to get the nice value for a process and for a group of related processes.
 
-* [apue_getpriority.h](https://gist.github.com/shichao-an/fade39d67294333ef22b)
+<small>[apue_getpriority.h](https://gist.github.com/shichao-an/fade39d67294333ef22b)</small>
 
-<script src="https://gist.github.com/shichao-an/fade39d67294333ef22b.js"></script>
+```c
+#include <sys/resource.h>
+
+int getpriority(int which, id_t who);
+
+/* Returns: nice value between −NZERO and NZERO−1 if OK, −1 on error */
+```
 
 * The *which* argument can take on one of three following values; it controls how the *who* argument is interpreted:
     * `PRIO_PROCESS`: a process
@@ -1294,9 +1403,15 @@ When the which argument applies to more than one process, the highest priority (
 
 The `setpriority` function can be used to set the priority of a process, a process group, or all the processes belonging to a particular user ID.
 
-* [apue_setpriority.h](https://gist.github.com/shichao-an/3b435940e3b7c43df4d6)
+<small>[apue_setpriority.h](https://gist.github.com/shichao-an/3b435940e3b7c43df4d6)</small>
 
-<script src="https://gist.github.com/shichao-an/3b435940e3b7c43df4d6.js"></script>
+```c
+#include <sys/resource.h>
+
+int setpriority(int which, id_t who, int value);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 The *which* and *who* arguments are the same as in the *getpriority* function. The *value* is added to `NZERO` and this becomes the new nice value.
 
@@ -1313,9 +1428,15 @@ Three times can be measured:
 
 Any process can call the `times` function to obtain these values for itself and any terminated children.
 
-* [apue_times.h](https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02)
+<small>[apue_times.h](https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02)</small>
 
-<script src="https://gist.github.com/shichao-an/a663bc3fb2c0274f9e02.js"></script>
+```c
+#include <sys/times.h>
+
+clock_t times(struct tms *buf);
+
+/* Returns: elapsed wall clock time in clock ticks if OK, −1 on error */
+```
 
 This function fills in the `tms` structure pointed to by *buf*:
 

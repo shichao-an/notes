@@ -24,7 +24,7 @@ Most implementations default to the following types of buffering:
 * Standard error is always unbuffered.
 * All other streams are line buffered if they refer to a terminal device; otherwise, they are fully buffered.
 
-* [apue_setbuf.h](https://gist.github.com/shichao-an/70e28ba25f1b7276e834)
+<small>[apue_setbuf.h](https://gist.github.com/shichao-an/70e28ba25f1b7276e834)</small>
 
 ```c
 #include <stdio.h>
@@ -44,7 +44,7 @@ The `fflush` function causes any unwritten data for the stream to be passed to t
 
 ### Opening a Stream
 
-* [apue_fopen.h](https://gist.github.com/shichao-an/3fea32272cd9e1b574c6)
+<small>[apue_fopen.h](https://gist.github.com/shichao-an/3fea32272cd9e1b574c6)</small>
 
 ```c
 #include <stdio.h>
@@ -77,7 +77,7 @@ Character `b` allows the standard I/O system to differentiate between a text fil
 * **Append**: each write will take place at the then current end of file. If multiple processes open the same file with the standard I/O append mode, the data from each process will be correctly written to the file
 * **Read and write** (`+` sign in type): Output cannot be directly followed by input without an intervening `fflush`, `fseek`, `fsetpos`, or `rewind`. Input cannot be directly followed by output without an intervening `fseek`, `fsetpos`, or `rewind`, or an input operation that encounters an end of file.
 
-* [apue_fclose.h](https://gist.github.com/shichao-an/3c8458270dc1f08325f4)
+<small>[apue_fclose.h](https://gist.github.com/shichao-an/3c8458270dc1f08325f4)</small>
 
 ```c
 #include <stdio.h>
@@ -104,7 +104,7 @@ Unformatted I/O:
 
 #### Input Functions
 
-* [apue_getc.h](https://gist.github.com/shichao-an/afcad88f5484e55327c4)
+<small>[apue_getc.h](https://gist.github.com/shichao-an/afcad88f5484e55327c4)</small>
 
 ```c
 #include <stdio.h>
@@ -122,7 +122,7 @@ int getchar(void);
 
 These functions return the same value whether an error occurs or the end of file is reached. To distinguish between the two, we must call either `ferror` or `feof`:
 
-* [apue_ferror.h](https://gist.github.com/shichao-an/fe81c6d98b62e487aaf3)
+<small>[apue_ferror.h](https://gist.github.com/shichao-an/fe81c6d98b62e487aaf3)</small>
 
 ```c
 #include <stdio.h>
@@ -146,7 +146,7 @@ Both flags are cleared by calling `clearerr`.
 
 After reading from a stream, we can push back characters by calling `ungetc`.
 
-* [apue_ungetc.h](https://gist.github.com/shichao-an/1de26637c53e6de17b25)
+<small>[apue_ungetc.h](https://gist.github.com/shichao-an/1de26637c53e6de17b25)</small>
 
 ```c
 #include <stdio.h>
@@ -163,7 +163,7 @@ int ungetc(int c, FILE *fp);
 
 #### Output Functions
 
-* [apue_putc.h](https://gist.github.com/shichao-an/3aaa0731d3fbbe68da0c)
+<small>[apue_putc.h](https://gist.github.com/shichao-an/3aaa0731d3fbbe68da0c)</small>
 
 ```c
 #include <stdio.h>
@@ -180,7 +180,7 @@ int putchar(int c);
 
 ### Line-at-a-Time I/O
 
-* [apue_fgets.h](https://gist.github.com/shichao-an/2c9049288e8634b92734)
+<small>[apue_fgets.h](https://gist.github.com/shichao-an/2c9049288e8634b92734)</small>
 
 ```c
 #include <stdio.h>
@@ -195,7 +195,7 @@ char *gets(char *buf);
 * `fgets`: reads *n - 1* characters (including the newline) or partial line if longer than *n - 1* into the buffer, then the buffer is (always) null terminated.
 * `gets`: should never be used. Without specifying buffer size, this may cause buffer to overflow if the line is longer than the buffer, writing over whatever happens to follow the buffer in memory. `gets` is marked as an obsolescent interface in SUSv4 and has been omitted from the latest version of the ISO C standard
 
-* [apue_fputs.h](https://gist.github.com/shichao-an/5a2fdd9294a2e4c37aad)
+<small>[apue_fputs.h](https://gist.github.com/shichao-an/5a2fdd9294a2e4c37aad)</small>
 
 ```c
 #include <stdio.h>
@@ -231,7 +231,7 @@ If doing binary I/O, we often want to read or write an entire structure at a tim
 * `fputs`: stops writing when it hits a null byte
 * `fgets`: won't work correctly on input if any data bytes are null or newlines
 
-* [apue_fread.h](https://gist.github.com/shichao-an/a90609694cb97c765ca2)
+<small>[apue_fread.h](https://gist.github.com/shichao-an/a90609694cb97c765ca2)</small>
 
 ```c
 #include <stdio.h>
@@ -279,7 +279,7 @@ These two functions won't work on different systems (sometimes even on the same 
 
 ### Positioning a Stream
 
-* [apue_ftell.h](https://gist.github.com/shichao-an/18d258b1815658a84cf7)
+<small>[apue_ftell.h](https://gist.github.com/shichao-an/18d258b1815658a84cf7)</small>
 
 ```c
 #include <stdio.h>
@@ -301,9 +301,9 @@ void rewind(FILE *fp);
     * Text file: *whence* has to be `SEEK_SET`; *offset* can only be 0 (rewind the file to its beginning) or a value that was returned by `ftell` for that file.
 * `rewind`: set the stream to the beginning of the file
 
-<br/>
 
-* [apue_ftello.h](https://gist.github.com/shichao-an/530b106fa164cb197077)
+
+<small>[apue_ftello.h](https://gist.github.com/shichao-an/530b106fa164cb197077)</small>
 
 ```c
 #include <stdio.h>
@@ -317,7 +317,7 @@ int fseeko(FILE *fp, off_t offset, int whence);
 /* Returns: 0 if OK, −1 on error */
 ```
 
-* [apue_fgetpos.h](https://gist.github.com/shichao-an/e37050a7db81810e78cc)
+<small>[apue_fgetpos.h](https://gist.github.com/shichao-an/e37050a7db81810e78cc)</small>
 
 ```c
 #include <stdio.h>
@@ -332,7 +332,7 @@ int fsetpos(FILE *fp, const fpos_t *pos);
 
 #### Formatted Output
 
-* [apue_printf.h](https://gist.github.com/shichao-an/558af328d4915c8d77b8)
+<small>[apue_printf.h](https://gist.github.com/shichao-an/558af328d4915c8d77b8)</small>
 
 ```c
 #include <stdio.h>
@@ -411,7 +411,7 @@ With the normal conversion specification, conversions are applied to the argumen
 
 The following five variants of the printf family are similar to the previous five, but the variable argument list (`...`) is replaced with `arg`.
 
-* [apue_vprintf.h](https://gist.github.com/shichao-an/dbc3fe7bcb50f823951b)
+<small>[apue_vprintf.h](https://gist.github.com/shichao-an/dbc3fe7bcb50f823951b)</small>
 
 ```c
 #include <stdarg.h>
@@ -437,7 +437,7 @@ int vsnprintf(char *restrict buf, size_t n,
 
 #### Formatted Output
 
-* [apue_scanf.h](https://gist.github.com/shichao-an/ee777644c2ea82bf38c0)
+<small>[apue_scanf.h](https://gist.github.com/shichao-an/ee777644c2ea82bf38c0)</small>
 
 ```c
 #include <stdio.h>
@@ -483,7 +483,7 @@ Conversion type | Description
 
 ### Implementation Details
 
-* [apue_fileno.h](https://gist.github.com/shichao-an/938ed0cb122d71d66cfc)
+<small>[apue_fileno.h](https://gist.github.com/shichao-an/938ed0cb122d71d66cfc)</small>
 
 ```c
 #include <stdio.h>
@@ -523,7 +523,7 @@ one line to standard error
 
 ### Temporary Files
 
-* [apue_tmpnam.h](https://gist.github.com/shichao-an/5679ebc6a3221a63c196)
+<small>[apue_tmpnam.h](https://gist.github.com/shichao-an/5679ebc6a3221a63c196)</small>
 
 ```c
 #include <stdio.h>
@@ -539,9 +539,9 @@ FILE *tmpfile(void);
     * When *ptr* is not `NULL`: it is assumed that it points to an array of at least `L_tmpnam` characters. The generated pathname is stored in this array, and *ptr* is returned as the value of the function.
 * `tmpfile`: creates a temporary binary file (type `wb+`) that is automatically removed when it is closed or on program termination.
 
-<br/>
 
-* [apue_mkdtemp.h](https://gist.github.com/shichao-an/f2065b6923b100974256)
+
+<small>[apue_mkdtemp.h](https://gist.github.com/shichao-an/f2065b6923b100974256)</small>
 
 ```c
 #include <stdlib.h>
@@ -571,7 +571,7 @@ Example:
 
 **Memory streams** are standard I/O streams for which there are no underlying files, although they are still accessed with `FILE` pointers. All I/O is done by transferring bytes to and from buffers in main memory.
 
-* [apue_fmemopen.h](https://gist.github.com/shichao-an/1e2ecfc1323bdae6ff58)
+<small>[apue_fmemopen.h](https://gist.github.com/shichao-an/1e2ecfc1323bdae6ff58)</small>
 
 ```c
 #include <stdio.h>
