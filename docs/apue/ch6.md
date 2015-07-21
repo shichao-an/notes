@@ -11,7 +11,7 @@ The UNIX System's password file, called the user database by POSIX.1, contains t
 Historically, the password file has been stored in `/etc/passwd` and has been an ASCII file.
 
 * `root` has a user ID of 0 (superuser)
-* The encrypted password field contains a single character as a placeholder (`x`) 
+* The encrypted password field contains a single character as a placeholder (`x`)
 * Some fields can be empty
 * The shell field contains the user's login shell. The default value for an empty shell field is usually `/bin/sh`. Other executable that prevents a user from loggin in to a system:
     * `/dev/null`
@@ -23,14 +23,34 @@ Historically, the password file has been stored in `/etc/passwd` and has been an
 
 Some systems provide the `vipw` command to allow administrators to edit the password file.
 
-<script src="https://gist.github.com/shichao-an/00b608f959de8dad0b1b.js"></script>
+* [apue_getpwuid.h](https://gist.github.com/shichao-an/00b608f959de8dad0b1b)
+
+```c
+#include <pwd.h>
+
+struct passwd *getpwuid(uid_t uid);
+struct passwd *getpwnam(const char *name);
+
+/* Both return: pointer if OK, NULL on error */
+```
 
 * `getpwuid`: used by the `ls(1)` program to map the numerical user ID contained in an i-node into a user's login name.
 * `getpwnam`: used by the `login(1)` program when we enter our login name
 
 Both functions return a pointer to a passwd structure that the functions fill in. <u>This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.</u>
 
-<script src="https://gist.github.com/shichao-an/ffbbc20702760d6a4fab.js"></script>
+* [apue_getpwent.h](https://gist.github.com/shichao-an/ffbbc20702760d6a4fab)
+
+```c
+#include <pwd.h>
+
+struct passwd *getpwent(void);
+
+/* Returns: pointer if OK, NULL on error or end of file */
+
+void setpwent(void);
+void endpwent(void);
+```
 
 * `getpwent`: returns the next entry (a pointer to a structure that it has filled in, this structure is overwritten each time we call this function) in the password file.
 * `setpwent`: rewinds files
@@ -50,7 +70,20 @@ Systems store the encrypted password in another file, often called the **shadow 
 
 The shadow password file should not be readable by the world. Only a few programs need to access encrypted passwords, e.g. `login(1)` and `passwd(1)`, and these programs are often set-user-ID root. With shadow passwords, the regular password file, `/etc/passwd`, can be left readable by the world.
 
-<script src="https://gist.github.com/shichao-an/bad119e8e6ed442e25bf.js"></script>
+* [apue_getspnam.h](https://gist.github.com/shichao-an/bad119e8e6ed442e25bf)
+
+```c
+
+#include <shadow.h>
+
+struct spwd *getspnam(const char *name);
+struct spwd *getspent(void);
+
+/* Both return: pointer if OK, NULL on error */
+
+void setspent(void);
+void endspent(void);
+```
 
 ### Group File
 
@@ -60,11 +93,31 @@ The UNIX System’s group file, called the group database by POSIX.1, contains t
 
 The field `gr_mem` is an array of pointers to the user names that belong to this group. This array is terminated by a null pointer.
 
-<script src="https://gist.github.com/shichao-an/c280f5fa5d15b006e8af.js"></script>
+* [apue_getgrgid.h](https://gist.github.com/shichao-an/c280f5fa5d15b006e8af)
+
+```c
+#include <grp.h>
+
+struct group *getgrgid(gid_t gid);
+struct group *getgrnam(const char *name);
+
+/* Both return: pointer if OK, NULL on error */
+```
 
 Like the password file functions, both of these functions normally return pointers to a static variable, which is overwritten on each call.
 
-<script src="https://gist.github.com/shichao-an/98d14c0850ac1f357993.js"></script>
+* [apue_getgrent.h](https://gist.github.com/shichao-an/98d14c0850ac1f357993)
+
+```c
+#include <grp.h>
+
+struct group *getgrent(void);
+
+/* Returns: pointer if OK, NULL on error or end of file */
+
+void setgrent(void);
+void endgrent(void);
+```
 
 * `getgrent`: reads the next entry from the group file, opening the file first, if it’s not already open
 
@@ -76,7 +129,27 @@ With 4.2BSD, the concept of **supplementary group IDs** was introduced. The file
 
 The constant `NGROUPS_MAX` specifies the number of supplementary group IDs.
 
-<script src="https://gist.github.com/shichao-an/72cd85f9279a4501249c.js"></script>
+* [apue_getgroups.h](https://gist.github.com/shichao-an/72cd85f9279a4501249c)
+
+```c
+#include <unistd.h>
+
+int getgroups(int gidsetsize, gid_t grouplist[]);
+
+/* Returns: number of supplementary group IDs if OK, −1 on error */
+
+#include <grp.h> /* on Linux */
+#include <unistd.h> /* on FreeBSD, Mac OS X, and Solaris */
+
+int setgroups(int ngroups, const gid_t grouplist[]);
+
+#include <grp.h> /* on Linux and Solaris */
+#include <unistd.h> /* on FreeBSD and Mac OS X */
+
+int initgroups(const char *username, gid_t basegid);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 * `getgroups`
     * *gidsetsize* > 0: the function fills in the array up to *gidsetsize* supplementary group IDs
@@ -138,7 +211,15 @@ The `who(1)` program read the `utmp` file and printed its contents in a readable
 
 ### System Identification
 
-<script src="https://gist.github.com/shichao-an/7477d4a7e401fc628fe9.js"></script>
+* [apue_uname.h](https://gist.github.com/shichao-an/7477d4a7e401fc628fe9)
+
+```c
+#include <sys/utsname.h>
+
+int uname(struct utsname *name);
+
+/* Returns: non-negative value if OK, −1 on error */
+```
 
 ```c
 struct utsname {
@@ -150,7 +231,15 @@ struct utsname {
 };
 ```
 
-<script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script>
+* [apue_gethostname.h](https://gist.github.com/shichao-an/bd385512d7844d84cf2b)
+
+```c
+#include <unistd.h>
+
+int gethostname(char *name, int namelen);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 `gethostname` (now defined as part of POSIX.1) specifies that the maximum host name length is `HOST_NAME_MAX`.
 
@@ -173,11 +262,19 @@ There is also a `hostname(1)` command that can fetch or set the host name. (The 
 
 The `time` function returns the current time and date.
 
-<script src="https://gist.github.com/shichao-an/2b5d80841cbdf01791cd.js"></script>
+* [apue_time.h](https://gist.github.com/shichao-an/2b5d80841cbdf01791cd)
+
+```c
+#include <time.h>
+
+time_t time(time_t *calptr);
+
+/* Returns: value of time if OK, −1 on error */
+```
 
 The time value is always returned as the value of the function. If the argument is non-null, the time value is also stored at the location pointed to by *calptr*.
 
-The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the `clockid_t` type. 
+The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the `clockid_t` type.
 
 Identifier | Option | Description
 ---------- | ------ | -----------
@@ -186,7 +283,23 @@ Identifier | Option | Description
 `CLOCK_PROCESS_CPUTIME_ID` | `_POSIX_CPUTIME` | CPU time for calling process
 `CLOCK_THREAD_CPUTIME_ID` | `_POSIX_THREAD_CPUTIME` | CPU time for calling thread
 
-<script src="https://gist.github.com/shichao-an/83e13fecc886c9653976.js"></script>
+* [apue_clock_gettime.h](https://gist.github.com/shichao-an/83e13fecc886c9653976)
+
+```c
+#include <sys/time.h>
+
+int clock_gettime(clockid_t clock_id, struct timespec *tsp);
+/* Returns: 0 if OK, −1 on error */
+
+int clock_getres(clockid_t clock_id, struct timespec *tsp);
+/* Returns: 0 if OK, −1 on error */
+
+int clock_settime(clockid_t clock_id, const struct timespec *tsp);
+/* Returns: 0 if OK, −1 on error */
+
+int gettimeofday(struct timeval *restrict tp, void *restrict tzp);
+/* Returns: 0 always */
+```
 
 * `clock_gettime`: gets the time of the specified clock. The time is returned in a [`timespec`](/apue/ch4/#timespec-structure) structure
 * `clock_getres`: determines the resolution of a given system clock. It initializes the `timespec` structure pointed to by the *tsp*
@@ -215,7 +328,16 @@ struct tm { /* a broken-down time */
 
 The reason that the seconds can be greater than 59 is to allow for a [leap second](http://en.wikipedia.org/wiki/Leap_second).
 
-<script src="https://gist.github.com/shichao-an/6be4fa71d74422d28709.js"></script>
+* [apue_gmtime.h](https://gist.github.com/shichao-an/6be4fa71d74422d28709)
+
+```c
+#include <time.h>
+
+struct tm *gmtime(const time_t *calptr);
+struct tm *localtime(const time_t *calptr);
+
+/* Both return: pointer to broken-down time, NULL on error */
+```
 
 * `gmtime`: converts the calendar time to UTC time (broken time)
 * `localtime`: converts the calendar time to local time (broken time)

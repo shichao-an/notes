@@ -192,8 +192,6 @@ $ du -s core
 
 ### File Truncation
 
-<script src="https://gist.github.com/shichao-an/df5f6cc1cd7871670b11.js"></script>
-
 * [apue_truncate.h](https://gist.github.com/shichao-an/df5f6cc1cd7871670b11)
 
 ```c

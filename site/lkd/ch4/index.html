@@ -292,6 +292,11 @@
         <li class="main "><a href="#linuxs-process-scheduler">Linux’s Process Scheduler</a></li>
         
     
+        <li class="main "><a href="#policy">Policy</a></li>
+        
+            <li><a href="#io-bound-versus-processor-bound-processes">I/O-Bound Versus Processor-Bound Processes</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -340,6 +345,36 @@ when a process is to cease running and a new process is to begin running.</p>
 <p>However, the O(1) scheduler had several pathological failures related to scheduling latency-sensitive applications (interactive processes). Thus, although the O(1) scheduler was ideal for large server workloads, which lack interactive processes, it performed below par on desktop systems, where interactive applications are the <em>raison d’être</em>.</p>
 <p>Beginning in the 2.6 kernel series, developers introduced new process schedulers aimed at improving the interactive performance of the O(1) scheduler. The most notable of these was the <strong>Rotating Staircase Deadline</strong> scheduler, which introduced the concept of <strong>fair scheduling</strong>, borrowed from queuing theory, to Linux’s process scheduler. This concept was the inspiration for the O(1) scheduler’s eventual replacement in kernel version 2.6.23, the <strong>Completely Fair Scheduler</strong> (CFS).</p>
 <p>This chapter discusses the fundamentals of scheduler design and how they apply to the Completely Fair Scheduler and its goals, design, implementation, algorithms, and related system calls. We also discuss the O(1) scheduler because its implementation is a more "classic" Unix process scheduler model.</p>
+<h3 id="policy">Policy</h3>
+<p>Policy is the behavior of the scheduler that determines what runs when.</p>
+<h4 id="io-bound-versus-processor-bound-processes">I/O-Bound Versus Processor-Bound Processes</h4>
+<p>Processes can be classified as either <strong>I/O-bound</strong> or <strong>processor-bound</strong>.</p>
+<ul>
+<li>An <strong>I/O-bound process</strong> spends much of its time submitting and waiting on I/O requests. Such a process is runnable for only short durations, because it eventually blocks waiting on more I/O.<ul>
+<li>"I/O" means any type of blockable resource, such as keyboard input or network I/O, and not just disk I/O. Most graphical user interface (GUI) applications are I/O-bound, even if they never read from or write to the disk, because they spend most of their time waiting on user interaction via the keyboard and mouse.</li>
+</ul>
+</li>
+<li><strong>Processor-bound processes</strong> spend much of their time executing code. Thet tend to run until they are preempted because they do not block on I/O requests very often. System response does not dictate that the scheduler run them often. A scheduler policy for processor-bound processes tends to run such processes less frequently but for longer durations.<ul>
+<li>Examples of processor-bound processes include: a program executing an infinite loop, <em>ssh-keygen</em>, <em>MATLAB</em>.</li>
+</ul>
+</li>
+</ul>
+<p>These classifications are not mutually exclusive. Processes can exhibit both behaviors simultaneously:</p>
+<ul>
+<li>The X Window server is both processor and I/O intense.</li>
+<li>A word processor can be I/O-bound but dive into periods of intense processor action.</li>
+</ul>
+<p>The scheduling policy in a system must attempt to satisfy two conflicting goals:</p>
+<ul>
+<li>Fast process response time (low latency)</li>
+<li>Maximal system utilization (high throughput)</li>
+</ul>
+<h5 id="favoring-io-bound-over-processor-bound">Favoring I/O-bound over processor-bound</h5>
+<p>Schedulers often employ complex algorithms to determine the most worthwhile process to run while not compromising fairness to other processes with lower priority.</p>
+<ul>
+<li>The scheduler policy in Unix systems tends to explicitly favor I/O-bound processes, thus providing good process response time.</li>
+<li>Linux, aiming to provide good interactive response and desktop performance, optimizes for process response (low latency), thus favoring I/O-bound processes over processor-bound processes. This is done in a creative manner that does not neglect processor-bound processes.</li>
+</ul>
             </div>
         </div>
 

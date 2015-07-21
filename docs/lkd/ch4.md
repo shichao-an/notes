@@ -54,3 +54,34 @@ However, the O(1) scheduler had several pathological failures related to schedul
 Beginning in the 2.6 kernel series, developers introduced new process schedulers aimed at improving the interactive performance of the O(1) scheduler. The most notable of these was the **Rotating Staircase Deadline** scheduler, which introduced the concept of **fair scheduling**, borrowed from queuing theory, to Linux’s process scheduler. This concept was the inspiration for the O(1) scheduler’s eventual replacement in kernel version 2.6.23, the **Completely Fair Scheduler** (CFS).
 
 This chapter discusses the fundamentals of scheduler design and how they apply to the Completely Fair Scheduler and its goals, design, implementation, algorithms, and related system calls. We also discuss the O(1) scheduler because its implementation is a more "classic" Unix process scheduler model.
+
+### Policy
+
+Policy is the behavior of the scheduler that determines what runs when.
+
+#### I/O-Bound Versus Processor-Bound Processes
+
+Processes can be classified as either **I/O-bound** or **processor-bound**.
+
+* An **I/O-bound process** spends much of its time submitting and waiting on I/O requests. Such a process is runnable for only short durations, because it eventually blocks waiting on more I/O.
+    * "I/O" means any type of blockable resource, such as keyboard input or network I/O, and not just disk I/O. Most graphical user interface (GUI) applications are I/O-bound, even if they never read from or write to the disk, because they spend most of their time waiting on user interaction via the keyboard and mouse.
+* **Processor-bound processes** spend much of their time executing code. Thet tend to run until they are preempted because they do not block on I/O requests very often. System response does not dictate that the scheduler run them often. A scheduler policy for processor-bound processes tends to run such processes less frequently but for longer durations.
+    * Examples of processor-bound processes include: a program executing an infinite loop, *ssh-keygen*, *MATLAB*.
+
+These classifications are not mutually exclusive. Processes can exhibit both behaviors simultaneously:
+
+* The X Window server is both processor and I/O intense.
+* A word processor can be I/O-bound but dive into periods of intense processor action.
+
+The scheduling policy in a system must attempt to satisfy two conflicting goals:
+
+* Fast process response time (low latency)
+* Maximal system utilization (high throughput)
+
+##### Favoring I/O-bound over processor-bound
+
+Schedulers often employ complex algorithms to determine the most worthwhile process to run while not compromising fairness to other processes with lower priority.
+
+* The scheduler policy in Unix systems tends to explicitly favor I/O-bound processes, thus providing good process response time.
+* Linux, aiming to provide good interactive response and desktop performance, optimizes for process response (low latency), thus favoring I/O-bound processes over processor-bound processes. This is done in a creative manner that does not neglect processor-bound processes.
+
