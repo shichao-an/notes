@@ -141,6 +141,10 @@
                             <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
                         </li>
                     
+                        <li >
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -357,7 +361,17 @@
 <li>Range from 0 to <code>OPEN_MAX - 1</code>. With FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10, the limit is essentially infinite, bounded by the amount of memory on the system, the size of an integer, and any hard and soft limits configured by the system administrator.</li>
 </ul>
 <h3 id="open-and-openat-functions"><code>open</code> and <code>openat</code> Functions</h3>
-<script src="https://gist.github.com/shichao-an/84b85f42bf03c30fa75b.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/84b85f42bf03c30fa75b">apue_open.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;fcntl.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">open</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">oflag</span><span class="p">,</span> <span class="p">...</span> <span class="cm">/* mode_t mode */</span> <span class="p">);</span>
+<span class="kt">int</span> <span class="nf">openat</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="n">oflag</span><span class="p">,</span> <span class="p">...</span> <span class="cm">/* mode_t mode */</span> <span class="p">);</span>
+
+<span class="cm">/* Both return: file descriptor if OK, −1 on error */</span>
+</pre></div>
+
 
 <p><code>oflag</code> argument is formed by ORing one or more of the following constants from <code>&lt;fcntl.h&gt;</code> [p62]:</p>
 <p>Required:</p>
@@ -389,7 +403,16 @@
 <h3 id="filename-and-pathname-truncation">Filename and Pathname Truncation</h3>
 <p>Most modern file systems support a maximum of 255 characters for filenames.</p>
 <h3 id="creat-function"><code>creat</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/e0ac0fe91b023280e33f.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/e0ac0fe91b023280e33f">apue_creat.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;fcntl.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">creat</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">mode_t</span> <span class="n">mode</span><span class="p">);</span>
+
+<span class="cm">/* Returns: file descriptor opened for write-only if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>This function is equivalent to:</p>
 <div class="codehilite"><pre><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">O_TRUNC</span><span class="p">,</span> <span class="n">mode</span><span class="p">);</span>
@@ -402,12 +425,30 @@
 
 
 <h3 id="close-function"><code>close</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/84758a089b6cb82b7495.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/84758a089b6cb82b7495">apue_close.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">close</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>When a process terminates, all of its open files are closed automatically by the kernel. Many programs take advantage of this fact and don’t explicitly close open files.</p>
 <h3 id="lseek-function"><code>lseek</code> Function</h3>
 <p>Every open file has a "current file offset", normally a non-negative integer that measures the number of bytes from the beginning of the file.</p>
-<script src="https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6">apue_lseek.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">off_t</span> <span class="nf">lseek</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">off_t</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">int</span> <span class="n">whence</span><span class="p">);</span>
+
+<span class="cm">/* Returns: new file offset if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>The <em>whence</em> argument can be:</p>
 <ul>
@@ -426,13 +467,22 @@
 <li>Negative offsets are possible for certain devices, but for regular files, the offset must be non-negative.</li>
 <li><code>lseek</code> only records the current file offset within the kernel and does not cause any I/O to take place. This offset is then used by the next read or write operation.</li>
 <li>Hole in a file: file’s offset can be greater than the file’s current size, in which case the next <code>write</code> to the file will extend the file. This creates a hole in the file.<ul>
-<li>Bytes in the hole (bytes that have not been writen) are read back as 0. </li>
+<li>Bytes in the hole (bytes that have not been writen) are read back as 0.</li>
 <li>A hole in a file isn’t required to have storage backing it on disk.</li>
 </ul>
 </li>
 </ul>
 <h3 id="read-function"><code>read</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/ed695671abeb99a2a4b4.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/ed695671abeb99a2a4b4">apue_read.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">ssize_t</span> <span class="nf">read</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+
+<span class="cm">/* Returns: number of bytes read, 0 if end of file, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li><em>buf</em>: type <code>void *</code> is used for generic pointers.</li>
@@ -448,10 +498,19 @@
 <li>Interrupted by a signal and a partial amount of data has already been read</li>
 </ul>
 <h3 id="write-function"><code>write</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f">apue_write.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
 
-<p>The return value is usually equal to the <em>nbytes</em> argument; otherwise, an error has occurred. </p>
-<p>Common causes for a <code>write</code> error: </p>
+<span class="kt">ssize_t</span> <span class="nf">write</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+
+<span class="cm">/* Returns: number of bytes written if OK, −1 on error */</span>
+</pre></div>
+
+
+<p>The return value is usually equal to the <em>nbytes</em> argument; otherwise, an error has occurred.</p>
+<p>Common causes for a <code>write</code> error:</p>
 <ul>
 <li>Filling up a disk</li>
 <li>Exceeding the file size limit for a given process</li>
@@ -553,7 +612,18 @@
 <p>This works fine for a single process, but problems arise if multiple processes (or multiple instances of the same program) use this technique to append to the same file. The problem here is that our logical operation of "position to the end of file and write" requires two separate function calls. The solution is to have the positioning to the current end of file and the write be an atomic operation with regard to other processes. Any operation that requires more than one function call cannot be atomic, as there is always the possibility that the kernel might temporarily suspend the process between the two function calls. The UNIX System provides an atomic way to do this operation if we set the <code>O_APPEND</code> flag when a file is opened. This causes the kernel to position the file to its current end of file before each <code>write</code>. We no longer have to call lseek before each <code>write</code>.</p>
 <h3 id="pread-and-pwrite-functions"><code>pread</code> and <code>pwrite</code> Functions</h3>
 <p>The Single UNIX Specification includes two functions that allow applications to seek and perform I/O atomically:</p>
-<script src="https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3">apue_pread.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">ssize_t</span> <span class="nf">pread</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">,</span> <span class="kt">off_t</span> <span class="n">offset</span><span class="p">);</span>
+<span class="cm">/* Returns: number of bytes read, 0 if end of file, −1 on error */</span>
+
+<span class="kt">ssize_t</span> <span class="nf">pwrite</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">,</span> <span class="kt">off_t</span> <span class="n">offset</span><span class="p">);</span>
+<span class="cm">/* Returns: number of bytes written if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li><code>pread</code>: equivalent to calling <code>lseek</code> followed by a call to <code>read</code>, with the following exceptions:<ul>
@@ -583,7 +653,17 @@
 <p><strong>Atomic operation</strong> refers to an operation that might be composed of multiple steps. <u>If the operation is performed atomically, either all the steps are performed (on success) or none are performed (on failure). It must not be possible for only a subset of the steps to be performed.</u></p>
 <h3 id="dup-and-dup2-functions"><code>dup</code> and <code>dup2</code> Functions</h3>
 <p>An existing file descriptor is duplicated by either of the following functions:</p>
-<script src="https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67">apue_dup.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">dup</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">dup2</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">fd2</span><span class="p">);</span>
+
+<span class="cm">/* Both return: new file descriptor if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li><code>dup</code>: return the new file descriptor, which is guaranteed to be the lowest-numbered available file descriptor</li>
@@ -636,14 +716,26 @@
 <li><strong>Delayed write</strong>: when we write data to a file, the data is normally copied by the kernel into one of its buffers and queued for writing to disk at some later time</li>
 </ul>
 <p>The kernel eventually writes all the delayed-write blocks to disk, normally when it needs to reuse the buffer for some other disk block. To ensure consistency of the file system on disk with the contents of the buffer cache, the <code>sync</code>, <code>fsync</code>, and <code>fdatasync</code> functions are provided.</p>
-<script src="https://gist.github.com/shichao-an/2b0c9e36de750eb9de05.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/2b0c9e36de750eb9de05">apue_fsync.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">fsync</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">fdatasync</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+
+<span class="kt">void</span> <span class="nf">sync</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</pre></div>
+
 
 <ul>
 <li><code>sync</code>: queues all the modified block buffers for writing and returns. It does not wait for the disk writes to take place<ul>
 <li><code>sync</code> is normally called periodically (usually every 30 seconds) from a system daemon, often called <code>update</code>, which guarantees regular flushing of the kernel’s block buffers. The command <code>sync(1)</code> also calls the <code>sync</code> function.</li>
 </ul>
 </li>
-<li><code>fsync</code>: applies to a single file specified by the file descriptor <em>fd</em>, and waits for the disk writes to complete before returning. <ul>
+<li><code>fsync</code>: applies to a single file specified by the file descriptor <em>fd</em>, and waits for the disk writes to complete before returning.<ul>
 <li><code>fsync</code> also updates the file's attributes synchronously</li>
 </ul>
 </li>
@@ -651,7 +743,16 @@
 </ul>
 <h3 id="fcntl-function"><code>fcntl</code> Function</h3>
 <p>The <code>fcntl</code> function can change the properties of a file that is already open.</p>
-<script src="https://gist.github.com/shichao-an/45ca16d52791e4ab773d.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/45ca16d52791e4ab773d">apue_fcntl.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;fcntl.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">fcntl</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="p">...</span> <span class="cm">/* int arg */</span> <span class="p">);</span>
+
+<span class="cm">/* Returns: depends on cmd if OK (see following), −1 on error */</span>
+</pre></div>
+
 
 <p>In this section, the third argument of <code>fcntl</code> is always an integer, corresponding to the comment in the function prototype just shown.</p>
 <p>The <code>fcntl</code> function is used for five different purposes:</p>
@@ -675,7 +776,7 @@ cleared.</li>
 <li>
 <p><code>F_GETFL</code>: Return the file status flags for <em>fd</em>. The file status flags were described with the <code>open</code> function.</p>
 <ul>
-<li>The five access-mode flags (<code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code>, <code>O_EXEC</code>, and <code>O_SEARCH</code>) are not separate bits that can be tested. </li>
+<li>The five access-mode flags (<code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code>, <code>O_EXEC</code>, and <code>O_SEARCH</code>) are not separate bits that can be tested.</li>
 <li><code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code> often have the values 0, 1, and 2, respectively</li>
 <li><u>The five access-mode flags are mutually exclusive: this means a file can have only one of them enabled.</u></li>
 <li><u>We must first use the <code>O_ACCMODE</code> mask to obtain the access-mode bits and then compare the result against any of the five values.</u></li>
@@ -757,7 +858,7 @@ cleared.</li>
 <p>The return value from <code>fcntl</code> depends on the command. All commands return −1 on an error or some other value if OK. The following four commands have special return values:</p>
 <ul>
 <li><code>F_DUPFD</code>: returns the new file descriptor</li>
-<li><code>F_GETFD</code>: returns the file descriptor flags </li>
+<li><code>F_GETFD</code>: returns the file descriptor flags</li>
 <li><code>F_GETFL</code>: returns the file status flags</li>
 <li><code>F_GETOWN</code>: returns a positive process ID or a negative process group ID</li>
 </ul>
@@ -825,7 +926,7 @@ write only, append
 
 
 <h4 id="modifying-file-flags">Modifying file flags</h4>
-<p>To modify either the file descriptor flags or the file status flags, we must be careful to fetch the existing flag value, modify it as desired, and then set the new flag value. We can’t simply issue an <code>F_SETFD</code> or an <code>F_SETFL</code> command, as this could turn off flag bits that were previously set.  </p>
+<p>To modify either the file descriptor flags or the file status flags, we must be careful to fetch the existing flag value, modify it as desired, and then set the new flag value. We can’t simply issue an <code>F_SETFD</code> or an <code>F_SETFL</code> command, as this could turn off flag bits that were previously set.</p>
 <p>Example:</p>
 <div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 <span class="cp">#include &lt;fcntl.h&gt;</span>
@@ -860,7 +961,17 @@ write only, append
 <p>Mac OS X HFS timing results using various synchronization mechanisms [p87]</p>
 <p>The <a href="#modifying-file-flags">above program</a> operates on a descriptor (standard output), never knowing the name of the file that was opened on that descriptor. We can’t set the <code>O_SYNC</code> flag when the file is opened, since the shell opened the file. With <code>fcntl</code>, we can modify the properties of a descriptor, knowing only the descriptor for the open file.</p>
 <h3 id="ioctl-function"><code>ioctl</code> Function</h3>
-<script src="https://gist.github.com/shichao-an/26d278ca768f90e8c67a.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/26d278ca768f90e8c67a">apue_ioctl.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt; </span><span class="cm">/* System V */</span><span class="cp"></span>
+<span class="cp">#include &lt;sys/ioctl.h&gt; </span><span class="cm">/* BSD and Linux */</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">ioctl</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">request</span><span class="p">,</span> <span class="p">...);</span>
+
+<span class="cm">/* Returns: −1 on error, something else if OK */</span>
+</pre></div>
+
 
 <p>The <code>ioctl</code> function has always been the catchall for I/O operations. Anything that couldn’t be expressed using one of the other functions in this chapter usually ended up being specified with an <code>ioctl</code>. Terminal I/O was the biggest user of this function.</p>
 <p>For the ISO C prototype, an ellipsis is used for the remaining arguments. Normally, however, there is only one more argument, and it’s usually a pointer to a variable or a structure.</p>

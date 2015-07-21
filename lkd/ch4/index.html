@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/unp/ch4/">
+        <link rel="canonical" href="https://notes.shichao.io/lkd/ch4/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 4. Elementary TCP Sockets - Shichao's Notes</title>
+	<title>Chapter 4. Process Scheduling - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -125,24 +125,24 @@
             
             
             
-                <li class="dropdown">
+                <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
                         </li>
                     
                         <li >
-                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                            <a href="../ch2/">Chapter 2. Getting Started with the Kernel</a>
                         </li>
                     
                         <li >
-                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                            <a href="../ch3/">Chapter 3. Process Management</a>
                         </li>
                     
-                        <li >
-                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        <li class="active">
+                            <a href="./">Chapter 4. Process Scheduling</a>
                         </li>
                     
                     </ul>
@@ -150,28 +150,28 @@
             
             
             
-                <li class="dropdown active">
+                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../ch1/">Chapter 1. Introduction</a>
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
                         </li>
                     
                         <li >
-                            <a href="../ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
                         </li>
                     
                         <li >
-                            <a href="../ch3/">Chapter 3. Sockets Introduction</a>
-                        </li>
-                    
-                        <li class="active">
-                            <a href="./">Chapter 4. Elementary TCP Sockets</a>
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
                         </li>
                     
                         <li >
-                            <a href="../ch5/">Chapter 5. TCP Client/Server Example</a>
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
                         </li>
                     
                     </ul>
@@ -279,7 +279,17 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-4-elementary-tcp-sockets">Chapter 4. Elementary TCP Sockets</a></li>
+        <li class="main active"><a href="#chapter-4-process-scheduling">Chapter 4. Process Scheduling</a></li>
+        
+    
+        <li class="main "><a href="#multitasking">Multitasking</a></li>
+        
+            <li><a href="#preemptive-multitasking">Preemptive multitasking</a></li>
+        
+            <li><a href="#cooperative-multitasking">Cooperative multitasking</a></li>
+        
+    
+        <li class="main "><a href="#linuxs-process-scheduler">Linux’s Process Scheduler</a></li>
         
     
     </ul>
@@ -287,7 +297,49 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-4-elementary-tcp-sockets"><strong>Chapter 4. Elementary TCP Sockets</strong></h3>
+<h3 id="chapter-4-process-scheduling"><strong>Chapter 4. Process Scheduling</strong></h3>
+<p>This chapter discusses the <strong>process scheduler</strong>, the kernel subsystem that puts those processes to work.</p>
+<p>The process scheduler (or simply the scheduler) divides the finite resource of processor time between the runnable processes on a system. It is responsible for best utilizing the system and giving users the impression that multiple processes are executing simultaneously. [p41]</p>
+<p>To best utilize processor time, assuming there are runnable processes, a process should always be running. If there are more <em>runnable</em> processes than processors in a system, some processes will not be running at a given moment. These processes are <em>waiting to run</em>. Deciding which process runs next, given a set of runnable processes, is the fundamental decision that the scheduler must make.</p>
+<h3 id="multitasking">Multitasking</h3>
+<p>A <strong>multitasking</strong> operating system is one that can simultaneously interleave execution of more than one process.</p>
+<ul>
+<li>On single processor machines, this gives the illusion of multiple processes running concurrently.</li>
+<li>On multiprocessor machines, this enables processes to actually run concurrently, in parallel, on different processors.</li>
+</ul>
+<p>On either type of machine, it also enables many processes to <em>block</em> or <em>sleep</em>. Although these processes are in memory, they are not <em>runnable</em>. These processes utilize the kernel to wait until some event (keyboard input, network data, passage of time, and so on) occurs. [p41]</p>
+<p>Multitasking operating systems come in two flavors:</p>
+<ul>
+<li><strong>Cooperative multitasking</strong></li>
+<li><strong>Preemptive multitasking</strong></li>
+</ul>
+<h4 id="preemptive-multitasking">Preemptive multitasking</h4>
+<p>Linux, like all Unix variants and most modern operating systems, implements preemptive multitasking. In preemptive multitasking, the scheduler decides
+when a process is to cease running and a new process is to begin running.</p>
+<ul>
+<li><strong>Preemption</strong>: the act of involuntarily suspending a running process.</li>
+<li><strong>Timeslice</strong> of a process: the time the process runs before it is preempted is usually predetermined.<ul>
+<li>Managing the timeslice enables the scheduler to make global scheduling decisions for the system and prevents any one process from monopolizing the processor.</li>
+<li>On many modern operating systems, the timeslice is dynamically calculated as a function of process behavior and configurable system policy.</li>
+<li>Linux’s unique "fair" scheduler does not employ timeslices <em>per se</em>, to interesting effect.</li>
+</ul>
+</li>
+</ul>
+<h4 id="cooperative-multitasking">Cooperative multitasking</h4>
+<p>In cooperative multitasking, a process does not stop running until it voluntarily decides to do so. The act of a process voluntarily suspending itself is called <strong>yielding</strong>, but the operating system cannot enforce this.</p>
+<p>The shortcomings of this approach are manifest:</p>
+<ul>
+<li>The scheduler cannot make global decisions regarding how long processes run;</li>
+<li>Processes can monopolize the processor for longer than the user desires;</li>
+<li>A hung process that never yields can potentially bring down the entire system.</li>
+</ul>
+<p>[p42]</p>
+<h3 id="linuxs-process-scheduler">Linux’s Process Scheduler</h3>
+<p>From Linux’s first version in 1991 through the 2.4 kernel series, the Linux scheduler was simple in design. It was easy to understand, but scaled poorly in light of many runnable processes or many processors.</p>
+<p>During the 2.5 kernel development series, the <strong>O(1) scheduler</strong> solved the shortcomings of the previous Linux scheduler and introduced powerful new features and performance characteristics. By introducing a constant-time algorithm for timeslice calculation and per-processor runqueues, it rectified the design limitations of the earlier scheduler.</p>
+<p>However, the O(1) scheduler had several pathological failures related to scheduling latency-sensitive applications (interactive processes). Thus, although the O(1) scheduler was ideal for large server workloads, which lack interactive processes, it performed below par on desktop systems, where interactive applications are the <em>raison d’être</em>.</p>
+<p>Beginning in the 2.6 kernel series, developers introduced new process schedulers aimed at improving the interactive performance of the O(1) scheduler. The most notable of these was the <strong>Rotating Staircase Deadline</strong> scheduler, which introduced the concept of <strong>fair scheduling</strong>, borrowed from queuing theory, to Linux’s process scheduler. This concept was the inspiration for the O(1) scheduler’s eventual replacement in kernel version 2.6.23, the <strong>Completely Fair Scheduler</strong> (CFS).</p>
+<p>This chapter discusses the fundamentals of scheduler design and how they apply to the Completely Fair Scheduler and its goals, design, implementation, algorithms, and related system calls. We also discuss the O(1) scheduler because its implementation is a more "classic" Unix process scheduler model.</p>
             </div>
         </div>
 
