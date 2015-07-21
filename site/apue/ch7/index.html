@@ -370,7 +370,19 @@
 </ul>
 <h4 id="exit-functions">Exit Functions</h4>
 <p>Three functions terminate a program normally:</p>
-<script src="https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6">apue_exit.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">exit</span><span class="p">(</span><span class="kt">int</span> <span class="n">status</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">_Exit</span><span class="p">(</span><span class="kt">int</span> <span class="n">status</span><span class="p">);</span>
+
+<span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">_exit</span><span class="p">(</span><span class="kt">int</span> <span class="n">status</span><span class="p">);</span>
+</pre></div>
+
 
 <ul>
 <li><code>_exit</code>: returns to the kernel immediately</li>
@@ -389,7 +401,16 @@
 <p><code>exit(0);</code> is same as <code>return(0);</code> from the <code>main</code> function.</p>
 <h4 id="atexit-function"><code>atexit</code> Function</h4>
 <p>With ISO C, a process can register at least 32 functions that are automatically called by <code>exit</code>. These are called <strong>exit handlers</strong> and are registered by calling the <code>atexit</code> function.</p>
-<script src="https://gist.github.com/shichao-an/edfab5a8a91b62b4ba5b.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/edfab5a8a91b62b4ba5b">apue_atexit.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">atexit</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span><span class="p">));</span>
+
+<span class="cm">/* Returns: 0 if OK, nonzero on error */</span>
+</pre></div>
+
 
 <ul>
 <li><em>func</em> argument is the address of the function to be called by <code>exit</code>. When this function is called, it is not passed any arguments and is not expected to return a value. The <code>exit</code> function calls these functions in reverse order of their registration. Each function is called as many times as it was registered.</li>
@@ -453,7 +474,20 @@ text data bss dec hex filename
 <li>Cons: adds some runtime overhead, either when the program is first executed or the first time each shared library function is called</li>
 </ul>
 <h3 id="memory-allocation">Memory Allocation</h3>
-<script src="https://gist.github.com/shichao-an/e4b320547e3c303af467.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/e4b320547e3c303af467">apue_malloc.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span> <span class="o">*</span><span class="nf">malloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">calloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">nobj</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">realloc</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">newsize</span><span class="p">);</span>
+
+<span class="cm">/* All three return: non-null pointer if OK, NULL on error */</span>
+
+<span class="kt">void</span> <span class="nf">free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+</pre></div>
+
 
 <ul>
 <li><code>malloc</code>: allocates a specified number of bytes of memory</li>
@@ -483,8 +517,24 @@ difference between the old and new sizes</li>
 </pre></div>
 
 
-<p>The UNIX kernel never looks at these strings; their interpretation is up to the various applications. </p>
-<script src="https://gist.github.com/shichao-an/618104c2fa3a6caba3b3.js"></script>
+<p>The UNIX kernel never looks at these strings; their interpretation is up to the various applications.</p>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/618104c2fa3a6caba3b3">apue_getenv.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">getenv</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+<span class="cm">/* Returns: pointer to value associated with name, NULL if not found */</span>
+
+<span class="kt">int</span> <span class="nf">putenv</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if OK, nonzero on error */</span>
+
+<span class="kt">int</span> <span class="nf">setenv</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">int</span> <span class="n">rewrite</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">unsetenv</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li><code>getenv</code>: returns a pointer to the value of a <code>name=value</code> string. We should always use <code>getenv</code> to fetch a specific value from the environment, instead of accessing <code>environ</code> directly</li>
@@ -516,7 +566,17 @@ this list of pointers. We also store a null pointer at the end of this list, of 
 </ul>
 <h3 id="setjmp-and-longjmp-functions"><code>setjmp</code> and <code>longjmp</code> Functions</h3>
 <p>In C, we can't <code>goto</code> a label that’s in another function. Instead, we must use the <code>setjmp</code> and <code>longjmp</code> functions to perform this type of branching. These two functions are useful for handling error conditions that occur in a deeply nested function call.</p>
-<script src="https://gist.github.com/shichao-an/4d30742d979b1b83dc69.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/4d30742d979b1b83dc69">apue_setjmp.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;setjmp.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">setjmp</span><span class="p">(</span><span class="kt">jmp_buf</span> <span class="n">env</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if called directly, nonzero if returning from a call to longjmp */</span>
+
+<span class="kt">void</span> <span class="nf">longjmp</span><span class="p">(</span><span class="kt">jmp_buf</span> <span class="n">env</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
+</pre></div>
+
 
 <p>Examples:</p>
 <ul>
@@ -569,6 +629,18 @@ globval = 95, autoval = 2, regival = 3, volaval = 98, statval = 99
 <p>Every process has a set of resource limits, some of which can be queried and changed by the <code>getrlimit</code> and <code>setrlimit</code> functions.</p>
 <script src="https://gist.github.com/shichao-an/4562094dcbbca444ec4b.js"></script>
 
+<ul>
+<li><a href="https://gist.github.com/shichao-an/4562094dcbbca444ec4b">apue_getrlimit.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/resource.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">getrlimit</span><span class="p">(</span><span class="kt">int</span> <span class="n">resource</span><span class="p">,</span> <span class="k">struct</span> <span class="n">rlimit</span> <span class="o">*</span><span class="n">rlptr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setrlimit</span><span class="p">(</span><span class="kt">int</span> <span class="n">resource</span><span class="p">,</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">rlimit</span> <span class="o">*</span><span class="n">rlptr</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, −1 on error */</span>
+</pre></div>
+
+
 <p>These two functions are defined in the XSI option in the Single UNIX Specification. The resource limits for a process are normally established by process 0 when the system is initialized and then inherited by each successive process. Each implementation has its own way of tuning the various limits.</p>
 <ul>
 <li><em>rlptr</em>: a pointer to the following structure:</li>
@@ -593,7 +665,7 @@ globval = 95, autoval = 2, regival = 3, volaval = 98, statval = 99
 <li><code>RLIMIT_MSGQUEUE</code>: The maximum amount of memory in bytes that a process can allocate for POSIX message queues.</li>
 <li><code>RLIMIT_NICE</code>: The limit to which a process’s nice value can be raised to affect its scheduling priority.</li>
 <li><code>RLIMIT_NOFILE</code>: The maximum number of open files per process. Changing this limit affects the value returned by the <code>sysconf</code> function for its <code>_SC_OPEN_MAX</code> argument.</li>
-<li><code>RLIMIT_NPROC</code>: The maximum number of child processes per real user ID. Changing this limit affects the value returned for <code>_SC_CHILD_MAX</code> by the <code>sysconf</code> function.  </li>
+<li><code>RLIMIT_NPROC</code>: The maximum number of child processes per real user ID. Changing this limit affects the value returned for <code>_SC_CHILD_MAX</code> by the <code>sysconf</code> function.</li>
 <li><code>RLIMIT_NPTS</code>: The maximum number of pseudo terminals that a user can have open at one time.</li>
 <li><code>RLIMIT_RSS</code>: Maximum resident set size (RSS) in bytes. If available physical memory is low, the kernel takes memory from processes that exceed their RSS.</li>
 <li><code>RLIMIT_SBSIZE</code>: The maximum size in bytes of socket buffers that a user can consume at any given time.</li>

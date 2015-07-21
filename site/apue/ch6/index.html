@@ -326,7 +326,7 @@
 <p>Historically, the password file has been stored in <code>/etc/passwd</code> and has been an ASCII file.</p>
 <ul>
 <li><code>root</code> has a user ID of 0 (superuser)</li>
-<li>The encrypted password field contains a single character as a placeholder (<code>x</code>) </li>
+<li>The encrypted password field contains a single character as a placeholder (<code>x</code>)</li>
 <li>Some fields can be empty</li>
 <li>The shell field contains the user's login shell. The default value for an empty shell field is usually <code>/bin/sh</code>. Other executable that prevents a user from loggin in to a system:<ul>
 <li><code>/dev/null</code></li>
@@ -339,14 +339,36 @@
 <li>Some systems that provide the <code>finger(1)</code> command support additional information in the comment field</li>
 </ul>
 <p>Some systems provide the <code>vipw</code> command to allow administrators to edit the password file.</p>
-<script src="https://gist.github.com/shichao-an/00b608f959de8dad0b1b.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/00b608f959de8dad0b1b">apue_getpwuid.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;pwd.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">passwd</span> <span class="o">*</span><span class="nf">getpwuid</span><span class="p">(</span><span class="kt">uid_t</span> <span class="n">uid</span><span class="p">);</span>
+<span class="k">struct</span> <span class="n">passwd</span> <span class="o">*</span><span class="nf">getpwnam</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+
+<span class="cm">/* Both return: pointer if OK, NULL on error */</span>
+</pre></div>
+
 
 <ul>
 <li><code>getpwuid</code>: used by the <code>ls(1)</code> program to map the numerical user ID contained in an i-node into a user's login name.</li>
 <li><code>getpwnam</code>: used by the <code>login(1)</code> program when we enter our login name</li>
 </ul>
 <p>Both functions return a pointer to a passwd structure that the functions fill in. <u>This structure is usually a static variable within the function, so its contents are overwritten each time we call either of these functions.</u></p>
-<script src="https://gist.github.com/shichao-an/ffbbc20702760d6a4fab.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/ffbbc20702760d6a4fab">apue_getpwent.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;pwd.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">passwd</span> <span class="o">*</span><span class="nf">getpwent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="cm">/* Returns: pointer if OK, NULL on error or end of file */</span>
+
+<span class="kt">void</span> <span class="nf">setpwent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">endpwent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</pre></div>
+
 
 <ul>
 <li><code>getpwent</code>: returns the next entry (a pointer to a structure that it has filled in, this structure is overwritten each time we call this function) in the password file.</li>
@@ -362,16 +384,51 @@
 <p>Systems store the encrypted password in another file, often called the <strong>shadow password file</strong>. Minimally, this file has to contain the user name and the encrypted password.</p>
 <p><a href="../figure_6.3.png" title="Figure 6.3 Fields in /etc/shadow file"><img alt="Figure 6.3 Fields in /etc/shadow file" src="../figure_6.3_600.png" /></a></p>
 <p>The shadow password file should not be readable by the world. Only a few programs need to access encrypted passwords, e.g. <code>login(1)</code> and <code>passwd(1)</code>, and these programs are often set-user-ID root. With shadow passwords, the regular password file, <code>/etc/passwd</code>, can be left readable by the world.</p>
-<script src="https://gist.github.com/shichao-an/bad119e8e6ed442e25bf.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/bad119e8e6ed442e25bf">apue_getspnam.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;shadow.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">spwd</span> <span class="o">*</span><span class="nf">getspnam</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+<span class="k">struct</span> <span class="n">spwd</span> <span class="o">*</span><span class="nf">getspent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="cm">/* Both return: pointer if OK, NULL on error */</span>
+
+<span class="kt">void</span> <span class="nf">setspent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">endspent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</pre></div>
+
 
 <h3 id="group-file">Group File</h3>
 <p>The UNIX System’s group file, called the group database by POSIX.1, contains the following fields:</p>
 <p><a href="../figure_6.4.png" title="Figure 6.4 Fields in /etc/group file"><img alt="Figure 6.4 Fields in /etc/group file" src="../figure_6.4_600.png" /></a></p>
 <p>The field <code>gr_mem</code> is an array of pointers to the user names that belong to this group. This array is terminated by a null pointer.</p>
-<script src="https://gist.github.com/shichao-an/c280f5fa5d15b006e8af.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/c280f5fa5d15b006e8af">apue_getgrgid.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;grp.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">group</span> <span class="o">*</span><span class="nf">getgrgid</span><span class="p">(</span><span class="kt">gid_t</span> <span class="n">gid</span><span class="p">);</span>
+<span class="k">struct</span> <span class="n">group</span> <span class="o">*</span><span class="nf">getgrnam</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+
+<span class="cm">/* Both return: pointer if OK, NULL on error */</span>
+</pre></div>
+
 
 <p>Like the password file functions, both of these functions normally return pointers to a static variable, which is overwritten on each call.</p>
-<script src="https://gist.github.com/shichao-an/98d14c0850ac1f357993.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/98d14c0850ac1f357993">apue_getgrent.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;grp.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">group</span> <span class="o">*</span><span class="nf">getgrent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="cm">/* Returns: pointer if OK, NULL on error or end of file */</span>
+
+<span class="kt">void</span> <span class="nf">setgrent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">endgrent</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</pre></div>
+
 
 <ul>
 <li><code>getgrent</code>: reads the next entry from the group file, opening the file first, if it’s not already open</li>
@@ -380,7 +437,28 @@
 <p><code>newgrp(1)</code> can be used to change the real group ID to the new group’s ID. We could always go back to our original group (as listed in <code>/etc/passwd</code>) by executing <code>newgrp</code> without any arguments.</p>
 <p>With 4.2BSD, the concept of <strong>supplementary group IDs</strong> was introduced. The file access permission checks were modified so that in addition to comparing the the file’s group ID to the process effective group ID, it was also compared to all the supplementary group IDs.</p>
 <p>The constant <code>NGROUPS_MAX</code> specifies the number of supplementary group IDs.</p>
-<script src="https://gist.github.com/shichao-an/72cd85f9279a4501249c.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/72cd85f9279a4501249c">apue_getgroups.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">getgroups</span><span class="p">(</span><span class="kt">int</span> <span class="n">gidsetsize</span><span class="p">,</span> <span class="kt">gid_t</span> <span class="n">grouplist</span><span class="p">[]);</span>
+
+<span class="cm">/* Returns: number of supplementary group IDs if OK, −1 on error */</span>
+
+<span class="cp">#include &lt;grp.h&gt; </span><span class="cm">/* on Linux */</span><span class="cp"></span>
+<span class="cp">#include &lt;unistd.h&gt; </span><span class="cm">/* on FreeBSD, Mac OS X, and Solaris */</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">setgroups</span><span class="p">(</span><span class="kt">int</span> <span class="n">ngroups</span><span class="p">,</span> <span class="k">const</span> <span class="kt">gid_t</span> <span class="n">grouplist</span><span class="p">[]);</span>
+
+<span class="cp">#include &lt;grp.h&gt; </span><span class="cm">/* on Linux and Solaris */</span><span class="cp"></span>
+<span class="cp">#include &lt;unistd.h&gt; </span><span class="cm">/* on FreeBSD and Mac OS X */</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">initgroups</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">username</span><span class="p">,</span> <span class="kt">gid_t</span> <span class="n">basegid</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li><code>getgroups</code><ul>
@@ -486,7 +564,16 @@
 <p>On login, the <code>login</code> program fills one of these structures, and writes it to the <code>utmp</code> and <code>wtmp</code> file. On logout, the <code>init</code> process erases this entry (fills with null bytes) in <code>utmp</code> file and appends a new logout entry. This logout entry in the <code>wtmp</code> file had the <code>ut_name</code> field zeroed out. Special entries were appended to the <code>wtmp</code> file to indicate when the system was rebooted and right before and after the system’s time and date was changed.</p>
 <p>The <code>who(1)</code> program read the <code>utmp</code> file and printed its contents in a readable form</p>
 <h3 id="system-identification">System Identification</h3>
-<script src="https://gist.github.com/shichao-an/7477d4a7e401fc628fe9.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/7477d4a7e401fc628fe9">apue_uname.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/utsname.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">uname</span><span class="p">(</span><span class="k">struct</span> <span class="n">utsname</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+
+<span class="cm">/* Returns: non-negative value if OK, −1 on error */</span>
+</pre></div>
+
 
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">utsname</span> <span class="p">{</span>
     <span class="kt">char</span> <span class="n">sysname</span><span class="p">[];</span> <span class="cm">/* name of the operating system */</span>
@@ -498,7 +585,16 @@
 </pre></div>
 
 
-<script src="https://gist.github.com/shichao-an/bd385512d7844d84cf2b.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/bd385512d7844d84cf2b">apue_gethostname.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">gethostname</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">int</span> <span class="n">namelen</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
 
 <p><code>gethostname</code> (now defined as part of POSIX.1) specifies that the maximum host name length is <code>HOST_NAME_MAX</code>.</p>
 <table>
@@ -538,10 +634,19 @@
 <li>keeping the time and date as a single quantity</li>
 </ul>
 <p>The <code>time</code> function returns the current time and date.</p>
-<script src="https://gist.github.com/shichao-an/2b5d80841cbdf01791cd.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/2b5d80841cbdf01791cd">apue_time.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">time_t</span> <span class="nf">time</span><span class="p">(</span><span class="kt">time_t</span> <span class="o">*</span><span class="n">calptr</span><span class="p">);</span>
+
+<span class="cm">/* Returns: value of time if OK, −1 on error */</span>
+</pre></div>
+
 
 <p>The time value is always returned as the value of the function. If the argument is non-null, the time value is also stored at the location pointed to by <em>calptr</em>.</p>
-<p>The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the <code>clockid_t</code> type. </p>
+<p>The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the <code>clockid_t</code> type.</p>
 <table>
 <thead>
 <tr>
@@ -573,7 +678,24 @@
 </tr>
 </tbody>
 </table>
-<script src="https://gist.github.com/shichao-an/83e13fecc886c9653976.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/83e13fecc886c9653976">apue_clock_gettime.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">clock_gettime</span><span class="p">(</span><span class="kt">clockid_t</span> <span class="n">clock_id</span><span class="p">,</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">tsp</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+
+<span class="kt">int</span> <span class="nf">clock_getres</span><span class="p">(</span><span class="kt">clockid_t</span> <span class="n">clock_id</span><span class="p">,</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">tsp</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+
+<span class="kt">int</span> <span class="nf">clock_settime</span><span class="p">(</span><span class="kt">clockid_t</span> <span class="n">clock_id</span><span class="p">,</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">tsp</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+
+<span class="kt">int</span> <span class="nf">gettimeofday</span><span class="p">(</span><span class="k">struct</span> <span class="n">timeval</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tp</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tzp</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 always */</span>
+</pre></div>
+
 
 <ul>
 <li><code>clock_gettime</code>: gets the time of the specified clock. The time is returned in a <a href="../../apue/ch4/#timespec-structure"><code>timespec</code></a> structure</li>
@@ -599,7 +721,17 @@
 
 
 <p>The reason that the seconds can be greater than 59 is to allow for a <a href="http://en.wikipedia.org/wiki/Leap_second">leap second</a>.</p>
-<script src="https://gist.github.com/shichao-an/6be4fa71d74422d28709.js"></script>
+<ul>
+<li><a href="https://gist.github.com/shichao-an/6be4fa71d74422d28709">apue_gmtime.h</a></li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">tm</span> <span class="o">*</span><span class="nf">gmtime</span><span class="p">(</span><span class="k">const</span> <span class="kt">time_t</span> <span class="o">*</span><span class="n">calptr</span><span class="p">);</span>
+<span class="k">struct</span> <span class="n">tm</span> <span class="o">*</span><span class="nf">localtime</span><span class="p">(</span><span class="k">const</span> <span class="kt">time_t</span> <span class="o">*</span><span class="n">calptr</span><span class="p">);</span>
+
+<span class="cm">/* Both return: pointer to broken-down time, NULL on error */</span>
+</pre></div>
+
 
 <ul>
 <li><code>gmtime</code>: converts the calendar time to UTC time (broken time)</li>

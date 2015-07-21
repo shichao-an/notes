@@ -37,7 +37,18 @@ There are eight ways for a process to terminate.
 
 Three functions terminate a program normally:
 
-<script src="https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6.js"></script>
+* [apue_exit.h](https://gist.github.com/shichao-an/8387fdff1497e1cc7fd6)
+
+```c
+#include <stdlib.h>
+
+void exit(int status);
+void _Exit(int status);
+
+#include <unistd.h>
+
+void _exit(int status);
+```
 
 * `_exit`: returns to the kernel immediately
 * `_Exit`: same as `_exit`
@@ -61,7 +72,15 @@ Returning an integer value from the main function is equivalent to calling exit 
 
 With ISO C, a process can register at least 32 functions that are automatically called by `exit`. These are called **exit handlers** and are registered by calling the `atexit` function.
 
-<script src="https://gist.github.com/shichao-an/edfab5a8a91b62b4ba5b.js"></script>
+* [apue_atexit.h](https://gist.github.com/shichao-an/edfab5a8a91b62b4ba5b)
+
+```c
+#include <stdlib.h>
+
+int atexit(void (*func)(void));
+
+/* Returns: 0 if OK, nonzero on error */
+```
 
 * *func* argument is the address of the function to be called by `exit`. When this function is called, it is not passed any arguments and is not expected to return a value. The `exit` function calls these functions in reverse order of their registration. Each function is called as many times as it was registered.
 
@@ -138,7 +157,19 @@ Shared libraries remove the common library routines from the executable file and
 
 ### Memory Allocation
 
-<script src="https://gist.github.com/shichao-an/e4b320547e3c303af467.js"></script>
+* [apue_malloc.h](https://gist.github.com/shichao-an/e4b320547e3c303af467)
+
+```c
+#include <stdlib.h>
+
+void *malloc(size_t size);
+void *calloc(size_t nobj, size_t size);
+void *realloc(void *ptr, size_t newsize);
+
+/* All three return: non-null pointer if OK, NULL on error */
+
+void free(void *ptr);
+```
 
 * `malloc`: allocates a specified number of bytes of memory
 * `calloc`: allocates space for a specified number of objects of a specified size
@@ -172,9 +203,24 @@ The environment strings are usually of the form:
 name=value
 ```
 
-The UNIX kernel never looks at these strings; their interpretation is up to the various applications. 
+The UNIX kernel never looks at these strings; their interpretation is up to the various applications.
 
-<script src="https://gist.github.com/shichao-an/618104c2fa3a6caba3b3.js"></script>
+* [apue_getenv.h](https://gist.github.com/shichao-an/618104c2fa3a6caba3b3)
+
+```c
+#include <stdlib.h>
+
+char *getenv(const char *name);
+/* Returns: pointer to value associated with name, NULL if not found */
+
+int putenv(char *str);
+/* Returns: 0 if OK, nonzero on error */
+
+int setenv(const char *name, const char *value, int rewrite);
+int unsetenv(const char *name);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 * `getenv`: returns a pointer to the value of a `name=value` string. We should always use `getenv` to fetch a specific value from the environment, instead of accessing `environ` directly
 
@@ -201,7 +247,16 @@ this list of pointers. We also store a null pointer at the end of this list, of 
 
 In C, we can't `goto` a label that’s in another function. Instead, we must use the `setjmp` and `longjmp` functions to perform this type of branching. These two functions are useful for handling error conditions that occur in a deeply nested function call.
 
-<script src="https://gist.github.com/shichao-an/4d30742d979b1b83dc69.js"></script>
+* [apue_setjmp.h](https://gist.github.com/shichao-an/4d30742d979b1b83dc69)
+
+```c
+#include <setjmp.h>
+
+int setjmp(jmp_buf env);
+/* Returns: 0 if called directly, nonzero if returning from a call to longjmp */
+
+void longjmp(jmp_buf env, int val);
+```
 
 Examples:
 
@@ -265,6 +320,17 @@ Every process has a set of resource limits, some of which can be queried and cha
 
 <script src="https://gist.github.com/shichao-an/4562094dcbbca444ec4b.js"></script>
 
+* [apue_getrlimit.h](https://gist.github.com/shichao-an/4562094dcbbca444ec4b)
+
+```c
+#include <sys/resource.h>
+
+int getrlimit(int resource, struct rlimit *rlptr);
+int setrlimit(int resource, const struct rlimit *rlptr);
+
+/* Both return: 0 if OK, −1 on error */
+```
+
 These two functions are defined in the XSI option in the Single UNIX Specification. The resource limits for a process are normally established by process 0 when the system is initialized and then inherited by each successive process. Each implementation has its own way of tuning the various limits.
 
 * *rlptr*: a pointer to the following structure:
@@ -286,7 +352,7 @@ struct rlimit {
     * `RLIMIT_MSGQUEUE`: The maximum amount of memory in bytes that a process can allocate for POSIX message queues.
     * `RLIMIT_NICE`: The limit to which a process’s nice value can be raised to affect its scheduling priority.
     * `RLIMIT_NOFILE`: The maximum number of open files per process. Changing this limit affects the value returned by the `sysconf` function for its `_SC_OPEN_MAX` argument.
-    * `RLIMIT_NPROC`: The maximum number of child processes per real user ID. Changing this limit affects the value returned for `_SC_CHILD_MAX` by the `sysconf` function.  
+    * `RLIMIT_NPROC`: The maximum number of child processes per real user ID. Changing this limit affects the value returned for `_SC_CHILD_MAX` by the `sysconf` function.
     * `RLIMIT_NPTS`: The maximum number of pseudo terminals that a user can have open at one time.
     * `RLIMIT_RSS`: Maximum resident set size (RSS) in bytes. If available physical memory is low, the kernel takes memory from processes that exceed their RSS.
     * `RLIMIT_SBSIZE`: The maximum size in bytes of socket buffers that a user can consume at any given time.
