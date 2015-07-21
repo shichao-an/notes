@@ -10,7 +10,16 @@ This chapter discusses unbuffered I/O, which are not part of ISO C but are part 
 
 ### `open` and `openat` Functions
 
-<script src="https://gist.github.com/shichao-an/84b85f42bf03c30fa75b.js"></script>
+* [apue_open.h](https://gist.github.com/shichao-an/84b85f42bf03c30fa75b)
+
+```c
+#include <fcntl.h>
+
+int open(const char *path, int oflag, ... /* mode_t mode */ );
+int openat(int fd, const char *path, int oflag, ... /* mode_t mode */ );
+
+/* Both return: file descriptor if OK, −1 on error */
+```
 
 `oflag` argument is formed by ORing one or more of the following constants from `<fcntl.h>` [p62]:
 
@@ -48,7 +57,15 @@ Most modern file systems support a maximum of 255 characters for filenames.
 
 ### `creat` Function
 
-<script src="https://gist.github.com/shichao-an/e0ac0fe91b023280e33f.js"></script>
+* [apue_creat.h](https://gist.github.com/shichao-an/e0ac0fe91b023280e33f)
+
+```c
+#include <fcntl.h>
+
+int creat(const char *path, mode_t mode);
+
+/* Returns: file descriptor opened for write-only if OK, −1 on error */
+```
 
 This function is equivalent to:
 
@@ -64,7 +81,15 @@ open(path, O_RDWR | O_CREAT | O_TRUNC, mode);
 
 ### `close` Function
 
-<script src="https://gist.github.com/shichao-an/84758a089b6cb82b7495.js"></script>
+* [apue_close.h](https://gist.github.com/shichao-an/84758a089b6cb82b7495)
+
+```c
+#include <unistd.h>
+
+int close(int fd);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 When a process terminates, all of its open files are closed automatically by the kernel. Many programs take advantage of this fact and don’t explicitly close open files.
 
@@ -73,7 +98,15 @@ When a process terminates, all of its open files are closed automatically by the
 
 Every open file has a "current file offset", normally a non-negative integer that measures the number of bytes from the beginning of the file.
 
-<script src="https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6.js"></script>
+* [apue_lseek.h](https://gist.github.com/shichao-an/b9b0bc7d6dca91b7afd6)
+
+```c
+#include <unistd.h>
+
+off_t lseek(int fd, off_t offset, int whence);
+
+/* Returns: new file offset if OK, −1 on error */
+```
 
 The *whence* argument can be:
 
@@ -93,12 +126,20 @@ This technique (above code) can also be used to determine if a file is capable o
 * Negative offsets are possible for certain devices, but for regular files, the offset must be non-negative.
 * `lseek` only records the current file offset within the kernel and does not cause any I/O to take place. This offset is then used by the next read or write operation.
 * Hole in a file: file’s offset can be greater than the file’s current size, in which case the next `write` to the file will extend the file. This creates a hole in the file.
-    * Bytes in the hole (bytes that have not been writen) are read back as 0. 
+    * Bytes in the hole (bytes that have not been writen) are read back as 0.
     * A hole in a file isn’t required to have storage backing it on disk.
 
 ### `read` Function
 
-<script src="https://gist.github.com/shichao-an/ed695671abeb99a2a4b4.js"></script>
+* [apue_read.h](https://gist.github.com/shichao-an/ed695671abeb99a2a4b4)
+
+```c
+#include <unistd.h>
+
+ssize_t read(int fd, void *buf, size_t nbytes);
+
+/* Returns: number of bytes read, 0 if end of file, −1 on error */
+```
 
 * *buf*: type `void *` is used for generic pointers.
 * Return value is required to be a signed integer (`ssize_t`) to return a positive byte count, 0 (for end of file), or −1 (for an error).
@@ -114,11 +155,19 @@ Several cases in which the number of bytes actually read is less than the amount
 
 ### `write` Function
 
-<script src="https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f.js"></script>
+* [apue_write.h](https://gist.github.com/shichao-an/dc05a71e1e7eb4c18a0f)
 
-The return value is usually equal to the *nbytes* argument; otherwise, an error has occurred. 
+```c
+#include <unistd.h>
 
-Common causes for a `write` error: 
+ssize_t write(int fd, const void *buf, size_t nbytes);
+
+/* Returns: number of bytes written if OK, −1 on error */
+```
+
+The return value is usually equal to the *nbytes* argument; otherwise, an error has occurred.
+
+Common causes for a `write` error:
 
 * Filling up a disk
 * Exceeding the file size limit for a given process
@@ -229,7 +278,17 @@ This works fine for a single process, but problems arise if multiple processes (
 
 The Single UNIX Specification includes two functions that allow applications to seek and perform I/O atomically:
 
-<script src="https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3.js"></script>
+* [apue_pread.h](https://gist.github.com/shichao-an/2f2fb4d9288fd1fa79b3)
+
+```c
+#include <unistd.h>
+
+ssize_t pread(int fd, void *buf, size_t nbytes, off_t offset);
+/* Returns: number of bytes read, 0 if end of file, −1 on error */
+
+ssize_t pwrite(int fd, const void *buf, size_t nbytes, off_t offset);
+/* Returns: number of bytes written if OK, −1 on error */
+```
 
 * `pread`: equivalent to calling `lseek` followed by a call to `read`, with the following exceptions:
     * There is no way to interrupt the two operations that occur calling `pread`.
@@ -266,7 +325,16 @@ The problem occurs if the file is created by another process between the `open` 
 
 An existing file descriptor is duplicated by either of the following functions:
 
-<script src="https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67.js"></script>
+* [apue_dup.h](https://gist.github.com/shichao-an/7f7dfbcf28d77d8cff67)
+
+```c
+#include <unistd.h>
+
+int dup(int fd);
+int dup2(int fd, int fd2);
+
+/* Both return: new file descriptor if OK, −1 on error */
+```
 
 * `dup`: return the new file descriptor, which is guaranteed to be the lowest-numbered available file descriptor
 * `dup2`: *fd2* argument is the new file descriptor we specifiy.
@@ -324,11 +392,22 @@ Traditional implementations of the UNIX System have a buffer cache or page cache
 
 The kernel eventually writes all the delayed-write blocks to disk, normally when it needs to reuse the buffer for some other disk block. To ensure consistency of the file system on disk with the contents of the buffer cache, the `sync`, `fsync`, and `fdatasync` functions are provided.
 
-<script src="https://gist.github.com/shichao-an/2b0c9e36de750eb9de05.js"></script>
+* [apue_fsync.h](https://gist.github.com/shichao-an/2b0c9e36de750eb9de05)
+
+```c
+#include <unistd.h>
+
+int fsync(int fd);
+int fdatasync(int fd);
+
+/* Returns: 0 if OK, −1 on error */
+
+void sync(void);
+```
 
 * `sync`: queues all the modified block buffers for writing and returns. It does not wait for the disk writes to take place
     * `sync` is normally called periodically (usually every 30 seconds) from a system daemon, often called `update`, which guarantees regular flushing of the kernel’s block buffers. The command `sync(1)` also calls the `sync` function.
-* `fsync`: applies to a single file specified by the file descriptor *fd*, and waits for the disk writes to complete before returning. 
+* `fsync`: applies to a single file specified by the file descriptor *fd*, and waits for the disk writes to complete before returning.
     * `fsync` also updates the file's attributes synchronously
 * `fdatasync`: similar to `fsync`, but it affects only the data portions of a file.
 
@@ -336,7 +415,15 @@ The kernel eventually writes all the delayed-write blocks to disk, normally when
 
 The `fcntl` function can change the properties of a file that is already open.
 
-<script src="https://gist.github.com/shichao-an/45ca16d52791e4ab773d.js"></script>
+* [apue_fcntl.h](https://gist.github.com/shichao-an/45ca16d52791e4ab773d)
+
+```c
+#include <fcntl.h>
+
+int fcntl(int fd, int cmd, ... /* int arg */ );
+
+/* Returns: depends on cmd if OK (see following), −1 on error */
+```
 
 In this section, the third argument of `fcntl` is always an integer, corresponding to the comment in the function prototype just shown.
 
@@ -357,7 +444,7 @@ cleared.
 * `F_SETFD`: Set the file descriptor flags for *fd*. The new flag value is set from the third argument.
     * Some existing programs don’t use constant `FD_CLOEXEC`. Instead, these programs set the flag to either 0 (don’t close-on-exec, the default) or 1 (do close-on-exec).
 * `F_GETFL`: Return the file status flags for *fd*. The file status flags were described with the `open` function.
-    * The five access-mode flags (`O_RDONLY`, `O_WRONLY`, `O_RDWR`, `O_EXEC`, and `O_SEARCH`) are not separate bits that can be tested. 
+    * The five access-mode flags (`O_RDONLY`, `O_WRONLY`, `O_RDWR`, `O_EXEC`, and `O_SEARCH`) are not separate bits that can be tested.
     * `O_RDONLY`, `O_WRONLY`, `O_RDWR` often have the values 0, 1, and 2, respectively
     * <u>The five access-mode flags are mutually exclusive: this means a file can have only one of them enabled.</u>
     * <u>We must first use the `O_ACCMODE` mask to obtain the access-mode bits and then compare the result against any of the five values.</u>
@@ -391,7 +478,7 @@ cleared.
 The return value from `fcntl` depends on the command. All commands return −1 on an error or some other value if OK. The following four commands have special return values:
 
 * `F_DUPFD`: returns the new file descriptor
-* `F_GETFD`: returns the file descriptor flags 
+* `F_GETFD`: returns the file descriptor flags
 * `F_GETFL`: returns the file status flags
 * `F_GETOWN`: returns a positive process ID or a negative process group ID
 
@@ -462,7 +549,7 @@ read write
 
 #### Modifying file flags
 
-To modify either the file descriptor flags or the file status flags, we must be careful to fetch the existing flag value, modify it as desired, and then set the new flag value. We can’t simply issue an `F_SETFD` or an `F_SETFL` command, as this could turn off flag bits that were previously set.  
+To modify either the file descriptor flags or the file status flags, we must be careful to fetch the existing flag value, modify it as desired, and then set the new flag value. We can’t simply issue an `F_SETFD` or an `F_SETFL` command, as this could turn off flag bits that were previously set.
 
 Example:
 
@@ -507,7 +594,16 @@ The [above program](#modifying-file-flags) operates on a descriptor (standard ou
 
 ### `ioctl` Function
 
-<script src="https://gist.github.com/shichao-an/26d278ca768f90e8c67a.js"></script>
+* [apue_ioctl.h](https://gist.github.com/shichao-an/26d278ca768f90e8c67a)
+
+```c
+#include <unistd.h> /* System V */
+#include <sys/ioctl.h> /* BSD and Linux */
+
+int ioctl(int fd, int request, ...);
+
+/* Returns: −1 on error, something else if OK */
+```
 
 The `ioctl` function has always been the catchall for I/O operations. Anything that couldn’t be expressed using one of the other functions in this chapter usually ended up being specified with an `ioctl`. Terminal I/O was the biggest user of this function.
 

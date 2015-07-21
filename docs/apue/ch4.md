@@ -9,7 +9,18 @@ Added in C99, [`restrict`](https://en.wikipedia.org/wiki/Restrict) keyword is us
 
 ### `stat`, `fstat`, `fstatat`, and `lstat` Functions
 
-<script src="https://gist.github.com/shichao-an/dd0cdd90a54848ff3018.js"></script>
+* [apue_stat.h](https://gist.github.com/shichao-an/dd0cdd90a54848ff3018)
+
+```c
+#include <sys/stat.h>
+
+int stat(const char *restrict pathname, struct stat *restrict buf);
+int fstat(int fd, struct stat *buf);
+int lstat(const char *restrict pathname, struct stat *restrict buf);
+int fstatat(int fd, const char *restrict pathname, struct stat *restrict buf, int flag);
+
+/* All four return: 0 if OK, −1 on error */
+```
 
 * `stat`: returns a structure of information about the named file
 * `fstat`: returns a structure of information about the given file descriptor
@@ -70,11 +81,20 @@ This program prints the type of file for each command-line argument.
 1. The user ID of a new file is set to the effective user ID of the process
 2. The group ID of a new file can be the effective group ID of the process; or group ID of the directory in which the file is being created.
 
-FreeBSD 8.0 and Mac OS X 10.6.8 always copy the new file’s group ID from the directory. 
+FreeBSD 8.0 and Mac OS X 10.6.8 always copy the new file’s group ID from the directory.
 
 ### `access` and `faccessat` Functions
 
-<script src="https://gist.github.com/shichao-an/a0d8ab4d744d51be289f.js"></script>
+* [apue_access.h](https://gist.github.com/shichao-an/a0d8ab4d744d51be289f)
+
+```c
+#include <unistd.h>
+
+int access(const char *pathname, int mode);
+int faccessat(int fd, const char *pathname, int mode, int flag);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 These functions test accessibility based on the real user and group IDs.
 
@@ -98,7 +118,17 @@ u=rwx,g=rx,o=
 
 ### `chmod`, `fchmod`, and `fchmodat` Functions
 
-<script src="https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1.js"></script>
+* [apue_chmod.h](https://gist.github.com/shichao-an/9fa2e6e7e6e600cb62c1)
+
+```c
+#include <sys/stat.h>
+
+int chmod(const char *pathname, mode_t mode);
+int fchmod(int fd, mode_t mode);
+int fchmodat(int fd, const char *pathname, mode_t mode, int flag);
+
+/* All three return: 0 if OK, −1 on error */
+```
 
 `chmod` automatically clears the following permission bits under the following conditions:
 
@@ -114,7 +144,18 @@ Sticky Bit (`S_ISVTX`), or saved-text bit in the later versions of the UNIX Syst
 
 ### `chown`, `fchown`, `fchownat`, and `lchown` Functions
 
-<script src="https://gist.github.com/shichao-an/233e97d9b3d15aca39b2.js"></script>
+* [apue_chown.h](https://gist.github.com/shichao-an/233e97d9b3d15aca39b2)
+
+```c
+#include <unistd.h>
+
+int chown(const char *pathname, uid_t owner, gid_t group);
+int fchown(int fd, uid_t owner, gid_t group);
+int fchownat(int fd, const char *pathname, uid_t owner, gid_t group, int flag);
+int lchown(const char *pathname, uid_t owner, gid_t group);
+
+/* All four return: 0 if OK, −1 on error */
+```
 
 * `lchown` and `fchownat` (with the `AT_SYMLINK_NOFOLLOW` flag set) change the owners of the symbolic link itself.
 * `fchown` operates on a open file, it can’t be used to change the ownership of a symbolic link.
@@ -129,7 +170,7 @@ The `st_size` member of the stat structure contains the size of the file in byte
 
 FreeBSD 8.0, Mac OS X 10.6.8, and Solaris 10 also define the file size for a pipe as the number of bytes that are available for reading from the pipe.
 
-* For a regular file, a file size of 0 is allowed. We’ll get an end-of-file indication on the first read of the file. 
+* For a regular file, a file size of 0 is allowed. We’ll get an end-of-file indication on the first read of the file.
 * For a directory, the file size is usually a multiple of a number, such as 16 or 512.
 * For a symbolic link, the file size is the number of bytes in the filename.
 
@@ -150,7 +191,19 @@ $ du -s core
 ```
 
 ### File Truncation
+
 <script src="https://gist.github.com/shichao-an/df5f6cc1cd7871670b11.js"></script>
+
+* [apue_truncate.h](https://gist.github.com/shichao-an/df5f6cc1cd7871670b11)
+
+```c
+#include <unistd.h>
+
+int truncate(const char *pathname, off_t length);
+int ftruncate(int fd, off_t length);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 These two functions truncate an existing file to *length* bytes. If the previous size of the file was greater than *length*, the data beyond *length* is no longer accessible. Otherwise, if the previous size was less than *length*, the file size will increase and the data between the old end of file and the new end of file will read as 0 (a hole is probably created in the file).
 
@@ -168,16 +221,44 @@ Most UNIX file systems support **case-sensitive** filenames. On Mac OS X, howeve
 
 ### `link`, `linkat`, `unlink`, `unlinkat`, and `remove` Functions
 
-<script src="https://gist.github.com/shichao-an/a05542802e846a5e4a9d.js"></script>
+* [apue_link.h](https://gist.github.com/shichao-an/a05542802e846a5e4a9d)
+
+```c
+#include <unistd.h>
+
+int link(const char *existingpath, const char *newpath);
+int linkat(int efd, const char *existingpath, int nfd, const char *newpath,
+           int flag);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 When a file is closed, the kernel first checks the count of the number of processes that have the file open. If this count has reached 0, the kernel then checks the link count; if it is 0, the file’s contents are deleted.
 
 When the `AT_REMOVEDIR` flag is set, then the `unlinkat` function can be used to remove a directory, similar to using `rmdir`.
 
-<script src="https://gist.github.com/shichao-an/6ed5d4f09ca321b9969d.js"></script>
+* [apue_remove.h](https://gist.github.com/shichao-an/6ed5d4f09ca321b9969d)
+
+```c
+#include <stdio.h>
+
+int remove(const char *pathname);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 ### `rename` and `renameat` Functions
-<script src="https://gist.github.com/shichao-an/b2751a71cdecc9845951.js"></script>
+
+* [apue_rename.h](https://gist.github.com/shichao-an/b2751a71cdecc9845951)
+
+```c
+#include <stdio.h>
+
+int rename(const char *oldname, const char *newname);
+int renameat(int oldfd, const char *oldname, int newfd, const char *newname);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 ### Symbolic Links
 
@@ -188,11 +269,32 @@ On Linux, the [`ftw`](http://linux.die.net/man/3/ftw) and `nftw` functions recor
 * `ls -l`
 * `ls -F`
 
-<script src="https://gist.github.com/shichao-an/487e3a881014019a5896.js"></script>
+* [apue_symlink.h](https://gist.github.com/shichao-an/487e3a881014019a5896)
+
+```c
+#include <unistd.h>
+
+int symlink(const char *actualpath, const char *sympath);
+int symlinkat(const char *actualpath, int fd, const char *sympath);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 Because the open function follows a symbolic link, we need a way to open the link itself and read the name in the link.
 
-<script src="https://gist.github.com/shichao-an/8ee1ce45f97503e1eadf.js"></script>
+* [apue_readlink.h](https://gist.github.com/shichao-an/8ee1ce45f97503e1eadf)
+
+```c
+#include <unistd.h>
+
+ssize_t readlink(const char *restrict pathname, char *restrict buf,
+                 size_t bufsize);
+
+ssize_t readlinkat(int fd, const char *restrict pathname,
+                   char *restrict buf, size_t bufsize);
+
+/* Both return: number of bytes read if OK, −1 on error */
+```
 
 These functions combine the actions of `open`, `read`, and `close`.
 
@@ -208,17 +310,42 @@ The system does not maintain the last-access time for an i-node. The functions `
 
 ### `futimens`, `utimensat`, and `utimes` Functions
 
-<script src="https://gist.github.com/shichao-an/cbb255521bbfbd297ffe.js"></script>
+* [apue_futimens.h](https://gist.github.com/shichao-an/cbb255521bbfbd297ffe)
+
+```c
+#include <sys/stat.h>
+
+int futimens(int fd, const struct timespec times[2]);
+int utimensat(int fd, const char *path, const struct timespec times[2], int flag);
+
+/* Both return: 0 if OK, −1 on error */
+```
 
 In both functions, the first element of the times array argument contains the **access time**, and the second element contains the **modification time**.
 
-<script src="https://gist.github.com/shichao-an/45e1af258c8c65aef8e3.js"></script>
+* [apue_utimes](https://gist.github.com/shichao-an/45e1af258c8c65aef8e3)
+
+```c
+#include <sys/time.h>
+
+int utimes(const char *pathname, const struct timeval times[2]);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 We are unable to specify a value for the **changed-status time**, `st_ctim` (the time the i-node was last changed), as this field is automatically updated when the `utime` function is called.
 
 ### `mkdir`, `mkdirat`, and `rmdir` Functions
 
-<script src="https://gist.github.com/shichao-an/72a28c9446973e80a80a.js"></script>
+* [apue_rmdir.h](https://gist.github.com/shichao-an/72a28c9446973e80a80a.)
+
+```c
+#include <unistd.h>
+
+int rmdir(const char *pathname);
+
+/* Returns: 0 if OK, −1 on error */
+```
 
 For a directory, we normally want at least one of the execute bits enabled, to allow access to filenames within the directory.
 
@@ -226,7 +353,27 @@ Solaris 10 and Linux 3.2.0 also have the new directory inherit the set-group-ID 
 
 ### Reading Directories
 
-<script src="https://gist.github.com/shichao-an/e98f9a012d74b7a96293.js"></script>
+* [apue_opendir.h](https://gist.github.com/shichao-an/e98f9a012d74b7a96293)
+
+```c
+#include <dirent.h>
+
+DIR *opendir(const char *pathname);
+DIR *fdopendir(int fd);
+/* Both return: pointer if OK, NULL on error */
+
+struct dirent *readdir(DIR *dp);
+/* Returns: pointer if OK, NULL at end of directory or error */
+
+void rewinddir(DIR *dp);
+int closedir(DIR *dp);
+/* Returns: 0 if OK, −1 on error */
+
+long telldir(DIR *dp);
+/* Returns: current location in directory associated with dp */
+
+void seekdir(DIR *dp, long loc);
+```
 
 The `dirent` structure defined in <dirent.h> is implementation dependent, with at least the following two members:
 
@@ -240,8 +387,27 @@ The `DIR` structure is an internal structure used by these seven functions to ma
 * [ftw8.c](https://github.com/shichao-an/apue.3e/blob/master/filedir/ftw8.c)
 
 ### `chdir`, `fchdir`, and `getcwd` Functions
-<script src="https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e.js"></script>
-<script src="https://gist.github.com/shichao-an/090c8c9281d8da18bed5.js"></script>
+
+* [apue_chdir.h](https://gist.github.com/shichao-an/fb972392bdd5ce97dc7e)
+
+```c
+#include <unistd.h>
+
+int chdir(const char *pathname);
+int fchdir(int fd);
+
+/* Both return: 0 if OK, −1 on error */
+```
+
+* [apue_getcwd.h](https://gist.github.com/shichao-an/090c8c9281d8da18bed5)
+
+```c
+#include <unistd.h>
+
+char *getcwd(char *buf, size_t size);
+
+/* Returns: buf if OK, NULL on error */
+```
 
 #### Device Special Files
 
