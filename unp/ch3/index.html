@@ -463,14 +463,14 @@
 <h4 id="comparison-of-socket-address-structures">Comparison of Socket Address Structures</h4>
 <p>In this figure, we assume that:</p>
 <ul>
-<li>Socket address structures all contain a one-byte length field </li>
+<li>Socket address structures all contain a one-byte length field</li>
 <li>The family field also occupies one byte</li>
 <li>Any field that must be at least some number of bits is exactly that number of bits</li>
 </ul>
 <p><a href="../figure_3.6.png" title="Figure 3.6 Comparison of various socket address structures."><img alt="Figure 3.6 Comparison of various socket address structures." src="../figure_3.6_600.png" /></a></p>
-<p>To handle variable-length structures, whenever we pass a pointer to a socket address structure as an argument to one of the socket functions, we pass its length as another argument. </p>
+<p>To handle variable-length structures, whenever we pass a pointer to a socket address structure as an argument to one of the socket functions, we pass its length as another argument.</p>
 <h3 id="value-result-arguments">Value-Result Arguments</h3>
-<p>When a socket address structure is passed to any socket function, it is always passed by reference (a pointer to the structure is passed). The length of the structure is also passed as an argument. </p>
+<p>When a socket address structure is passed to any socket function, it is always passed by reference (a pointer to the structure is passed). The length of the structure is also passed as an argument.</p>
 <p>The way in which the length is passed depends on which direction the structure is being passed:</p>
 <ol>
 <li>From the <strong>process to the kernel</strong></li>
@@ -496,7 +496,7 @@
 <p><code>accept</code>, <code>recvfrom</code>, <code>getsockname</code>, and <code>getpeername</code> functions pass a socket address structure from the kernel to the process.</p>
 <p>Arguments to these functions:</p>
 <ul>
-<li>The pointer to the socket address structure </li>
+<li>The pointer to the socket address structure</li>
 <li>The pointer to an integer containing the size of the structure.</li>
 </ul>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">sockaddr_un</span>  <span class="n">cli</span><span class="p">;</span>   <span class="cm">/* Unix domain */</span>
@@ -534,9 +534,7 @@
 <p>The figure shows the most significant bit (MSB) as the leftmost bit of the 16-bit value and the least significant bit (LSB) as the rightmost bit.</p>
 <p>The terms "little-endian" and "big-endian" indicate which end of the multibyte value, the little end or the big end, is stored at the starting address of the value.</p>
 <p><strong>Host byte order</strong> refer to the byte ordering used by a given system. The program below prints the host byte order:</p>
-<ul>
-<li><a href="https://github.com/shichao-an/unpv13e/blob/master/intro/byteorder.c">byteorder.c</a></li>
-</ul>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/intro/byteorder.c">byteorder.c</a></small></p>
 <script src="https://gist.github.com/shichao-an/ee430bf440011d96f76a.js"></script>
 
 <p>We store the two-byte value <code>0x0102</code> in the short integer and then look at the two consecutive bytes, <code>c[0]</code> (the address <em>A</em>) and <code>c[1]</code> (the address <em>A+1</em>) to determine the byte order.</p>
@@ -566,7 +564,20 @@ sparc-sun-solaris2.9: big-endian
 
 <p>Networking protocols must specify a <strong>network byte order</strong>. The sending protocol stack and the receiving protocol stack must agree on the order in which the bytes of these multibyte fields will be transmitted. <u>The Internet protocols use big-endian byte ordering for these multibyte integers.</u></p>
 <p>But, both history and the POSIX specification say that certain fields in the socket address structures must be maintained in network byte order. We use the following four functions to convert between these two byte orders:</p>
-<script src="https://gist.github.com/shichao-an/27bb5bebddf78e36198e.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/27bb5bebddf78e36198e">unp_htons.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;netinet/in.h&gt;</span>
+
+<span class="kt">uint16_t</span> <span class="nf">htons</span><span class="p">(</span><span class="kt">uint16_t</span> <span class="n">host16bitvalue</span><span class="p">);</span>
+<span class="kt">uint32_t</span> <span class="nf">htonl</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">host32bitvalue</span><span class="p">);</span>
+
+<span class="cm">/* Both return: value in network byte order */</span>
+
+<span class="kt">uint16_t</span> <span class="nf">ntohs</span><span class="p">(</span><span class="kt">uint16_t</span> <span class="n">net16bitvalue</span><span class="p">);</span>
+<span class="kt">uint32_t</span> <span class="nf">ntohl</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">net32bitvalue</span><span class="p">);</span>
+
+<span class="cm">/* Both return: value in host byte order */</span>
+</pre></div>
+
 
 <ul>
 <li><code>h</code> stands for <em>host</em></li>
@@ -585,31 +596,49 @@ sparc-sun-solaris2.9: big-endian
 </pre></div>
 
 
-<p>This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit. </p>
+<p>This represents four bytes in the order in which they appear on the wire; the leftmost bit is the most significant. However, the numbering starts with zero assigned to the most significant bit.</p>
 <h3 id="byte-manipulation-functions">Byte Manipulation Functions</h3>
 <p>Two types functions differ in whether they deal with null-terminated C strings:</p>
 <ul>
-<li>The functions that operate on multibyte fields, without interpreting the data, and without assuming that the data is a null-terminated C string. These types of functions deal with socket address structures to manipulate fields such as IP addresses, which can contain bytes of 0, but are not C character strings. <ul>
+<li>The functions that operate on multibyte fields, without interpreting the data, and without assuming that the data is a null-terminated C string. These types of functions deal with socket address structures to manipulate fields such as IP addresses, which can contain bytes of 0, but are not C character strings.<ul>
 <li>The functions whose names begin with <code>b</code> (for byte) (from 4.2BSD)</li>
 <li>The functions whose names begin with <code>mem</code> (for memory) (from ANSI C)</li>
 </ul>
 </li>
 <li>The functions that deal with null-terminated C character strings (beginning with <code>str</code> (for string), defined by including the <code>&lt;string.h&gt;</code> header)</li>
 </ul>
-<script src="https://gist.github.com/shichao-an/4871b3026c68dc6c4140.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/4871b3026c68dc6c4140">unp_bzero.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;strings.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">bzero</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">dest</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">bcopy</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">dest</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">bcmp</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr1</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr2</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if equal, nonzero if unequal */</span>
+</pre></div>
+
 
 <p>The memory pointed to by the <code>const</code> pointer is read but not modified by the function.</p>
 <ul>
 <li><code>bzero</code> sets the specified number of bytes to 0 in the destination. We often use this function to initialize a socket address structure to 0.</li>
-<li><code>bcopy</code> moves the specified number of bytes from the source to the destination. </li>
+<li><code>bcopy</code> moves the specified number of bytes from the source to the destination.</li>
 <li><code>bcmp</code> compares two arbitrary byte strings. The return value is zero if the two byte strings are identical; otherwise, it is nonzero</li>
 </ul>
-<script src="https://gist.github.com/shichao-an/c229d6cc4ac8d310567b.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/c229d6cc4ac8d310567b">unp_memset.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;string.h&gt;</span>
+
+<span class="kt">void</span> <span class="o">*</span><span class="nf">memset</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">dest</span><span class="p">,</span> <span class="kt">int</span> <span class="n">c</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">memcpy</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">dest</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">memcmp</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr1</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr2</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if equal, &lt;0 or &gt;0 if unequal (see text) */</span>
+</pre></div>
+
 
 <ul>
 <li><code>memset</code> sets the specified number of bytes to the value <code>c</code> in the destination</li>
 <li><code>memcpy</code> is similar to <code>bcopy</code>, but the order of the two pointer arguments is swapped</li>
-<li><code>memcmp</code> compares two arbitrary byte strings </li>
+<li><code>memcmp</code> compares two arbitrary byte strings</li>
 </ul>
 <p>Note:</p>
 <ul>
@@ -626,7 +655,19 @@ sparc-sun-solaris2.9: big-endian
 </ul>
 <h3 id="inet_aton-inet_addr-and-inet_ntoa-functions"><code>inet_aton</code>, <code>inet_addr</code>, and <code>inet_ntoa</code> Functions</h3>
 <p>These functions convert Internet addresses between ASCII strings (what humans prefer to use) and network byte ordered binary values (values that are stored in socket address structures).</p>
-<script src="https://gist.github.com/shichao-an/af1102b95566ee43cde7.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/af1102b95566ee43cde7">unp_inet_aton.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;arpa/inet.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">inet_aton</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="k">struct</span> <span class="n">in_addr</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">);</span>
+<span class="cm">/* Returns: 1 if string was valid, 0 on error */</span>
+
+<span class="kt">in_addr_t</span> <span class="nf">inet_addr</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">);</span>
+<span class="cm">/* Returns: 32-bit binary network byte ordered IPv4 address; INADDR_NONE if error */</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">inet_ntoa</span><span class="p">(</span><span class="k">struct</span> <span class="n">in_addr</span> <span class="n">inaddr</span><span class="p">);</span>
+<span class="cm">/* Returns: pointer to dotted-decimal string */</span>
+</pre></div>
+
 
 <ul>
 <li><code>inet_aton</code>: converts the C character string pointed to by <em>strptr</em> into its 32-bit binary network byte ordered value, which is stored through the pointer <em>addrptr</em></li>
@@ -639,7 +680,16 @@ sparc-sun-solaris2.9: big-endian
 </ul>
 <h3 id="inet_pton-and-inet_ntop-functions"><code>inet_pton</code> and <code>inet_ntop</code> Functions</h3>
 <p>These two functions are new with IPv6 and work with both IPv4 and IPv6 addresses. We use these two functions throughout the text. The letters "p" and "n" stand for <em>presentation</em> and <em>numeric</em>. The presentation format for an address is often an ASCII string and the numeric format is the binary value that goes into a socket address structure.</p>
-<script src="https://gist.github.com/shichao-an/a4f313716c78362d0b49.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/a4f313716c78362d0b49">unp_inet_pton.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;arpa/inet.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">inet_pton</span><span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">);</span>
+<span class="cm">/* Returns: 1 if OK, 0 if input not a valid presentation format, -1 on error */</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="nf">inet_ntop</span><span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span>
+<span class="cm">/* Returns: pointer to result if OK, NULL on error */</span>
+</pre></div>
+
 
 <p>Arguments:</p>
 <ul>
@@ -649,7 +699,7 @@ sparc-sun-solaris2.9: big-endian
 <ul>
 <li><code>inet_pton</code>: converts the string pointed to by <em>strptr</em>, storing the binary result through the pointer <em>addrptr</em>. If successful, the return value is 1. If the input string is not a valid presentation format for the specified <em>family</em>, 0 is returned.</li>
 <li><code>inet_ntop</code> does the reverse conversion, from numeric (<em>addrptr</em>) to presentation (<em>strptr</em>).<ul>
-<li><em>len</em> argument is the size of the destination. To help specify this size, the following two definitions are defined by including the <code>&lt;netinet/in.h&gt;</code> header. </li>
+<li><em>len</em> argument is the size of the destination. To help specify this size, the following two definitions are defined by including the <code>&lt;netinet/in.h&gt;</code> header.</li>
 <li>If <em>len</em> is too small to hold the resulting presentation format, including the terminating null, a null pointer is returned and <code>errno</code> is set to <code>ENOSPC</code>.</li>
 <li>The <em>strptr</em> argument to <code>inet_ntop</code> cannot be a null pointer. The caller must allocate memory for the destination and specify its size. On success, this pointer is the return value of the function.</li>
 </ul>
@@ -688,9 +738,7 @@ sparc-sun-solaris2.9: big-endian
 
 
 <h4 id="simple-definitions-of-inet_pton-and-inet_ntop-that-support-ipv4">Simple definitions of <code>inet_pton</code> and <code>inet_ntop</code> that support IPv4</h4>
-<ul>
-<li><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_pton_ipv4.c">libfree/inet_pton_ipv4.c</a></li>
-</ul>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_pton_ipv4.c">libfree/inet_pton_ipv4.c</a></small></p>
 <div class="codehilite"><pre><span class="kt">int</span>
 <span class="nf">inet_pton</span><span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">)</span>
 <span class="p">{</span>
@@ -709,9 +757,7 @@ sparc-sun-solaris2.9: big-endian
 </pre></div>
 
 
-<ul>
-<li><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_ntop_ipv4.c">inet_ntop_ipv4.c</a></li>
-</ul>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/libfree/inet_ntop_ipv4.c">inet_ntop_ipv4.c</a></small></p>
 <div class="codehilite"><pre><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span>
 <span class="nf">inet_ntop</span><span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addrptr</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">strptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
 <span class="p">{</span>
@@ -751,7 +797,14 @@ sparc-sun-solaris2.9: big-endian
 
 <p>This (above) makes our code protocol-dependent.</p>
 <p>To solve this, we will write our own function named <code>sock_ntop</code> that takes a pointer to a socket address structure, looks inside the structure, and calls the appropriate function to return the presentation format of the address.</p>
-<script src="https://gist.github.com/shichao-an/b0f21ce69e2b8024022e.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/b0f21ce69e2b8024022e">unp_sock_ntop.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;unp.h&quot;</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">sock_ntop</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+
+<span class="cm">/* Returns: non-null pointer if OK, NULL on error */</span>
+</pre></div>
+
 
 <p><em>sockaddr</em> points to a socket address structure whose length is <em>addrlen</em>. The function uses its own static buffer to hold the result and a pointer to this buffer is the return value. Notice that <u>using static storage for the result prevents the function from being <strong>re-entrant</strong> or <strong>thread-safe</strong>.</u></p>
 <h4 id="presentation-format-of-sock_ntop">Presentation format of <code>sock_ntop</code></h4>
@@ -796,10 +849,40 @@ null character. Hence, the buffer size must be at least INET_ADDRSTRLEN plus 6 b
 <h4 id="related-functions">Related functions</h4>
 <p>There are a few other functions that we define to operate on socket address structures,
 and these will simplify the portability of our code between IPv4 and IPv6.</p>
-<script src="https://gist.github.com/shichao-an/f63ebf361581af641397.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/f63ebf361581af641397">apue_sock_bind_wild.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;unp.h&quot;</span>
+
+<span class="kt">int</span> <span class="nf">sock_bind_wild</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">family</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if OK, -1 on error */</span>
+
+<span class="kt">int</span> <span class="nf">sock_cmp_addr</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr1</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr2</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if addresses are of the same family and ports are equal,</span>
+<span class="cm">   else nonzero</span>
+<span class="cm">*/</span>
+
+<span class="kt">int</span> <span class="nf">sock_cmp_port</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr1</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr2</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if addresses are of the same family and ports are equal,</span>
+<span class="cm">   else nonzero</span>
+<span class="cm">*/</span>
+
+<span class="kt">int</span> <span class="nf">sock_get_port</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+<span class="cm">/* Returns: non-negative port number for IPv4 or IPv6 address, else -1 */</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">sock_ntop_host</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+<span class="cm">/* Returns: non-null pointer if OK, NULL on error */</span>
+
+<span class="kt">void</span> <span class="nf">sock_set_addr</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">,</span>
+                   <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">sock_set_port</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">,</span>
+                   <span class="kt">int</span> <span class="n">port</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">sock_set_wild</span><span class="p">(</span><span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">sockaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+</pre></div>
+
 
 <ul>
-<li><code>sock_bind_wild</code>: binds the wildcard address and an ephemeral port to a socket. </li>
+<li><code>sock_bind_wild</code>: binds the wildcard address and an ephemeral port to a socket.</li>
 <li><code>sock_cmp_addr</code>: compares the address portion of two socket address structures.</li>
 <li><code>sock_cmp_port</code>: compares the port number of two socket address structures.</li>
 <li><code>sock_get_port</code>: returns just the port number.</li>
@@ -810,7 +893,16 @@ and these will simplify the portability of our code between IPv4 and IPv6.</p>
 </ul>
 <h3 id="readn-writen-and-readline-functions"><code>readn</code>, <code>writen</code>, and <code>readline</code> Functions</h3>
 <p>Stream sockets (e.g., TCP sockets) exhibit a behavior with the <code>read</code> and <code>write</code> functions that differs from normal file I/O. A <code>read</code> or <code>write</code> on a stream socket might input or output fewer bytes than requested, but this is not an error condition. <u>The reason is that buffer limits might be reached for the socket in the kernel. All that is required to input or output the remaining bytes is for the caller to invoke the <code>read</code> or <code>write</code> function again.</u> This scenario is always a possibility on a stream socket with <code>read</code>, but is normally seen with <code>write</code> only if the socket is nonblocking.</p>
-<script src="https://gist.github.com/shichao-an/26f53ad6de8d2e1a10b2.js"></script>
+<p><small><a href="https://gist.github.com/shichao-an/26f53ad6de8d2e1a10b2">unp_readn.h</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;unp.h&quot;</span>
+
+<span class="kt">ssize_t</span> <span class="nf">readn</span><span class="p">(</span><span class="kt">int</span> <span class="n">filedes</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buff</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">writen</span><span class="p">(</span><span class="kt">int</span> <span class="n">filedes</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buff</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nbytes</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">readline</span><span class="p">(</span><span class="kt">int</span> <span class="n">filedes</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buff</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">maxlen</span><span class="p">);</span>
+
+<span class="cm">/* All return: number of bytes read or written, –1 on error */</span>
+</pre></div>
+
 
 <ul>
 <li><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/readn.c">lib/readn.c</a></li>
