@@ -309,6 +309,15 @@
         
             <li><a href="#process-scheduling-in-unix-systems">Process Scheduling in Unix Systems</a></li>
         
+            <li><a href="#fair-scheduling">Fair Scheduling</a></li>
+        
+    
+        <li class="main "><a href="#the-linux-scheduling-implementation">The Linux Scheduling Implementation</a></li>
+        
+            <li><a href="#time-accounting">Time Accounting</a></li>
+        
+            <li><a href="#process-selection">Process Selection</a></li>
+        
     
     </ul>
 </div></div>
@@ -382,7 +391,7 @@ when a process is to cease running and a new process is to begin running.</p>
 <li>Fast process response time (low latency)</li>
 <li>Maximal system utilization (high throughput)</li>
 </ul>
-<h5 id="favoring-io-bound-over-processor-bound">Favoring I/O-bound over processor-bound</h5>
+<h5 id="favoring-io-bound-over-processor-bound"><strong>Favoring I/O-bound over processor-bound</strong></h5>
 <p>Schedulers often employ complex algorithms to determine the most worthwhile process to run while not compromising fairness to other processes with lower priority. [p43-44]</p>
 <ul>
 <li>The scheduler policy in Unix systems tends to explicitly favor I/O-bound processes, thus providing good process response time.</li>
@@ -390,7 +399,7 @@ when a process is to cease running and a new process is to begin running.</p>
 </ul>
 <h4 id="process-priority">Process Priority</h4>
 <p>The <strong>priority-based</strong> scheduling is a common type of scheduling algorithm, which isn’t exactly implemented on Linux. It means that processes with a higher priority run before those with a lower priority, whereas processes with the same priority are scheduled <em>round-robin</em> (one after the next, repeating). On some systems, processes with a higher priority also receive a longer timeslice. The runnable process with timeslice remaining and the highest priority always runs. [p44]</p>
-<h5 id="nice-value-and-real-time-priority">nice value and real-time priority</h5>
+<h5 id="nice-value-and-real-time-priority"><strong>nice value and real-time priority</strong></h5>
 <p>The Linux kernel implements two separate priority ranges:</p>
 <ul>
 <li><strong>nice value</strong> (a number from –20 to +19 with a default of 0) is the standard priority range used in all Unix systems:<ul>
@@ -418,7 +427,7 @@ when a process is to cease running and a new process is to begin running.</p>
 <li>I/O-bound processes do not need longer timeslices (although they do like to run often)</li>
 <li>Processor-bound processes crave long timeslices (to keep their caches hot).</li>
 </ul>
-<h5 id="timeslice-on-linux">Timeslice on Linux</h5>
+<h5 id="timeslice-on-linux"><strong>Timeslice on Linux</strong></h5>
 <p>Linux’s CFS scheduler does not directly assign timeslices to processes, but assigns processes a <em>proportion</em> of the processor. The amount of processor time that a process receives is a function of the load of the system. This assigned proportion is further affected by each process’s nice value. The nice value acts as a weight, changing the proportion of the processor time each process receives. Processes with higher nice values (a lower priority) receive a deflationary weight, yielding them a smaller proportion of the processor, and vice versa.</p>
 <p>With the CFS scheduler, whether the process runs immediately (preempting the currently running process) is a function of how much of a proportion of the processor the newly runnable processor has consumed. If it has consumed a smaller proportion of the processor than the currently executing process, it runs immediately</p>
 <h4 id="the-scheduling-policy-in-action">The Scheduling Policy in Action</h4>
@@ -447,6 +456,197 @@ when a process is to cease running and a new process is to begin running.</p>
 <li>Handling process wake up in a priority-based scheduler that wants to optimize for interactive tasks may cause the scheduler providing one process an unfair amount of processor time, at the expense of the rest of the system. [p48]</li>
 </ol>
 <p>The approach taken by CFS is a radical (for process schedulers) rethinking of timeslice allotment: Do away with timeslices completely and assign each process a proportion of the processor. CFS thus yields constant fairness but a variable switching rate.</p>
+<h4 id="fair-scheduling">Fair Scheduling</h4>
+<p>CFS is based on a simple concept: Model process scheduling as if the system had an ideal, perfectly multitasking processor. In such a system, each process would receive 1/<em>n</em> of the processor’s time, where <em>n</em> is the number of runnable processes, and we’d schedule them for infinitely small durations, so that in any measurable period we’d have run all <em>n</em> processes for the same amount of time. [p48]</p>
+<p>It is not efficient to run processes for infinitely small durations; there is a switching cost to preempting one process for another: the overhead of swapping one process for another and the effects on caches. CFS will run each process for some amount of time, round-robin, selecting next the process that has run the least. Rather than assign each process a timeslice, CFS calculates how long a process should run as a function of the total number of runnable processes. Instead of using the nice value to calculate a timeslice, CFS uses the nice value to weight the proportion of processor a process is to receive. [p49]</p>
+<p><u>Each process runs for a "timeslice" proportional to its weight divided by the total weight of all runnable threads.</u> CFS sets a target for its
+approximation of the "infinitely small" scheduling duration in perfect multitasking. This target is called the <strong>targeted latency</strong>. Smaller targets yield better interactivity and a closer approximation to perfect multitasking, at the expense of higher switching costs and thus worse overall throughput.  CFS imposes a floor on the timeslice assigned to each process, called the <strong>minimum granularity</strong> (by default 1 millisecond). Even as the number of runnable processes approaches infinity, each will run for at least 1 millisecond, to ensure there is a ceiling on the incurred switching costs</p>
+<p>For the nice value on weighting the proportion, consider the case of two runnable processes with disimilar nice values. One with the default nice value (zero) and one with a nice value of 5. In this case, the weights work out to about a 1⁄3 penalty for the nice-5 process. If our target latency is again 20 milliseconds, our two processes will receive 15 milliseconds and 5 milliseconds each of processor time, respectively. Put generally, the proportion of processor time that any process receives is determined only by the relative difference in niceness between it and the other runnable processes.  The nice values, instead of yielding additive increases to timeslices, yield geometric differences. [p49-50]</p>
+<h3 id="the-linux-scheduling-implementation">The Linux Scheduling Implementation</h3>
+<p>CFS’s actual implementation lives in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c">kernel/sched_fair.c</a>. Specifically,
+this sections discusses four components of CFS:</p>
+<ul>
+<li>Time Accounting</li>
+<li>Process Selection</li>
+<li>The Scheduler Entry Point</li>
+<li>Sleeping and Waking Up</li>
+</ul>
+<h4 id="time-accounting">Time Accounting</h4>
+<p>All process schedulers must account for the time that a process runs. On each tick of the system clock, the timeslice is decremented by the tick period.When the timeslice reaches zero, the process is preempted in favor of another runnable process with a nonzero timeslice.</p>
+<h5 id="the-scheduler-entity-structure"><strong>The Scheduler Entity Structure</strong></h5>
+<p>CFS does not have the notion of a timeslice, but it must still keep account for the time that each process runs. [p50]</p>
+<p>CFS uses the <strong>scheduler entity structure</strong>, <code>struct sched_entity</code>, defined in <code>&lt;linux/sched.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1090">include/linux/sched.h#L1090</a>), to keep track of process accounting:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sched_entity</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">load_weight</span> <span class="n">load</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="n">run_node</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">group_node</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">on_rq</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">exec_start</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">sum_exec_runtime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">vruntime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">prev_sum_exec_runtime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">last_wakeup</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">avg_overlap</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">nr_migrations</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">start_runtime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">avg_wakeup</span><span class="p">;</span>
+
+<span class="cm">/* many stat variables elided, enabled only if CONFIG_SCHEDSTATS is set */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The scheduler entity structure is embedded in the process descriptor, <code>struct task_stuct</code>, as a member variable named <code>se</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1188">include/linux/sched.h#L1188</a>).</p>
+<h5 id="mapping-of-nice-value-to-weight">Mapping of nice value to weight *</h5>
+<p>The mapping of nice to weight is defined in the <code>prio_to_weight</code> constant array (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1362">/kernel/sched.c#L1362</a>). The weight is roughly equivalent to <code>1024/(1.25)^(nice)</code>.</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">prio_to_weight</span><span class="p">[</span><span class="mi">40</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+ <span class="cm">/* -20 */</span>     <span class="mi">88761</span><span class="p">,</span>     <span class="mi">71755</span><span class="p">,</span>     <span class="mi">56483</span><span class="p">,</span>     <span class="mi">46273</span><span class="p">,</span>     <span class="mi">36291</span><span class="p">,</span>
+ <span class="cm">/* -15 */</span>     <span class="mi">29154</span><span class="p">,</span>     <span class="mi">23254</span><span class="p">,</span>     <span class="mi">18705</span><span class="p">,</span>     <span class="mi">14949</span><span class="p">,</span>     <span class="mi">11916</span><span class="p">,</span>
+ <span class="cm">/* -10 */</span>      <span class="mi">9548</span><span class="p">,</span>      <span class="mi">7620</span><span class="p">,</span>      <span class="mi">6100</span><span class="p">,</span>      <span class="mi">4904</span><span class="p">,</span>      <span class="mi">3906</span><span class="p">,</span>
+ <span class="cm">/*  -5 */</span>      <span class="mi">3121</span><span class="p">,</span>      <span class="mi">2501</span><span class="p">,</span>      <span class="mi">1991</span><span class="p">,</span>      <span class="mi">1586</span><span class="p">,</span>      <span class="mi">1277</span><span class="p">,</span>
+ <span class="cm">/*   0 */</span>      <span class="mi">1024</span><span class="p">,</span>       <span class="mi">820</span><span class="p">,</span>       <span class="mi">655</span><span class="p">,</span>       <span class="mi">526</span><span class="p">,</span>       <span class="mi">423</span><span class="p">,</span>
+ <span class="cm">/*   5 */</span>       <span class="mi">335</span><span class="p">,</span>       <span class="mi">272</span><span class="p">,</span>       <span class="mi">215</span><span class="p">,</span>       <span class="mi">172</span><span class="p">,</span>       <span class="mi">137</span><span class="p">,</span>
+ <span class="cm">/*  10 */</span>       <span class="mi">110</span><span class="p">,</span>        <span class="mi">87</span><span class="p">,</span>        <span class="mi">70</span><span class="p">,</span>        <span class="mi">56</span><span class="p">,</span>        <span class="mi">45</span><span class="p">,</span>
+ <span class="cm">/*  15 */</span>        <span class="mi">36</span><span class="p">,</span>        <span class="mi">29</span><span class="p">,</span>        <span class="mi">23</span><span class="p">,</span>        <span class="mi">18</span><span class="p">,</span>        <span class="mi">15</span><span class="p">,</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<h5 id="the-virtual-runtime"><strong>The Virtual Runtime</strong></h5>
+<p>The <code>vruntime</code> variable stores the <strong>virtual runtime</strong> of a process, which is the actual runtime (the amount of time spent running) normalized (or weighted) by the number of runnable processes. The virtual runtime’s units are nanoseconds and therefore <code>vruntime</code> is decoupled from the timer tick. Because processors are not capable of perfect multitasking and we must run each process in succession, CFS uses vruntime to account for how long a process has run and thus how much longer it ought to run.</p>
+<p>The function <code>update_curr()</code>, defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L518">kernel/sched_fair.c#L518</a>), manages this accounting:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">update_curr</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">now</span> <span class="o">=</span> <span class="n">rq_of</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">clock</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="o">!</span><span class="n">curr</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Get the amount of time the current task was running</span>
+<span class="cm">     * since the last time we changed load (this cannot</span>
+<span class="cm">     * overflow on 32 bits):</span>
+<span class="cm">     */</span>
+    <span class="n">delta_exec</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)(</span><span class="n">now</span> <span class="o">-</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_start</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">delta_exec</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">;</span>
+
+    <span class="n">__update_curr</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">curr</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+    <span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_start</span> <span class="o">=</span> <span class="n">now</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">entity_is_task</span><span class="p">(</span><span class="n">curr</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">curtask</span> <span class="o">=</span> <span class="n">task_of</span><span class="p">(</span><span class="n">curr</span><span class="p">);</span>
+
+        <span class="n">trace_sched_stat_runtime</span><span class="p">(</span><span class="n">curtask</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">,</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">vruntime</span><span class="p">);</span>
+        <span class="n">cpuacct_charge</span><span class="p">(</span><span class="n">curtask</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+        <span class="n">account_group_exec_runtime</span><span class="p">(</span><span class="n">curtask</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>update_curr()</code> calculates the execution time of the current process and stores that value in <code>delta_exec</code>. It then passes that runtime to <code>__update_curr()</code>, which weights the time by the number of runnable processes. The current process’s vruntime is then incremented by the weighted value:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Update the current task&#39;s runtime statistics. Skip current tasks that</span>
+<span class="cm"> * are not in our scheduling class.</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span>
+<span class="nf">__update_curr</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">curr</span><span class="p">,</span>
+          <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec_weighted</span><span class="p">;</span>
+
+    <span class="n">schedstat_set</span><span class="p">(</span><span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_max</span><span class="p">,</span> <span class="n">max</span><span class="p">((</span><span class="n">u64</span><span class="p">)</span><span class="n">delta_exec</span><span class="p">,</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_max</span><span class="p">));</span>
+
+    <span class="n">curr</span><span class="o">-&gt;</span><span class="n">sum_exec_runtime</span> <span class="o">+=</span> <span class="n">delta_exec</span><span class="p">;</span>
+    <span class="n">schedstat_add</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">exec_clock</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+    <span class="n">delta_exec_weighted</span> <span class="o">=</span> <span class="n">calc_delta_fair</span><span class="p">(</span><span class="n">delta_exec</span><span class="p">,</span> <span class="n">curr</span><span class="p">);</span>
+
+    <span class="n">curr</span><span class="o">-&gt;</span><span class="n">vruntime</span> <span class="o">+=</span> <span class="n">delta_exec_weighted</span><span class="p">;</span>
+    <span class="n">update_min_vruntime</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>update_curr()</code> is invoked periodically by the system timer and also whenever a process becomes runnable or blocks, becoming unrunnable. In this manner, vruntime is an accurate measure of the runtime of a given process and an indicator of what process should run next.</p>
+<h5 id="the-calc_delta_fair-function"><strong>The <code>calc_delta_fair()</code> function</strong></h5>
+<p><code>__update_curr()</code> calls <code>calc_delta_fair()</code>, which in turn calls <code>calc_delta_mine()</code> (if <code>se-&gt;load.weight</code> does not equal <code>NICE_0_LOAD</code>) to calculate the weighted value:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L431">kernel/sched_fair.c#L431</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * delta /= w</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">unsigned</span> <span class="kt">long</span>
+<span class="nf">calc_delta_fair</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">load</span><span class="p">.</span><span class="n">weight</span> <span class="o">!=</span> <span class="n">NICE_0_LOAD</span><span class="p">))</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">calc_delta_mine</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">NICE_0_LOAD</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">load</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">delta</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1300">kernel/sched.c#L1300</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * delta *= weight / lw</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kt">unsigned</span> <span class="kt">long</span>
+<span class="nf">calc_delta_mine</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">,</span>
+        <span class="k">struct</span> <span class="n">load_weight</span> <span class="o">*</span><span class="n">lw</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">u64</span> <span class="n">tmp</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">BITS_PER_LONG</span> <span class="o">&gt;</span> <span class="mi">32</span> <span class="o">&amp;&amp;</span> <span class="n">unlikely</span><span class="p">(</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">weight</span> <span class="o">&gt;=</span> <span class="n">WMULT_CONST</span><span class="p">))</span>
+            <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">else</span>
+            <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">WMULT_CONST</span><span class="o">-</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">weight</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                <span class="o">/</span> <span class="p">(</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">weight</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">tmp</span> <span class="o">=</span> <span class="p">(</span><span class="n">u64</span><span class="p">)</span><span class="n">delta_exec</span> <span class="o">*</span> <span class="n">weight</span><span class="p">;</span>
+    <span class="cm">/*</span>
+<span class="cm">     * Check whether we&#39;d overflow the 64-bit multiplication:</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">tmp</span> <span class="o">&gt;</span> <span class="n">WMULT_CONST</span><span class="p">))</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">SRR</span><span class="p">(</span><span class="n">SRR</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">WMULT_SHIFT</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span><span class="p">,</span>
+            <span class="n">WMULT_SHIFT</span><span class="o">/</span><span class="mi">2</span><span class="p">);</span>
+    <span class="k">else</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">SRR</span><span class="p">(</span><span class="n">tmp</span> <span class="o">*</span> <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span><span class="p">,</span> <span class="n">WMULT_SHIFT</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">min</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="p">(</span><span class="n">u64</span><span class="p">)(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">LONG_MAX</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This can be summarized as:</p>
+<div class="codehilite"><pre>delta_exec_weighted = delta_exec * NICE_0_LOAD / se-&gt;load
+</pre></div>
+
+
+<p>For division details, see <a href="http://stackoverflow.com/questions/17776451">Explanation of the calc_delta_mine function</a>.</p>
+<h4 id="process-selection">Process Selection</h4>
+<p>CFS attempts to balance a process’s virtual runtime with a simple rule: <u>when deciding what process to run next, it picks the process with the smallest <code>vruntime</code>.</u></p>
+<p>CFS uses a <a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">red-black tree</a> to manage the list of runnable processes and efficiently find the process with the smallest <code>vruntime</code>. A red-black tree, called an <em>rbtree</em> in Linux (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/rbtree.h">include/linux/rbtree.h</a>, <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/lib/rbtree.c">lib/rbtree.c</a>), is a type of <a href="https://en.wikipedia.org/wiki/Self-balancing_binary_search_tree">self-balancing binary search tree</a>. It is a data structure that store nodes of arbitrary data, identified by a specific key, and that they enable efficient search for a given key. Specifically, obtaining a node identified by a given key is logarithmic in time as a function of total nodes in the tree.</p>
+<h5 id="picking-the-next-task"><strong>Picking the Next Task</strong></h5>
+<p>The process that CFS wants to run next, which is the process with the smallest <code>vruntime</code>, is the leftmost node in the tree. If you follow the tree from the root down through the left child, and continue moving to the left until you reach a leaf node, you find the process with the smallest <code>vruntime</code>. CFS’s process selection algorithm is thus summed up as "run the process represented by the leftmost node in the rbtree." [p53]</p>
+<p>The function that performs this selection is <code>__pick_next_entity()</code>, defined in <code>kernel/sched_fair.c</code>(<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L377">kernel/sched_fair.c#L377</a>):</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="nf">__pick_next_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">left</span> <span class="o">=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">left</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="n">rb_entry</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span><span class="p">,</span> <span class="n">run_node</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that <code>__pick_next_entity()</code> does not actually traverse the tree to find the leftmost node, because the value is cached by <code>rb_leftmost</code>, though it is efficient to walk the tree to find the leftmost node (<code>O(height of tree)</code>, which is <code>O(log N)</code> for <code>N</code> nodes if the tree is balanced).</p>
+<p>The return value from this function is the process that CFS next runs. If the function returns NULL, there is no leftmost node, and thus no nodes in the tree. In that case, there are no runnable processes, and CFS schedules the idle task.</p>
             </div>
         </div>
 
