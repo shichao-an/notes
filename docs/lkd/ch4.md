@@ -210,7 +210,7 @@ struct sched_entity {
 
 The scheduler entity structure is embedded in the process descriptor, `struct task_stuct`, as a member variable named `se` ([include/linux/sched.h#L1188](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1188)).
 
-##### Mapping of nice value to weight *
+##### **Mapping of nice value to weight** *
 
 The mapping of nice to weight is defined in the `prio_to_weight` constant array ([/kernel/sched.c#L1362](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1362)). The weight is roughly equivalent to `1024/(1.25)^(nice)`.
 
@@ -379,3 +379,337 @@ static struct sched_entity *__pick_next_entity(struct cfs_rq *cfs_rq)
 Note that `__pick_next_entity()` does not actually traverse the tree to find the leftmost node, because the value is cached by `rb_leftmost`, though it is efficient to walk the tree to find the leftmost node (`O(height of tree)`, which is `O(log N)` for `N` nodes if the tree is balanced).
 
 The return value from this function is the process that CFS next runs. If the function returns NULL, there is no leftmost node, and thus no nodes in the tree. In that case, there are no runnable processes, and CFS schedules the idle task.
+
+##### **Adding Processes to the Tree**
+
+CFS adds processes to the rbtree and caches the leftmost node, when a process becomes runnable (wakes up) or is first created via `fork()`. Adding processes to the tree is performed by `enqueue_entity()`:
+
+<small>[kernel/sched_fair.c#L773](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L773)</small>
+
+```c
+static void
+enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
+{
+	/*
+	 * Update the normalized vruntime before updating min_vruntime
+	 * through callig update_curr().
+	 */
+	if (!(flags & ENQUEUE_WAKEUP) || (flags & ENQUEUE_MIGRATE))
+		se->vruntime += cfs_rq->min_vruntime;
+
+	/*
+	 * Update run-time statistics of the 'current'.
+	 */
+	update_curr(cfs_rq);
+	account_entity_enqueue(cfs_rq, se);
+
+	if (flags & ENQUEUE_WAKEUP) {
+		place_entity(cfs_rq, se, 0);
+		enqueue_sleeper(cfs_rq, se);
+	}
+
+	update_stats_enqueue(cfs_rq, se);
+	check_spread(cfs_rq, se);
+	if (se != cfs_rq->curr)
+		__enqueue_entity(cfs_rq, se);
+}
+```
+
+This function updates the runtime and other statistics and then invokes `__enqueue_entity()` to perform the actual heavy lifting of inserting the entry into the red-black tree.
+
+<small>[kernel/sched_fair.c#L328](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L328)</small>
+
+```c
+/*
+ * Enqueue an entity into the rb-tree:
+ */
+static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+	struct rb_node **link = &cfs_rq->tasks_timeline.rb_node;
+	struct rb_node *parent = NULL;
+	struct sched_entity *entry;
+	s64 key = entity_key(cfs_rq, se);
+	int leftmost = 1;
+
+	/*
+	 * Find the right place in the rbtree:
+	 */
+	while (*link) {
+		parent = *link;
+		entry = rb_entry(parent, struct sched_entity, run_node);
+		/*
+		 * We dont care about collisions. Nodes with
+		 * the same key stay together.
+		 */
+		if (key < entity_key(cfs_rq, entry)) {
+			link = &parent->rb_left;
+		} else {
+			link = &parent->rb_right;
+			leftmost = 0;
+		}
+	}
+
+	/*
+	 * Maintain a cache of leftmost tree entries (it is frequently
+	 * used):
+	 */
+	if (leftmost)
+		cfs_rq->rb_leftmost = &se->run_node;
+
+	rb_link_node(&se->run_node, parent, link);
+	rb_insert_color(&se->run_node, &cfs_rq->tasks_timeline);
+}
+```
+
+This function traverses the tree in the `while()` loop to search for a matching key (inserted process’s `vruntime`). It moves to the left child if the key is smaller than the current node’s key and to the right child if the key is larger.  If it ever moves to the right, even once, it knows the inserted process cannot be the new leftmost node, and it sets leftmost to zero. If it moves only to the left, `leftmost` remains one, and we have a new leftmost node and can update the cache by setting `rb_leftmost` to the inserted process. When out of the loop, the function calls `rb_link_node()` on the parent node, making the inserted process the new child. The function `rb_insert_color()` updates the self-balancing properties of the tree.
+
+##### **Removing Processes from the Tree**
+
+CFS removes processes from the red-black tree when a process blocks (becomes unrunnable) or terminates (ceases to exist):
+
+<small>[kernel/sched_fair.c#L815](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L815)</small>
+
+```c
+static void
+dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int sleep)
+{
+	/*
+	 * Update run-time statistics of the 'current'.
+	 */
+	update_curr(cfs_rq);
+
+	update_stats_dequeue(cfs_rq, se);
+	clear_buddies(cfs_rq, se);
+
+	if (se != cfs_rq->curr)
+		__dequeue_entity(cfs_rq, se);
+	account_entity_dequeue(cfs_rq, se);
+	update_min_vruntime(cfs_rq);
+
+	/*
+	 * Normalize the entity after updating the min_vruntime because the
+	 * update can refer to the ->curr item and we need to reflect this
+	 * movement in our normalized position.
+	 */
+	if (!sleep)
+		se->vruntime -= cfs_rq->min_vruntime;
+}
+```
+
+Similarly, the real work is performed by a helper function, `__dequeue_entity()`:
+
+```c
+static void __dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+	if (cfs_rq->rb_leftmost == &se->run_node) {
+		struct rb_node *next_node;
+
+		next_node = rb_next(&se->run_node);
+		cfs_rq->rb_leftmost = next_node;
+	}
+
+	rb_erase(&se->run_node, &cfs_rq->tasks_timeline);
+}
+```
+
+Removing a process from the tree is much simpler because the rbtree implementation provides the `rb_erase()` function that performs all the work. The rest of this function updates the `rb_leftmost` cache. If the process-to-remove is the leftmost node, the function invokes `rb_next()` to find what would be the next node in an in-order traversal. This is what will be the leftmost node when the current leftmost node is removed.
+
+#### The Scheduler Entry Point
+
+The main entry point into the process schedule is the function `schedule()`, defined in `kernel/sched.c` ([kernel/sched.c#L3701](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L3701)). This is the function that the rest of the kernel uses to invoke the process scheduler, deciding which process to run and then running it.
+
+<u>`schedule()` is generic to scheduler classes. It finds the highest priority scheduler class with a runnable process and asks it what to run next.</u> Thus, `schedule()` is simple. The only important part of the function is its invocation of `pick_next_task()`, defined in `kernel/sched.c` ([kernel/sched.c#L3670](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L3670)), which goes through each scheduler class, starting with the highest priority, and selects the highest priority process in the highest priority class:
+
+```c
+/*
+ * Pick up the highest-prio task:
+ */
+static inline struct task_struct *
+pick_next_task(struct rq *rq)
+{
+	const struct sched_class *class;
+	struct task_struct *p;
+
+	/*
+	 * Optimization: we know that if all tasks are in
+	 * the fair class we can call that function directly:
+	 */
+	if (likely(rq->nr_running == rq->cfs.nr_running)) {
+		p = fair_sched_class.pick_next_task(rq);
+		if (likely(p))
+			return p;
+	}
+
+	class = sched_class_highest;
+	for ( ; ; ) {
+		p = class->pick_next_task(rq);
+		if (p)
+			return p;
+		/*
+		 * Will never be NULL as the idle class always
+		 * returns a non-NULL p:
+		 */
+		class = class->next;
+	}
+}
+```
+
+Note the optimization at the beginning of the function. CFS is the scheduler class for normal processes, and most systems run mostly normal processes, there is a small hack to quickly select the next CFS-provided process if the number of runnable processes is equal to the number of CFS runnable processes (which suggests that all runnable processes are provided by CFS).
+
+The core of the function is the `for()` loop, which iterates over each class in priority order, starting with the highest priority class. Each class implements the `pick_next_task()` function, which returns a pointer to its next runnable process or, if there is not one, `NULL`.The first class to return a non-`NULL` value has selected the next runnable process. CFS’s implementation of `pick_next_task()` calls `pick_next_entity()`, which in turn calls the `__pick_next_entity()` function (see [Picking the Next Task](#picking-the-next-task) in the previous section).
+
+##### **`fair_sched_class` scheduler class** *
+
+`fair_sched_class` is a `struct sched_class` (defined in [include/linux/sched.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1029)) structure defined in `kernel/sched_fair.c` ([kernel/sched_fair.c#L3688](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L3688)). `kernel/sched_fair.c` is included by `/kernel/sched.c` ([kernel/sched.c#L1936](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1936)), so `fair_sched_class` is avaialble to the `pick_next_task` function in `/kernel/sched.c`.
+
+#### Sleeping and Waking Up
+
+Tasks that are sleeping (blocked) are in a special non-runnable state. [p58]
+
+A task sleeps while it is waiting for some event, which may be:
+
+* a specified amount of time;
+* more data from a file I/O;
+* another hardware event
+
+A task can also involuntarily go to sleep when it tries to obtain a contended semaphore in the kernel.
+
+Whatever the case, the kernel behavior is the same. The task does the following in turn:
+
+* marks itself as sleeping,
+* puts itself on a wait queue,
+* removes itself from the red-black tree of runnable,
+* and calls `schedule()` to select a new process to execute.
+
+Waking back up is the inverse: The task is set as runnable, removed from the wait queue, and added back to the red-black tree.
+
+Two states are associated with sleeping:
+
+* `TASK_INTERRUPTIBLE`
+* `TASK_UNINTERRUPTIBLE`
+
+They differ only in that tasks in the `TASK_UNINTERRUPTIBLE` state ignore signals, whereas tasks in the `TASK_INTERRUPTIBLE` state wake up prematurely and respond to a signal if one is issued. Both types of sleeping tasks sit on a wait queue, waiting for an event to occur, and are not runnable.
+
+##### **Wait Queues**
+
+Sleeping is handled via wait queues. A wait queue is a simple list of processes waiting for an event to occur.
+
+Wait queues are represented in the kernel by `wake_queue_head_t`. They are created statically via `DECLARE_WAITQUEUE()` or dynamically via `init_waitqueue_head()`. Processes put themselves on a wait queue and mark themselves not runnable. When the event associated with the wait queue occurs, the processes on the queue are awakened.
+
+ It is important to implement sleeping and waking correctly, to avoid race conditions. Otherwise, it is possible to go to sleep after the condition becomes true, in which case the task might sleep indefinitely. Therefore, the recommended method for sleeping in the kernel is a bit more complicated:
+
+```c
+/* `q' is the wait queue we wish to sleep on */
+DEFINE_WAIT(wait);
+
+add_wait_queue(q, &wait);
+while (!condition) { /* condition is the event that we are waiting for */
+    prepare_to_wait(&q, &wait, TASK_INTERRUPTIBLE);
+    if (signal_pending(current))
+        /* handle signal */
+    schedule();
+}
+finish_wait(&q, &wait);
+```
+
+The task performs the following steps to add itself to a wait queue:
+
+1. Creates a wait queue entry via the macro `DEFINE_WAIT()`.
+2. Adds itself to a wait queue via `add_wait_queue()`. This wait queue awakens the process when the condition for which it is waiting occurs. Of course, there needs to be code elsewhere that calls wake_up() on the queue when the event actually does occur.
+3. Calls `prepare_to_wait()` to change the process state to either `TASK_INTERRUPTIBLE` or `TASK_UNINTERRUPTIBLE`. This function also adds the task back to the wait queue if necessary, which is needed on subsequent iterations of the loop.
+4. If the state is set to `TASK_INTERRUPTIBLE`, a signal wakes the process up. This is called a **spurious wake up** (a wake-up not caused by the occurrence of the event). So check and handle signals.
+5. When the task awakens, it again checks whether the condition is true. If it is, it exits the loop. Otherwise, it again calls `schedule()` and repeats.
+6. After the condition is true, the task sets itself to `TASK_RUNNING` and removes itself from the wait queue via `finish_wait()`.
+
+If the condition occurs before the task goes to sleep, the loop terminates, and the task does not erroneously go to sleep. Note that kernel code often has to perform various other tasks in the body of the loop. For example, it might need to release locks before calling `schedule()` and reacquire them after or react to other events.
+
+The function `inotify_read()` in [fs/notify/inotify/inotify_user.c](https://github.com/shichao-an/linux-2.6.34.7/blob/master/fs/notify/inotify/inotify_user.c#L229), which handles reading from the inotify file descriptor, is a straightforward example of using wait queues:
+
+```c
+static ssize_t inotify_read(struct file *file, char __user *buf,
+			    size_t count, loff_t *pos)
+{
+	struct fsnotify_group *group;
+	struct fsnotify_event *kevent;
+	char __user *start;
+	int ret;
+	DEFINE_WAIT(wait);
+
+	start = buf;
+	group = file->private_data;
+
+	while (1) {
+		prepare_to_wait(&group->notification_waitq, &wait, TASK_INTERRUPTIBLE);
+
+		mutex_lock(&group->notification_mutex);
+		kevent = get_one_event(group, count);
+		mutex_unlock(&group->notification_mutex);
+
+		if (kevent) {
+			ret = PTR_ERR(kevent);
+			if (IS_ERR(kevent))
+				break;
+			ret = copy_event_to_user(group, kevent, buf);
+			fsnotify_put_event(kevent);
+			if (ret < 0)
+				break;
+			buf += ret;
+			count -= ret;
+			continue;
+		}
+
+		ret = -EAGAIN;
+		if (file->f_flags & O_NONBLOCK)
+			break;
+		ret = -EINTR;
+		if (signal_pending(current))
+			break;
+
+		if (start != buf)
+			break;
+
+		schedule();
+	}
+
+	finish_wait(&group->notification_waitq, &wait);
+	if (start != buf && ret != -EFAULT)
+		ret = buf - start;
+	return ret;
+}
+```
+Some notes of the function above:
+
+* It checks for the condition in the body of the `while()` loop, instead of in the `while()` statement itself, since checking the condition is complicated and requires grabbing locks.
+* The loop is terminated via `break`.
+
+##### **Waking Up**
+
+`wake_up()` wakes up all the tasks waiting on the given wait queue. It does the following:
+
+* Calls `try_to_wake_up()`, which sets the task’s state to `TASK_RUNNING`
+* Calls `enqueue_task()` to add the task to the red-black tree
+* Sets `need_resched` if the awakened task’s priority is higher than the priority of the current task. <u>The code that causes the event to occur typically calls `wake_up()` itself</u>.
+    * For example, when data arrives from the hard disk, the VFS calls `wake_up()` on the wait queue that holds the processes waiting for the data.
+
+Since there are spurious wake-ups, just because a task is awakened does not mean that the event for which the task is waiting has occurred. Sleeping should always be handled in a loop that ensures that the condition for which the task is waiting has indeed occurred.
+The figure below depicts the relationship between each scheduler state.
+
+[![Figure 4.1 Sleeping and waking up.](figure_4.1_600.png)](figure_4.1.png "Figure 4.1 Sleeping and waking up.")
+
+### Preemption and Context Switching
+
+Context switching, the switching from one runnable task to another, is handled by the `context_switch()` function defined in [kernel/sched.c](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L2908). It is called by `schedule()` when a new process has been selected to run. It does two basic jobs:
+
+* Calls `switch_mm()`, declared in [`<asm/mmu_context.h>`](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/mmu_context.h), to switch the virtual memory mapping from the previous process’s to that of the new process.
+* Calls `switch_to()`, declared in [`<asm/system.h>`](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/system.h), to switch the processor state from the previous process’s to the current’s. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.
+
+##### **The `need_resched` flag** *
+
+The kernel must know when to call `schedule()`. If it called `schedule()` only when code explicitly did so, user-space programs could run indefinitely.
+
+The kernel provides the `need_resched` flag to signify whether a reschedule should be performed.
+
+* This flag is set by `scheduler_tick()` (in timer interrupt handler, see [The Timer Interrupt Handler](/lkd/ch11#the-timer-interrupt-handler)) when a process should be preempted.
+* This flag is set by `try_to_wake_up()` when a process that has a higher priority than the currently running process is awakened.
+
+The kernel checks the flag, sees that it is set, and calls `schedule()` to switch to a new process.
