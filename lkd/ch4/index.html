@@ -318,6 +318,15 @@
         
             <li><a href="#process-selection">Process Selection</a></li>
         
+            <li><a href="#the-scheduler-entry-point">The Scheduler Entry Point</a></li>
+        
+            <li><a href="#sleeping-and-waking-up">Sleeping and Waking Up</a></li>
+        
+    
+        <li class="main "><a href="#preemption-and-context-switching">Preemption and Context Switching</a></li>
+        
+            <li><a href="#the-need_resched-flag">The need_resched flag *</a></li>
+        
     
     </ul>
 </div></div>
@@ -497,7 +506,7 @@ this sections discusses four components of CFS:</p>
 
 
 <p>The scheduler entity structure is embedded in the process descriptor, <code>struct task_stuct</code>, as a member variable named <code>se</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1188">include/linux/sched.h#L1188</a>).</p>
-<h5 id="mapping-of-nice-value-to-weight">Mapping of nice value to weight *</h5>
+<h5 id="mapping-of-nice-value-to-weight"><strong>Mapping of nice value to weight</strong> *</h5>
 <p>The mapping of nice to weight is defined in the <code>prio_to_weight</code> constant array (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1362">/kernel/sched.c#L1362</a>). The weight is roughly equivalent to <code>1024/(1.25)^(nice)</code>.</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">prio_to_weight</span><span class="p">[</span><span class="mi">40</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
  <span class="cm">/* -20 */</span>     <span class="mi">88761</span><span class="p">,</span>     <span class="mi">71755</span><span class="p">,</span>     <span class="mi">56483</span><span class="p">,</span>     <span class="mi">46273</span><span class="p">,</span>     <span class="mi">36291</span><span class="p">,</span>
@@ -647,6 +656,307 @@ this sections discusses four components of CFS:</p>
 
 <p>Note that <code>__pick_next_entity()</code> does not actually traverse the tree to find the leftmost node, because the value is cached by <code>rb_leftmost</code>, though it is efficient to walk the tree to find the leftmost node (<code>O(height of tree)</code>, which is <code>O(log N)</code> for <code>N</code> nodes if the tree is balanced).</p>
 <p>The return value from this function is the process that CFS next runs. If the function returns NULL, there is no leftmost node, and thus no nodes in the tree. In that case, there are no runnable processes, and CFS schedules the idle task.</p>
+<h5 id="adding-processes-to-the-tree"><strong>Adding Processes to the Tree</strong></h5>
+<p>CFS adds processes to the rbtree and caches the leftmost node, when a process becomes runnable (wakes up) or is first created via <code>fork()</code>. Adding processes to the tree is performed by <code>enqueue_entity()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L773">kernel/sched_fair.c#L773</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">enqueue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">     * Update the normalized vruntime before updating min_vruntime</span>
+<span class="cm">     * through callig update_curr().</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ENQUEUE_WAKEUP</span><span class="p">)</span> <span class="o">||</span> <span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ENQUEUE_MIGRATE</span><span class="p">))</span>
+        <span class="n">se</span><span class="o">-&gt;</span><span class="n">vruntime</span> <span class="o">+=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">min_vruntime</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Update run-time statistics of the &#39;current&#39;.</span>
+<span class="cm">     */</span>
+    <span class="n">update_curr</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+    <span class="n">account_entity_enqueue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ENQUEUE_WAKEUP</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">place_entity</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="n">enqueue_sleeper</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">update_stats_enqueue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">check_spread</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">se</span> <span class="o">!=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">)</span>
+        <span class="n">__enqueue_entity</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function updates the runtime and other statistics and then invokes <code>__enqueue_entity()</code> to perform the actual heavy lifting of inserting the entry into the red-black tree.</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L328">kernel/sched_fair.c#L328</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Enqueue an entity into the rb-tree:</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">__enqueue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">**</span><span class="n">link</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">tasks_timeline</span><span class="p">.</span><span class="n">rb_node</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">parent</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">entry</span><span class="p">;</span>
+    <span class="n">s64</span> <span class="n">key</span> <span class="o">=</span> <span class="n">entity_key</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">leftmost</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Find the right place in the rbtree:</span>
+<span class="cm">     */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="o">*</span><span class="n">link</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">parent</span> <span class="o">=</span> <span class="o">*</span><span class="n">link</span><span class="p">;</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">rb_entry</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span><span class="p">,</span> <span class="n">run_node</span><span class="p">);</span>
+        <span class="cm">/*</span>
+<span class="cm">         * We dont care about collisions. Nodes with</span>
+<span class="cm">         * the same key stay together.</span>
+<span class="cm">         */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">key</span> <span class="o">&lt;</span> <span class="n">entity_key</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">entry</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">link</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">parent</span><span class="o">-&gt;</span><span class="n">rb_left</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">link</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">parent</span><span class="o">-&gt;</span><span class="n">rb_right</span><span class="p">;</span>
+            <span class="n">leftmost</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Maintain a cache of leftmost tree entries (it is frequently</span>
+<span class="cm">     * used):</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">leftmost</span><span class="p">)</span>
+        <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">;</span>
+
+    <span class="n">rb_link_node</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">link</span><span class="p">);</span>
+    <span class="n">rb_insert_color</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">tasks_timeline</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function traverses the tree in the <code>while()</code> loop to search for a matching key (inserted process’s <code>vruntime</code>). It moves to the left child if the key is smaller than the current node’s key and to the right child if the key is larger.  If it ever moves to the right, even once, it knows the inserted process cannot be the new leftmost node, and it sets leftmost to zero. If it moves only to the left, <code>leftmost</code> remains one, and we have a new leftmost node and can update the cache by setting <code>rb_leftmost</code> to the inserted process. When out of the loop, the function calls <code>rb_link_node()</code> on the parent node, making the inserted process the new child. The function <code>rb_insert_color()</code> updates the self-balancing properties of the tree.</p>
+<h5 id="removing-processes-from-the-tree"><strong>Removing Processes from the Tree</strong></h5>
+<p>CFS removes processes from the red-black tree when a process blocks (becomes unrunnable) or terminates (ceases to exist):</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L815">kernel/sched_fair.c#L815</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">dequeue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sleep</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">     * Update run-time statistics of the &#39;current&#39;.</span>
+<span class="cm">     */</span>
+    <span class="n">update_curr</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+
+    <span class="n">update_stats_dequeue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">clear_buddies</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">se</span> <span class="o">!=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">)</span>
+        <span class="n">__dequeue_entity</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">account_entity_dequeue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">update_min_vruntime</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Normalize the entity after updating the min_vruntime because the</span>
+<span class="cm">     * update can refer to the -&gt;curr item and we need to reflect this</span>
+<span class="cm">     * movement in our normalized position.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">sleep</span><span class="p">)</span>
+        <span class="n">se</span><span class="o">-&gt;</span><span class="n">vruntime</span> <span class="o">-=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">min_vruntime</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Similarly, the real work is performed by a helper function, <code>__dequeue_entity()</code>:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">__dequeue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">next_node</span><span class="p">;</span>
+
+        <span class="n">next_node</span> <span class="o">=</span> <span class="n">rb_next</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">);</span>
+        <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span> <span class="o">=</span> <span class="n">next_node</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">rb_erase</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">tasks_timeline</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Removing a process from the tree is much simpler because the rbtree implementation provides the <code>rb_erase()</code> function that performs all the work. The rest of this function updates the <code>rb_leftmost</code> cache. If the process-to-remove is the leftmost node, the function invokes <code>rb_next()</code> to find what would be the next node in an in-order traversal. This is what will be the leftmost node when the current leftmost node is removed.</p>
+<h4 id="the-scheduler-entry-point">The Scheduler Entry Point</h4>
+<p>The main entry point into the process schedule is the function <code>schedule()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L3701">kernel/sched.c#L3701</a>). This is the function that the rest of the kernel uses to invoke the process scheduler, deciding which process to run and then running it.</p>
+<p><u><code>schedule()</code> is generic to scheduler classes. It finds the highest priority scheduler class with a runnable process and asks it what to run next.</u> Thus, <code>schedule()</code> is simple. The only important part of the function is its invocation of <code>pick_next_task()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L3670">kernel/sched.c#L3670</a>), which goes through each scheduler class, starting with the highest priority, and selects the highest priority process in the highest priority class:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Pick up the highest-prio task:</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span>
+<span class="nf">pick_next_task</span><span class="p">(</span><span class="k">struct</span> <span class="n">rq</span> <span class="o">*</span><span class="n">rq</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">const</span> <span class="k">struct</span> <span class="n">sched_class</span> <span class="o">*</span><span class="n">class</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Optimization: we know that if all tasks are in</span>
+<span class="cm">     * the fair class we can call that function directly:</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="n">rq</span><span class="o">-&gt;</span><span class="n">nr_running</span> <span class="o">==</span> <span class="n">rq</span><span class="o">-&gt;</span><span class="n">cfs</span><span class="p">.</span><span class="n">nr_running</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">fair_sched_class</span><span class="p">.</span><span class="n">pick_next_task</span><span class="p">(</span><span class="n">rq</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">class</span> <span class="o">=</span> <span class="n">sched_class_highest</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">class</span><span class="o">-&gt;</span><span class="n">pick_next_task</span><span class="p">(</span><span class="n">rq</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+        <span class="cm">/*</span>
+<span class="cm">         * Will never be NULL as the idle class always</span>
+<span class="cm">         * returns a non-NULL p:</span>
+<span class="cm">         */</span>
+        <span class="n">class</span> <span class="o">=</span> <span class="n">class</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note the optimization at the beginning of the function. CFS is the scheduler class for normal processes, and most systems run mostly normal processes, there is a small hack to quickly select the next CFS-provided process if the number of runnable processes is equal to the number of CFS runnable processes (which suggests that all runnable processes are provided by CFS).</p>
+<p>The core of the function is the <code>for()</code> loop, which iterates over each class in priority order, starting with the highest priority class. Each class implements the <code>pick_next_task()</code> function, which returns a pointer to its next runnable process or, if there is not one, <code>NULL</code>.The first class to return a non-<code>NULL</code> value has selected the next runnable process. CFS’s implementation of <code>pick_next_task()</code> calls <code>pick_next_entity()</code>, which in turn calls the <code>__pick_next_entity()</code> function (see <a href="#picking-the-next-task">Picking the Next Task</a> in the previous section).</p>
+<h5 id="fair_sched_class-scheduler-class"><strong><code>fair_sched_class</code> scheduler class</strong> *</h5>
+<p><code>fair_sched_class</code> is a <code>struct sched_class</code> (defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1029">include/linux/sched.h</a>) structure defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L3688">kernel/sched_fair.c#L3688</a>). <code>kernel/sched_fair.c</code> is included by <code>/kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1936">kernel/sched.c#L1936</a>), so <code>fair_sched_class</code> is avaialble to the <code>pick_next_task</code> function in <code>/kernel/sched.c</code>.</p>
+<h4 id="sleeping-and-waking-up">Sleeping and Waking Up</h4>
+<p>Tasks that are sleeping (blocked) are in a special non-runnable state. [p58]</p>
+<p>A task sleeps while it is waiting for some event, which may be:</p>
+<ul>
+<li>a specified amount of time;</li>
+<li>more data from a file I/O;</li>
+<li>another hardware event</li>
+</ul>
+<p>A task can also involuntarily go to sleep when it tries to obtain a contended semaphore in the kernel.</p>
+<p>Whatever the case, the kernel behavior is the same. The task does the following in turn:</p>
+<ul>
+<li>marks itself as sleeping,</li>
+<li>puts itself on a wait queue,</li>
+<li>removes itself from the red-black tree of runnable,</li>
+<li>and calls <code>schedule()</code> to select a new process to execute.</li>
+</ul>
+<p>Waking back up is the inverse: The task is set as runnable, removed from the wait queue, and added back to the red-black tree.</p>
+<p>Two states are associated with sleeping:</p>
+<ul>
+<li><code>TASK_INTERRUPTIBLE</code></li>
+<li><code>TASK_UNINTERRUPTIBLE</code></li>
+</ul>
+<p>They differ only in that tasks in the <code>TASK_UNINTERRUPTIBLE</code> state ignore signals, whereas tasks in the <code>TASK_INTERRUPTIBLE</code> state wake up prematurely and respond to a signal if one is issued. Both types of sleeping tasks sit on a wait queue, waiting for an event to occur, and are not runnable.</p>
+<h5 id="wait-queues"><strong>Wait Queues</strong></h5>
+<p>Sleeping is handled via wait queues. A wait queue is a simple list of processes waiting for an event to occur.</p>
+<p>Wait queues are represented in the kernel by <code>wake_queue_head_t</code>. They are created statically via <code>DECLARE_WAITQUEUE()</code> or dynamically via <code>init_waitqueue_head()</code>. Processes put themselves on a wait queue and mark themselves not runnable. When the event associated with the wait queue occurs, the processes on the queue are awakened.</p>
+<p>It is important to implement sleeping and waking correctly, to avoid race conditions. Otherwise, it is possible to go to sleep after the condition becomes true, in which case the task might sleep indefinitely. Therefore, the recommended method for sleeping in the kernel is a bit more complicated:</p>
+<div class="codehilite"><pre><span class="cm">/* `q&#39; is the wait queue we wish to sleep on */</span>
+<span class="n">DEFINE_WAIT</span><span class="p">(</span><span class="n">wait</span><span class="p">);</span>
+
+<span class="n">add_wait_queue</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+<span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">condition</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* condition is the event that we are waiting for */</span>
+    <span class="n">prepare_to_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">q</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">,</span> <span class="n">TASK_INTERRUPTIBLE</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal_pending</span><span class="p">(</span><span class="n">current</span><span class="p">))</span>
+        <span class="cm">/* handle signal */</span>
+    <span class="n">schedule</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="n">finish_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">q</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The task performs the following steps to add itself to a wait queue:</p>
+<ol>
+<li>Creates a wait queue entry via the macro <code>DEFINE_WAIT()</code>.</li>
+<li>Adds itself to a wait queue via <code>add_wait_queue()</code>. This wait queue awakens the process when the condition for which it is waiting occurs. Of course, there needs to be code elsewhere that calls wake_up() on the queue when the event actually does occur.</li>
+<li>Calls <code>prepare_to_wait()</code> to change the process state to either <code>TASK_INTERRUPTIBLE</code> or <code>TASK_UNINTERRUPTIBLE</code>. This function also adds the task back to the wait queue if necessary, which is needed on subsequent iterations of the loop.</li>
+<li>If the state is set to <code>TASK_INTERRUPTIBLE</code>, a signal wakes the process up. This is called a <strong>spurious wake up</strong> (a wake-up not caused by the occurrence of the event). So check and handle signals.</li>
+<li>When the task awakens, it again checks whether the condition is true. If it is, it exits the loop. Otherwise, it again calls <code>schedule()</code> and repeats.</li>
+<li>After the condition is true, the task sets itself to <code>TASK_RUNNING</code> and removes itself from the wait queue via <code>finish_wait()</code>.</li>
+</ol>
+<p>If the condition occurs before the task goes to sleep, the loop terminates, and the task does not erroneously go to sleep. Note that kernel code often has to perform various other tasks in the body of the loop. For example, it might need to release locks before calling <code>schedule()</code> and reacquire them after or react to other events.</p>
+<p>The function <code>inotify_read()</code> in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/fs/notify/inotify/inotify_user.c#L229">fs/notify/inotify/inotify_user.c</a>, which handles reading from the inotify file descriptor, is a straightforward example of using wait queues:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">inotify_read</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
+                <span class="kt">size_t</span> <span class="n">count</span><span class="p">,</span> <span class="kt">loff_t</span> <span class="o">*</span><span class="n">pos</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">fsnotify_group</span> <span class="o">*</span><span class="n">group</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">fsnotify_event</span> <span class="o">*</span><span class="n">kevent</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span><span class="n">start</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="n">DEFINE_WAIT</span><span class="p">(</span><span class="n">wait</span><span class="p">);</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="n">buf</span><span class="p">;</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">file</span><span class="o">-&gt;</span><span class="n">private_data</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">prepare_to_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_waitq</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">,</span> <span class="n">TASK_INTERRUPTIBLE</span><span class="p">);</span>
+
+        <span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_mutex</span><span class="p">);</span>
+        <span class="n">kevent</span> <span class="o">=</span> <span class="n">get_one_event</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">count</span><span class="p">);</span>
+        <span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_mutex</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">kevent</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">PTR_ERR</span><span class="p">(</span><span class="n">kevent</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">IS_ERR</span><span class="p">(</span><span class="n">kevent</span><span class="p">))</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">copy_event_to_user</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">kevent</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+            <span class="n">fsnotify_put_event</span><span class="p">(</span><span class="n">kevent</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="n">buf</span> <span class="o">+=</span> <span class="n">ret</span><span class="p">;</span>
+            <span class="n">count</span> <span class="o">-=</span> <span class="n">ret</span><span class="p">;</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="n">EAGAIN</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">file</span><span class="o">-&gt;</span><span class="n">f_flags</span> <span class="o">&amp;</span> <span class="n">O_NONBLOCK</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="n">EINTR</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">signal_pending</span><span class="p">(</span><span class="n">current</span><span class="p">))</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">start</span> <span class="o">!=</span> <span class="n">buf</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="n">schedule</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="n">finish_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_waitq</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">start</span> <span class="o">!=</span> <span class="n">buf</span> <span class="o">&amp;&amp;</span> <span class="n">ret</span> <span class="o">!=</span> <span class="o">-</span><span class="n">EFAULT</span><span class="p">)</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">buf</span> <span class="o">-</span> <span class="n">start</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Some notes of the function above:</p>
+<ul>
+<li>It checks for the condition in the body of the <code>while()</code> loop, instead of in the <code>while()</code> statement itself, since checking the condition is complicated and requires grabbing locks.</li>
+<li>The loop is terminated via <code>break</code>.</li>
+</ul>
+<h5 id="waking-up"><strong>Waking Up</strong></h5>
+<p><code>wake_up()</code> wakes up all the tasks waiting on the given wait queue. It does the following:</p>
+<ul>
+<li>Calls <code>try_to_wake_up()</code>, which sets the task’s state to <code>TASK_RUNNING</code></li>
+<li>Calls <code>enqueue_task()</code> to add the task to the red-black tree</li>
+<li>Sets <code>need_resched</code> if the awakened task’s priority is higher than the priority of the current task. <u>The code that causes the event to occur typically calls <code>wake_up()</code> itself</u>.<ul>
+<li>For example, when data arrives from the hard disk, the VFS calls <code>wake_up()</code> on the wait queue that holds the processes waiting for the data.</li>
+</ul>
+</li>
+</ul>
+<p>Since there are spurious wake-ups, just because a task is awakened does not mean that the event for which the task is waiting has occurred. Sleeping should always be handled in a loop that ensures that the condition for which the task is waiting has indeed occurred.
+The figure below depicts the relationship between each scheduler state.</p>
+<p><a href="../figure_4.1.png" title="Figure 4.1 Sleeping and waking up."><img alt="Figure 4.1 Sleeping and waking up." src="../figure_4.1_600.png" /></a></p>
+<h3 id="preemption-and-context-switching">Preemption and Context Switching</h3>
+<p>Context switching, the switching from one runnable task to another, is handled by the <code>context_switch()</code> function defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L2908">kernel/sched.c</a>. It is called by <code>schedule()</code> when a new process has been selected to run. It does two basic jobs:</p>
+<ul>
+<li>Calls <code>switch_mm()</code>, declared in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/mmu_context.h"><code>&lt;asm/mmu_context.h&gt;</code></a>, to switch the virtual memory mapping from the previous process’s to that of the new process.</li>
+<li>Calls <code>switch_to()</code>, declared in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/system.h"><code>&lt;asm/system.h&gt;</code></a>, to switch the processor state from the previous process’s to the current’s. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.</li>
+</ul>
+<h5 id="the-need_resched-flag"><strong>The <code>need_resched</code> flag</strong> *</h5>
+<p>The kernel must know when to call <code>schedule()</code>. If it called <code>schedule()</code> only when code explicitly did so, user-space programs could run indefinitely.</p>
+<p>The kernel provides the <code>need_resched</code> flag to signify whether a reschedule should be performed.</p>
+<ul>
+<li>This flag is set by <code>scheduler_tick()</code> (in timer interrupt handler, see <a href="../../lkd/ch11#the-timer-interrupt-handler">The Timer Interrupt Handler</a>) when a process should be preempted.</li>
+<li>This flag is set by <code>try_to_wake_up()</code> when a process that has a higher priority than the currently running process is awakened.</li>
+</ul>
+<p>The kernel checks the flag, sees that it is set, and calls <code>schedule()</code> to switch to a new process.</p>
             </div>
         </div>
 
