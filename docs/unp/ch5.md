@@ -446,3 +446,11 @@ If the signal being caught is not `SIGALRM`, we specify the `SA_RESTART` flag, i
 We call `sigaction` and then <u>return the old action for the signal as the return value of the signal function.</u>
 
 Throughout this text, we will use the `signal` function from the above definition.
+
+### Handling `SIGCHLD` Signals
+
+The zombie state is to maintain information about the child for the parent to fetch later, which includes:
+
+* process ID of the child,
+* termination status,
+* information on the resource utilization of the child.
