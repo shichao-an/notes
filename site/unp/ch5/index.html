@@ -331,6 +331,8 @@
     
         <li class="main "><a href="#handling-sigchld-signals">Handling SIGCHLD Signals</a></li>
         
+            <li><a href="#handling-zombies">Handling Zombies</a></li>
+        
     
     </ul>
 </div></div>
@@ -767,6 +769,27 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 <li>termination status,</li>
 <li>information on the resource utilization of the child.</li>
 </ul>
+<p>If a parent process of zombie children terminates, the parent process ID of all the zombie children is set to 1 (the <code>init</code> process), which will inherit the children and clean them up (<code>init</code> will <code>wait</code> for them, which removes the zombie). [p132]</p>
+<h4 id="handling-zombies">Handling Zombies</h4>
+<p>Zombies take up space in the kernel and eventually we can run out of processes. Whenever we <code>fork</code> children, we must <code>wait</code> for them to prevent them from becoming zombies. We can establish a signal handler to catch <code>SIGCHLD</code> and call <code>wait</code> within the handler. We establish the signal handler by adding the following function call after the call to <code>listen</code> (in <a href="#tcp-echo-server-main-function">server's main function</a>; it must be done before <code>fork</code>ing the first child and needs to be done only once.):</p>
+<div class="codehilite"><pre><span class="n">Signal</span> <span class="p">(</span><span class="n">SIGCHLD</span><span class="p">,</span> <span class="n">sig_chld</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The signal handler, the function <code>sig_chld</code>, is defined below:</p>
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
+
+<span class="kt">void</span>
+<span class="nf">sig_chld</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">stat</span><span class="p">;</span>
+
+    <span class="n">pid</span> <span class="o">=</span> <span class="n">wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stat</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;child %d terminated</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">pid</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
             </div>
         </div>
 
