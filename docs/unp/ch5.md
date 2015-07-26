@@ -454,3 +454,32 @@ The zombie state is to maintain information about the child for the parent to fe
 * process ID of the child,
 * termination status,
 * information on the resource utilization of the child.
+
+If a parent process of zombie children terminates, the parent process ID of all the zombie children is set to 1 (the `init` process), which will inherit the children and clean them up (`init` will `wait` for them, which removes the zombie). [p132]
+
+#### Handling Zombies
+
+Zombies take up space in the kernel and eventually we can run out of processes. Whenever we `fork` children, we must `wait` for them to prevent them from becoming zombies. We can establish a signal handler to catch `SIGCHLD` and call `wait` within the handler. We establish the signal handler by adding the following function call after the call to `listen` (in [server's main function](#tcp-echo-server-main-function); it must be done before `fork`ing the first child and needs to be done only once.):
+
+```c
+Signal (SIGCHLD, sig_chld);
+```
+
+The signal handler, the function `sig_chld`, is defined below:
+
+```c
+#include	"unp.h"
+
+void
+sig_chld(int signo)
+{
+	pid_t	pid;
+	int		stat;
+
+	pid = wait(&stat);
+	printf("child %d terminated\n", pid);
+	return;
+}
+```
+
+
