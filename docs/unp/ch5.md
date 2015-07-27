@@ -184,7 +184,7 @@ The above code does the following:
 * **Read echoed line from server, write to standard output**
     * `readline` reads the line echoed back from the server and `fputs` writes it to standard output.
 * **Return to main**
-  * The loop terminates when `fgets` returns a null pointer, which occurs when it encounters either an end-of-file (EOF) or an error. Our `Fgets` wrapper function checks for an error and aborts if one occurs, so `Fgets` returns a null pointer only when an end-of-file is encountered.
+    * The loop terminates when `fgets` returns a null pointer, which occurs when it encounters either an end-of-file (EOF) or an error. Our `Fgets` wrapper function checks for an error and aborts if one occurs, so `Fgets` returns a null pointer only when an end-of-file is encountered.
 
 ### Normal Startup
 
@@ -486,7 +486,7 @@ Note that calling standard I/O functions such as `printf` in a signal handler is
 
 ##### **Compiling and running the program on Solaris** *
 
-This program is compiled on Solaris 9 and uses the `signal` function from the system library (not [our version](#signal-function)).
+This program ([tcpcliserv/tcpserv02.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv02.c)) is compiled on Solaris 9 and uses the `signal` function from the system library (not [our version](#signal-function)).
 
 ```shell-session
 solaris % tcpserv02 &                 # start server in background
@@ -536,6 +536,8 @@ To handle an interrupted `accept`, we change the call to `accept` in [server's `
 
 Note that this `accept` is not our wrapper function `Accept`, since we must handle the failure of the function ourselves.
 
+The modified version of the server source code is [tcpcliserv/tcpserv03.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv03.c).
+
 Restarting the interrupted system call is fine for:
 
 * `accept`
@@ -549,3 +551,211 @@ However, there is one function that we cannot restart: `connect`. If this functi
 ### `wait` and `waitpid` Functions
 
 We can call `wait` function to handle the terminated child.
+
+```c
+#include <sys/wait.h>
+
+pid_t wait (int *statloc);
+pid_t waitpid (pid_t pid, int *statloc, int options);
+
+/* Both return: process ID if OK, 0 or–1 on error */
+```
+
+`wait` and `waitpid` both return two values: the return value of the function is the process ID of the terminated child, and the termination status of the child (an integer) is returned through the statloc pointer.
+
+There are three macros that we can call that examine the termination status (see [APUE](/apue/ch8/#wait-and-waitpid-functions)):
+
+* `WIFEXITED`: tells if the child terminated normally
+* `WIFSIGNALED`: tells if the child was killed by a signal
+* `WIFSTOPPED`: tells if the child was just stopped by job control
+
+Additional macros let us then fetch the exit status of the child, or the value of the signal that killed the child, or the value of the job-control signal that stopped the child. We will use the `WIFEXITED` and `WEXITSTATUS` macros  for this purpose.
+
+If there are no terminated children for the process calling `wait`, but the process has one or more children that are still executing, then `wait` blocks until the first of the existing children terminates.
+
+`waitpid` has more control over which process to wait for and whether or not to block:
+
+* The *pid* argument specifies the process ID that we want to wait for. A value of -1 says to wait for the first of our children to terminate.
+* The *options* argument specifies additional options. The most common option is `WNOHANG`, which tells the kernel not to block if there are no terminated children.
+
+#### Difference between `wait` and `waitpid`
+
+The following example illustrates the difference between the `wait` and `waitpid` functions when used to clean up terminated children.
+
+We modify our TCP client as below, which establishes five connections with the server and then uses only the first one (`sockfd[0]`) in the call to `str_cli`. The purpose of establishing multiple connections is to spawn multiple children from the concurrent server.
+
+<small>[tcpcliserv/tcpcli04.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpcli04.c)</small>
+
+```c
+#include	"unp.h"
+
+int
+main(int argc, char **argv)
+{
+	int					i, sockfd[5];
+	struct sockaddr_in	servaddr;
+
+	if (argc != 2)
+		err_quit("usage: tcpcli <IPaddress>");
+
+	for (i = 0; i < 5; i++) {
+		sockfd[i] = Socket(AF_INET, SOCK_STREAM, 0);
+
+		bzero(&servaddr, sizeof(servaddr));
+		servaddr.sin_family = AF_INET;
+		servaddr.sin_port = htons(SERV_PORT);
+		Inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
+
+		Connect(sockfd[i], (SA *) &servaddr, sizeof(servaddr));
+	}
+
+	str_cli(stdin, sockfd[0]);		/* do it all */
+
+	exit(0);
+}
+```
+
+When the client terminates, all open descriptors are closed automatically by the kernel (we do not call `close`, only `exit`), and all five connections are terminated at about the same time. This causes five FINs to be sent, one on each connection, which in turn causes all five server children to terminate at about the same time. This causes five `SIGCHLD` signals to be delivered to the parent at about the same time. This causes the problem under discussion.
+
+We first run the server ([tcpcliserv/tcpserv03.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv03.c)) in the background and then our new client:
+
+```shell-session
+linux % tcpserv03 &
+[1] 20419
+linux % tcpcli04 127.0.0.1
+hello                       # we type this
+hello                       # and it is echoed
+^D                          # we then type our EOF character
+child 20426 terminated      # output by server
+```
+
+Only one `printf` is output, when we expect all five children to have terminated. If we execute `ps`, we see that the other four children still exist as zombies.
+
+```text
+PID TTY          TIME CMD
+20419 pts/6     00:00:00 tcpserv03
+20421 pts/6     00:00:00 tcpserv03 <defunct>
+20422 pts/6     00:00:00 tcpserv03 <defunct>
+20423 pts/6     00:00:00 tcpserv03 <defunct>
+```
+
+Establishing a signal handler and calling wait from that handler are insufficient for preventing zombies. <u>The problem is that all five signals are generated before the signal handler is executed, and the signal handler is executed only one time because Unix signals are normally not queued.</u>This problem is nondeterministic. Dependent on the timing of the FINs arriving at the server host, the signal handler is executed two, three or even four times.
+
+The correct solution is to call `waitpid` instead of `wait`. The code below shows the version of our `sig_chld` function that handles `SIGCHLD` correctly. This version works because we call `waitpid` within a loop, fetching the status of any of our children that have terminated, with the `WNOHANG` option, which tells `waitpid` not to block if there are running children that have not yet terminated. We cannot call `wait` in a loop, because there is no way to prevent wait from blocking if there are running children that have not yet terminated.
+
+<small>[tcpcliserv/sigchldwaitpid.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/sigchldwaitpid.c)</small>
+
+```c
+#include	"unp.h"
+
+void
+sig_chld(int signo)
+{
+	pid_t	pid;
+	int		stat;
+
+	while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0)
+		printf("child %d terminated\n", pid);
+	return;
+}
+```
+
+The code below shows the final version of our server. It correctly handles a return of `EINTR` from `accept` and it establishes a signal handler (code above) that calls `waitpid` for all terminated children.
+
+<small>[tcpcliserv/tcpserv04.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpserv04.c)</small>
+
+```c
+#include	"unp.h"
+
+int
+main(int argc, char **argv)
+{
+	int					listenfd, connfd;
+	pid_t				childpid;
+	socklen_t			clilen;
+	struct sockaddr_in	cliaddr, servaddr;
+	void				sig_chld(int);
+
+	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port        = htons(SERV_PORT);
+
+	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
+
+	Listen(listenfd, LISTENQ);
+
+	Signal(SIGCHLD, sig_chld);	/* must call waitpid() */
+
+	for ( ; ; ) {
+		clilen = sizeof(cliaddr);
+		if ( (connfd = accept(listenfd, (SA *) &cliaddr, &clilen)) < 0) {
+			if (errno == EINTR)
+				continue;		/* back to for() */
+			else
+				err_sys("accept error");
+		}
+
+		if ( (childpid = Fork()) == 0) {	/* child process */
+			Close(listenfd);	/* close listening socket */
+			str_echo(connfd);	/* process the request */
+			exit(0);
+		}
+		Close(connfd);			/* parent closes connected socket */
+	}
+}
+```
+
+The purpose of this section has been to demonstrate three scenarios that we can encounter with network programming:
+
+* We must catch the `SIGCHLD` signal when forking child processes.
+* We must handle interrupted system calls when we catch signals.
+* A `SIGCHLD` handler must be coded correctly using `waitpid` to prevent any zombies from being left around.
+
+### Connection Abort before `accept` Returns
+
+There is another condition similar to the interrupted system call that can cause `accept` to return a nonfatal error, in which case we should just call `accept` again. The sequence of packets shown below has been seen on busy servers (typically busy Web servers), where the server receives an RST for an `ESTABLISHED` connection before accept is called.
+
+[![Figure 5.13. Receiving an RST for an ESTABLISHED connection before accept is called.](figure_5.13.png)](figure_5.13.png "Figure 5.13. Receiving an RST for an ESTABLISHED connection before accept is called.")
+
+The three-way handshake completes, the connection is established, and then the client TCP sends an RST (reset). On the server side, the connection is queued by its TCP, waiting for the server process to call accept when the RST arrives. Sometime later, the server process calls accept.
+
+An easy way to simulate this scenario is to start the server, have it call `socket`, `bind`, and `listen`, and then go to sleep for a short period of time before calling `accept`. While the server process is asleep, start the client and have it call `socket` and `connect`. As soon as `connect` returns, set the `SO_LINGER` socket option to generate the RST and terminate.
+
+### Termination of Server Process
+
+We will now start our client/server and then kill the server child process, which simulates the crashing of the server process. We must be careful to distinguish between the crashing of the server *process* and the crashing of the server *host*.
+
+The following steps take place:
+
+1. We start the server and client and type one line to the client to verify that all is okay. That line is echoed normally by the server child.
+2. We find the process ID of the server child and `kill` it. As part of process termination, all open descriptors in the child are closed. This causes a FIN to be sent to the client, and the client TCP responds with an ACK. This is the first half of the TCP connection termination.
+3. The `SIGCHLD` signal is sent to the server parent and handled correctly.
+4. Nothing happens at the client. The client TCP receives the FIN from the server TCP and responds with an ACK, but the problem is that the client process is blocked in the call to `fgets` waiting for a line from the terminal.
+5. Running `netstat` at this point shows the state of the sockets.
+
+        linux % netstat -a | grep 9877
+        tcp        0      0 *:9877               *:*                 LISTEN
+        tcp        0      0 localhost:9877       localhost:43604     FIN_WAIT2
+        tcp        1      0 localhost:43604      localhost:9877      CLOSE_WAIT
+
+6. We can still type a line of input to the client. Here is what happens at the client starting from Step 1:
+
+        linux % tcpcli01 127.0.0.1  # start client
+        hello               # the first line that we type
+        hello               # is echoed correctly  we kill the server child on the server host
+        another line        # we then type a second line to the client
+        str_cli : server terminated prematurely
+
+    When we type "another line," `str_cli` calls `writen` and the client TCP sends the data to the server. This is allowed by TCP because the receipt of the FIN by the client TCP only indicates that the server process has closed its end of the connection and will not be sending any more data. The receipt of the FIN does not tell the client TCP that the server process has terminated (which in this case, it has).
+
+    When the server TCP receives the data from the client, it responds with an RST since the process that had that socket open has terminated. We can verify that the RST was sent by watching the packets with `tcpdump`.
+
+7. The client process will not see the RST because it calls `readline` immediately after the call to writen and readline returns 0 (EOF) immediately because of the FIN that was received in Step 2. Our client is not expecting to receive an EOF at this point ([str_cli](#tcp-echo-client-str_cli-function)) so it quits with the error message "server terminated prematurely."
+8. When the client terminates (by calling `err_quit` in [str_cli](#tcp-echo-client-str_cli-function)), all its open descriptors are closed.
+    * If the `readline` happens before the RST is received (as shown in this example), the result is an unexpected EOF in the client.
+    * If the RST arrives first, the result is an `ECONNRESET` ("Connection reset by peer") error return from `readline`.
+
+The problem in this example is that the client is blocked in the call to `fgets` when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the `select` and `poll` functions described in [Chapter 6](/apue/ch6/).
