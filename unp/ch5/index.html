@@ -333,6 +333,11 @@
         
             <li><a href="#handling-zombies">Handling Zombies</a></li>
         
+            <li><a href="#handling-interrupted-system-calls">Handling Interrupted System Calls</a></li>
+        
+    
+        <li class="main "><a href="#wait-and-waitpid-functions">wait and waitpid Functions</a></li>
+        
     
     </ul>
 </div></div>
@@ -771,7 +776,7 @@ tcp        0      0 *:9877                  *:*                      LISTEN
 </ul>
 <p>If a parent process of zombie children terminates, the parent process ID of all the zombie children is set to 1 (the <code>init</code> process), which will inherit the children and clean them up (<code>init</code> will <code>wait</code> for them, which removes the zombie). [p132]</p>
 <h4 id="handling-zombies">Handling Zombies</h4>
-<p>Zombies take up space in the kernel and eventually we can run out of processes. Whenever we <code>fork</code> children, we must <code>wait</code> for them to prevent them from becoming zombies. We can establish a signal handler to catch <code>SIGCHLD</code> and call <code>wait</code> within the handler. We establish the signal handler by adding the following function call after the call to <code>listen</code> (in <a href="#tcp-echo-server-main-function">server's main function</a>; it must be done before <code>fork</code>ing the first child and needs to be done only once.):</p>
+<p>Zombies take up space in the kernel and eventually we can run out of processes. Whenever we <code>fork</code> children, we must <code>wait</code> for them to prevent them from becoming zombies. We can establish a signal handler to catch <code>SIGCHLD</code> and call <code>wait</code> within the handler. We establish the signal handler by adding the following function call after the call to <code>listen</code> (in <a href="#tcp-echo-server-main-function">server's <code>main</code> function</a>; it must be done before <code>fork</code>ing the first child and needs to be done only once.):</p>
 <div class="codehilite"><pre><span class="n">Signal</span> <span class="p">(</span><span class="n">SIGCHLD</span><span class="p">,</span> <span class="n">sig_chld</span><span class="p">);</span>
 </pre></div>
 
@@ -790,6 +795,63 @@ tcp        0      0 *:9877                  *:*                      LISTEN
     <span class="k">return</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
+
+
+<p>Note that calling standard I/O functions such as <code>printf</code> in a signal handler is not recommended. We call <code>printf</code> here as a diagnostic tool to see when the child terminates.</p>
+<h5 id="compiling-and-running-the-program-on-solaris"><strong>Compiling and running the program on Solaris</strong> *</h5>
+<p>This program is compiled on Solaris 9 and uses the <code>signal</code> function from the system library (not <a href="#signal-function">our version</a>).</p>
+<div class="codehilite"><pre><span class="go">solaris % tcpserv02 &amp;                 # start server in background</span>
+<span class="go">[2] 16939</span>
+<span class="go">solaris % tcpcli01 127.0.0.1          # then start client in foreground</span>
+<span class="go">hi there                              # we type this</span>
+<span class="go">hi there                              # and this is echoed</span>
+<span class="go">^D                                    # we type our EOF character</span>
+<span class="go">child 16942 terminated                # output by printf in signal handler</span>
+<span class="go">accept error: Interrupted system call # main function aborts</span>
+</pre></div>
+
+
+<p>The sequence of steps is as follows:</p>
+<ol>
+<li>We terminate the client by typing our EOF character. The client TCP sends a FIN to the server and the server responds with an ACK.</li>
+<li>The receipt of the FIN delivers an EOF to the child's pending <code>readline</code>. The child terminates.</li>
+<li>The parent is blocked in its call to accept when the <code>SIGCHLD</code> signal is delivered. The <code>sig_chld</code> function executes (our signal handler), <code>wait</code> fetches the child's PID and termination status, and <code>printf</code> is called from the signal handler. The signal handler returns.</li>
+<li>Since the signal was caught by the parent while the parent was blocked in a slow system call (<code>accept</code>), the kernel causes the <code>accept</code> to return an error of <code>EINTR</code> (interrupted system call). The parent does not handle this error (see <a href="#tcp-echo-server-main-function">server's <code>main</code> function</a>), so it aborts.</li>
+</ol>
+<p>From this example, we know that when writing network programs that catch signals, we must be cognizant of interrupted system calls, and we must handle them. In this example, the <code>signal</code> function provided in the standard C library does not cause an interrupted system call to be automatically restarted by the kernel. Some other systems automatically restart the interrupted system call. If we run the same example under 4.4BSD, using its library version of the <code>signal</code> function, the kernel restarts the interrupted system call and accept does not return an error. To handle this potential problem between different operating systems is one reason we define our own version of the <code>signal</code> function. [p134]</p>
+<p>As part of the coding conventions used in this text, we always code an explicit return in our signal handlers, even though this is unnecessary for a function returning <code>void</code>. This reads as a reminder that the return may interrupt a system call.</p>
+<h4 id="handling-interrupted-system-calls">Handling Interrupted System Calls</h4>
+<p>The term "slow system call" is used to describe any system call that can block forever, such as <code>accept</code>. That is, the system call need never return. Most networking functions fall into this category. Examples are:</p>
+<ul>
+<li><code>accept</code>: there is no guarantee that a server's call to <code>accept</code> will ever return, if there are no clients that will connect to the server.</li>
+<li><code>read</code>: the server's call to <code>read</code> in <a href="#tcp-echo-server-str_echo-function">server's <code>str_echo</code> function</a> will never return if the client never sends a line for the server to echo.</li>
+</ul>
+<p>Other examples of slow system calls are reads and writes of pipes and terminal devices. A notable exception is disk I/O, which usually returns to the caller (assuming no catastrophic hardware failure).</p>
+<p>When a process is blocked in a slow system call and the process catches a signal and the signal handler returns, the system call can return an error of <code>EINT</code>. Some kernels automatically restart some interrupted system calls. For portability, when we write a program that catches signals (most concurrent servers catch <code>SIGCHLD</code>), we must be prepared for slow system calls to return <code>EINTR</code>. [p134]</p>
+<p>To handle an interrupted <code>accept</code>, we change the call to <code>accept</code> in <a href="#tcp-echo-server-main-function">server's <code>main</code> function</a>, the beginning of the for loop, to the following:</p>
+<div class="codehilite"><pre>     <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+         <span class="n">clilen</span> <span class="o">=</span> <span class="k">sizeof</span> <span class="p">(</span><span class="n">cliaddr</span><span class="p">);</span>
+         <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">=</span> <span class="n">accept</span> <span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">clilen</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+             <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span>
+                 <span class="k">continue</span><span class="p">;</span>         <span class="cm">/* back to for () */</span>
+             <span class="k">else</span>
+                 <span class="nf">err_sys</span> <span class="p">(</span><span class="s">&quot;accept error&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+</pre></div>
+
+
+<p>Note that this <code>accept</code> is not our wrapper function <code>Accept</code>, since we must handle the failure of the function ourselves.</p>
+<p>Restarting the interrupted system call is fine for:</p>
+<ul>
+<li><code>accept</code></li>
+<li><code>read</code></li>
+<li><code>write</code></li>
+<li><code>select</code></li>
+<li><code>open</code></li>
+</ul>
+<p>However, there is one function that we cannot restart: <code>connect</code>. If this function returns <code>EINTR</code>, we cannot call it again, as doing so will return an immediate error. When <code>connect</code> is interrupted by a caught signal and is not automatically restarted, we must call <code>select</code> to wait for the connection to complete.</p>
+<h3 id="wait-and-waitpid-functions"><code>wait</code> and <code>waitpid</code> Functions</h3>
+<p>We can call <code>wait</code> function to handle the terminated child.</p>
             </div>
         </div>
 
