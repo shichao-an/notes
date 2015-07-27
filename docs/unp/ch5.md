@@ -459,7 +459,7 @@ If a parent process of zombie children terminates, the parent process ID of all 
 
 #### Handling Zombies
 
-Zombies take up space in the kernel and eventually we can run out of processes. Whenever we `fork` children, we must `wait` for them to prevent them from becoming zombies. We can establish a signal handler to catch `SIGCHLD` and call `wait` within the handler. We establish the signal handler by adding the following function call after the call to `listen` (in [server's main function](#tcp-echo-server-main-function); it must be done before `fork`ing the first child and needs to be done only once.):
+Zombies take up space in the kernel and eventually we can run out of processes. Whenever we `fork` children, we must `wait` for them to prevent them from becoming zombies. We can establish a signal handler to catch `SIGCHLD` and call `wait` within the handler. We establish the signal handler by adding the following function call after the call to `listen` (in [server's `main` function](#tcp-echo-server-main-function); it must be done before `fork`ing the first child and needs to be done only once.):
 
 ```c
 Signal (SIGCHLD, sig_chld);
@@ -482,4 +482,70 @@ sig_chld(int signo)
 }
 ```
 
+Note that calling standard I/O functions such as `printf` in a signal handler is not recommended. We call `printf` here as a diagnostic tool to see when the child terminates.
 
+##### **Compiling and running the program on Solaris** *
+
+This program is compiled on Solaris 9 and uses the `signal` function from the system library (not [our version](#signal-function)).
+
+```shell-session
+solaris % tcpserv02 &                 # start server in background
+[2] 16939
+solaris % tcpcli01 127.0.0.1          # then start client in foreground
+hi there                              # we type this
+hi there                              # and this is echoed
+^D                                    # we type our EOF character
+child 16942 terminated                # output by printf in signal handler
+accept error: Interrupted system call # main function aborts
+```
+
+The sequence of steps is as follows:
+
+1. We terminate the client by typing our EOF character. The client TCP sends a FIN to the server and the server responds with an ACK.
+2. The receipt of the FIN delivers an EOF to the child's pending `readline`. The child terminates.
+3. The parent is blocked in its call to accept when the `SIGCHLD` signal is delivered. The `sig_chld` function executes (our signal handler), `wait` fetches the child's PID and termination status, and `printf` is called from the signal handler. The signal handler returns.
+4. Since the signal was caught by the parent while the parent was blocked in a slow system call (`accept`), the kernel causes the `accept` to return an error of `EINTR` (interrupted system call). The parent does not handle this error (see [server's `main` function](#tcp-echo-server-main-function)), so it aborts.
+
+From this example, we know that when writing network programs that catch signals, we must be cognizant of interrupted system calls, and we must handle them. In this example, the `signal` function provided in the standard C library does not cause an interrupted system call to be automatically restarted by the kernel. Some other systems automatically restart the interrupted system call. If we run the same example under 4.4BSD, using its library version of the `signal` function, the kernel restarts the interrupted system call and accept does not return an error. To handle this potential problem between different operating systems is one reason we define our own version of the `signal` function. [p134]
+
+As part of the coding conventions used in this text, we always code an explicit return in our signal handlers, even though this is unnecessary for a function returning `void`. This reads as a reminder that the return may interrupt a system call.
+
+#### Handling Interrupted System Calls
+
+The term "slow system call" is used to describe any system call that can block forever, such as `accept`. That is, the system call need never return. Most networking functions fall into this category. Examples are:
+
+* `accept`: there is no guarantee that a server's call to `accept` will ever return, if there are no clients that will connect to the server.
+* `read`: the server's call to `read` in [server's `str_echo` function](#tcp-echo-server-str_echo-function) will never return if the client never sends a line for the server to echo.
+
+Other examples of slow system calls are reads and writes of pipes and terminal devices. A notable exception is disk I/O, which usually returns to the caller (assuming no catastrophic hardware failure).
+
+When a process is blocked in a slow system call and the process catches a signal and the signal handler returns, the system call can return an error of `EINT`. Some kernels automatically restart some interrupted system calls. For portability, when we write a program that catches signals (most concurrent servers catch `SIGCHLD`), we must be prepared for slow system calls to return `EINTR`. [p134]
+
+To handle an interrupted `accept`, we change the call to `accept` in [server's `main` function](#tcp-echo-server-main-function), the beginning of the for loop, to the following:
+
+```c
+     for ( ; ; ) {
+         clilen = sizeof (cliaddr);
+         if ( (connfd = accept (listenfd, (SA *) &cliaddr, &clilen)) < 0) {
+             if (errno == EINTR)
+                 continue;         /* back to for () */
+             else
+                 err_sys ("accept error");
+        }
+```
+
+Note that this `accept` is not our wrapper function `Accept`, since we must handle the failure of the function ourselves.
+
+Restarting the interrupted system call is fine for:
+
+* `accept`
+* `read`
+* `write`
+* `select`
+* `open`
+
+However, there is one function that we cannot restart: `connect`. If this function returns `EINTR`, we cannot call it again, as doing so will return an immediate error. When `connect` is interrupted by a caught signal and is not automatically restarted, we must call `select` to wait for the connection to complete.
+
+### `wait` and `waitpid` Functions
+
+We can call `wait` function to handle the terminated child.
