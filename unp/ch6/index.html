@@ -289,6 +289,25 @@
         <li class="main "><a href="#introduction">Introduction</a></li>
         
     
+        <li class="main "><a href="#io-models">I/O Models</a></li>
+        
+            <li><a href="#blocking-io-model">Blocking I/O Model</a></li>
+        
+            <li><a href="#nonblocking-io-model">Nonblocking I/O Model</a></li>
+        
+            <li><a href="#io-multiplexing-model">I/O Multiplexing Model</a></li>
+        
+            <li><a href="#signal-driven-io-model">Signal-Driven I/O Model</a></li>
+        
+            <li><a href="#asynchronous-io-model">Asynchronous I/O Model</a></li>
+        
+            <li><a href="#comparison-of-the-io-models">Comparison of the I/O Models</a></li>
+        
+            <li><a href="#synchronous-io-versus-asynchronous-io">Synchronous I/O versus Asynchronous I/O</a></li>
+        
+            <li><a href="#select-function">select Function</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -297,7 +316,7 @@
 <h3 id="chapter-6-io-multiplexing-the-select-and-poll-functions"><strong>Chapter 6. I/O Multiplexing: The <code>select</code> and <code>poll</code> Functions</strong></h3>
 <h3 id="introduction">Introduction</h3>
 <p>When the TCP client is handling two inputs at the same time: standard input and a TCP socket, we encountered a problem when the client was blocked in a call to <code>fgets</code> (on standard input) and the server process was killed. The server TCP correctly sent a FIN to the client TCP, but since the client process was blocked reading from standard input, it never saw the EOF until it read from the socket (possibly much later).</p>
-<p>We want to be notified if one or more I/O conditions are ready (i.e., input is ready to be read, or the descriptor is capable of taking more output). This capability is called <strong>I/O multiplexing</strong> and is provided by the <code>select</code> and <code>poll</code> functions, as well as a newer POSIX variation of the former, called <code>pselect</code>..</p>
+<p>We want to be notified if one or more I/O conditions are ready (i.e., input is ready to be read, or the descriptor is capable of taking more output). This capability is called <strong>I/O multiplexing</strong> and is provided by the <code>select</code> and <code>poll</code> functions, as well as a newer POSIX variation of the former, called <code>pselect</code>.</p>
 <p>I/O multiplexing is typically used in networking applications in the following scenarios:</p>
 <ul>
 <li>When a client is handling multiple descriptors (normally interactive input and a network socket)</li>
@@ -307,6 +326,88 @@
 <li>If a server handles multiple services and perhaps multiple protocols</li>
 </ul>
 <p>I/O multiplexing is not limited to network programming. Many nontrivial applications find a need for these techniques.</p>
+<h3 id="io-models">I/O Models</h3>
+<p>We first examine the basic differences in the five I/O models that are available to us under Unix:</p>
+<ul>
+<li>blocking I/O</li>
+<li>nonblocking I/O</li>
+<li>I/O multiplexing (<code>select</code> and <code>poll</code>)</li>
+<li>signal driven I/O (<code>SIGIO</code>)</li>
+<li>asynchronous I/O (the POSIX <code>aio_</code> functions)</li>
+</ul>
+<p>There are normally two distinct phases for an input operation:</p>
+<ol>
+<li>Waiting for the data to be ready. This involves waiting for data to arrive on the network. When the packet arrives, it is copied into a buffer within the kernel.</li>
+<li>Copying the data from the kernel to the process. This means copying the (ready) data from the kernel's buffer into our application buffer</li>
+</ol>
+<h4 id="blocking-io-model">Blocking I/O Model</h4>
+<p>The most prevalent model for I/O is the blocking I/O model (which we have used for all our examples in the previous sections). By default, all sockets are blocking. The scenario is shown in the figure below:</p>
+<p><a href="../figure_6.1.png" title="Figure 6.1. Blocking I/O model."><img alt="Figure 6.1. Blocking I/O model." src="../figure_6.1.png" /></a></p>
+<p>We use UDP for this example instead of TCP because with UDP, the concept of data being "ready" to read is simple: either an entire datagram has been received or it has not. With TCP it gets more complicated, as additional variables such as the socket's low-water mark come into play.</p>
+<p>We also refer to <code>recvfrom</code> as a system call to differentiate between our application and the kernel, regardless of how <code>recvfrom</code> is implemented (system call on BSD and function that invokes <code>getmsg</code> system call on System V). There is normally a switch from running in the application to running in the kernel, followed at some time later by a return to the application.</p>
+<p>In the figure above, the process calls <code>recvfrom</code> and the system call does not return until the datagram arrives and is copied into our application buffer, or an error occurs. The most common error is the system call being interrupted by a signal, as we described in <a href="../../unp/ch5/#handling-sigchld-signals">Section 5.9</a>. We say that the process is blocked the entire time from when it calls <code>recvfrom</code> until it returns. When <code>recvfrom</code> returns successfully, our application processes the datagram.</p>
+<h4 id="nonblocking-io-model">Nonblocking I/O Model</h4>
+<p>When a socket is set to be nonblocking, we are telling the kernel "when an I/O operation that I request cannot be completed without putting the process to sleep, do not put the process to sleep, but return an error instead". The figure is below:</p>
+<p><a href="../figure_6.2.png" title="Figure 6.2. Nonblocking I/O model."><img alt="Figure 6.2. Nonblocking I/O model." src="../figure_6.2.png" /></a></p>
+<ul>
+<li>For the first three <code>recvfrom</code>, there is no data to return and the kernel immediately returns an error of <code>EWOULDBLOCK</code>.</li>
+<li>For the fourth time we call recvfrom, a datagram is ready, it is copied into our application buffer, and <code>recvfrom</code> returns successfully. We then process the data.</li>
+</ul>
+<p>When an application sits in a loop calling <code>recvfrom</code> on a nonblocking descriptor like this, it is called <strong>polling</strong>. The application is continually polling the kernel to see if some operation is ready. This is often a waste of CPU time, but this model is occasionally encountered, normally on systems dedicated to one function.</p>
+<h4 id="io-multiplexing-model">I/O Multiplexing Model</h4>
+<p>With <strong>I/O multiplexing</strong>, we call <code>select</code> or <code>poll</code> and block in one of these two system calls, instead of blocking in the actual I/O system call. The figure is a summary of the I/O multiplexing model:</p>
+<p><a href="../figure_6.3.png" title="Figure 6.3. I/O multiplexing model."><img alt="Figure 6.3. I/O multiplexing model." src="../figure_6.3.png" /></a></p>
+<p>We block in a call to <code>select</code>, waiting for the datagram socket to be readable. When <code>select</code> returns that the socket is readable, we then call <code>recvfrom</code> to copy the datagram into our application buffer.</p>
+<h5 id="comparing-to-the-blocking-io-model"><strong>Comparing to the blocking I/O model</strong> *</h5>
+<p>Comparing <a href="../figure_6.3.png">Figure 6.3</a> to <a href="../figure_6.1.png">Figure 6.1</a>:</p>
+<ul>
+<li>Disadvantage: using <code>select</code> requires two system calls (<code>select</code> and <code>recvfrom</code>) instead of one</li>
+<li>Advantage: we can wait for more than one descriptor to be ready (see <a href="">select-function</a> later in this chapter)</li>
+</ul>
+<h5 id="multithreading-with-blocking-io"><strong>Multithreading with blocking I/O</strong> *</h5>
+<p>Another closely related I/O model is to use multithreading with blocking I/O. That model very closely resembles the model described above, except that instead of using <code>select</code> to block on multiple file descriptors, the program uses multiple threads (one per file descriptor), and each thread is then free to call blocking system calls like <code>recvfrom</code>.</p>
+<h4 id="signal-driven-io-model">Signal-Driven I/O Model</h4>
+<p>The <strong>signal-driven I/O model</strong> uses signals, telling the kernel to notify us with the <code>SIGIO</code> signal when the descriptor is ready. The figure is below:</p>
+<p><a href="../figure_6.4.png" title="Figure 6.4. Signal-Driven I/O model."><img alt="Figure 6.4. Signal-Driven I/O model." src="../figure_6.4.png" /></a></p>
+<ul>
+<li>We first enable the socket for signal-driven I/O (<a href="../../unp/ch25/">Section 25.2</a>) and install a signal handler using the <code>sigaction</code> system call. The return from this system call is immediate and our process continues; it is not blocked.</li>
+<li>When the datagram is ready to be read, the <code>SIGIO</code> signal is generated for our process. We can either:<ul>
+<li>read the datagram from the signal handler by calling <code>recvfrom</code> and then notify the main loop that the data is ready to be processed (<a href="../../unp/ch25/">Section 25.3</a>)</li>
+<li>notify the main loop and let it read the datagram.</li>
+</ul>
+</li>
+</ul>
+<p>The advantage to this model is that we are not blocked while waiting for the datagram to arrive. The main loop can continue executing and just wait to be notified by the signal handler that either the data is ready to process or the datagram is ready to be read.</p>
+<h4 id="asynchronous-io-model">Asynchronous I/O Model</h4>
+<p><strong>Asynchronous I/O</strong> is defined by the POSIX specification, and various differences in the <em>real-time</em> functions that appeared in the various standards which came together to form the current POSIX specification have been reconciled.</p>
+<p>These functions work by telling the kernel to start the operation and to notify us when the entire operation (including the copy of the data from the kernel to our buffer) is complete. <u>The main difference between this model and the signal-driven I/O model is that with signal-driven I/O, the kernel tells us when an I/O operation can be initiated, but with asynchronous I/O, the kernel tells us when an I/O operation is complete.</u> See the figure below for example:</p>
+<p><a href="../figure_6.5.png" title="Figure 6.5. Asynchronous I/O model."><img alt="Figure 6.5. Asynchronous I/O model." src="../figure_6.5.png" /></a></p>
+<ul>
+<li>
+<p>We call <code>aio_read</code> (the POSIX asynchronous I/O functions begin with <code>aio_</code> or <code>lio_</code>) and pass the kernel the following:</p>
+<ul>
+<li>descriptor, buffer pointer, buffer size (the same three arguments for <code>read</code>),</li>
+<li>file offset (similar to <code>lseek</code>),</li>
+<li>and how to notify us when the entire operation is complete.</li>
+</ul>
+<p>This system call returns immediately and our process is not blocked while waiting for the I/O to complete.</p>
+</li>
+<li>
+<p>We assume in this example that we ask the kernel to generate some signal when the operation is complete. This signal is not generated until the data has been copied into our application buffer, which is different from the signal-driven I/O model.</p>
+</li>
+</ul>
+<h4 id="comparison-of-the-io-models">Comparison of the I/O Models</h4>
+<p>The figure below is a comparison of the five different I/O models.</p>
+<p><a href="../figure_6.6.png" title="Figure 6.6. Comparison of the five I/O models."><img alt="Figure 6.6. Comparison of the five I/O models." src="../figure_6.6.png" /></a></p>
+<p>The main difference between the first four models is the first phase, as the second phase in the first four models is the same: the process is blocked in a call to <code>recvfrom</code> while the data is copied from the kernel to the caller's buffer. Asynchronous I/O, however, handles both phases and is different from the first four.</p>
+<h4 id="synchronous-io-versus-asynchronous-io">Synchronous I/O versus Asynchronous I/O</h4>
+<p>POSIX defines these two terms as follows:</p>
+<ul>
+<li>A synchronous I/O operation causes the requesting process to be blocked until that I/O operation completes.</li>
+<li>An asynchronous I/O operation does not cause the requesting process to be blocked.</li>
+</ul>
+<p>Using these definitions, the first four I/O models (blocking, nonblocking, I/O multiplexing, and signal-driven I/O) are all synchronous because the actual I/O operation (<code>recvfrom</code>) blocks the process. Only the asynchronous I/O model matches the asynchronous I/O definition.</p>
+<h4 id="select-function"><code>select</code> Function</h4>
             </div>
         </div>
 
