@@ -65,6 +65,7 @@ by W. Richard Stevens and Bill Fenner
 3. [Sockets Introduction](unp/ch3.md)
 4. [Elementary TCP Sockets](unp/ch4.md)
 5. [TCP Client/Server Example](unp/ch5.md)
+6. [I/O Multiplexing: The select and poll Functions](unp/ch6.md)
 
 #### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
 
