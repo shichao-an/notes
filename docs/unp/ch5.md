@@ -758,4 +758,251 @@ The following steps take place:
     * If the `readline` happens before the RST is received (as shown in this example), the result is an unexpected EOF in the client.
     * If the RST arrives first, the result is an `ECONNRESET` ("Connection reset by peer") error return from `readline`.
 
-The problem in this example is that the client is blocked in the call to `fgets` when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the `select` and `poll` functions described in [Chapter 6](/apue/ch6/).
+The problem in this example is that the client is blocked in the call to `fgets` when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the `select` and `poll` functions described in [Chapter 6](/unp/ch6/).
+
+### `SIGPIPE` Signal
+
+The rules are:
+
+* When a process writes to a socket that has received an RST, the `SIGPIPE` signal is sent to the process. The default action of this signal is to terminate the process, so the process must catch the signal to avoid being involuntarily terminated.
+* If the process either catches the signal and returns from the signal handler, or ignores the signal, the write operation returns `EPIPE`.
+
+We can simulate this from the client by performing two writes to the server (which has sent FIN to the client) before reading anything back, with the first write eliciting the RST (causing the server to send an RST to the client). We must use two writes to obtain the signal, because the first write elicits the RST and the second write elicits the signal. It is okay to write to a socket that has received a FIN, but it is an error to write to a socket that has received an RST.
+
+We modify our client as below:
+
+<small>[tcpcliserv/str_cli11.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/str_cli11.c)</small>
+
+```c
+#include	"unp.h"
+
+void
+str_cli(FILE *fp, int sockfd)
+{
+	char	sendline[MAXLINE], recvline[MAXLINE];
+
+	while (Fgets(sendline, MAXLINE, fp) != NULL) {
+
+		Writen(sockfd, sendline, 1);
+		sleep(1);
+		Writen(sockfd, sendline+1, strlen(sendline)-1);
+
+		if (Readline(sockfd, recvline, MAXLINE) == 0)
+			err_quit("str_cli: server terminated prematurely");
+
+		Fputs(recvline, stdout);
+	}
+}
+```
+
+The `writen` is called two times. The intent is for the first `writen` to elicit the RST and then for the second `writen` to generate `SIGPIPE`.
+
+Run the program on the Linux host:
+
+```shell-session
+linux % tcpclill 127.0.0.1
+hi there       # we type this line
+hi there       # this is echoed by the server
+               # here we kill the server child
+bye            # then we type this line
+Broken pipe    # this is printed by the shell
+```
+
+We start the client, type in one line, see that line echoed correctly, and then terminate the server child on the server host. We then type another line ("bye") and the shell tells us the process died with a `SIGPIPE` signal.
+
+The recommended way to handle `SIGPIPE` depends on what the application wants to do when this occurs:
+
+* If there is nothing special to do, then setting the signal disposition to `SIG_IGN` is easy, assuming that subsequent output operations will catch the error of `EPIPE` and terminate.
+* If special actions are needed when the signal occurs (writing to a log file perhaps), then the signal should be caught and any desired actions can be performed in the signal handler.
+* If multiple sockets are in use, the delivery of the signal will not tell us which socket encountered the error. If we need to know which `write` caused the error, then we must either ignore the signal or return from the signal handler and handle `EPIPE` from the `write`.
+
+### Crashing of Server Host
+
+To simulate what happens when the server host crashes, we must run the client and server on different hosts. We then start the server, start the client, type in a line to the client to verify that the connection is up, disconnect the server host from the network, and type in another line at the client. This also covers the scenario of the server host being unreachable when the client sends data (i.e., some intermediate router goes down <u>after the connection has been established</u>).
+
+The following steps take place:
+
+1. When the server host crashes (which means it is not shut down by an operator), nothing is sent out on the existing network connections.
+2. We type a line of input to the client, it is written by `writen` ([str_cli](#tcp-echo-client-str_cli-function)), and is sent by the client TCP as a data segment. The client then blocks in the call to `readline`, waiting for the echoed reply.
+3. With `tcpdump`, we will see the client TCP continually retransmitting the data segment, trying to receive an ACK from the server. Berkeley-derived implementations retransmit the data segment 12 times, waiting for around 9 minutes before giving up. When the client TCP finally gives up (assuming the server host has not been rebooted during this time, or the server host is still unreachable), an error is returned to the client process's `readline`. The error can be one of the following:
+    * If the server host crashed and there were no responses at all to the client's data segments, the error is `ETIMEDOUT`.
+    * If some intermediate router determined that the server host was unreachable and responded with an ICMP "destination unreachable" message, the error is either `EHOSTUNREACH` or `ENETUNREACH`.
+
+To detect that the peer is down or unreachable quicker than 9 minutes, we can place a timeout on the call to `readline`, which is discussed in [Chapter 14](/unp/ch14/).
+
+This example detects that the server host has crashed only when we send data to that host. If we want to detect the crashing of the server host even if we are not actively sending it data, another technique is required: SO_KEEPALIVE socket option ([Chapter 7](/unp/ch7/)).
+
+### Crashing and Rebooting of Server Host
+
+In the following example, we will establish a connection between the client and server and then assume the server host crashes and reboots. The easiest way to simulate this is to establish the connection, disconnect the server from the network, shut down the server host and then reboot it, and then reconnect the server host to the network. We do not want the client to see the server host shut down.
+
+As stated in the previous section, if the client is not actively sending data to the server when the server host crashes, the client is not aware that the server host has crashed. The following steps take place:
+
+1. We start the server and then the client. We type a line to verify that the connection is established.
+2. The server host crashes and reboots.
+3. We type a line of input to the client, which is sent as a TCP data segment to the server host.
+4. <u>When the server host reboots after crashing, its TCP loses all information about connections that existed before the crash. Therefore, the server TCP responds to the received data segment from the client with an RST.</u>
+5. Our client is blocked in the call to `readline` when the RST is received, causing `readline` to return the error `ECONNRESET`.
+
+If it is important for our client to detect the crashing of the server host, even if the client is not actively sending data, then some other technique, such as the `SO_KEEPALIVE` socket option or some client/server heartbeat function, is required.
+
+### Shutdown of Server Host
+
+This section discusses what happens if the server host is shut down by an operator while our server process is running on that host.
+
+When a Unix system is shut down, the following steps happen:
+
+1. The `init` process normally sends the `SIGTERM` signal to all processes (we can catch this signal).
+2. The `init` waits some fixed amount of time (often between 5 and 20 seconds).
+3. The `init` sends the `SIGKILL` signal (which we cannot catch) to any processes still running.
+
+This gives all running processes a short amount of time to clean up and terminate. When the process terminates, all open descriptors are closed (the sequence of steps are same to [Termination of Server Process](#termination-of-server-process)). We must use the `select` or `poll` function in our client to have the client detect the termination of the server process as soon as it occurs.
+
+### Summary of TCP Example
+
+Before any TCP client and server can communicate with each other, each end must specify the socket pair for the connection: the local IP address, local port, foreign IP address, and foreign port. These four values are shown as bullets in the two figures below.
+
+#### Client's perspective
+
+[![Figure 5.15. Summary of TCP client/server from client's perspective.](figure_5.15.png)](figure_5.15.png "Figure 5.15. Summary of TCP client/server from client's perspective.")
+
+* `connect`. The foreign IP address and foreign port must be specified by the client in the call to `connect`. The two local values are normally chosen by the kernel as part of the `connect` function.
+* `bind`. The client has the option of specifying either or both of the local values, by `calling` bind before `connect`, but this is not common.
+* `getsockname`. The client can obtain the two local values chosen by the kernel by calling `getsockname` after the connection is established.
+
+#### Server's perspective
+
+[![Figure 5.16. Summary of TCP client/server from server's perspective.](figure_5.16.png)](figure_5.16.png "Figure 5.16. Summary of TCP client/server from server's perspective.")
+
+* `bind`. The local port (the server's well-known port) is specified by `bind`. Normally, the server also specifies the wildcard IP address in this call.
+* `getsockname`. If the server binds the wildcard IP address on a multihomed host, it can determine the local IP address by calling `getsockname` after the connection is established.
+* `accept.` The two foreign values are returned to the server by `accept`.
+* `getpeername`. If another program is `exec`ed by the server that calls `accept`, that program can call `getpeername` to determine the client's IP address and port, if necessary.
+
+### Data Format
+
+Normally we must worry about the format of the data exchanged between the client and server.
+
+#### Example: Passing Text Strings between Client and Server
+
+We modify our server so that it still reads a line of text from the client, but the server now expects that line to contain two integers separated by white space, and the server returns the sum of those two integers. All that changes is our `str_echo` function:
+
+<small>[tcpcliserv/str_echo08.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/str_echo08.c)</small>
+
+```c
+#include	"unp.h"
+
+void
+str_echo(int sockfd)
+{
+	long		arg1, arg2;
+	ssize_t		n;
+	char		line[MAXLINE];
+
+	for ( ; ; ) {
+		if ( (n = Readline(sockfd, line, MAXLINE)) == 0)
+			return;		/* connection closed by other end */
+
+		if (sscanf(line, "%ld%ld", &arg1, &arg2) == 2)
+			snprintf(line, sizeof(line), "%ld\n", arg1 + arg2);
+		else
+			snprintf(line, sizeof(line), "input error\n");
+
+		n = strlen(line);
+		Writen(sockfd, line, n);
+	}
+}
+```
+
+We call `sscanf` to convert the two arguments from text strings to long integers, and then snprintf is called to convert the result into a text string.
+
+This modified client and server work fine, regardless of the byte ordering of the client and server hosts.
+
+#### Example: Passing Binary Structures between Client and Server
+
+We now modify our client and server to pass binary values across the socket, instead of text strings. We will see that this does not work when the client and server are run on hosts with different byte orders, or on hosts that do not agree on the size of a long integer
+
+We define one structure for the two arguments, another structure for the result, and place both definitions in our [sum.h](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/sum.h) header. Below show the modified `str_cli` function and `str_echo` function.
+
+<small>[tcpcliserv/tcpcli09.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpcli09.c)</small>
+
+```c
+#include	"unp.h"
+
+int
+main(int argc, char **argv)
+{
+	int					sockfd;
+	struct sockaddr_in	servaddr;
+
+	if (argc != 2)
+		err_quit("usage: tcpcli <IPaddress>");
+
+	sockfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(SERV_PORT);
+	Inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
+
+	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+
+	str_cli(stdin, sockfd);		/* do it all */
+
+	exit(0);
+}
+```
+
+`sscanf` converts the two arguments from text strings to binary, and we call `writen` to send the structure to the server. We call `readn` to read the reply, and print the result using `printf`.
+
+<small>[tcpcliserv/str_echo09.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/str_echo09.c)</small>
+
+```c
+#include	"unp.h"
+#include	"sum.h"
+
+void
+str_echo(int sockfd)
+{
+	ssize_t			n;
+	struct args		args;
+	struct result	result;
+
+	for ( ; ; ) {
+		if ( (n = Readn(sockfd, &args, sizeof(args))) == 0)
+			return;		/* connection closed by other end */
+
+		result.sum = args.arg1 + args.arg2;
+		Writen(sockfd, &result, sizeof(result));
+	}
+}
+```
+
+We read the arguments by calling `readn`, calculate and store the sum, and call `writen` to send back the result structure.
+
+If we run the client and server on two machines of the same architecture, say two SPARC machines, everything works fine. But when the client and server are on two machines of different architectures (say the server is on the big-endian SPARC system freebsd and the client is on the little endian Intel system linux), it does not work.
+
+```shell-session
+linux % tcpcli09 206.168.112.96
+1 2        # we type this
+3          # and it works
+-22 -77    # then we type this
+-16777314  # and it does not work
+```
+
+The problem is that the two binary integers are sent across the socket in little-endian format by the client, but interpreted as big-endian integers by the server. It appears to work for positive integers but fails for negative integers. There are really three potential problems:
+
+1. Different implementations store binary numbers in different formats. The most common formats are big-endian and little-endian, as we described in Section 3.4.
+2. Different implementations can store the same C datatype differently. For example, most 32-bit Unix systems use 32 bits for a long but 64-bit systems typically use 64 bits for the same datatype. There is no guarantee that a `short`, `int`, or `long` is of any certain size.
+3. Different implementations pack structures differently, depending on the number of bits used for the various datatypes and the alignment restrictions of the machine. Therefore, it is never wise to send binary structures across a socket.
+
+There are two common solutions to this data format problem:
+
+1. Pass all numeric data as text strings.
+2. Explicitly define the binary formats of the supported datatypes (number of bits, big- or little-endian) and pass all data between the client and server in this format. RPC packages normally use this technique. RFC 1832 describes the External Data Representation (XDR) standard that is used with the Sun RPC package.
+
+### Summary
+
+* The first problem was zombie children and we caught the `SIGCHLD` signal to handle this. Our signal handler then called `waitpid` and  we must call this function instead of the older `wait` function, since Unix signals are not queued.
+* The next problem we encountered was the client not being notified when the server process terminated. We saw that our client's TCP was notified, but we did not receive that notification since we were blocked, waiting for user input. We will use the `select` or `poll` function in [Chapter 6](/unp/ch6/) to handle this scenario, by waiting for any one of multiple descriptors to be ready, instead of blocking on a single descriptor.
+* If the server host crashes, we do not detect this until the client sends data to the server. Some applications must be made aware of this fact sooner; we will look at the `SO_KEEPALIVE` socket option in [Chapter 7](/unp/ch7/).
