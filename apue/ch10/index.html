@@ -1209,6 +1209,243 @@
 <p><a href="../figure_10.3.png" title="Figure 10.3 Features provided by various signal implementations"><img alt="Figure 10.3 Features provided by various signal implementations" src="../figure_10.3.png" /></a></p>
 <p>Later this chapter, we provide our own version of the <code>signal</code> function that automatically tries to restart interrupted system calls (other than for the <code>SIGALRM</code> signal), and <code>signal_intr</code>, that tries to never do the restart.</p>
 <h3 id="reentrant-functions">Reentrant Functions</h3>
+<p>When a signal that is being caught is handled by a process, the normal sequence of instructions being executed by the process is temporarily interrupted by the signal handler. The process then continues executing, but the instructions in the signal handler are now executed. If the signal handler returns (instead of calling <code>exit</code> or <code>longjmp</code>), then the normal sequence of instructions that the process was executing when the signal was caught continues executing. This is similar to what happens when a hardware interrupt occurs.</p>
+<p>However, in the signal handler, we can’t tell where the process was executing when the signal was caught:</p>
+<ul>
+<li>What if the process was in the middle of allocating additional memory on its heap using <code>malloc</code>, and we call <code>malloc</code> from the signal handler?<ul>
+<li>Havoc can result for the process, since <code>malloc</code> usually maintains a linked list of all its allocated areas, and it may have been in the middle of changing this list.</li>
+</ul>
+</li>
+<li>What if the process was in the middle of a call to a function, such as <code>getpwnam</code> (<a href="../../apue/ch6/#password-file">Section 6.2</a>), that stores its result in a static location, and we call the same function from the signal handler?<ul>
+<li>The information returned to the normal caller can get overwritten with the information returned to the signal handler.</li>
+</ul>
+</li>
+</ul>
+<p>The Single UNIX Specification specifies the functions that are guaranteed to be safe to call from within a signal handler. These functions are reentrant and are called <strong>async-signal safe</strong> by the SUS. Besides being reentrant, they block any signals during operation if delivery of a signal might cause inconsistencies.</p>
+<p>The following table lists these async-signal safe functions, which are reentrant functions that may be called from a signal handler.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>abort</code></td>
+<td><code>faccessat</code></td>
+<td><code>linkat</code></td>
+<td><code>select</code></td>
+<td><code>socketpair</code></td>
+</tr>
+<tr>
+<td><code>accept</code></td>
+<td><code>fchmod</code></td>
+<td><code>listen</code></td>
+<td><code>sem_post</code></td>
+<td><code>stat</code></td>
+</tr>
+<tr>
+<td><code>access</code></td>
+<td><code>fchmodat</code></td>
+<td><code>lseek</code></td>
+<td><code>send</code></td>
+<td><code>symlink</code></td>
+</tr>
+<tr>
+<td><code>aio_error</code></td>
+<td><code>fchown</code></td>
+<td><code>lstat</code></td>
+<td><code>sendmsg</code></td>
+<td><code>symlinkat</code></td>
+</tr>
+<tr>
+<td><code>aio_return</code></td>
+<td><code>fchownat</code></td>
+<td><code>mkdir</code></td>
+<td><code>sendto</code></td>
+<td><code>tcdrain</code></td>
+</tr>
+<tr>
+<td><code>aio_suspend</code></td>
+<td><code>fcntl</code></td>
+<td><code>mkdirat</code></td>
+<td><code>setgid</code></td>
+<td><code>tcflow</code></td>
+</tr>
+<tr>
+<td><code>alarm</code></td>
+<td><code>fdatasync</code></td>
+<td><code>mkfifo</code></td>
+<td><code>setpgid</code></td>
+<td><code>tcflush</code></td>
+</tr>
+<tr>
+<td><code>bind</code></td>
+<td><code>fexecve</code></td>
+<td><code>mkfifoat</code></td>
+<td><code>setsid</code></td>
+<td><code>tcgetattr</code></td>
+</tr>
+<tr>
+<td><code>cfgetispeed</code></td>
+<td><code>fork</code></td>
+<td><code>mknod</code></td>
+<td><code>setsockopt</code></td>
+<td><code>tcgetpgrp</code></td>
+</tr>
+<tr>
+<td><code>cfgetospeed</code></td>
+<td><code>fstat</code></td>
+<td><code>mknodat</code></td>
+<td><code>setuid</code></td>
+<td><code>tcsendbreak</code></td>
+</tr>
+<tr>
+<td><code>cfsetispeed</code></td>
+<td><code>fstatat</code></td>
+<td><code>open</code></td>
+<td><code>shutdown</code></td>
+<td><code>tcsetattr</code></td>
+</tr>
+<tr>
+<td><code>cfsetospeed</code></td>
+<td><code>fsync</code></td>
+<td><code>openat</code></td>
+<td><code>sigaction</code></td>
+<td><code>tcsetpgrp</code></td>
+</tr>
+<tr>
+<td><code>chdir</code></td>
+<td><code>ftruncate</code></td>
+<td><code>pause</code></td>
+<td><code>sigaddset</code></td>
+<td><code>time</code></td>
+</tr>
+<tr>
+<td><code>chmod</code></td>
+<td><code>futimens</code></td>
+<td><code>pipe</code></td>
+<td><code>sigdelset</code></td>
+<td><code>timer_getoverrun</code></td>
+</tr>
+<tr>
+<td><code>chown</code></td>
+<td><code>getegid</code></td>
+<td><code>poll</code></td>
+<td><code>sigemptyset</code></td>
+<td><code>timer_gettime</code></td>
+</tr>
+<tr>
+<td><code>clock_gettime</code></td>
+<td><code>geteuid</code></td>
+<td><code>posix_trace_event</code></td>
+<td><code>sigfillset</code></td>
+<td><code>timer_settime</code></td>
+</tr>
+<tr>
+<td><code>close</code></td>
+<td><code>getgid</code></td>
+<td><code>pselect</code></td>
+<td><code>sigismember</code></td>
+<td><code>times</code></td>
+</tr>
+<tr>
+<td><code>connect</code></td>
+<td><code>getgroups</code></td>
+<td><code>raise</code></td>
+<td><code>signal</code></td>
+<td><code>umask</code></td>
+</tr>
+<tr>
+<td><code>creat</code></td>
+<td><code>getpeername</code></td>
+<td><code>read</code></td>
+<td><code>sigpause</code></td>
+<td><code>uname</code></td>
+</tr>
+<tr>
+<td><code>dup</code></td>
+<td><code>getpgrp</code></td>
+<td><code>readlink</code></td>
+<td><code>sigpending</code></td>
+<td><code>unlink</code></td>
+</tr>
+<tr>
+<td><code>dup2</code></td>
+<td><code>getpid</code></td>
+<td><code>readlinkat</code></td>
+<td><code>sigprocmask</code></td>
+<td><code>unlinkat</code></td>
+</tr>
+<tr>
+<td><code>execl</code></td>
+<td><code>getppid</code></td>
+<td><code>recv</code></td>
+<td><code>sigqueue</code></td>
+<td><code>utime</code></td>
+</tr>
+<tr>
+<td><code>execle</code></td>
+<td><code>getsockname</code></td>
+<td><code>recvfrom</code></td>
+<td><code>sigset</code></td>
+<td><code>utimensat</code></td>
+</tr>
+<tr>
+<td><code>execv</code></td>
+<td><code>getsockopt</code></td>
+<td><code>recvmsg</code></td>
+<td><code>sigsuspend</code></td>
+<td><code>utimes</code></td>
+</tr>
+<tr>
+<td><code>execve</code></td>
+<td><code>getuid</code></td>
+<td><code>rename</code></td>
+<td><code>sleep</code></td>
+<td><code>wait</code></td>
+</tr>
+<tr>
+<td><code>_Exit</code></td>
+<td><code>kill</code></td>
+<td><code>renameat</code></td>
+<td><code>sockatmark</code></td>
+<td><code>waitpid</code></td>
+</tr>
+<tr>
+<td><code>_exit</code></td>
+<td><code>link</code></td>
+<td><code>rmdir</code></td>
+<td><code>socket</code></td>
+<td><code>write</code></td>
+</tr>
+</tbody>
+</table>
+<p>Most of the functions that are not included in table above are missing because:</p>
+<ul>
+<li>They are known to use static data structures;</li>
+<li>They call <code>malloc</code> or <code>free</code>;</li>
+<li>They are part of the standard I/O library.</li>
+</ul>
+<p>Note when using the functions in the table above:</p>
+<ul>
+<li>Most implementations of the standard I/O library use global data structures in a nonreentrant way.</li>
+<li>
+<p>Be aware that even if we call a function listed in the table above from a signal handler, there is only one <code>errno</code> variable per thread (recall the discussion of errno and threads in <a href="../../apue/ch1#error-handling">Section 1.7</a>), and we might potentially modify its value.</p>
+<ul>
+<li>Consider a signal handler that is invoked right after main has set <code>errno</code>. If the signal handler calls <code>read</code>, for example, this call can change the value of <code>errno</code>, wiping out the value that was just stored in <code>main</code>.</li>
+</ul>
+<p>Therefore, as a general rule, when calling the functions listed in the table above from a signal handler, we should save and restore <code>errno</code>. Be aware that a commonly caught signal is <code>SIGCHLD</code>, and its signal handler usually calls one of the wait functions. All the <code>wait</code> functions can change <code>errno</code>.</p>
+</li>
+<li>
+<p><code>longjmp</code> (<a href="../../apue/ch7/#setjmp-and-longjmp-functions">Section 7.10</a>) and <code>siglongjmp</code> (<a href="#sigsetjmp-and-siglongjmp-functions">Section 10.15</a>) are missing
+from the table because the signal may have occurred while the <code>main</code> routine was updating a data structure in a nonreentrant way. This data structure could be left half updated if we call <code>siglongjmp</code> instead of returning from the signal handler. If it is going to do such things as update global data structures, while catching signals that cause <code>sigsetjmp</code> to be executed, an application needs to block the signals while updating the data structures.</p>
+</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
