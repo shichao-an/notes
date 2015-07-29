@@ -408,6 +408,80 @@
 </ul>
 <p>Using these definitions, the first four I/O models (blocking, nonblocking, I/O multiplexing, and signal-driven I/O) are all synchronous because the actual I/O operation (<code>recvfrom</code>) blocks the process. Only the asynchronous I/O model matches the asynchronous I/O definition.</p>
 <h4 id="select-function"><code>select</code> Function</h4>
+<p>The <code>select</code> function allows the process to instruct the kernel to either:</p>
+<ul>
+<li>Wait for any one of multiple events to occur and to wake up the process only when one or more of these events occurs, or</li>
+<li>When a specified amount of time has passed.</li>
+</ul>
+<p>This means that we tell the kernel what descriptors we are interested in (for reading, writing, or an exception condition) and how long to wait. The descriptors in which we are interested are not restricted to sockets; any descriptor can be tested using <code>select</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/select.h&gt;</span>
+<span class="cp">#include &lt;sys/time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">select</span><span class="p">(</span><span class="kt">int</span> <span class="n">maxfdp1</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">readset</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">writeset</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">exceptset</span><span class="p">,</span>
+           <span class="k">const</span> <span class="k">struct</span> <span class="n">timeval</span> <span class="o">*</span><span class="n">timeout</span><span class="p">);</span>
+
+<span class="cm">/* Returns: positive count of ready descriptors, 0 on timeout, –1 on error */</span>
+</pre></div>
+
+
+<h5 id="the-timeout-argument"><strong>The <em>timeout</em> argument</strong> *</h5>
+<p>The <em>timeout</em> argument tells the kernel how long to wait for one of the specified descriptors to become ready. A <code>timeval</code> structure specifies the number of seconds and microseconds.</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">timeval</span>  <span class="p">{</span>
+  <span class="kt">long</span>   <span class="n">tv_sec</span><span class="p">;</span>          <span class="cm">/* seconds */</span>
+  <span class="kt">long</span>   <span class="n">tv_usec</span><span class="p">;</span>         <span class="cm">/* microseconds */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>There are three possibilities for the <em>timeout</em>:</p>
+<ol>
+<li><strong>Wait forever</strong> (<em>timeout</em> is specified as a null pointer). Return only when one of the specified descriptors is ready for I/O.</li>
+<li><strong>Wait up to a fixed amount of time</strong> (<em>timeout</em> points to a <code>timeval</code> structure). Return when one of the specified descriptors is ready for I/O, but do not wait beyond the number of seconds and microseconds specified in the <code>timeval</code> structure.</li>
+<li><strong>Do not wait at all</strong> (<em>timeout</em> points to a <code>timeval</code> structure and the timer value is 0, i.e. the number of seconds and microseconds specified by the structure are 0). Return immediately after checking the descriptors. This is called <strong>polling</strong>.</li>
+</ol>
+<p>Note:</p>
+<ul>
+<li>The wait in the first two scenarios is normally interrupted if the process catches a signal and returns from the signal handler. For portability, we must be prepared for <code>select</code> to return an error of <code>EINTR</code> if we are catching signals. Berkeley-derived kernels never automatically restart <code>select</code>.</li>
+<li>Although the <code>timeval</code> structure has a microsecond field <code>tv_usec</code>, the actual resolution supported by the kernel is often more coarse. Many Unix kernels round the timeout value up to a multiple of 10 ms. There is also a scheduling latency involved, meaning it takes some time after the timer expires before the kernel schedules this process to run.</li>
+<li>On some systems, the <code>timeval</code> structure can represent values that are not supported by <code>select</code>; it will fail with <code>EINVAL</code> if the <code>tv_sec</code> field in the timeout is over 100 million seconds.</li>
+<li>The <code>const</code> qualifier on the <em>timeout</em> argument means it is not modified by <code>select</code> on return.</li>
+</ul>
+<h5 id="the-descriptor-sets-arguments"><strong>The descriptor sets arguments</strong> *</h5>
+<p>The three middle arguments, <em>readset</em>, <em>writeset</em>, and <em>exceptset</em>, specify the descriptors that we want the kernel to test for reading, writing, and exception conditions. There are only two exception conditions currently supported:</p>
+<ul>
+<li>The arrival of <a href="https://en.wikipedia.org/wiki/Out-of-band_data">out-of-band data</a> for a socket.</li>
+<li>The presence of control status information to be read from the master side of a pseudo-terminal that has been put into packet mode. (Not covered in UNP)</li>
+</ul>
+<p><code>select</code> uses <strong>descriptor sets</strong>, typically an array of integers, with each bit in each integer corresponding to a descriptor. For example, using 32-bit integers, the first element of the array corresponds to descriptors 0 through 31, the second element of the array corresponds to descriptors 32 through 63, and so on. All the implementation details are irrelevant to the application and are hidden in the <code>fd_set</code> datatype and the following four macros:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">FD_ZERO</span><span class="p">(</span><span class="n">fd_set</span> <span class="o">*</span><span class="n">fdset</span><span class="p">);</span>         <span class="cm">/* clear all bits in fdset */</span>
+<span class="kt">void</span> <span class="nf">FD_SET</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">fdset</span><span class="p">);</span>  <span class="cm">/* turn on the bit for fd in fdset */</span>
+<span class="kt">void</span> <span class="nf">FD_CLR</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">fdset</span><span class="p">);</span>  <span class="cm">/* turn off the bit for fd in fdset */</span>
+<span class="kt">int</span> <span class="nf">FD_ISSET</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">fdset</span><span class="p">);</span> <span class="cm">/* is the bit for fd on in fdset ? */</span>
+</pre></div>
+
+
+<p>We allocate a descriptor set of the <code>fd_set</code> datatype, we set and test the bits in the set using these macros, and we can also assign it to another descriptor set across an equals sign (=) in C.</p>
+<p>An array of integers using one bit per descriptor, is just one possible way to implement select. Nevertheless, it is common to refer to the individual descriptors within a descriptor set as bits, as in "turn on the bit for the listening descriptor in the read set."</p>
+<p>The following example defines a variable of type <code>fd_set</code> and then turn on the bits for descriptors 1, 4, and 5:</p>
+<div class="codehilite"><pre><span class="n">fd_set</span> <span class="n">rset</span><span class="p">;</span>
+
+<span class="n">FD_ZERO</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>          <span class="cm">/* initialize the set: all bits off */</span>
+<span class="n">FD_SET</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>        <span class="cm">/* turn on bit for fd 1 */</span>
+<span class="n">FD_SET</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>        <span class="cm">/* turn on bit for fd 4 */</span>
+<span class="n">FD_SET</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>        <span class="cm">/* turn on bit for fd 5 */</span>
+</pre></div>
+
+
+<p>It is important to initialize the set, since unpredictable results can occur if the set is allocated as an automatic variable and not initialized.</p>
+<p>Any of the middle three arguments to <code>select</code>, <em>readset</em>, <em>writeset</em>, or <em>exceptset</em>, can be specified as a null pointer if we are not interested in that condition. Indeed, if all three pointers are null, then we have a higher precision timer than the normal Unix <code>sleep</code> function. The <code>poll</code> function provides similar functionality.</p>
+<h5 id="the-maxfdp1-argument"><strong>The <em>maxfdp1</em> argument</strong> *</h5>
+<p>The <em>maxfdp1</em> argument specifies the number of descriptors to be tested. Its value is the maximum descriptor to be tested plus one. The descriptors 0, 1, 2, up through and including <em>maxfdp1</em>–1 are tested.</p>
+<p>The constant <code>FD_SETSIZE</code>, defined by including <code>&lt;sys/select.h&gt;</code>, is the number of descriptors in the <code>fd_set</code> datatype. Its value is often 1024, but few programs use that many descriptors.</p>
+<p>The reason the <em>maxfdp1</em> argument exists, along with the burden of calculating its value, is for efficiency. Although each <code>fd_set</code> has room for many descriptors, typically 1,024, this is much more than the number used by a typical process. The kernel gains efficiency by not copying unneeded portions of the descriptor set between the process and the kernel, and by not testing bits that are always 0.</p>
+<h5 id="readset-writeset-and-exceptset-as-value-result-arguments"><strong><em>readset</em>, <em>writeset</em>, and <em>exceptset</em> as value-result arguments</strong> *</h5>
+<p><code>select</code> modifies the descriptor sets pointed to by the <em>readset</em>, <em>writeset</em>, and <em>exceptset</em> pointers. These three arguments are value-result arguments. When we call the function, we specify the values of the descriptors that we are interested in, and on return, the result indicates which descriptors are ready. We use the <code>FD_ISSET</code> macro on return to test a specific descriptor in an <code>fd_set</code> structure. Any descriptor that is not ready on return will have its corresponding bit cleared in the descriptor set. To handle this, we turn on all the bits in which we are interested in all the descriptor sets each time we call select.</p>
+<h5 id="return-value-of-select"><strong>Return value of <code>select</code></strong> *</h5>
+<p>The return value from this function indicates the total number of bits that are ready across all the descriptor sets. If the timer value expires before any of the descriptors are ready, a value of 0 is returned. A return value of –1 indicates an error (which can happen, for example, if the function is interrupted by a caught signal).</p>
             </div>
         </div>
 
