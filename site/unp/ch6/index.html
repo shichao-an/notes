@@ -307,6 +307,10 @@
         
             <li><a href="#select-function">select Function</a></li>
         
+            <li><a href="#conditions-for-a-ready-descriptor">Conditions for a Ready Descriptor</a></li>
+        
+            <li><a href="#maximum-number-of-descriptors-for-select">Maximum Number of Descriptors for select</a></li>
+        
     
     </ul>
 </div></div>
@@ -482,6 +486,101 @@
 <p><code>select</code> modifies the descriptor sets pointed to by the <em>readset</em>, <em>writeset</em>, and <em>exceptset</em> pointers. These three arguments are value-result arguments. When we call the function, we specify the values of the descriptors that we are interested in, and on return, the result indicates which descriptors are ready. We use the <code>FD_ISSET</code> macro on return to test a specific descriptor in an <code>fd_set</code> structure. Any descriptor that is not ready on return will have its corresponding bit cleared in the descriptor set. To handle this, we turn on all the bits in which we are interested in all the descriptor sets each time we call select.</p>
 <h5 id="return-value-of-select"><strong>Return value of <code>select</code></strong> *</h5>
 <p>The return value from this function indicates the total number of bits that are ready across all the descriptor sets. If the timer value expires before any of the descriptors are ready, a value of 0 is returned. A return value of –1 indicates an error (which can happen, for example, if the function is interrupted by a caught signal).</p>
+<h4 id="conditions-for-a-ready-descriptor">Conditions for a Ready Descriptor</h4>
+<p>Previous sections discusses waiting for a descriptor to become ready for I/O (reading or writing) or to have an exception condition pending on it (out-of-band data). The following discussion are specific about the conditions that cause select to return "ready" for sockets</p>
+<ol>
+<li><strong>A socket is ready for reading</strong> if any of the following four conditions is true:<ul>
+<li>The number of bytes of data in the socket receive buffer is greater than or equal to the current size of the low-water mark for the socket receive buffer. A read operation on the socket will not block and will return a value greater than 0 (i.e., the data that is ready to be read). We can set this low-water mark using the <code>SO_RCVLOWAT</code> socket option. It defaults to 1 for TCP and UDP sockets.</li>
+<li>The read half of the connection is closed (i.e., a TCP connection that has received a FIN). A read operation on the socket will not block and will return 0 (i.e., EOF).</li>
+<li>The socket is a listening socket and the number of completed connections is nonzero.</li>
+<li>A socket error is pending. A read operation on the socket will not block and will return an error (–1) with <code>errno</code> set to the specific error condition. These pending errors can also be fetched and cleared by calling <code>getsockopt</code> and specifying the <code>SO_ERROR</code> socket option.</li>
+</ul>
+</li>
+<li><strong>A socket is ready for writing</strong> if any of the following four conditions is true:<ul>
+<li>The number of bytes of available space in the socket send buffer is greater than or equal to the current size of the low-water mark for the socket send buffer and either: (i) the socket is connected, or (ii) the socket does not require a connection (e.g., UDP). This means that if we set the socket to nonblocking (<a href="../../unp/ch16/">Chapter 16</a>), a write operation will not block and will return a positive value (e.g., the number of bytes accepted by the transport layer). We can set this low-water mark using the <code>SO_SNDLOWAT</code> socket option. This low-water mark normally defaults to 2048 for TCP and UDP sockets.</li>
+<li>The write half of the connection is closed. A write operation on the socket will generate <code>SIGPIPE</code> (<a href="../../unp/ch5#sigpipe-signal">Section 5.12</a>).</li>
+<li>A socket using a non-blocking connect has completed the connection, or the connect has failed.</li>
+<li>A socket error is pending. A write operation on the socket will not block and will return an error (–1) with <code>errno</code> set to the specific error condition. These pending errors can also be fetched and cleared by calling getsockopt with the <code>SO_ERROR</code> socket option.</li>
+</ul>
+</li>
+<li><strong>A socket has an exception condition pending if there is out-of-band data for the socket or the socket is still at the out-of-band mark</strong> (<a href="../../unp/ch24/">Chapter 24</a>).</li>
+</ol>
+<p><u>When an error occurs on a socket, it is marked as both readable and writable by select.</u></p>
+<p>The purpose of the receive and send low-water marks is to give the application control over how much data must be available for reading or how much space must be available for writing before select returns a readable or writable status. For example, if we know that our application has nothing productive to do unless at least 64 bytes of data are present, we can set the receive low-water mark to 64 to prevent select from waking us up if less than 64 bytes are ready for reading.</p>
+<p>As long as the send low-water mark for a UDP socket is less than the send buffer size (which should always be the default relationship), the UDP socket is always writable, since a connection is not required.</p>
+<p>The following table is the summary of conditions that cause a socket to be ready for select.</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Readable?</th>
+<th>Writable?</th>
+<th>Exception</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data to read</td>
+<td>x</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Read half of the connection closed</td>
+<td>x</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>New connection ready for listening socket</td>
+<td>x</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Space available for writing</td>
+<td></td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>Write half of the connection closed</td>
+<td></td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>Pending error</td>
+<td>x</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>TCP out-of-band data</td>
+<td></td>
+<td></td>
+<td>x</td>
+</tr>
+</tbody>
+</table>
+<h4 id="maximum-number-of-descriptors-for-select">Maximum Number of Descriptors for <code>select</code></h4>
+<p>Most applications do not use lots of descriptors. It is rare to find an application that uses hundreds of descriptors, but such applications do exist, and they often use <code>select</code> to multiplex the descriptors.</p>
+<p>When <code>select</code> was originally designed, the OS normally had an upper limit on the maximum number of descriptors per process (the 4.2BSD limit was 31), and select just used this same limit. But, current versions of Unix allow for a virtually unlimited number of descriptors per process (often limited only by the amount of memory and any administrative limits), which affects <code>select</code>.</p>
+<p>Many implementations have declarations similar to the following, which are taken from the 4.4BSD <code>&lt;sys/types.h&gt;</code> header:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Select uses bitmasks of file descriptors in longs. These macros</span>
+<span class="cm"> * manipulate such bit fields (the filesystem macros use chars).</span>
+<span class="cm"> * FD_SETSIZE may be defined by the user, but the default here should</span>
+<span class="cm"> * be enough for most uses.</span>
+<span class="cm"> */</span>
+<span class="cp">#ifndef FD_SETSIZE</span>
+<span class="cp">#define FD_SETSIZE      256</span>
+<span class="cp">#endif</span>
+</pre></div>
+
+
+<p>This makes us think that we can just <code>#define FD_SETSIZE</code> to some larger value before including this header to increase the size of the descriptor sets used by <code>select</code>. Unfortunately, this normally does not work. The three descriptor sets are declared within the kernel and also uses the kernel's definition of <code>FD_SETSIZE</code> as the upper limit. The only way to increase the size of the descriptor sets is to increase the value of <code>FD_SETSIZE</code> and then recompile the kernel. Changing the value without recompiling the kernel is inadequate.</p>
+<p>Some vendors are changing their implementation of select to allow the process to define <code>FD_SETSIZE</code> to a larger value than the default. BSD/OS has changed the kernel implementation to allow larger descriptor sets, and it also provides four new <code>FD_</code><em>xxx</em> macros to dynamically allocate and manipulate these larger sets. From a portability standpoint, however, beware of using large descriptor sets.</p>
             </div>
         </div>
 
