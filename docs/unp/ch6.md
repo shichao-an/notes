@@ -67,7 +67,7 @@ We block in a call to `select`, waiting for the datagram socket to be readable. 
 Comparing [Figure 6.3](figure_6.3.png) to [Figure 6.1](figure_6.1.png):
 
 * Disadvantage: using `select` requires two system calls (`select` and `recvfrom`) instead of one
-* Advantage: we can wait for more than one descriptor to be ready (see [select-function]() later in this chapter)
+* Advantage: we can wait for more than one descriptor to be ready (see [the `select` function](#select-function) later in this chapter)
 
 ##### **Multithreading with blocking I/O** *
 
