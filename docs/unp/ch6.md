@@ -120,7 +120,7 @@ POSIX defines these two terms as follows:
 
 Using these definitions, the first four I/O models (blocking, nonblocking, I/O multiplexing, and signal-driven I/O) are all synchronous because the actual I/O operation (`recvfrom`) blocks the process. Only the asynchronous I/O model matches the asynchronous I/O definition.
 
-#### `select` Function
+### `select` Function
 
 The `select` function allows the process to instruct the kernel to either:
 
@@ -271,3 +271,66 @@ Many implementations have declarations similar to the following, which are taken
 This makes us think that we can just `#define FD_SETSIZE` to some larger value before including this header to increase the size of the descriptor sets used by `select`. Unfortunately, this normally does not work. The three descriptor sets are declared within the kernel and also uses the kernel's definition of `FD_SETSIZE` as the upper limit. The only way to increase the size of the descriptor sets is to increase the value of `FD_SETSIZE` and then recompile the kernel. Changing the value without recompiling the kernel is inadequate.
 
 Some vendors are changing their implementation of select to allow the process to define `FD_SETSIZE` to a larger value than the default. BSD/OS has changed the kernel implementation to allow larger descriptor sets, and it also provides four new `FD_`*xxx* macros to dynamically allocate and manipulate these larger sets. From a portability standpoint, however, beware of using large descriptor sets.
+
+### `str_cli` Function (Revisited)
+
+The problem with earlier version of the `str_cli` ([Section 5.5](ch5.md#tcp-echo-client-str_cli-function)) was that we could be blocked in the call to `fgets` when something happened on the socket. We can now rewrite our `str_cli` function using `select` so that:
+
+* The client process is notified as soon as the server process terminates.
+* The client process blocks in a call to `select` waiting for either standard input or the socket to be readable.
+
+The figure below shows the various conditions that are handled by our call to `select`:
+
+[![Figure 6.8. Conditions handled by select in str_cli.](figure_6.8.png)](figure_6.8.png "Figure 6.8. Conditions handled by select in str_cli.")
+
+Three conditions are handled with the socket:
+
+1. If the peer TCP sends data, the socket becomes readable and read `returns` greater than 0 (the number of bytes of data).
+2. If the peer TCP sends a FIN (the peer process terminates), the socket becomes readable and read returns 0 (EOF).
+3. If the peer TCP sends an RST (the peer host has crashed and rebooted), the socket becomes readable, read returns –1, and `errno` contains the specific error code.
+
+Below is the source code for this new version.
+
+<small>[select/strcliselect01.c](https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c)</small>
+
+```c
+#include	"unp.h"
+
+void
+str_cli(FILE *fp, int sockfd)
+{
+	int			maxfdp1;
+	fd_set		rset;
+	char		sendline[MAXLINE], recvline[MAXLINE];
+
+	FD_ZERO(&rset);
+	for ( ; ; ) {
+		FD_SET(fileno(fp), &rset);
+		FD_SET(sockfd, &rset);
+		maxfdp1 = max(fileno(fp), sockfd) + 1;
+		Select(maxfdp1, &rset, NULL, NULL, NULL);
+
+		if (FD_ISSET(sockfd, &rset)) {	/* socket is readable */
+			if (Readline(sockfd, recvline, MAXLINE) == 0)
+				err_quit("str_cli: server terminated prematurely");
+			Fputs(recvline, stdout);
+		}
+
+		if (FD_ISSET(fileno(fp), &rset)) {  /* input is readable */
+			if (Fgets(sendline, MAXLINE, fp) == NULL)
+				return;		/* all done */
+			Writen(sockfd, sendline, strlen(sendline));
+		}
+	}
+}
+```
+
+This code does the following:
+
+* **Call `select`**.
+    * We only need one descriptor set (`rset`) to check for readability. This set is initialized by `FD_ZERO` and then two bits are turned on using `FD_SET`: the bit corresponding to the standard I/O file pointer, `fp`, and the bit corresponding to the socket, `sockfd`. The function `fileno` converts a standard I/O file pointer into its corresponding descriptor, since `select` (and `poll`) work only with descriptors.
+    * `select` is called after calculating the maximum of the two descriptors. In the call, the write-set pointer and the exception-set pointer are both null pointers. The final argument (the time limit) is also a null pointer since we want the call to block until something is ready.
+* **Handle readable socket**. On return from select, if the socket is readable, the echoed line is read with `readline` and output by `fputs`.
+* **Handle readable input**. If the standard input is readable, a line is read by `fgets` and written to the socket using `writen`.
+
+Instead of the function flow being driven by the call to `fgets`, it is now driven by the call to `select`.
