@@ -309,11 +309,25 @@
         
             <li><a href="#synchronous-io-versus-asynchronous-io">Synchronous I/O versus Asynchronous I/O</a></li>
         
-            <li><a href="#select-function">select Function</a></li>
+    
+        <li class="main "><a href="#select-function">select Function</a></li>
+        
+            <li><a href="#the-timeout-argument">The timeout argument *</a></li>
+        
+            <li><a href="#the-descriptor-sets-arguments">The descriptor sets arguments *</a></li>
+        
+            <li><a href="#the-maxfdp1-argument">The maxfdp1 argument *</a></li>
+        
+            <li><a href="#readset-writeset-and-exceptset-as-value-result-arguments">readset, writeset, and exceptset as value-result arguments *</a></li>
+        
+            <li><a href="#return-value-of-select">Return value of select *</a></li>
         
             <li><a href="#conditions-for-a-ready-descriptor">Conditions for a Ready Descriptor</a></li>
         
             <li><a href="#maximum-number-of-descriptors-for-select">Maximum Number of Descriptors for select</a></li>
+        
+    
+        <li class="main "><a href="#str_cli-function-revisited">str_cli Function (Revisited)</a></li>
         
     
     </ul>
@@ -415,7 +429,7 @@
 <li>An asynchronous I/O operation does not cause the requesting process to be blocked.</li>
 </ul>
 <p>Using these definitions, the first four I/O models (blocking, nonblocking, I/O multiplexing, and signal-driven I/O) are all synchronous because the actual I/O operation (<code>recvfrom</code>) blocks the process. Only the asynchronous I/O model matches the asynchronous I/O definition.</p>
-<h4 id="select-function"><code>select</code> Function</h4>
+<h3 id="select-function"><code>select</code> Function</h3>
 <p>The <code>select</code> function allows the process to instruct the kernel to either:</p>
 <ul>
 <li>Wait for any one of multiple events to occur and to wake up the process only when one or more of these events occurs, or</li>
@@ -585,6 +599,65 @@
 
 <p>This makes us think that we can just <code>#define FD_SETSIZE</code> to some larger value before including this header to increase the size of the descriptor sets used by <code>select</code>. Unfortunately, this normally does not work. The three descriptor sets are declared within the kernel and also uses the kernel's definition of <code>FD_SETSIZE</code> as the upper limit. The only way to increase the size of the descriptor sets is to increase the value of <code>FD_SETSIZE</code> and then recompile the kernel. Changing the value without recompiling the kernel is inadequate.</p>
 <p>Some vendors are changing their implementation of select to allow the process to define <code>FD_SETSIZE</code> to a larger value than the default. BSD/OS has changed the kernel implementation to allow larger descriptor sets, and it also provides four new <code>FD_</code><em>xxx</em> macros to dynamically allocate and manipulate these larger sets. From a portability standpoint, however, beware of using large descriptor sets.</p>
+<h3 id="str_cli-function-revisited"><code>str_cli</code> Function (Revisited)</h3>
+<p>The problem with earlier version of the <code>str_cli</code> (<a href="../ch5/#tcp-echo-client-str_cli-function">Section 5.5</a>) was that we could be blocked in the call to <code>fgets</code> when something happened on the socket. We can now rewrite our <code>str_cli</code> function using <code>select</code> so that:</p>
+<ul>
+<li>The client process is notified as soon as the server process terminates.</li>
+<li>The client process blocks in a call to <code>select</code> waiting for either standard input or the socket to be readable.</li>
+</ul>
+<p>The figure below shows the various conditions that are handled by our call to <code>select</code>:</p>
+<p><a href="../figure_6.8.png" title="Figure 6.8. Conditions handled by select in str_cli."><img alt="Figure 6.8. Conditions handled by select in str_cli." src="../figure_6.8.png" /></a></p>
+<p>Three conditions are handled with the socket:</p>
+<ol>
+<li>If the peer TCP sends data, the socket becomes readable and read <code>returns</code> greater than 0 (the number of bytes of data).</li>
+<li>If the peer TCP sends a FIN (the peer process terminates), the socket becomes readable and read returns 0 (EOF).</li>
+<li>If the peer TCP sends an RST (the peer host has crashed and rebooted), the socket becomes readable, read returns –1, and <code>errno</code> contains the specific error code.</li>
+</ol>
+<p>Below is the source code for this new version.</p>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c">select/strcliselect01.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
+
+<span class="kt">void</span>
+<span class="nf">str_cli</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">fp</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sockfd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>         <span class="n">maxfdp1</span><span class="p">;</span>
+    <span class="n">fd_set</span>      <span class="n">rset</span><span class="p">;</span>
+    <span class="kt">char</span>        <span class="n">sendline</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">],</span> <span class="n">recvline</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="n">FD_ZERO</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">FD_SET</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+        <span class="n">FD_SET</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+        <span class="n">maxfdp1</span> <span class="o">=</span> <span class="n">max</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="n">sockfd</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">Select</span><span class="p">(</span><span class="n">maxfdp1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">FD_ISSET</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">))</span> <span class="p">{</span>  <span class="cm">/* socket is readable */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">Readline</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">recvline</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;str_cli: server terminated prematurely&quot;</span><span class="p">);</span>
+            <span class="n">Fputs</span><span class="p">(</span><span class="n">recvline</span><span class="p">,</span> <span class="n">stdout</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">FD_ISSET</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">))</span> <span class="p">{</span>  <span class="cm">/* input is readable */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">Fgets</span><span class="p">(</span><span class="n">sendline</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+                <span class="k">return</span><span class="p">;</span>     <span class="cm">/* all done */</span>
+            <span class="n">Writen</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">sendline</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">sendline</span><span class="p">));</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This code does the following:</p>
+<ul>
+<li><strong>Call <code>select</code></strong>.<ul>
+<li>We only need one descriptor set (<code>rset</code>) to check for readability. This set is initialized by <code>FD_ZERO</code> and then two bits are turned on using <code>FD_SET</code>: the bit corresponding to the standard I/O file pointer, <code>fp</code>, and the bit corresponding to the socket, <code>sockfd</code>. The function <code>fileno</code> converts a standard I/O file pointer into its corresponding descriptor, since <code>select</code> (and <code>poll</code>) work only with descriptors.</li>
+<li><code>select</code> is called after calculating the maximum of the two descriptors. In the call, the write-set pointer and the exception-set pointer are both null pointers. The final argument (the time limit) is also a null pointer since we want the call to block until something is ready.</li>
+</ul>
+</li>
+<li><strong>Handle readable socket</strong>. On return from select, if the socket is readable, the echoed line is read with <code>readline</code> and output by <code>fputs</code>.</li>
+<li><strong>Handle readable input</strong>. If the standard input is readable, a line is read by <code>fgets</code> and written to the socket using <code>writen</code>.</li>
+</ul>
+<p>Instead of the function flow being driven by the call to <code>fgets</code>, it is now driven by the call to <code>select</code>.</p>
             </div>
         </div>
 
