@@ -330,6 +330,21 @@
         <li class="main "><a href="#str_cli-function-revisited">str_cli Function (Revisited)</a></li>
         
     
+        <li class="main "><a href="#batch-input-and-buffering">Batch Input and Buffering</a></li>
+        
+            <li><a href="#stop-and-wait-mode">Stop-and-wait mode *</a></li>
+        
+            <li><a href="#batch-mode">Batch mode *</a></li>
+        
+            <li><a href="#buffering-concerns">Buffering concerns *</a></li>
+        
+    
+        <li class="main "><a href="#shutdown-function">shutdown Function</a></li>
+        
+    
+        <li class="main "><a href="#str_cli-function-revisited-again">str_cli Function (Revisited Again)</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -658,6 +673,56 @@
 <li><strong>Handle readable input</strong>. If the standard input is readable, a line is read by <code>fgets</code> and written to the socket using <code>writen</code>.</li>
 </ul>
 <p>Instead of the function flow being driven by the call to <code>fgets</code>, it is now driven by the call to <code>select</code>.</p>
+<h3 id="batch-input-and-buffering">Batch Input and Buffering</h3>
+<p>Unfortunately, our <code>str_cli</code> function is still not correct. Our original version in <a href="../ch5/#tcp-echo-client-str_cli-function">Section 5.5</a> operates in a stop-and-wait mode, which is fine for interactive use: It sends a line to the server and then waits for the reply. This amount of time is one RTT plus the server's processing time (which is close to 0 for a simple echo server). We can therefore estimate how long it will take for a given number of lines to be echoed if we know the RTT between the client and server. We can use <code>ping</code> to measure RTTs.</p>
+<h4 id="stop-and-wait-mode">Stop-and-wait mode *</h4>
+<p>If we consider the network between the client and server as a full-duplex pipe, with requests going from the client to the server and replies in the reverse direction, then the following figure shows our stop-and-wait mode:</p>
+<p><a href="../figure_6.10.png" title="Figure 6.10. Time line of stop-and-wait mode: interactive input."><img alt="Figure 6.10. Time line of stop-and-wait mode: interactive input." src="../figure_6.10.png" /></a></p>
+<p>Note that this figure:</p>
+<ul>
+<li>Assumes that there is no server processing time and that the size of the request is the same as the reply</li>
+<li>Shows show only the data packets, ignoring the TCP acknowledgments that are also going across the network</li>
+</ul>
+<p>A request is sent by the client at time 0 and we assume an RTT of 8 units of time. The reply sent at time 4 is received at time 7.</p>
+<p>This stop-and-wait mode is fine for interactive input. The problem is: if we run our client in a batch mode, when we redirect the input and output, however, the resulting output file is always smaller than the input file (and they should be identical for an echo server).</p>
+<h4 id="batch-mode">Batch mode *</h4>
+<p>To see what's happening, realize that in a batch mode, we can keep sending requests as fast as the network can accept them. The server processes them and sends back the replies at the same rate. This leads to the full pipe at time 7, as shown below:</p>
+<p><a href="../figure_6.11.png" title="Figure 6.11. Filling the pipe between the client and server: batch mode."><img alt="Figure 6.11. Filling the pipe between the client and server: batch mode." src="../figure_6.11.png" /></a></p>
+<p>We assume:</p>
+<ul>
+<li>After sending the first request, we immediately send another, and then another</li>
+<li>We can keep sending requests as fast as the network can accept them, along with processing replies as fast as the network supplies them.</li>
+</ul>
+<p>Assume that the input file contains only nine lines. The last line is sent at time 8, as shown in the above figure. But we cannot close the connection after writing this request because there are still other requests and replies in the pipe. The cause of the problem is our handling of an EOF on input: The function returns to the <code>main</code> function, which then terminates. But <u>in a batch mode, an EOF on input does not imply that we have finished reading from the socket; there might still be requests on the way to the server, or replies on the way back from the server.</u></p>
+<p>The solution is to close one-half of the TCP connection by sending a FIN to the server, telling it we have finished sending data, but leave the socket descriptor open for reading. This is done with the <code>shutdown</code> function, described in the next section.</p>
+<h4 id="buffering-concerns">Buffering concerns *</h4>
+<p>Buffering for performance as in <code>str_cli</code> (<a href="#str_cli-function-revisited">Section 6.7</a>) adds complexity to a network application.</p>
+<p>When several lines of input are available from the standard input. <code>select</code> will cause the code (<a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c#L24">select/strcliselect01.c#L24</a>) to read the input using <code>fgets</code>, which will read the available lines into a buffer used by stdio. But, <code>fgets</code> only returns a single line and leaves any remaining data sitting in the stdio buffer. The following code (<a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c#L26">select/strcliselect01.c#L26</a>) writes that single line to the server and then <code>select</code> is called again to wait for more work, even if there are additional lines to consume in the stdio buffer. The reason is that <code>select</code> knows nothing of the buffers used by stdio;it will only show readability from the viewpoint of the <code>read</code> system call, not calls like <code>fgets</code>. Thus, mixing stdio and <code>select</code> is considered very error-prone and should only be done with great care.</p>
+<p>The same problem exists with <code>readline</code> in this example (<code>str_cli</code> function). Instead of data being hidden from <code>select</code> in a stdio buffer, it is hidden in <code>readline</code>'s buffer. In <a href="../ch3/#readn-writen-and-readline-functions">Section 3.9</a> we provided a function (<a href="https://github.com/shichao-an/unpv13e/blob/master/lib/readline.c#L52">lib/readline.c#L52</a>) that gives visibility into <code>readline</code>'s buffer, so one possible solution is to modify our code to use that function before calling <code>select</code> to see if data has already been read but not consumed. But again, the complexity grows out of hand quickly when we have to handle the case where the readline buffer contains a partial line (meaning we still need to read more) as well as when it contains one or more complete lines (which we can consume).</p>
+<p>We will address these buffering concerns in the improved version of <code>str_cli</code> shown in <a href="#str_cli-function-revisited-again">Section 6.7</a>.</p>
+<h3 id="shutdown-function"><code>shutdown</code> Function</h3>
+<p>The normal way to terminate a network connection is to call the <code>close</code> function. But, there are two limitations with <code>close</code> that can be avoided with <code>shutdown</code>:</p>
+<ol>
+<li><code>close</code> decrements the descriptor's reference count and closes the socket only if the count reaches 0 (<a href="../ch4/#concurrent-servers">Section 4.8</a>). With <code>shutdown</code>, we can initiate TCP's normal connection termination sequence (the four segments beginning with a FIN in <a href="../figure_2.5.png">Figure 2.5</a>), regardless of the reference count.</li>
+<li><code>close</code> terminates both directions of data transfer, reading and writing. Since a TCP connection is full-duplex, there are times when we want to tell the other end that we have finished sending, even though that end might have more data to send us. This is the scenario we encountered in the previous section with batch input to our <code>str_cli</code> function. The figure below shows the typical function calls in this scenario.</li>
+</ol>
+<p><a href="../figure_6.12.png" title="Figure 6.12. Calling shutdown to close half of a TCP connection."><img alt="Figure 6.12. Calling shutdown to close half of a TCP connection." src="../figure_6.12.png" /></a></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/socket.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">shutdown</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">howto</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, –1 on error */</span>
+</pre></div>
+
+
+<p>The action of the function depends on the value of the <em>howto</em> argument:</p>
+<ul>
+<li><code>SHUT_RD</code>: <strong>The read half of the connection is closed.</strong> No more data can be received on the socket and any data currently in the socket receive buffer is discarded. The process can no longer issue any of the read functions on the socket. Any data received after this call for a TCP socket is acknowledged and then silently discarded.</li>
+<li><code>SHUT_WR</code>: <strong>The write half of the connection is closed.</strong> In the case of TCP, this is called a <strong>half-close</strong>. Any data currently in the socket send buffer will be sent, followed by TCP's normal connection termination sequence. As we mentioned earlier, this closing of the write half is done regardless of whether or not the socket descriptor's reference count is currently greater than 0. The process can no longer issue any of the write functions on the socket.</li>
+<li><code>SHUT_RDWR</code>: <strong>The read half and the write half of the connection are both closed.</strong> This is equivalent to calling <code>shutdown</code> twice: first with <code>SHUT_RD</code> and then with <code>SHUT_WR</code>.</li>
+</ul>
+<p>The three <code>SHUT_</code><em>xxx</em> names are defined by the POSIX specification. Typical values for the howto argument that you will encounter will be 0 (close the read half), 1 (close the write half), and 2 (close the read half and the write half).</p>
+<h3 id="str_cli-function-revisited-again"><code>str_cli</code> Function (Revisited Again)</h3>
             </div>
         </div>
 
