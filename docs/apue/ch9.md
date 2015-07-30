@@ -6,7 +6,7 @@ Every process has a parent process (the initial kernel-level process is usually 
 
 This chapter details process groups and the concept of session introduced by POSIX.1, as well as relationship between the login shell that is invoked when a user logs in and all the processes that are started from the login shell.
 
-The concept of UNIX system signal mechanism in [Chapter 10](/apue/ch10/) is needed.
+The concept of UNIX system signal mechanism in [Chapter 10](ch10.md) is needed.
 
 ### Terminal Logins
 
@@ -102,7 +102,7 @@ The main difference between a serial terminal login and a network login is that 
 
 With the terminal logins, `init` knows which terminal devices are enabled for logins and spawns a `getty` process for each device. In the case of network logins, however, all the logins come through the kernel’s network interface drivers (e.g., the Ethernet driver), and we don’t know ahead of time how many of these will occur. Instead of having a process waiting for each possible login, we now have to wait for a network connection request to arrive.
 
-To allow the same software to process logins over both terminal logins and network logins, a software driver called a **pseudo terminal** (detailed in [Chapter 19](/apue/ch19/)) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.
+To allow the same software to process logins over both terminal logins and network logins, a software driver called a **pseudo terminal** (detailed in [Chapter 19](ch19.md)) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.
 
 
 #### BSD Network Logins
@@ -424,7 +424,7 @@ hello, world
 ```
 
 * `SIGTTIN`: When the background `cat` tries to read its standard input (the controlling terminal), the terminal driver, knowing that it is a background job, sends the `SIGTTIN` signal to the background job.
-* The shell detects the change in status of its child (see `wait` and `waitpid` function in [Section 8.6](/apue/ch8/#wait-and-waitpid-functions)) and tells us that the job has been stopped.
+* The shell detects the change in status of its child (see `wait` and `waitpid` function in [Section 8.6](ch8.md#wait-and-waitpid-functions)) and tells us that the job has been stopped.
 * The shell’s `fg` command move the stopped job into the foreground, which causes the shell to place the job into the foreground process group (tcsetpgrp) and send the continue signal (`SIGCONT`) to the process group.
 * Since it is now in the foreground process group, the job can read from the controlling terminal.
 
@@ -728,7 +728,7 @@ Analysis: [p307-309]
 
 * The shell places the foreground process into its own process group (6099) and the shell itself stays in its own process group (2837). The child inherits the process group of its parent (6099).
 * After `fork`, the parent sleeps for 5 seconds. This is our (imperfect) way of letting the child execute before the parent terminates.
-* The child establishes a signal handler for the hang-up signal (`SIGHUP`) so we can see whether it is sent to the child. (signal handlers are discussed in [Chapter 10](/apue/ch10/))
+* The child establishes a signal handler for the hang-up signal (`SIGHUP`) so we can see whether it is sent to the child. (signal handlers are discussed in [Chapter 10](ch10.md))
 * The child sends itself the stop signal (`SIGTSTP`) with the `kill` function. This stops the child, similar to our stopping a foreground job with our terminal’s suspend character (Control-Z).
 * When the parent terminates, the child is orphaned, so the child’s parent process ID becomes 1, which is the `init` process ID.
 * At this point, the child is a member of an **orphaned process group**:

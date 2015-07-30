@@ -344,7 +344,7 @@ struct rlimit {
     * `RLIMIT_AS`: The maximum size in bytes of a process’s total available memory. This affects the `sbrk` function and the `mmap` function.
     * `RLIMIT_CORE`: The maximum size in bytes of a core file. A limit of 0 prevents the creation of a core file.
     * `RLIMIT_CPU`: The maximum amount of CPU time in seconds. When the soft limit is exceeded, the SIGXCPU signal is sent to the process.
-    * `RLIMIT_DATA`: The maximum size in bytes of the data segment: the sum of the initialized data, uninitialized data, and heap from [Figure 7.6](apue/figure_7.6.png).
+    * `RLIMIT_DATA`: The maximum size in bytes of the data segment: the sum of the initialized data, uninitialized data, and heap from [Figure 7.6](figure_7.6.png).
     * `RLIMIT_FSIZE`: The maximum size in bytes of a file that may be created.  When the soft limit is exceeded, the process is sent the `SIGXFSZ` signal.
     * `RLIMIT_MEMLOCK`: The maximum amount of memory in bytes that a process can lock into memory using `mlock(2)`.
     * `RLIMIT_MSGQUEUE`: The maximum amount of memory in bytes that a process can allocate for POSIX message queues.
@@ -355,7 +355,7 @@ struct rlimit {
     * `RLIMIT_RSS`: Maximum resident set size (RSS) in bytes. If available physical memory is low, the kernel takes memory from processes that exceed their RSS.
     * `RLIMIT_SBSIZE`: The maximum size in bytes of socket buffers that a user can consume at any given time.
     * `RLIMIT_SIGPENDING`: The maximum number of signals that can be queued for a process. This limit is enforced by the sigqueue function
-    * `RLIMIT_STACK`: The maximum size in bytes of the stack. See [Figure 7.6](apue/figure_7.6.png).
+    * `RLIMIT_STACK`: The maximum size in bytes of the stack. See [Figure 7.6](figure_7.6.png).
     * `RLIMIT_SWAP`: The maximum amount of swap space in bytes that a user can consume.
     * `RLIMIT_VMEM` This is a synonym for `RLIMIT_AS`.
 

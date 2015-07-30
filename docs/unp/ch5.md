@@ -13,7 +13,7 @@ The figure below depcits this simple client/server:
 
 [![Figure 5.1. Simple echo client and server.](figure_5.1.png)](figure_5.1.png "Figure 5.1. Simple echo client and server.")
 
-Despite two arrows between the client and server in the above figure, it is really a [full-duplex](/unp/ch2/#transmission-control-protocol-tcp) TCP connection. `fgets` and `fputs` functions are from the standard I/O library. `writen` and `readline` functions were shown in [Section 3.9](/unp/ch3/#readn-writen-and-readline-functions).
+Despite two arrows between the client and server in the above figure, it is really a [full-duplex](ch2.md#transmission-control-protocol-tcp) TCP connection. `fgets` and `fputs` functions are from the standard I/O library. `writen` and `readline` functions were shown in [Section 3.9](ch3.md#readn-writen-and-readline-functions).
 
 The echo client/server is a valid, simple example of a network application. To expand this example into your own application, all you need to do is change what the server does with the input it receives from its clients.
 
@@ -75,12 +75,12 @@ The above code does the following:
 
 * **Create socket, bind server's well-known port**
     * A TCP socket is created.
-    * An Internet socket address structure is filled in with the wildcard address (`INADDR_ANY`) and the server's well-known port (`SERV_PORT`, which is defined as 9877 in our [unp.h](https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L200) header). Binding the wildcard address tells the system that we will accept a connection destined for any local interface, in case the system is multihomed. Our choice of the TCP port number is based on [Figure 2.10](figure_2.10.png) in [Section 2.9](/unp/ch2/#port-numbers). It should be greater than 1023 (we do not need a reserved port), greater than 5000 (to avoid conflict with the ephemeral ports allocated by many Berkeley-derived implementations), less than 49152 (to avoid conflict with the "correct" range of ephemeral ports), and it should not conflict with any registered port.  [p122]
+    * An Internet socket address structure is filled in with the wildcard address (`INADDR_ANY`) and the server's well-known port (`SERV_PORT`, which is defined as 9877 in our [unp.h](https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L200) header). Binding the wildcard address tells the system that we will accept a connection destined for any local interface, in case the system is multihomed. Our choice of the TCP port number is based on [Figure 2.10](figure_2.10.png) in [Section 2.9](ch2.md#port-numbers). It should be greater than 1023 (we do not need a reserved port), greater than 5000 (to avoid conflict with the ephemeral ports allocated by many Berkeley-derived implementations), less than 49152 (to avoid conflict with the "correct" range of ephemeral ports), and it should not conflict with any registered port.  [p122]
     * The socket is converted into a listening socket by `listen`.
 * **Wait for client connection to complete**
     * The server blocks in the call to `accept`, waiting for a client connection to complete.
 * **Concurrent server**
-    * For each client, `fork` spawns a child, and the child handles the new client. The child closes the listening socket and the parent closes the connected socket. ([Section 4.8](/unp/ch4/#concurrent-servers))
+    * For each client, `fork` spawns a child, and the child handles the new client. The child closes the listening socket and the parent closes the connected socket. ([Section 4.8](ch4.md#concurrent-servers))
 
 ### TCP Echo Server: `str_echo` Function
 
@@ -758,7 +758,7 @@ The following steps take place:
     * If the `readline` happens before the RST is received (as shown in this example), the result is an unexpected EOF in the client.
     * If the RST arrives first, the result is an `ECONNRESET` ("Connection reset by peer") error return from `readline`.
 
-The problem in this example is that the client is blocked in the call to `fgets` when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the `select` and `poll` functions described in [Chapter 6](/unp/ch6/).
+The problem in this example is that the client is blocked in the call to `fgets` when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the `select` and `poll` functions described in [Chapter 6](ch6.md).
 
 ### `SIGPIPE` Signal
 
@@ -828,9 +828,9 @@ The following steps take place:
     * If the server host crashed and there were no responses at all to the client's data segments, the error is `ETIMEDOUT`.
     * If some intermediate router determined that the server host was unreachable and responded with an ICMP "destination unreachable" message, the error is either `EHOSTUNREACH` or `ENETUNREACH`.
 
-To detect that the peer is down or unreachable quicker than 9 minutes, we can place a timeout on the call to `readline`, which is discussed in [Chapter 14](/unp/ch14/).
+To detect that the peer is down or unreachable quicker than 9 minutes, we can place a timeout on the call to `readline`, which is discussed in [Chapter 14](ch14.md).
 
-This example detects that the server host has crashed only when we send data to that host. If we want to detect the crashing of the server host even if we are not actively sending it data, another technique is required: SO_KEEPALIVE socket option ([Chapter 7](/unp/ch7/)).
+This example detects that the server host has crashed only when we send data to that host. If we want to detect the crashing of the server host even if we are not actively sending it data, another technique is required: SO_KEEPALIVE socket option ([Chapter 7](ch7.md)).
 
 ### Crashing and Rebooting of Server Host
 
@@ -1004,5 +1004,5 @@ There are two common solutions to this data format problem:
 ### Summary
 
 * The first problem was zombie children and we caught the `SIGCHLD` signal to handle this. Our signal handler then called `waitpid` and  we must call this function instead of the older `wait` function, since Unix signals are not queued.
-* The next problem we encountered was the client not being notified when the server process terminated. We saw that our client's TCP was notified, but we did not receive that notification since we were blocked, waiting for user input. We will use the `select` or `poll` function in [Chapter 6](/unp/ch6/) to handle this scenario, by waiting for any one of multiple descriptors to be ready, instead of blocking on a single descriptor.
-* If the server host crashes, we do not detect this until the client sends data to the server. Some applications must be made aware of this fact sooner; we will look at the `SO_KEEPALIVE` socket option in [Chapter 7](/unp/ch7/).
+* The next problem we encountered was the client not being notified when the server process terminated. We saw that our client's TCP was notified, but we did not receive that notification since we were blocked, waiting for user input. We will use the `select` or `poll` function in [Chapter 6](ch6.md) to handle this scenario, by waiting for any one of multiple descriptors to be ready, instead of blocking on a single descriptor.
+* If the server host crashes, we do not detect this until the client sends data to the server. Some applications must be made aware of this fact sooner; we will look at the `SO_KEEPALIVE` socket option in [Chapter 7](ch7.md).

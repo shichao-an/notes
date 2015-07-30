@@ -145,6 +145,10 @@
                             <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
                         </li>
                     
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -349,7 +353,7 @@
 <p><a href="../figure_6.1.png" title="Figure 6.1. Blocking I/O model."><img alt="Figure 6.1. Blocking I/O model." src="../figure_6.1.png" /></a></p>
 <p>We use UDP for this example instead of TCP because with UDP, the concept of data being "ready" to read is simple: either an entire datagram has been received or it has not. With TCP it gets more complicated, as additional variables such as the socket's low-water mark come into play.</p>
 <p>We also refer to <code>recvfrom</code> as a system call to differentiate between our application and the kernel, regardless of how <code>recvfrom</code> is implemented (system call on BSD and function that invokes <code>getmsg</code> system call on System V). There is normally a switch from running in the application to running in the kernel, followed at some time later by a return to the application.</p>
-<p>In the figure above, the process calls <code>recvfrom</code> and the system call does not return until the datagram arrives and is copied into our application buffer, or an error occurs. The most common error is the system call being interrupted by a signal, as we described in <a href="../../unp/ch5/#handling-sigchld-signals">Section 5.9</a>. We say that the process is blocked the entire time from when it calls <code>recvfrom</code> until it returns. When <code>recvfrom</code> returns successfully, our application processes the datagram.</p>
+<p>In the figure above, the process calls <code>recvfrom</code> and the system call does not return until the datagram arrives and is copied into our application buffer, or an error occurs. The most common error is the system call being interrupted by a signal, as we described in <a href="../ch5/#handling-sigchld-signals">Section 5.9</a>. We say that the process is blocked the entire time from when it calls <code>recvfrom</code> until it returns. When <code>recvfrom</code> returns successfully, our application processes the datagram.</p>
 <h4 id="nonblocking-io-model">Nonblocking I/O Model</h4>
 <p>When a socket is set to be nonblocking, we are telling the kernel "when an I/O operation that I request cannot be completed without putting the process to sleep, do not put the process to sleep, but return an error instead". The figure is below:</p>
 <p><a href="../figure_6.2.png" title="Figure 6.2. Nonblocking I/O model."><img alt="Figure 6.2. Nonblocking I/O model." src="../figure_6.2.png" /></a></p>
@@ -374,9 +378,9 @@
 <p>The <strong>signal-driven I/O model</strong> uses signals, telling the kernel to notify us with the <code>SIGIO</code> signal when the descriptor is ready. The figure is below:</p>
 <p><a href="../figure_6.4.png" title="Figure 6.4. Signal-Driven I/O model."><img alt="Figure 6.4. Signal-Driven I/O model." src="../figure_6.4.png" /></a></p>
 <ul>
-<li>We first enable the socket for signal-driven I/O (<a href="../../unp/ch25/">Section 25.2</a>) and install a signal handler using the <code>sigaction</code> system call. The return from this system call is immediate and our process continues; it is not blocked.</li>
+<li>We first enable the socket for signal-driven I/O (<a href="ch25.md">Section 25.2</a>) and install a signal handler using the <code>sigaction</code> system call. The return from this system call is immediate and our process continues; it is not blocked.</li>
 <li>When the datagram is ready to be read, the <code>SIGIO</code> signal is generated for our process. We can either:<ul>
-<li>read the datagram from the signal handler by calling <code>recvfrom</code> and then notify the main loop that the data is ready to be processed (<a href="../../unp/ch25/">Section 25.3</a>)</li>
+<li>read the datagram from the signal handler by calling <code>recvfrom</code> and then notify the main loop that the data is ready to be processed (<a href="ch25.md">Section 25.3</a>)</li>
 <li>notify the main loop and let it read the datagram.</li>
 </ul>
 </li>
@@ -497,13 +501,13 @@
 </ul>
 </li>
 <li><strong>A socket is ready for writing</strong> if any of the following four conditions is true:<ul>
-<li>The number of bytes of available space in the socket send buffer is greater than or equal to the current size of the low-water mark for the socket send buffer and either: (i) the socket is connected, or (ii) the socket does not require a connection (e.g., UDP). This means that if we set the socket to nonblocking (<a href="../../unp/ch16/">Chapter 16</a>), a write operation will not block and will return a positive value (e.g., the number of bytes accepted by the transport layer). We can set this low-water mark using the <code>SO_SNDLOWAT</code> socket option. This low-water mark normally defaults to 2048 for TCP and UDP sockets.</li>
-<li>The write half of the connection is closed. A write operation on the socket will generate <code>SIGPIPE</code> (<a href="../../unp/ch5#sigpipe-signal">Section 5.12</a>).</li>
+<li>The number of bytes of available space in the socket send buffer is greater than or equal to the current size of the low-water mark for the socket send buffer and either: (i) the socket is connected, or (ii) the socket does not require a connection (e.g., UDP). This means that if we set the socket to nonblocking (<a href="ch16.md">Chapter 16</a>), a write operation will not block and will return a positive value (e.g., the number of bytes accepted by the transport layer). We can set this low-water mark using the <code>SO_SNDLOWAT</code> socket option. This low-water mark normally defaults to 2048 for TCP and UDP sockets.</li>
+<li>The write half of the connection is closed. A write operation on the socket will generate <code>SIGPIPE</code> (<a href="../ch5/#sigpipe-signal">Section 5.12</a>).</li>
 <li>A socket using a non-blocking connect has completed the connection, or the connect has failed.</li>
 <li>A socket error is pending. A write operation on the socket will not block and will return an error (–1) with <code>errno</code> set to the specific error condition. These pending errors can also be fetched and cleared by calling getsockopt with the <code>SO_ERROR</code> socket option.</li>
 </ul>
 </li>
-<li><strong>A socket has an exception condition pending if there is out-of-band data for the socket or the socket is still at the out-of-band mark</strong> (<a href="../../unp/ch24/">Chapter 24</a>).</li>
+<li><strong>A socket has an exception condition pending if there is out-of-band data for the socket or the socket is still at the out-of-band mark</strong> (<a href="ch24.md">Chapter 24</a>).</li>
 </ol>
 <p><u>When an error occurs on a socket, it is marked as both readable and writable by select.</u></p>
 <p>The purpose of the receive and send low-water marks is to give the application control over how much data must be available for reading or how much space must be available for writing before select returns a readable or writable status. For example, if we know that our application has nothing productive to do unless at least 64 bytes of data are present, we can set the receive low-water mark to 64 to prevent select from waking us up if less than 64 bytes are ready for reading.</p>
