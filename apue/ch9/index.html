@@ -145,6 +145,10 @@
                             <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
                         </li>
                     
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -374,7 +378,7 @@
 <h3 id="introduction">Introduction</h3>
 <p>Every process has a parent process (the initial kernel-level process is usually its own parent). The parent is notified when the child terminates, and the parent can obtain the child’s exit status.</p>
 <p>This chapter details process groups and the concept of session introduced by POSIX.1, as well as relationship between the login shell that is invoked when a user logs in and all the processes that are started from the login shell.</p>
-<p>The concept of UNIX system signal mechanism in <a href="../../apue/ch10/">Chapter 10</a> is needed.</p>
+<p>The concept of UNIX system signal mechanism in <a href="../ch10/">Chapter 10</a> is needed.</p>
 <h3 id="terminal-logins">Terminal Logins</h3>
 <p>In early UNIX systems, the terminals (dumb terminals that are hard-wired connected to the host) were either local (directly connected) or remote (connected through a modem). These logins came through a terminal device driver in the kernel. [p285]</p>
 <p>As bitmapped graphical terminals became available, windowing systems were developed to provide users with new ways to interact with host computers.  Applications were developed to create "terminal windows" to emulate character-based terminals, allowing users to interact with hosts in familiar ways (i.e., via the shell command line).</p>
@@ -456,7 +460,7 @@ stored in the <code>/etc/init</code> directory. For example, the specifications 
 <h3 id="network-logins">Network Logins</h3>
 <p>The main difference between a serial terminal login and a network login is that the connection between the terminal and the computer isn’t point-to-point. In this case, <code>login</code> is simply a service available, just like any other network service, such as FTP or SMTP.</p>
 <p>With the terminal logins, <code>init</code> knows which terminal devices are enabled for logins and spawns a <code>getty</code> process for each device. In the case of network logins, however, all the logins come through the kernel’s network interface drivers (e.g., the Ethernet driver), and we don’t know ahead of time how many of these will occur. Instead of having a process waiting for each possible login, we now have to wait for a network connection request to arrive.</p>
-<p>To allow the same software to process logins over both terminal logins and network logins, a software driver called a <strong>pseudo terminal</strong> (detailed in <a href="../../apue/ch19/">Chapter 19</a>) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.</p>
+<p>To allow the same software to process logins over both terminal logins and network logins, a software driver called a <strong>pseudo terminal</strong> (detailed in <a href="ch19.md">Chapter 19</a>) is used to emulate the behavior of a serial terminal and map terminal operations to network operations, and vice versa.</p>
 <h4 id="bsd-network-logins">BSD Network Logins</h4>
 <p>In BSD, the <code>inetd</code> process, sometimes called the <em>Internet superserver</em>, waits for most network connections.</p>
 <p>As part of the system start-up, <code>init</code> invokes a shell that executes the shell script <code>/etc/rc</code>, which starts <code>inetd</code> along with other daemons. Once the shell script terminates, the parent process of <code>inetd</code> becomes <code>init</code>; <code>inetd</code> waits for TCP/IP connection requests to arrive at the host. When a connection request arrives for it to handle, <code>inetd</code> does a <code>fork</code> and <code>exec</code> of the appropriate program.</p>
@@ -726,7 +730,7 @@ make all <span class="p">&amp;</span>
 
 <ul>
 <li><code>SIGTTIN</code>: When the background <code>cat</code> tries to read its standard input (the controlling terminal), the terminal driver, knowing that it is a background job, sends the <code>SIGTTIN</code> signal to the background job.</li>
-<li>The shell detects the change in status of its child (see <code>wait</code> and <code>waitpid</code> function in <a href="../../apue/ch8/#wait-and-waitpid-functions">Section 8.6</a>) and tells us that the job has been stopped.</li>
+<li>The shell detects the change in status of its child (see <code>wait</code> and <code>waitpid</code> function in <a href="../ch8/#wait-and-waitpid-functions">Section 8.6</a>) and tells us that the job has been stopped.</li>
 <li>The shell’s <code>fg</code> command move the stopped job into the foreground, which causes the shell to place the job into the foreground process group (tcsetpgrp) and send the continue signal (<code>SIGCONT</code>) to the process group.</li>
 <li>Since it is now in the foreground process group, the job can read from the controlling terminal.</li>
 </ul>
@@ -988,7 +992,7 @@ make all <span class="p">&amp;</span>
 <ul>
 <li>The shell places the foreground process into its own process group (6099) and the shell itself stays in its own process group (2837). The child inherits the process group of its parent (6099).</li>
 <li>After <code>fork</code>, the parent sleeps for 5 seconds. This is our (imperfect) way of letting the child execute before the parent terminates.</li>
-<li>The child establishes a signal handler for the hang-up signal (<code>SIGHUP</code>) so we can see whether it is sent to the child. (signal handlers are discussed in <a href="../../apue/ch10/">Chapter 10</a>)</li>
+<li>The child establishes a signal handler for the hang-up signal (<code>SIGHUP</code>) so we can see whether it is sent to the child. (signal handlers are discussed in <a href="../ch10/">Chapter 10</a>)</li>
 <li>The child sends itself the stop signal (<code>SIGTSTP</code>) with the <code>kill</code> function. This stops the child, similar to our stopping a foreground job with our terminal’s suspend character (Control-Z).</li>
 <li>When the parent terminates, the child is orphaned, so the child’s parent process ID becomes 1, which is the <code>init</code> process ID.</li>
 <li>At this point, the child is a member of an <strong>orphaned process group</strong>:<ul>
