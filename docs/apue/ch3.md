@@ -234,7 +234,7 @@ The kernel uses three data structures to represent an open file, and the relatio
     * v-node also contains the **i-node** for the file
     * Linux has no v-node. Instead, a generic i-node structure is used. [p75] Instead of splitting the data structures into a v-node and an i-node, Linux uses a file system–independent i-node and a file system–dependent i-node. [p76]
 
-[Figure 3.7](/apue/figure_3.7.png) shows a pictorial arrangement of these three tables for a single process that has two different files open: one file is open on standard input (file descriptor 0), and the other is open on standard output (file descriptor 1).
+[Figure 3.7](figure_3.7.png) shows a pictorial arrangement of these three tables for a single process that has two different files open: one file is open on standard input (file descriptor 0), and the other is open on standard output (file descriptor 1).
 
 If two independent processes have the same file open, we could have the arrangement shown in Figure 3.8 (below).
 
@@ -624,7 +624,7 @@ fd = open("/dev/fd/0", mode);
 fd = dup(0);
 ```
 
-Most systems ignore the specified `mode`, whereas others require that it be a subset of the mode used when the referenced file (standard input, in this case) was originally opened. The descriptors 0 and `fd` [share the same file table entry](/apue/figure_3.9.png).
+Most systems ignore the specified `mode`, whereas others require that it be a subset of the mode used when the referenced file (standard input, in this case) was originally opened. The descriptors 0 and `fd` [share the same file table entry](figure_3.9.png).
 
 The Linux implementation of `/dev/fd` is an exception. It maps file descriptors into symbolic links pointing to the underlying physical files. When you open `/dev/fd/0`, for example, you are really opening the file associated with your standard input. Thus the mode of the new file descriptor returned is unrelated to the mode of the `/dev/fd` file descriptor.
 

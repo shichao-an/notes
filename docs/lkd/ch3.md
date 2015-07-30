@@ -1,6 +1,6 @@
 ### **Chapter 3. Process Management**
 
-This chapter introduces the concept of the **process**. The process management is a crucial part of any operating system kernel, including Linux. 
+This chapter introduces the concept of the **process**. The process management is a crucial part of any operating system kernel, including Linux.
 
 ### The Process
 
@@ -8,7 +8,7 @@ A process is a program (object code stored on some media) in the midst of execut
 
 Besides the executing program code (*text section* in Unix), processes also include a set of resources:
 
-* Open files 
+* Open files
 * Pending signals
 * Internal kernel data
 * Processor state
@@ -33,8 +33,8 @@ The kernel schedules individual threads, not processes. <u>Linux does not differ
 
 On modern operating systems, processes provide two virtualizations: a **virtualized processor** and **virtual memory**.
 
-* The virtual processor gives the process the illusion that it alone monopolizes the system, despite possibly sharing the processor among hundreds of other processes. See [Chapter 4. Process Scheduling](/lkd/ch4/).
-* Virtual memory lets the process allocate and manage memory as if it alone owned all the memory in the system. See [Chapter 12. Memory Management](/lkd/ch12/)
+* The virtual processor gives the process the illusion that it alone monopolizes the system, despite possibly sharing the processor among hundreds of other processes. See [Chapter 4. Process Scheduling](ch4.md).
+* Virtual memory lets the process allocate and manage memory as if it alone owned all the memory in the system. See [Chapter 12. Memory Management](ch12.md)
 
 <u>Threads share the virtual memory abstraction</u>, whereas each receives its own virtualized processor.
 
@@ -54,7 +54,7 @@ In Linux, the `fork()` system call creates a new process by duplicating an exist
 * The parent resumes execution and the child starts execution at the same place: where the call to `fork()` returns.
 * The `fork()` system call <u>returns from the kernel twice: once in the parent process and again in the newborn child.</u>
 
-The `exec()` family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u>`fork()` is actually implemented via the `clone()` system call</u>, which is discussed in a following section.  
+The `exec()` family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u>`fork()` is actually implemented via the `clone()` system call</u>, which is discussed in a following section.
 
 The `exit()` system call terminates the process and frees all its resources. A parent process can inquire about the status of a terminated child via the `wait4()` system call. A process can wait for the termination of a specific process. <u>When a process exits, it is placed into a special zombie state that represents terminated processes until the parent calls `wait()` or `waitpid()`.</u> The kernel implements the `wait4()` system call. Linux systems, via the C library, typically provide the `wait()`, `waitpid()`, `wait3()`, and `wait4()` functions.
 
@@ -73,7 +73,7 @@ The `task_struct` is a relatively large data structure, at around 1.7 kilobytes 
 
 #### Allocating the Process Descriptor
 
-The `task_struct` structure is allocated via the **slab allocator** to provide object reuse and cache coloring (see [Chapter 12](/lkd/ch12/)). The structure `struct thread_info` lives at the bottom of the stack (for stacks that grow down) and at the top of the stack (for stacks that grow up)
+The `task_struct` structure is allocated via the **slab allocator** to provide object reuse and cache coloring (see [Chapter 12](ch12.md)). The structure `struct thread_info` lives at the bottom of the stack (for stacks that grow down) and at the top of the stack (for stacks that grow up)
 
 [![Figure 3.2 The process descriptor and kernel stack.](figure_3.2.png)](figure_3.2.png "Figure 3.2 The process descriptor and kernel stack.")
 
@@ -106,7 +106,7 @@ Large servers may require many more than 32,768 (maximum value) processes. <u>Th
 
 Inside the kernel, tasks are typically referenced directly by a pointer to their `task_struct` structure. In fact, most kernel code that deals with processes works directly with `struct task_struct`. Consequently, it is useful to be able to quickly look up the process descriptor of the currently executing task, which is done via the `current` macro. This macro must be independently implemented by each architecture:
 
-* Some architectures save a pointer to the `task_struct` structure of the currently running process in a register, enabling for efficient access. 
+* Some architectures save a pointer to the `task_struct` structure of the currently running process in a register, enabling for efficient access.
 * Other architectures, such as x86 (which has few registers to waste), make use of the fact that struct `thread_info` is stored on the kernel stack to calculate the location of `thread_info` and subsequently the `task_struct`.
 
 ##### The `current_thread_info()` function
@@ -167,7 +167,7 @@ The program code is read in from an **executable file** and executed within the 
 
 * **User-space**: Normal program execution occurs in user-space.
 * **Kernel-space**: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in **process context**. When in process context, the `current` macro is valid.
-    * Other than process context there is **interrupt context** (discussed in [Chapter 7](/lkd/ch7/). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
+    * Other than process context there is **interrupt context** (discussed in [Chapter 7](ch7.md). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
 
 Upon exiting the kernel, the process resumes execution in user-space, unless a higher-priority process has become runnable in the interim, in which case the scheduler is invoked to select the higher priority process.
 
@@ -187,7 +187,7 @@ All processes are descendants of the `init` process (PID 1). The kernel starts i
 - - -
 [UTLK p87-88]
 
-The pointers (`next` and `prev`) in a `list_head` field store the addresses of other `list_head` fields rather than the addresses of the whole data structures in which the `list_head` structure is included. See figure below: 
+The pointers (`next` and `prev`) in a `list_head` field store the addresses of other `list_head` fields rather than the addresses of the whole data structures in which the `list_head` structure is included. See figure below:
 
 [![Figure 3-3. Doubly linked lists built with list_head data structures](/utlk/figure_3-3_600.png)](/utlk/figure_3-3.png "Figure 3-3. Doubly linked lists built with list_head data structures")
 
@@ -292,7 +292,7 @@ Linux implements `fork()` via the `clone()` system call which takes a series of 
 * The `fork()`, `vfork()`, and `__clone()` library calls all invoke the `clone()` system call with the requisite flags.
 * The `clone()` system call calls `do_fork()`.
 
-The bulk of the work in forking is handled by `do_fork()`, which is defined in `kernel/fork.c`. `do_fork()` function calls `copy_process()` and then starts the process running. 
+The bulk of the work in forking is handled by `do_fork()`, which is defined in `kernel/fork.c`. `do_fork()` function calls `copy_process()` and then starts the process running.
 
 * `do_fork()`: [kernel/fork.c#L1354](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L1354)
 * `copy_process()`: [kernel/fork.c#L957](https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L957)
@@ -419,7 +419,7 @@ Similarity with normal threads:
 
 Linux delegates several tasks to kernel threads, most notably the `flush` tasks and the `ksoftirqd` task. Use `ps -ef` command to see them.
 
-* Kernel threads are created on system boot by other kernel threads. 
+* Kernel threads are created on system boot by other kernel threads.
 * A kernel thread can be created only by another kernel thread. The kernel handles this automatically by forking all new kernel threads off of the `kthreadd` kernel process.
 
 The interfaces of kernel threads defined in `<linux/kthread.h>` ([include/linux/kthread.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/kthread.h))
@@ -505,7 +505,7 @@ At this point:
 
 #### Removing the Process Descriptor
 
-After `do_exit()` completes, the process descriptor for the terminated process still exists, but the process is a zombie and is unable to run. 
+After `do_exit()` completes, the process descriptor for the terminated process still exists, but the process is a zombie and is unable to run.
 
 Cleaning up after a process and removing its process descriptor are separate steps. This enables the system to obtain information about a child process after it has terminated.
 
@@ -615,9 +615,7 @@ When a task is *ptraced*, it is temporarily reparented to the debugging process.
 
 After the process are successfully reparented, there is no risk of stray zombie processes. The `init` process routinely calls `wait()` on its children, cleaning up any zombies assigned to it.
 
-
-
-- - - 
+- - -
 
 ### Doubts and Solutions
 #### Verbatim

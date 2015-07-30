@@ -55,6 +55,7 @@ by Robert Love
 2. [Getting Started with the Kernel](lkd/ch2.md)
 3. [Process Management](lkd/ch3.md)
 4. [Process Scheduling](lkd/ch4.md)
+5. [System Calls](lkd/ch5.md)
 
 #### Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 

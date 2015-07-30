@@ -301,7 +301,7 @@ int gettimeofday(struct timeval *restrict tp, void *restrict tzp);
 /* Returns: 0 always */
 ```
 
-* `clock_gettime`: gets the time of the specified clock. The time is returned in a [`timespec`](/apue/ch4/#timespec-structure) structure
+* `clock_gettime`: gets the time of the specified clock. The time is returned in a [`timespec`](ch4.md#timespec-structure) structure
 * `clock_getres`: determines the resolution of a given system clock. It initializes the `timespec` structure pointed to by the *tsp*
 * `clock_settime`: sets the time for a particular clock.
 * `gettimeofday`: now obsolescent. The only legal value for *tzp* is `NULL`.

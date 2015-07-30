@@ -41,7 +41,7 @@ We use UDP for this example instead of TCP because with UDP, the concept of data
 
 We also refer to `recvfrom` as a system call to differentiate between our application and the kernel, regardless of how `recvfrom` is implemented (system call on BSD and function that invokes `getmsg` system call on System V). There is normally a switch from running in the application to running in the kernel, followed at some time later by a return to the application.
 
-In the figure above, the process calls `recvfrom` and the system call does not return until the datagram arrives and is copied into our application buffer, or an error occurs. The most common error is the system call being interrupted by a signal, as we described in [Section 5.9](/unp/ch5/#handling-sigchld-signals). We say that the process is blocked the entire time from when it calls `recvfrom` until it returns. When `recvfrom` returns successfully, our application processes the datagram.
+In the figure above, the process calls `recvfrom` and the system call does not return until the datagram arrives and is copied into our application buffer, or an error occurs. The most common error is the system call being interrupted by a signal, as we described in [Section 5.9](ch5.md#handling-sigchld-signals). We say that the process is blocked the entire time from when it calls `recvfrom` until it returns. When `recvfrom` returns successfully, our application processes the datagram.
 
 #### Nonblocking I/O Model
 
@@ -79,9 +79,9 @@ The **signal-driven I/O model** uses signals, telling the kernel to notify us wi
 
 [![Figure 6.4. Signal-Driven I/O model.](figure_6.4.png)](figure_6.4.png "Figure 6.4. Signal-Driven I/O model.")
 
-* We first enable the socket for signal-driven I/O ([Section 25.2](/unp/ch25/)) and install a signal handler using the `sigaction` system call. The return from this system call is immediate and our process continues; it is not blocked.
+* We first enable the socket for signal-driven I/O ([Section 25.2](ch25.md)) and install a signal handler using the `sigaction` system call. The return from this system call is immediate and our process continues; it is not blocked.
 * When the datagram is ready to be read, the `SIGIO` signal is generated for our process. We can either:
-    * read the datagram from the signal handler by calling `recvfrom` and then notify the main loop that the data is ready to be processed ([Section 25.3](/unp/ch25/))
+    * read the datagram from the signal handler by calling `recvfrom` and then notify the main loop that the data is ready to be processed ([Section 25.3](ch25.md))
     * notify the main loop and let it read the datagram.
 
 The advantage to this model is that we are not blocked while waiting for the datagram to arrive. The main loop can continue executing and just wait to be notified by the signal handler that either the data is ready to process or the datagram is ready to be read.
@@ -224,11 +224,11 @@ Previous sections discusses waiting for a descriptor to become ready for I/O (re
     * The socket is a listening socket and the number of completed connections is nonzero.
     * A socket error is pending. A read operation on the socket will not block and will return an error (–1) with `errno` set to the specific error condition. These pending errors can also be fetched and cleared by calling `getsockopt` and specifying the `SO_ERROR` socket option.
 2. **A socket is ready for writing** if any of the following four conditions is true:
-    * The number of bytes of available space in the socket send buffer is greater than or equal to the current size of the low-water mark for the socket send buffer and either: (i) the socket is connected, or (ii) the socket does not require a connection (e.g., UDP). This means that if we set the socket to nonblocking ([Chapter 16](/unp/ch16/)), a write operation will not block and will return a positive value (e.g., the number of bytes accepted by the transport layer). We can set this low-water mark using the `SO_SNDLOWAT` socket option. This low-water mark normally defaults to 2048 for TCP and UDP sockets.
-    * The write half of the connection is closed. A write operation on the socket will generate `SIGPIPE` ([Section 5.12](/unp/ch5#sigpipe-signal)).
+    * The number of bytes of available space in the socket send buffer is greater than or equal to the current size of the low-water mark for the socket send buffer and either: (i) the socket is connected, or (ii) the socket does not require a connection (e.g., UDP). This means that if we set the socket to nonblocking ([Chapter 16](ch16.md)), a write operation will not block and will return a positive value (e.g., the number of bytes accepted by the transport layer). We can set this low-water mark using the `SO_SNDLOWAT` socket option. This low-water mark normally defaults to 2048 for TCP and UDP sockets.
+    * The write half of the connection is closed. A write operation on the socket will generate `SIGPIPE` ([Section 5.12](ch5.md#sigpipe-signal)).
     * A socket using a non-blocking connect has completed the connection, or the connect has failed.
     * A socket error is pending. A write operation on the socket will not block and will return an error (–1) with `errno` set to the specific error condition. These pending errors can also be fetched and cleared by calling getsockopt with the `SO_ERROR` socket option.
-3. **A socket has an exception condition pending if there is out-of-band data for the socket or the socket is still at the out-of-band mark** ([Chapter 24](/unp/ch24/)).
+3. **A socket has an exception condition pending if there is out-of-band data for the socket or the socket is still at the out-of-band mark** ([Chapter 24](ch24.md)).
 
 <u>When an error occurs on a socket, it is marked as both readable and writable by select.</u>
 

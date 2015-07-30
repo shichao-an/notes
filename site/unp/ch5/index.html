@@ -145,6 +145,10 @@
                             <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
                         </li>
                     
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -395,7 +399,7 @@
 </ol>
 <p>The figure below depcits this simple client/server:</p>
 <p><a href="../figure_5.1.png" title="Figure 5.1. Simple echo client and server."><img alt="Figure 5.1. Simple echo client and server." src="../figure_5.1.png" /></a></p>
-<p>Despite two arrows between the client and server in the above figure, it is really a <a href="../../unp/ch2/#transmission-control-protocol-tcp">full-duplex</a> TCP connection. <code>fgets</code> and <code>fputs</code> functions are from the standard I/O library. <code>writen</code> and <code>readline</code> functions were shown in <a href="../../unp/ch3/#readn-writen-and-readline-functions">Section 3.9</a>.</p>
+<p>Despite two arrows between the client and server in the above figure, it is really a <a href="../ch2/#transmission-control-protocol-tcp">full-duplex</a> TCP connection. <code>fgets</code> and <code>fputs</code> functions are from the standard I/O library. <code>writen</code> and <code>readline</code> functions were shown in <a href="../ch3/#readn-writen-and-readline-functions">Section 3.9</a>.</p>
 <p>The echo client/server is a valid, simple example of a network application. To expand this example into your own application, all you need to do is change what the server does with the input it receives from its clients.</p>
 <p>Besides running the client/server in normal mode (type in a line and watch it echo), we examine lots of boundary conditions:</p>
 <ul>
@@ -452,7 +456,7 @@
 <ul>
 <li><strong>Create socket, bind server's well-known port</strong><ul>
 <li>A TCP socket is created.</li>
-<li>An Internet socket address structure is filled in with the wildcard address (<code>INADDR_ANY</code>) and the server's well-known port (<code>SERV_PORT</code>, which is defined as 9877 in our <a href="https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L200">unp.h</a> header). Binding the wildcard address tells the system that we will accept a connection destined for any local interface, in case the system is multihomed. Our choice of the TCP port number is based on <a href="../figure_2.10.png">Figure 2.10</a> in <a href="../../unp/ch2/#port-numbers">Section 2.9</a>. It should be greater than 1023 (we do not need a reserved port), greater than 5000 (to avoid conflict with the ephemeral ports allocated by many Berkeley-derived implementations), less than 49152 (to avoid conflict with the "correct" range of ephemeral ports), and it should not conflict with any registered port.  [p122]</li>
+<li>An Internet socket address structure is filled in with the wildcard address (<code>INADDR_ANY</code>) and the server's well-known port (<code>SERV_PORT</code>, which is defined as 9877 in our <a href="https://github.com/shichao-an/unpv13e/blob/master/lib/unp.h#L200">unp.h</a> header). Binding the wildcard address tells the system that we will accept a connection destined for any local interface, in case the system is multihomed. Our choice of the TCP port number is based on <a href="../figure_2.10.png">Figure 2.10</a> in <a href="../ch2/#port-numbers">Section 2.9</a>. It should be greater than 1023 (we do not need a reserved port), greater than 5000 (to avoid conflict with the ephemeral ports allocated by many Berkeley-derived implementations), less than 49152 (to avoid conflict with the "correct" range of ephemeral ports), and it should not conflict with any registered port.  [p122]</li>
 <li>The socket is converted into a listening socket by <code>listen</code>.</li>
 </ul>
 </li>
@@ -461,7 +465,7 @@
 </ul>
 </li>
 <li><strong>Concurrent server</strong><ul>
-<li>For each client, <code>fork</code> spawns a child, and the child handles the new client. The child closes the listening socket and the parent closes the connected socket. (<a href="../../unp/ch4/#concurrent-servers">Section 4.8</a>)</li>
+<li>For each client, <code>fork</code> spawns a child, and the child handles the new client. The child closes the listening socket and the parent closes the connected socket. (<a href="../ch4/#concurrent-servers">Section 4.8</a>)</li>
 </ul>
 </li>
 </ul>
@@ -1088,7 +1092,7 @@ str_cli : server terminated prematurely
 </ul>
 </li>
 </ol>
-<p>The problem in this example is that the client is blocked in the call to <code>fgets</code> when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the <code>select</code> and <code>poll</code> functions described in <a href="../../unp/ch6/">Chapter 6</a>.</p>
+<p>The problem in this example is that the client is blocked in the call to <code>fgets</code> when the FIN arrives on the socket. The client is really working with two descriptors,the socket and the user input. Instead of blocking on input from only one of the two sources, it should block on input from either source. Indeed, this is one purpose of the <code>select</code> and <code>poll</code> functions described in <a href="../ch6/">Chapter 6</a>.</p>
 <h3 id="sigpipe-signal"><code>SIGPIPE</code> Signal</h3>
 <p>The rules are:</p>
 <ul>
@@ -1150,8 +1154,8 @@ str_cli : server terminated prematurely
 </ul>
 </li>
 </ol>
-<p>To detect that the peer is down or unreachable quicker than 9 minutes, we can place a timeout on the call to <code>readline</code>, which is discussed in <a href="../../unp/ch14/">Chapter 14</a>.</p>
-<p>This example detects that the server host has crashed only when we send data to that host. If we want to detect the crashing of the server host even if we are not actively sending it data, another technique is required: SO_KEEPALIVE socket option (<a href="../../unp/ch7/">Chapter 7</a>).</p>
+<p>To detect that the peer is down or unreachable quicker than 9 minutes, we can place a timeout on the call to <code>readline</code>, which is discussed in <a href="ch14.md">Chapter 14</a>.</p>
+<p>This example detects that the server host has crashed only when we send data to that host. If we want to detect the crashing of the server host even if we are not actively sending it data, another technique is required: SO_KEEPALIVE socket option (<a href="ch7.md">Chapter 7</a>).</p>
 <h3 id="crashing-and-rebooting-of-server-host">Crashing and Rebooting of Server Host</h3>
 <p>In the following example, we will establish a connection between the client and server and then assume the server host crashes and reboots. The easiest way to simulate this is to establish the connection, disconnect the server from the network, shut down the server host and then reboot it, and then reconnect the server host to the network. We do not want the client to see the server host shut down.</p>
 <p>As stated in the previous section, if the client is not actively sending data to the server when the server host crashes, the client is not aware that the server host has crashed. The following steps take place:</p>
@@ -1299,8 +1303,8 @@ str_cli : server terminated prematurely
 <h3 id="summary">Summary</h3>
 <ul>
 <li>The first problem was zombie children and we caught the <code>SIGCHLD</code> signal to handle this. Our signal handler then called <code>waitpid</code> and  we must call this function instead of the older <code>wait</code> function, since Unix signals are not queued.</li>
-<li>The next problem we encountered was the client not being notified when the server process terminated. We saw that our client's TCP was notified, but we did not receive that notification since we were blocked, waiting for user input. We will use the <code>select</code> or <code>poll</code> function in <a href="../../unp/ch6/">Chapter 6</a> to handle this scenario, by waiting for any one of multiple descriptors to be ready, instead of blocking on a single descriptor.</li>
-<li>If the server host crashes, we do not detect this until the client sends data to the server. Some applications must be made aware of this fact sooner; we will look at the <code>SO_KEEPALIVE</code> socket option in <a href="../../unp/ch7/">Chapter 7</a>.</li>
+<li>The next problem we encountered was the client not being notified when the server process terminated. We saw that our client's TCP was notified, but we did not receive that notification since we were blocked, waiting for user input. We will use the <code>select</code> or <code>poll</code> function in <a href="../ch6/">Chapter 6</a> to handle this scenario, by waiting for any one of multiple descriptors to be ready, instead of blocking on a single descriptor.</li>
+<li>If the server host crashes, we do not detect this until the client sends data to the server. Some applications must be made aware of this fact sooner; we will look at the <code>SO_KEEPALIVE</code> socket option in <a href="ch7.md">Chapter 7</a>.</li>
 </ul>
             </div>
         </div>

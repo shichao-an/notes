@@ -709,7 +709,7 @@ The kernel must know when to call `schedule()`. If it called `schedule()` only w
 
 The kernel provides the `need_resched` flag to signify whether a reschedule should be performed.
 
-* This flag is set by `scheduler_tick()` (in timer interrupt handler, see [The Timer Interrupt Handler](/lkd/ch11#the-timer-interrupt-handler)) when a process should be preempted.
+* This flag is set by `scheduler_tick()` (in timer interrupt handler, see [The Timer Interrupt Handler](ch11.md#the-timer-interrupt-handler)) when a process should be preempted.
 * This flag is set by `try_to_wake_up()` when a process that has a higher priority than the currently running process is awakened.
 
 <u>The kernel checks the flag, sees that it is set, and calls `schedule()` to switch to a new process. The flag is a message to the kernel that the scheduler should be invoked as soon as possible because another process deserves to run.</u>
@@ -753,7 +753,7 @@ To support kernel preemption, preemption counter, `preempt_count` ([arch/x86/inc
 * If `need_resched` is set and `preempt_count` is zero, then a more important task is runnable, and it is safe to preempt. Thus, the scheduler is invoked.
 * If `preempt_count` is nonzero, a lock is held, and it is unsafe to reschedule. In that case, the interrupt returns as usual to the currently executing task.
 
-Enabling and disabling kernel preemption is sometimes required in kernel code (discussed in [Chapter 9](/lkd/ch9)).
+Enabling and disabling kernel preemption is sometimes required in kernel code (discussed in [Chapter 9](ch9.md)).
 
 ##### **Explicit kernel preemption** *
 
@@ -818,7 +818,7 @@ Default priority ranges:
 
 Linux provides a family of system calls for the management of scheduler parameters, which allow manipulation of process priority, scheduling policy, and processor affinity, *yielding* the processor to other tasks.
 
-The table below lists the system calls with brief descriptions. Their implementation in the kernel is discussed in [Chapter 5](/lkd/ch5).
+The table below lists the system calls with brief descriptions. Their implementation in the kernel is discussed in [Chapter 5](ch5.md).
 
 System Call | Description
 ----------- | -----------

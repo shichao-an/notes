@@ -70,7 +70,7 @@ struct sockaddr_in  serv;      /* IPv4 socket address structure */
 bind(sockfd, (struct sockaddr *) &serv, sizeof(serv));
 ```
 
-[In Chapter 1 in our unp.h header](/unp/ch1/#a-simple-daytime-client), we define `SA` to be the string `struct sockaddr`, just to shorten the code that we must write to cast these pointers.
+[In Chapter 1 in our unp.h header](ch1.md#a-simple-daytime-client), we define `SA` to be the string `struct sockaddr`, just to shorten the code that we must write to cast these pointers.
 
 * From an application programmer ’s point of view, <u>the only use of these generic socket address structures is to cast pointers to protocol-specific structures.</u>
 * From the kernel’s perspective, another reason for using pointers to generic socket address structures as arguments is that the kernel must take the caller’s pointer, cast it to a `struct sockaddr *`, and then look at the value of `sa_family` to determine the type of the structure.

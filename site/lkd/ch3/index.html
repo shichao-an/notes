@@ -145,6 +145,10 @@
                             <a href="../ch4/">Chapter 4. Process Scheduling</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch5/">Chapter 5. System Calls</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -346,12 +350,12 @@
               
 
 <h3 id="chapter-3-process-management"><strong>Chapter 3. Process Management</strong></h3>
-<p>This chapter introduces the concept of the <strong>process</strong>. The process management is a crucial part of any operating system kernel, including Linux. </p>
+<p>This chapter introduces the concept of the <strong>process</strong>. The process management is a crucial part of any operating system kernel, including Linux.</p>
 <h3 id="the-process">The Process</h3>
 <p>A process is a program (object code stored on some media) in the midst of execution.</p>
 <p>Besides the executing program code (<em>text section</em> in Unix), processes also include a set of resources:</p>
 <ul>
-<li>Open files </li>
+<li>Open files</li>
 <li>Pending signals</li>
 <li>Internal kernel data</li>
 <li>Processor state</li>
@@ -371,8 +375,8 @@
 <h4 id="virtualized-processor-and-virtual-memory">Virtualized processor and virtual memory</h4>
 <p>On modern operating systems, processes provide two virtualizations: a <strong>virtualized processor</strong> and <strong>virtual memory</strong>.</p>
 <ul>
-<li>The virtual processor gives the process the illusion that it alone monopolizes the system, despite possibly sharing the processor among hundreds of other processes. See <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>.</li>
-<li>Virtual memory lets the process allocate and manage memory as if it alone owned all the memory in the system. See <a href="../../lkd/ch12/">Chapter 12. Memory Management</a></li>
+<li>The virtual processor gives the process the illusion that it alone monopolizes the system, despite possibly sharing the processor among hundreds of other processes. See <a href="../ch4/">Chapter 4. Process Scheduling</a>.</li>
+<li>Virtual memory lets the process allocate and manage memory as if it alone owned all the memory in the system. See <a href="ch12.md">Chapter 12. Memory Management</a></li>
 </ul>
 <p><u>Threads share the virtual memory abstraction</u>, whereas each receives its own virtualized processor.</p>
 <h4 id="life-of-a-process">Life of a process</h4>
@@ -388,7 +392,7 @@
 <li>The parent resumes execution and the child starts execution at the same place: where the call to <code>fork()</code> returns.</li>
 <li>The <code>fork()</code> system call <u>returns from the kernel twice: once in the parent process and again in the newborn child.</u></li>
 </ul>
-<p>The <code>exec()</code> family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u><code>fork()</code> is actually implemented via the <code>clone()</code> system call</u>, which is discussed in a following section.  </p>
+<p>The <code>exec()</code> family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u><code>fork()</code> is actually implemented via the <code>clone()</code> system call</u>, which is discussed in a following section.</p>
 <p>The <code>exit()</code> system call terminates the process and frees all its resources. A parent process can inquire about the status of a terminated child via the <code>wait4()</code> system call. A process can wait for the termination of a specific process. <u>When a process exits, it is placed into a special zombie state that represents terminated processes until the parent calls <code>wait()</code> or <code>waitpid()</code>.</u> The kernel implements the <code>wait4()</code> system call. Linux systems, via the C library, typically provide the <code>wait()</code>, <code>waitpid()</code>, <code>wait3()</code>, and <code>wait4()</code> functions.</p>
 <h3 id="process-descriptor-and-the-task-structure">Process Descriptor and the Task Structure</h3>
 <p>Another name for a process is a <strong>task</strong>. The Linux kernel internally refers to processes as tasks. In this book, the terms are used interchangeably, though <u>"task" generally refers to a process from the kernel’s point of view.</u></p>
@@ -397,7 +401,7 @@
 <p>The <code>task_struct</code> is a relatively large data structure, at around 1.7 kilobytes on a 32-bit machine. The process descriptor contains the data that describes the executing program: open files, the process’s address space, pending signals, the process’s state, etc. See the figure below.</p>
 <p><a href="../figure_3.1.png" title="Figure 3.1 The process descriptor and task list."><img alt="Figure 3.1 The process descriptor and task list." src="../figure_3.1.png" /></a></p>
 <h4 id="allocating-the-process-descriptor">Allocating the Process Descriptor</h4>
-<p>The <code>task_struct</code> structure is allocated via the <strong>slab allocator</strong> to provide object reuse and cache coloring (see <a href="../../lkd/ch12/">Chapter 12</a>). The structure <code>struct thread_info</code> lives at the bottom of the stack (for stacks that grow down) and at the top of the stack (for stacks that grow up)</p>
+<p>The <code>task_struct</code> structure is allocated via the <strong>slab allocator</strong> to provide object reuse and cache coloring (see <a href="ch12.md">Chapter 12</a>). The structure <code>struct thread_info</code> lives at the bottom of the stack (for stacks that grow down) and at the top of the stack (for stacks that grow up)</p>
 <p><a href="../figure_3.2.png" title="Figure 3.2 The process descriptor and kernel stack."><img alt="Figure 3.2 The process descriptor and kernel stack." src="../figure_3.2.png" /></a></p>
 <p><a href="http://www.crashcourse.ca/wiki/index.php/Updates_to_LKD3#Figure_3.2_.28p._26.29">Errata</a>: "struct thread_struct" should read "struct thread_info"</p>
 <p>The <code>thread_info</code> structure is defined on x86 in <code>&lt;asm/thread_info.h&gt;</code> (see below code). Each task’s <code>thread_info</code> structure is allocated at the end of its stack.The task element of the structure is a pointer to the task’s actual <code>task_struct</code>:</p>
@@ -424,7 +428,7 @@
 <p>Large servers may require many more than 32,768 (maximum value) processes. <u>The lower the value, the sooner the values will wrap around, destroying the useful notion that higher values indicate later-run processes than lower values.</u> The administrator may increase the maximum value via <code>/proc/sys/kernel/pid_max</code>.</p>
 <p>Inside the kernel, tasks are typically referenced directly by a pointer to their <code>task_struct</code> structure. In fact, most kernel code that deals with processes works directly with <code>struct task_struct</code>. Consequently, it is useful to be able to quickly look up the process descriptor of the currently executing task, which is done via the <code>current</code> macro. This macro must be independently implemented by each architecture:</p>
 <ul>
-<li>Some architectures save a pointer to the <code>task_struct</code> structure of the currently running process in a register, enabling for efficient access. </li>
+<li>Some architectures save a pointer to the <code>task_struct</code> structure of the currently running process in a register, enabling for efficient access.</li>
 <li>Other architectures, such as x86 (which has few registers to waste), make use of the fact that struct <code>thread_info</code> is stored on the kernel stack to calculate the location of <code>thread_info</code> and subsequently the <code>task_struct</code>.</li>
 </ul>
 <h5 id="the-current_thread_info-function">The <code>current_thread_info()</code> function</h5>
@@ -474,7 +478,7 @@
 <ul>
 <li><strong>User-space</strong>: Normal program execution occurs in user-space.</li>
 <li><strong>Kernel-space</strong>: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in <strong>process context</strong>. When in process context, the <code>current</code> macro is valid.<ul>
-<li>Other than process context there is <strong>interrupt context</strong> (discussed in <a href="../../lkd/ch7/">Chapter 7</a>. In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.</li>
+<li>Other than process context there is <strong>interrupt context</strong> (discussed in <a href="ch7.md">Chapter 7</a>. In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.</li>
 </ul>
 </li>
 </ul>
@@ -493,7 +497,7 @@
 </ul>
 <hr />
 <p>[UTLK p87-88]</p>
-<p>The pointers (<code>next</code> and <code>prev</code>) in a <code>list_head</code> field store the addresses of other <code>list_head</code> fields rather than the addresses of the whole data structures in which the <code>list_head</code> structure is included. See figure below: </p>
+<p>The pointers (<code>next</code> and <code>prev</code>) in a <code>list_head</code> field store the addresses of other <code>list_head</code> fields rather than the addresses of the whole data structures in which the <code>list_head</code> structure is included. See figure below:</p>
 <p><a href="../../utlk/figure_3-3.png" title="Figure 3-3. Doubly linked lists built with list_head data structures"><img alt="Figure 3-3. Doubly linked lists built with list_head data structures" src="../../utlk/figure_3-3_600.png" /></a></p>
 <ul>
 <li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h">include/linux/list.h</a></li>
@@ -583,7 +587,7 @@
 <li>The <code>fork()</code>, <code>vfork()</code>, and <code>__clone()</code> library calls all invoke the <code>clone()</code> system call with the requisite flags.</li>
 <li>The <code>clone()</code> system call calls <code>do_fork()</code>.</li>
 </ul>
-<p>The bulk of the work in forking is handled by <code>do_fork()</code>, which is defined in <code>kernel/fork.c</code>. <code>do_fork()</code> function calls <code>copy_process()</code> and then starts the process running. </p>
+<p>The bulk of the work in forking is handled by <code>do_fork()</code>, which is defined in <code>kernel/fork.c</code>. <code>do_fork()</code> function calls <code>copy_process()</code> and then starts the process running.</p>
 <ul>
 <li><code>do_fork()</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L1354">kernel/fork.c#L1354</a></li>
 <li><code>copy_process()</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/fork.c#L957">kernel/fork.c#L957</a></li>
@@ -761,7 +765,7 @@
 </ul>
 <p>Linux delegates several tasks to kernel threads, most notably the <code>flush</code> tasks and the <code>ksoftirqd</code> task. Use <code>ps -ef</code> command to see them.</p>
 <ul>
-<li>Kernel threads are created on system boot by other kernel threads. </li>
+<li>Kernel threads are created on system boot by other kernel threads.</li>
 <li>A kernel thread can be created only by another kernel thread. The kernel handles this automatically by forking all new kernel threads off of the <code>kthreadd</code> kernel process.</li>
 </ul>
 <p>The interfaces of kernel threads defined in <code>&lt;linux/kthread.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/kthread.h">include/linux/kthread.h</a>)</p>
@@ -841,7 +845,7 @@
 <li><u>The task exists solely to provide information to its parent. After the parent retrieves the information, or notifies the kernel that it is uninterested, the remaining memory held by the process is freed and returned to the system for use.</u></li>
 </ul>
 <h4 id="removing-the-process-descriptor">Removing the Process Descriptor</h4>
-<p>After <code>do_exit()</code> completes, the process descriptor for the terminated process still exists, but the process is a zombie and is unable to run. </p>
+<p>After <code>do_exit()</code> completes, the process descriptor for the terminated process still exists, but the process is a zombie and is unable to run.</p>
 <p>Cleaning up after a process and removing its process descriptor are separate steps. This enables the system to obtain information about a child process after it has terminated.</p>
 <p>The terminated child’s <code>task_struct</code> is deallocated after any of the following:</p>
 <ul>
