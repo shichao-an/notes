@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/tcpv1/headers/">
+        <link rel="canonical" href="https://notes.shichao.io/lkd/ch5/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Headers - Shichao's Notes</title>
+	<title>Chapter 5. System Calls - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -125,28 +125,28 @@
             
             
             
-                <li class="dropdown">
+                <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
                         </li>
                     
                         <li >
-                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                            <a href="../ch2/">Chapter 2. Getting Started with the Kernel</a>
                         </li>
                     
                         <li >
-                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                            <a href="../ch3/">Chapter 3. Process Management</a>
                         </li>
                     
                         <li >
-                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                            <a href="../ch4/">Chapter 4. Process Scheduling</a>
                         </li>
                     
-                        <li >
-                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        <li class="active">
+                            <a href="./">Chapter 5. System Calls</a>
                         </li>
                     
                     </ul>
@@ -204,24 +204,24 @@
             
             
             
-                <li class="dropdown active">
+                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../ch1/">Chapter 1. Introduction</a>
+                            <a href="../../tcpv1/ch1/">Chapter 1. Introduction</a>
                         </li>
                     
                         <li >
-                            <a href="../ch2/">Chapter 2. The Internet Address Architecture</a>
+                            <a href="../../tcpv1/ch2/">Chapter 2. The Internet Address Architecture</a>
                         </li>
                     
                         <li >
-                            <a href="../ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
                         </li>
                     
-                        <li class="active">
-                            <a href="./">Headers</a>
+                        <li >
+                            <a href="../../tcpv1/headers/">Headers</a>
                         </li>
                     
                     </ul>
@@ -287,15 +287,22 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#headers">Headers</a></li>
+        <li class="main active"><a href="#chapter-5-system-calls">Chapter 5. System Calls</a></li>
         
-            <li><a href="#ipv4-header">IPv4 Header</a></li>
+    
+        <li class="main "><a href="#communicating-with-the-kernel">Communicating with the Kernel</a></li>
         
-            <li><a href="#ipv6-header">IPv6 Header</a></li>
+    
+        <li class="main "><a href="#apis-posix-and-the-c-library">APIs, POSIX, and the C Library</a></li>
         
-            <li><a href="#udp-header">UDP Header</a></li>
+            <li><a href="#apis">APIs *</a></li>
         
-            <li><a href="#tcp-header">TCP Header</a></li>
+            <li><a href="#posix">POSIX *</a></li>
+        
+            <li><a href="#the-c-library">The C Library *</a></li>
+        
+    
+        <li class="main "><a href="#syscalls">Syscalls</a></li>
         
     
     </ul>
@@ -303,15 +310,88 @@
             <div class="col-md-9" role="main">
               
 
-<h2 id="headers">Headers</h2>
-<h3 id="ipv4-header">IPv4 Header</h3>
-<p><a href="../ipv4_header.png" title="IPv4 Header"><img alt="IPv4 Header" src="../ipv4_header_600.png" /></a></p>
-<h3 id="ipv6-header">IPv6 Header</h3>
-<p><a href="../ipv6_header.png" title="IPv6 Header"><img alt="IPv6 Header" src="../ipv6_header_600.png" /></a></p>
-<h3 id="udp-header">UDP Header</h3>
-<p><a href="../udp_header.png" title="UDP Header"><img alt="UDP Header" src="../udp_header_600.png" /></a></p>
-<h3 id="tcp-header">TCP Header</h3>
-<p><a href="../tcp_header.png" title="TCP Header"><img alt="TCP Header" src="../tcp_header_600.png" /></a></p>
+<h3 id="chapter-5-system-calls"><strong>Chapter 5. System Calls</strong></h3>
+<p>In any modern operating system, the kernel provides a set of interfaces by which processes running in user-space can interact with the system. These interfaces give applications: [p69]</p>
+<ul>
+<li>controlled access to hardware,</li>
+<li>a mechanism with which to create new processes and communicate with existing ones,</li>
+<li>and the capability to request other operating system resources.</li>
+</ul>
+<p>The existence of these interfaces, and the fact that applications are not free to directly do whatever they want, is key to providing a stable system</p>
+<h3 id="communicating-with-the-kernel">Communicating with the Kernel</h3>
+<p>System calls provide a layer between the hardware and user-space processes, which serves three primary purposes:</p>
+<ol>
+<li><strong>Providing an abstracted hardware interface for userspace.</strong><ul>
+<li>For example, when reading or writing from a file, applications are not concerned with the type of disk, media, or even the type of filesystem on which the file resides.</li>
+</ul>
+</li>
+<li><strong>Ensuring system security and stability.</strong> The kernel acts as a middleman between system resources and user-space, so it can arbitrate access based on permissions, users, and other criteria.<ul>
+<li>For example, this arbitration prevents applications from incorrectly using hardware, stealing other processes’ resources, or otherwise doing harm to the system.</li>
+</ul>
+</li>
+<li><strong>A single common layer between user-space and the rest of the system allows for the virtualized system provided to processes.</strong>  It would be impossible to implement multitasking and virtual memory if applications were free to access access system resources without the kernel’s knowledge. [p69]</li>
+</ol>
+<p>In Linux, system calls are the only means user-space has of interfacing with the kernel and the only legal entry point into the kernel other than exceptions and traps. Other interfaces, such as device files or <code>/proc</code>, are ultimately accessed via system calls. Interestingly, Linux implements far fewer system calls than most systems.</p>
+<h3 id="apis-posix-and-the-c-library">APIs, POSIX, and the C Library</h3>
+<h4 id="apis">APIs *</h4>
+<p>Applications are typically programmed against an Application Programming Interface (API) implemented in user-space, not directly to system calls, because no direct correlation is needed between the interfaces used by applications and the actual interface provided by the kernel.</p>
+<p>An API defines a set of programming interfaces used by applications. Those interfaces can be:</p>
+<ul>
+<li>implemented as a system call,</li>
+<li>implemented through multiple system calls, or</li>
+<li>implemented without the use of system calls at all.</li>
+</ul>
+<p>The same API can exist on multiple systems and provide the same interface to applications while the implementation of the API itself can differ greatly from system to system.</p>
+<p>The figure below shows relationship between a POSIX API, the C library, and system calls.</p>
+<p><a href="../figure_5.1.png" title="Figure 5.1 The relationship between applications, the C library, and the kernel with a call to printf()."><img alt="Figure 5.1 The relationship between applications, the C library, and the kernel with a call to printf()." src="../figure_5.1_600.png" /></a></p>
+<h4 id="posix">POSIX *</h4>
+<p>The most common APIs in the Unix world is based on POSIX. Technically, POSIX is composed of a series of standards from the <a href="https://en.wikipedia.org/wiki/Institute_of_Electrical_and_Electronics_Engineers">IEEE</a> that aim to provide a portable operating system standard roughly based on Unix. Linux strives to be POSIX- and SUSv3-compliant where applicable.</p>
+<p>On most Unix systems, the POSIX-defined API calls have a strong correlation to the system calls. Some systems that are rather un-Unix, such as Microsoft Windows, offer POSIX-compatible libraries. [p70]</p>
+<h4 id="the-c-library">The C Library *</h4>
+<p>The system call interface in Linux, as with most Unix systems, is provided in part by the C library.</p>
+<p>The C library implements the main API on Unix systems, including:</p>
+<ul>
+<li>The standard C library</li>
+<li>The system call interface</li>
+</ul>
+<p>The C library is used by all C programs and, because of C’s nature, is easily wrapped by other programming languages for use in their programs. The C library additionally provides the majority of the POSIX API.</p>
+<p>From the application programmer’s point of view, system calls are irrelevant; all the programmer is concerned with is the API. Conversely, the kernel is concerned only with the system calls; what library calls and applications make use of the system calls is not of the kernel’s concern. Nonetheless, it is important for the kernel to keep track of the potential uses of a system call and keep the system call as general and flexible as possible.</p>
+<p>A meme related to interfaces in Unix is "Provide mechanism, not policy". In other words, Unix system calls exist to provide a specific function in an abstract sense. The manner in which the function is used is not any of the kernel’s business.</p>
+<h3 id="syscalls">Syscalls</h3>
+<p><strong>System calls</strong> (often called <strong>syscalls</strong> in Linux) are typically accessed via function calls defined in the C library.</p>
+<ul>
+<li>The functions can define zero, one, or more arguments (inputs) and might result in one or more side effects.<ul>
+<li>Although nearly all system calls have a side effect (that is, they result in some change of the system’s state), a few syscalls, such as <code>getpid()</code>, merely return some data from the kernel.</li>
+</ul>
+</li>
+<li>System calls also provide a return value of type <code>long</code> (for compatibility with 64-bit architectures) that signifies success or error.<ul>
+<li>Usually, although not always, a negative return value denotes an error.</li>
+<li>A return value of zero is usually (not always) a sign of success.</li>
+<li>The C library (when a system call returns an error) writes a special error code into the global <code>errno</code> variable, which can be translated into human-readable errors via library functions such as <code>perror()</code>.</li>
+</ul>
+</li>
+<li>System calls have a defined behavior. (see the following example)</li>
+</ul>
+<p>The system call <code>getpid()</code> is defined to return an integer that is the current process’s PID. The implementation of this syscall in the kernel is simple:</p>
+<div class="codehilite"><pre><span class="n">SYSCALL_DEFINE0</span><span class="p">(</span><span class="n">getpid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">task_tgid_vnr</span><span class="p">(</span><span class="n">current</span><span class="p">);</span> <span class="c1">// returns current-&gt;tgid</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The definition says nothing of the implementation. The kernel must provide the intended behavior of the system call but is free to do so with whatever implementation it wants as long as the result is correct. [p72]</p>
+<p><code>SYSCALL_DEFINE0</code> is simply a macro that defines a system call with no parameters (hence the 0). The expanded code looks like this:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/syscalls.h#L285">include/linux/syscalls.h</a></small></p>
+<div class="codehilite"><pre><span class="n">asmlinkage</span> <span class="kt">long</span> <span class="nf">sys_getpid</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>asmlinkage</code> modifier on the function definition is a directive to tell the compiler to look only on the stack for this function’s arguments. This is a required modifier for all system calls.</li>
+<li>The function returns a <code>long</code>. For compatibility between 32- and 64-bit systems, system calls defined to return an <code>int</code> in user-space return a <code>long</code> in the kernel.</li>
+<li>The naming convention taken with all system calls in Linux is: System call <code>bar()</code> is implemented in the kernel as function <code>sys_bar()</code>.</li>
+</ul>
             </div>
         </div>
 
