@@ -334,3 +334,85 @@ This code does the following:
 * **Handle readable input**. If the standard input is readable, a line is read by `fgets` and written to the socket using `writen`.
 
 Instead of the function flow being driven by the call to `fgets`, it is now driven by the call to `select`.
+
+### Batch Input and Buffering
+
+Unfortunately, our `str_cli` function is still not correct. Our original version in [Section 5.5](ch5.md#tcp-echo-client-str_cli-function) operates in a stop-and-wait mode, which is fine for interactive use: It sends a line to the server and then waits for the reply. This amount of time is one RTT plus the server's processing time (which is close to 0 for a simple echo server). We can therefore estimate how long it will take for a given number of lines to be echoed if we know the RTT between the client and server. We can use `ping` to measure RTTs.
+
+#### Stop-and-wait mode *
+
+If we consider the network between the client and server as a full-duplex pipe, with requests going from the client to the server and replies in the reverse direction, then the following figure shows our stop-and-wait mode:
+
+[![Figure 6.10. Time line of stop-and-wait mode: interactive input.](figure_6.10.png)](figure_6.10.png "Figure 6.10. Time line of stop-and-wait mode: interactive input.")
+
+Note that this figure:
+
+* Assumes that there is no server processing time and that the size of the request is the same as the reply
+* Shows show only the data packets, ignoring the TCP acknowledgments that are also going across the network
+
+A request is sent by the client at time 0 and we assume an RTT of 8 units of time. The reply sent at time 4 is received at time 7.
+
+This stop-and-wait mode is fine for interactive input. The problem is: if we run our client in a batch mode, when we redirect the input and output, however, the resulting output file is always smaller than the input file (and they should be identical for an echo server).
+
+#### Batch mode *
+
+To see what's happening, realize that in a batch mode, we can keep sending requests as fast as the network can accept them. The server processes them and sends back the replies at the same rate. This leads to the full pipe at time 7, as shown below:
+
+[![Figure 6.11. Filling the pipe between the client and server: batch mode.](figure_6.11.png)](figure_6.11.png "Figure 6.11. Filling the pipe between the client and server: batch mode.")
+
+We assume:
+
+* After sending the first request, we immediately send another, and then another
+* We can keep sending requests as fast as the network can accept them, along with processing replies as fast as the network supplies them.
+
+Assume that the input file contains only nine lines. The last line is sent at time 8, as shown in the above figure. But we cannot close the connection after writing this request because there are still other requests and replies in the pipe. The cause of the problem is our handling of an EOF on input: The function returns to the `main` function, which then terminates. But <u>in a batch mode, an EOF on input does not imply that we have finished reading from the socket; there might still be requests on the way to the server, or replies on the way back from the server.</u>
+
+The solution is to close one-half of the TCP connection by sending a FIN to the server, telling it we have finished sending data, but leave the socket descriptor open for reading. This is done with the `shutdown` function, described in the next section.
+
+#### Buffering concerns *
+
+Buffering for performance as in `str_cli` ([Section 6.7](#str_cli-function-revisited)) adds complexity to a network application.
+
+When several lines of input are available from the standard input. `select` will cause the code ([select/strcliselect01.c#L24](https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c#L24)) to read the input using `fgets`, which will read the available lines into a buffer used by stdio. But, `fgets` only returns a single line and leaves any remaining data sitting in the stdio buffer. The following code ([select/strcliselect01.c#L26](https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c#L26)) writes that single line to the server and then `select` is called again to wait for more work, even if there are additional lines to consume in the stdio buffer. The reason is that `select` knows nothing of the buffers used by stdio;it will only show readability from the viewpoint of the `read` system call, not calls like `fgets`. Thus, mixing stdio and `select` is considered very error-prone and should only be done with great care.
+
+The same problem exists with `readline` in this example (`str_cli` function). Instead of data being hidden from `select` in a stdio buffer, it is hidden in `readline`'s buffer. In [Section 3.9](ch3.md#readn-writen-and-readline-functions) we provided a function ([lib/readline.c#L52](https://github.com/shichao-an/unpv13e/blob/master/lib/readline.c#L52)) that gives visibility into `readline`'s buffer, so one possible solution is to modify our code to use that function before calling `select` to see if data has already been read but not consumed. But again, the complexity grows out of hand quickly when we have to handle the case where the readline buffer contains a partial line (meaning we still need to read more) as well as when it contains one or more complete lines (which we can consume).
+
+We will address these buffering concerns in the improved version of `str_cli` shown in [Section 6.7](#str_cli-function-revisited-again).
+
+### `shutdown` Function
+
+The normal way to terminate a network connection is to call the `close` function. But, there are two limitations with `close` that can be avoided with `shutdown`:
+
+1. `close` decrements the descriptor's reference count and closes the socket only if the count reaches 0 ([Section 4.8](ch4.md#concurrent-servers)). With `shutdown`, we can initiate TCP's normal connection termination sequence (the four segments beginning with a FIN in [Figure 2.5](figure_2.5.png)), regardless of the reference count.
+2. `close` terminates both directions of data transfer, reading and writing. Since a TCP connection is full-duplex, there are times when we want to tell the other end that we have finished sending, even though that end might have more data to send us. This is the scenario we encountered in the previous section with batch input to our `str_cli` function. The figure below shows the typical function calls in this scenario.
+
+[![Figure 6.12. Calling shutdown to close half of a TCP connection.](figure_6.12.png)](figure_6.12.png "Figure 6.12. Calling shutdown to close half of a TCP connection.")
+
+
+```c
+#include <sys/socket.h>
+
+int shutdown(int sockfd, int howto);
+
+/* Returns: 0 if OK, –1 on error */
+```
+
+The action of the function depends on the value of the *howto* argument:
+
+* `SHUT_RD`: **The read half of the connection is closed.** No more data can be received on the socket and any data currently in the socket receive buffer is discarded. The process can no longer issue any of the read functions on the socket. Any data received after this call for a TCP socket is acknowledged and then silently discarded.
+* `SHUT_WR`: **The write half of the connection is closed.** In the case of TCP, this is called a **half-close**. Any data currently in the socket send buffer will be sent, followed by TCP's normal connection termination sequence. As we mentioned earlier, this closing of the write half is done regardless of whether or not the socket descriptor's reference count is currently greater than 0. The process can no longer issue any of the write functions on the socket.
+* `SHUT_RDWR`: **The read half and the write half of the connection are both closed.** This is equivalent to calling `shutdown` twice: first with `SHUT_RD` and then with `SHUT_WR`.
+
+The three `SHUT_`*xxx* names are defined by the POSIX specification. Typical values for the howto argument that you will encounter will be 0 (close the read half), 1 (close the write half), and 2 (close the read half and the write half).
+
+
+
+
+
+
+
+
+
+
+
+### `str_cli` Function (Revisited Again)

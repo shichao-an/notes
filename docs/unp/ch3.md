@@ -668,6 +668,6 @@ Our advice is to think in terms of buffers and not lines. Write your code to rea
 
 *lib/readline.c* shows a faster version of the readline function, which uses its own buffering rather than stdio buffering. Most importantly, the state of readline’s internal buffer is exposed, so callers have visibility into exactly what has been received.
 
-In *lib/readline.c*, the internal function `my_read` reads up to `MAXLINE` characters at a time and then returns them, one at a time. The only change to the `readline` function itself is to call `my_read` instead of read. A new function, `readlinebuf`, exposes the internal buffer state so that callers can check and see if more data was received beyond a single line.
+In *lib/readline.c*, the internal function `my_read` reads up to `MAXLINE` characters at a time and then returns them, one at a time. The only change to the `readline` function itself is to call `my_read` instead of `read`. A new function, `readlinebuf`, exposes the internal buffer state so that callers can check and see if more data was received beyond a single line.
 
 Unfortunately, by using `static` variables in `readline.c` to maintain the state information across successive calls, the functions are not **re-entrant** or **thread-safe**.
