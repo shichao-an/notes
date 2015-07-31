@@ -405,14 +405,224 @@ The action of the function depends on the value of the *howto* argument:
 
 The three `SHUT_`*xxx* names are defined by the POSIX specification. Typical values for the howto argument that you will encounter will be 0 (close the read half), 1 (close the write half), and 2 (close the read half and the write half).
 
-
-
-
-
-
-
-
-
-
-
 ### `str_cli` Function (Revisited Again)
+
+The following code is our revised and correct version of the `str_cli` function that uses `select` and `shutdown`. In the function, `select` notifies us as soon as the server closes its end of the connection and `shutdown` lets us handle batch input correctly.
+
+<small>[select/strcliselect02.c](https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect02.c)</small>
+
+```c
+#include	"unp.h"
+
+void
+str_cli(FILE *fp, int sockfd)
+{
+	int			maxfdp1, stdineof;
+	fd_set		rset;
+	char		buf[MAXLINE];
+	int		n;
+
+	stdineof = 0;
+	FD_ZERO(&rset);
+	for ( ; ; ) {
+		if (stdineof == 0)
+			FD_SET(fileno(fp), &rset);
+		FD_SET(sockfd, &rset);
+		maxfdp1 = max(fileno(fp), sockfd) + 1;
+		Select(maxfdp1, &rset, NULL, NULL, NULL);
+
+		if (FD_ISSET(sockfd, &rset)) {	/* socket is readable */
+			if ( (n = Read(sockfd, buf, MAXLINE)) == 0) {
+				if (stdineof == 1)
+					return;		/* normal termination */
+				else
+					err_quit("str_cli: server terminated prematurely");
+			}
+
+			Write(fileno(stdout), buf, n);
+		}
+
+		if (FD_ISSET(fileno(fp), &rset)) {  /* input is readable */
+			if ( (n = Read(fileno(fp), buf, MAXLINE)) == 0) {
+				stdineof = 1;
+				Shutdown(sockfd, SHUT_WR);	/* send FIN */
+				FD_CLR(fileno(fp), &rset);
+				continue;
+			}
+
+			Writen(sockfd, buf, n);
+		}
+	}
+}
+```
+
+* `stdineof` is a new flag that is initialized to 0. As long as this flag is 0, each time around the main loop, we `select` on standard input for readability.
+* **Normal and premature termination.** When we read the EOF on the socket, and:
+    * If we have already encountered an EOF on standard input, this is normal termination and the function returns.
+    * If we have not yet encountered an EOF on standard input, the server process has prematurely terminated. We now call `read` and `write` to operate on buffers instead of lines and allow select to work for us as expected.
+* `shutdown`. When we encounter the EOF on standard input, our new flag, `stdineof`, is set and we call `shutdown` with a second argument of `SHUT_WR` to send the FIN. Here we also use buffers instead of lines, using `read` and `writen`.
+
+### TCP Echo Server (Revisited)
+
+We now rewrite the TCP echo server ([Section 5.2](ch5.md#tcp-echo-server-main-function) and [5.3](ch5.md#tcp-echo-server-str_echo-function) as a single process that uses `select` to handle any number of clients, instead of `fork`ing one child per client.
+
+#### Before first client has established a connection *
+
+Before the first client has established a connection, the server has a single listening descriptor.
+
+* The server maintains only a read descriptor set (*rset*), shown in the following figure. Assuming the server is started in the foreground, descriptors 0, 1, and 2 are set to standard input, output, and error, so the first available descriptor for the listening socket is 3.
+* We also show an array of integers named `client` that contains the connected socket descriptor for each client. All elements in this array are initialized to –1.
+
+[![Figure 6.15. Data structures for TCP server with just a listening socket.](figure_6.15.png)](figure_6.15.png "Figure 6.15. Data structures for TCP server with just a listening socket.")
+
+The only nonzero entry in the descriptor set is the entry for the listening sockets and the first argument to `select` will be 4.
+
+#### After first client establishes connection *
+
+When the first client establishes a connection with our server, the listening descriptor becomes readable and our server calls `accept`. The new connected descriptor returned by accept will be 4. The following figure shows this connection:
+
+[![Figure 6.16. TCP server after first client establishes connection.](figure_6.16.png)](figure_6.16.png "Figure 6.16. TCP server after first client establishes connection.")
+
+The server must remember the new connected socket in its `client` array, and the connected socket must be added to the descriptor set. The updated data structures are shown in the figure below:
+
+[![Figure 6.17. Data structures after first client connection is established.](figure_6.17.png)](figure_6.17.png "Figure 6.17. Data structures after first client connection is established.")
+
+#### After second client connection is established *
+
+Sometime later a second client establishes a connection and we have the scenario shown below:
+
+[![Figure 6.18. TCP server after second client connection is established.](figure_6.18.png)](figure_6.18.png "Figure 6.18. TCP server after second client connection is established.")
+
+The new connected socket (which we assume is 5) must be remembered, giving the data structures shown below:
+
+[![Figure 6.19. Data structures after second client connection is established.](figure_6.19.png)](figure_6.19.png "Figure 6.19. Data structures after second client connection is established.")
+
+#### After first client terminates its connection *
+
+Next, we assume the first client terminates its connection. The client TCP sends a FIN, which makes descriptor 4 in the server readable. When our server reads this connected socket, `read` returns 0. We then close this socket and update our data structures accordingly. The value of `client[0]` is set to –1 and descriptor 4 in the descriptor set is set to 0. This is shown in the figure below. Notice that the value of `maxfd` does not change.
+
+[![Figure 6.20. Data structures after first client terminates its connection.](figure_6.20.png)](figure_6.20.png "Figure 6.20. Data structures after first client terminates its connection.")
+
+#### Summary of TCP echo server (revisited)
+
+* As clients arrive, we record their connected socket descriptor in the first available entry in the client array (the first entry with a value of –1) and also add the connected socket to the read descriptor set.
+* The variable `maxi` is the highest index in the client array that is currently in use and the variable `maxfd` (plus one) is the current value of the first argument to select.
+* The only limit on the number of clients that this server can handle is the minimum of the two values `FD_SETSIZE` and the maximum number of descriptors allowed for this process by the kernel ([Section 6.3](#maximum-number-of-descriptors-for-select)).
+
+<small>[tcpcliserv/tcpservselect01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c)</small>
+
+```c
+/* include fig01 */
+#include	"unp.h"
+
+int
+main(int argc, char **argv)
+{
+	int					i, maxi, maxfd, listenfd, connfd, sockfd;
+	int					nready, client[FD_SETSIZE];
+	ssize_t				n;
+	fd_set				rset, allset;
+	char				buf[MAXLINE];
+	socklen_t			clilen;
+	struct sockaddr_in	cliaddr, servaddr;
+
+	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port        = htons(SERV_PORT);
+
+	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
+
+	Listen(listenfd, LISTENQ);
+
+	maxfd = listenfd;			/* initialize */
+	maxi = -1;					/* index into client[] array */
+	for (i = 0; i < FD_SETSIZE; i++)
+		client[i] = -1;			/* -1 indicates available entry */
+	FD_ZERO(&allset);
+	FD_SET(listenfd, &allset);
+/* end fig01 */
+
+/* include fig02 */
+	for ( ; ; ) {
+		rset = allset;		/* structure assignment */
+		nready = Select(maxfd+1, &rset, NULL, NULL, NULL);
+
+		if (FD_ISSET(listenfd, &rset)) {	/* new client connection */
+			clilen = sizeof(cliaddr);
+			connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
+#ifdef	NOTDEF
+			printf("new client: %s, port %d\n",
+					Inet_ntop(AF_INET, &cliaddr.sin_addr, 4, NULL),
+					ntohs(cliaddr.sin_port));
+#endif
+
+			for (i = 0; i < FD_SETSIZE; i++)
+				if (client[i] < 0) {
+					client[i] = connfd;	/* save descriptor */
+					break;
+				}
+			if (i == FD_SETSIZE)
+				err_quit("too many clients");
+
+			FD_SET(connfd, &allset);	/* add new descriptor to set */
+			if (connfd > maxfd)
+				maxfd = connfd;			/* for select */
+			if (i > maxi)
+				maxi = i;				/* max index in client[] array */
+
+			if (--nready <= 0)
+				continue;				/* no more readable descriptors */
+		}
+
+		for (i = 0; i <= maxi; i++) {	/* check all clients for data */
+			if ( (sockfd = client[i]) < 0)
+				continue;
+			if (FD_ISSET(sockfd, &rset)) {
+				if ( (n = Read(sockfd, buf, MAXLINE)) == 0) {
+						/* connection closed by client */
+					Close(sockfd);
+					FD_CLR(sockfd, &allset);
+					client[i] = -1;
+				} else
+					Writen(sockfd, buf, n);
+
+				if (--nready <= 0)
+					break;				/* no more readable descriptors */
+			}
+		}
+	}
+}
+/* end fig02 */
+```
+
+The code does the following:
+
+* **Create listening socket and initialize for `select`.** We create the listening socket using `socket`, `bind`, and `listen` and initialize our data structures assuming that the only descriptor that we will `select` on initially is the listening socket.
+* **Block in `select`**. `select` waits for something to happen, which is one of the following:
+    * The establishment of a new client connection.
+    * The arrival of data on the existing connection.
+    * A FIN on the existing connection.
+    * A RST on the existing connection.
+* **`accept` new connections**. * If the listening socket is readable, a new connection has been established.
+    * We call `accept` and update our data structures accordingly. We use the first unused entry in the `client` array to record the connected socket.
+    * The number of ready descriptors is decremented, and if it is 0 ([tcpcliserv/tcpservselect01.c#L62](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c#L62)), we can avoid the next `for` loop. This lets us use the return value from `select` to avoid checking descriptors that are not ready.
+* **Check existing connections**.
+    * In the second nested `for` loop, a test is made for each existing client connection as to whether or not its descriptor is in the descriptor set returned by `select`, and a line is read from the client and echoed back to the client. Otherwsie, if the client closes the connection, read returns 0 and we update our data structures accordingly.
+    * We never decrement the value of `maxi`, but we could check for this possibility each time a client closes its connection.
+
+This server is more complicated than the earlier version ([Section 5.2](ch5.md#tcp-echo-server-main-function) and [5.3](ch5.md#tcp-echo-server-str_echo-function), but it avoids all the overhead of creating a new process for each client and it is a nice example of `select`. Nevertheless, in [Section 16.6](ch16.md#nonblocking-accept), we will describe a problem with this server that is easily fixed by making the listening socket nonblocking and then checking for, and ignoring, a few errors from `accept`.
+
+#### Denial-of-Service Attacks
+
+There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call `read`, which will read the single byte of data from the client and then block in the next call to `read`, waiting for more data from this client. The server is then blocked ("hung"( by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.
+
+The basic concept here is that when a server is handling multiple clients, the server can never block in a function call related to a single client. Doing so can hang the server and deny service to all other clients. This is called a **denial-of-service** attack, which prevents the server from servicing other legitimate clients.
+
+Possible solutions are:
+
+* Use nonblocking I/O ([Chapter 16](ch16.md))
+* Have each client serviced by a separate thread of control (either spawn a process or a thread to service each client)
+* Place a timeout on the I/O operations

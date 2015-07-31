@@ -345,6 +345,21 @@
         <li class="main "><a href="#str_cli-function-revisited-again">str_cli Function (Revisited Again)</a></li>
         
     
+        <li class="main "><a href="#tcp-echo-server-revisited">TCP Echo Server (Revisited)</a></li>
+        
+            <li><a href="#before-first-client-has-established-a-connection">Before first client has established a connection *</a></li>
+        
+            <li><a href="#after-first-client-establishes-connection">After first client establishes connection *</a></li>
+        
+            <li><a href="#after-second-client-connection-is-established">After second client connection is established *</a></li>
+        
+            <li><a href="#after-first-client-terminates-its-connection">After first client terminates its connection *</a></li>
+        
+            <li><a href="#summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited)</a></li>
+        
+            <li><a href="#denial-of-service-attacks">Denial-of-Service Attacks</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -723,6 +738,210 @@
 </ul>
 <p>The three <code>SHUT_</code><em>xxx</em> names are defined by the POSIX specification. Typical values for the howto argument that you will encounter will be 0 (close the read half), 1 (close the write half), and 2 (close the read half and the write half).</p>
 <h3 id="str_cli-function-revisited-again"><code>str_cli</code> Function (Revisited Again)</h3>
+<p>The following code is our revised and correct version of the <code>str_cli</code> function that uses <code>select</code> and <code>shutdown</code>. In the function, <code>select</code> notifies us as soon as the server closes its end of the connection and <code>shutdown</code> lets us handle batch input correctly.</p>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect02.c">select/strcliselect02.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
+
+<span class="kt">void</span>
+<span class="nf">str_cli</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">fp</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sockfd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>         <span class="n">maxfdp1</span><span class="p">,</span> <span class="n">stdineof</span><span class="p">;</span>
+    <span class="n">fd_set</span>      <span class="n">rset</span><span class="p">;</span>
+    <span class="kt">char</span>        <span class="n">buf</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">;</span>
+
+    <span class="n">stdineof</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">FD_ZERO</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">stdineof</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">FD_SET</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+        <span class="n">FD_SET</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+        <span class="n">maxfdp1</span> <span class="o">=</span> <span class="n">max</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="n">sockfd</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">Select</span><span class="p">(</span><span class="n">maxfdp1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">FD_ISSET</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">))</span> <span class="p">{</span>  <span class="cm">/* socket is readable */</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">n</span> <span class="o">=</span> <span class="n">Read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">stdineof</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">return</span><span class="p">;</span>     <span class="cm">/* normal termination */</span>
+                <span class="k">else</span>
+                    <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;str_cli: server terminated prematurely&quot;</span><span class="p">);</span>
+            <span class="p">}</span>
+
+            <span class="n">Write</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">stdout</span><span class="p">),</span> <span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">FD_ISSET</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">))</span> <span class="p">{</span>  <span class="cm">/* input is readable */</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">n</span> <span class="o">=</span> <span class="n">Read</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="n">buf</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">stdineof</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+                <span class="n">Shutdown</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">SHUT_WR</span><span class="p">);</span>  <span class="cm">/* send FIN */</span>
+                <span class="n">FD_CLR</span><span class="p">(</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">);</span>
+                <span class="k">continue</span><span class="p">;</span>
+            <span class="p">}</span>
+
+            <span class="n">Writen</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li><code>stdineof</code> is a new flag that is initialized to 0. As long as this flag is 0, each time around the main loop, we <code>select</code> on standard input for readability.</li>
+<li><strong>Normal and premature termination.</strong> When we read the EOF on the socket, and:<ul>
+<li>If we have already encountered an EOF on standard input, this is normal termination and the function returns.</li>
+<li>If we have not yet encountered an EOF on standard input, the server process has prematurely terminated. We now call <code>read</code> and <code>write</code> to operate on buffers instead of lines and allow select to work for us as expected.</li>
+</ul>
+</li>
+<li><code>shutdown</code>. When we encounter the EOF on standard input, our new flag, <code>stdineof</code>, is set and we call <code>shutdown</code> with a second argument of <code>SHUT_WR</code> to send the FIN. Here we also use buffers instead of lines, using <code>read</code> and <code>writen</code>.</li>
+</ul>
+<h3 id="tcp-echo-server-revisited">TCP Echo Server (Revisited)</h3>
+<p>We now rewrite the TCP echo server (<a href="../ch5/#tcp-echo-server-main-function">Section 5.2</a> and <a href="../ch5/#tcp-echo-server-str_echo-function">5.3</a> as a single process that uses <code>select</code> to handle any number of clients, instead of <code>fork</code>ing one child per client.</p>
+<h4 id="before-first-client-has-established-a-connection">Before first client has established a connection *</h4>
+<p>Before the first client has established a connection, the server has a single listening descriptor.</p>
+<ul>
+<li>The server maintains only a read descriptor set (<em>rset</em>), shown in the following figure. Assuming the server is started in the foreground, descriptors 0, 1, and 2 are set to standard input, output, and error, so the first available descriptor for the listening socket is 3.</li>
+<li>We also show an array of integers named <code>client</code> that contains the connected socket descriptor for each client. All elements in this array are initialized to –1.</li>
+</ul>
+<p><a href="../figure_6.15.png" title="Figure 6.15. Data structures for TCP server with just a listening socket."><img alt="Figure 6.15. Data structures for TCP server with just a listening socket." src="../figure_6.15.png" /></a></p>
+<p>The only nonzero entry in the descriptor set is the entry for the listening sockets and the first argument to <code>select</code> will be 4.</p>
+<h4 id="after-first-client-establishes-connection">After first client establishes connection *</h4>
+<p>When the first client establishes a connection with our server, the listening descriptor becomes readable and our server calls <code>accept</code>. The new connected descriptor returned by accept will be 4. The following figure shows this connection:</p>
+<p><a href="../figure_6.16.png" title="Figure 6.16. TCP server after first client establishes connection."><img alt="Figure 6.16. TCP server after first client establishes connection." src="../figure_6.16.png" /></a></p>
+<p>The server must remember the new connected socket in its <code>client</code> array, and the connected socket must be added to the descriptor set. The updated data structures are shown in the figure below:</p>
+<p><a href="../figure_6.17.png" title="Figure 6.17. Data structures after first client connection is established."><img alt="Figure 6.17. Data structures after first client connection is established." src="../figure_6.17.png" /></a></p>
+<h4 id="after-second-client-connection-is-established">After second client connection is established *</h4>
+<p>Sometime later a second client establishes a connection and we have the scenario shown below:</p>
+<p><a href="../figure_6.18.png" title="Figure 6.18. TCP server after second client connection is established."><img alt="Figure 6.18. TCP server after second client connection is established." src="../figure_6.18.png" /></a></p>
+<p>The new connected socket (which we assume is 5) must be remembered, giving the data structures shown below:</p>
+<p><a href="../figure_6.19.png" title="Figure 6.19. Data structures after second client connection is established."><img alt="Figure 6.19. Data structures after second client connection is established." src="../figure_6.19.png" /></a></p>
+<h4 id="after-first-client-terminates-its-connection">After first client terminates its connection *</h4>
+<p>Next, we assume the first client terminates its connection. The client TCP sends a FIN, which makes descriptor 4 in the server readable. When our server reads this connected socket, <code>read</code> returns 0. We then close this socket and update our data structures accordingly. The value of <code>client[0]</code> is set to –1 and descriptor 4 in the descriptor set is set to 0. This is shown in the figure below. Notice that the value of <code>maxfd</code> does not change.</p>
+<p><a href="../figure_6.20.png" title="Figure 6.20. Data structures after first client terminates its connection."><img alt="Figure 6.20. Data structures after first client terminates its connection." src="../figure_6.20.png" /></a></p>
+<h4 id="summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited)</h4>
+<ul>
+<li>As clients arrive, we record their connected socket descriptor in the first available entry in the client array (the first entry with a value of –1) and also add the connected socket to the read descriptor set.</li>
+<li>The variable <code>maxi</code> is the highest index in the client array that is currently in use and the variable <code>maxfd</code> (plus one) is the current value of the first argument to select.</li>
+<li>The only limit on the number of clients that this server can handle is the minimum of the two values <code>FD_SETSIZE</code> and the maximum number of descriptors allowed for this process by the kernel (<a href="#maximum-number-of-descriptors-for-select">Section 6.3</a>).</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c">tcpcliserv/tcpservselect01.c</a></small></p>
+<div class="codehilite"><pre><span class="cm">/* include fig01 */</span>
+<span class="cp">#include    &quot;unp.h&quot;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>                 <span class="n">i</span><span class="p">,</span> <span class="n">maxi</span><span class="p">,</span> <span class="n">maxfd</span><span class="p">,</span> <span class="n">listenfd</span><span class="p">,</span> <span class="n">connfd</span><span class="p">,</span> <span class="n">sockfd</span><span class="p">;</span>
+    <span class="kt">int</span>                 <span class="n">nready</span><span class="p">,</span> <span class="n">client</span><span class="p">[</span><span class="n">FD_SETSIZE</span><span class="p">];</span>
+    <span class="kt">ssize_t</span>             <span class="n">n</span><span class="p">;</span>
+    <span class="n">fd_set</span>              <span class="n">rset</span><span class="p">,</span> <span class="n">allset</span><span class="p">;</span>
+    <span class="kt">char</span>                <span class="n">buf</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">socklen_t</span>           <span class="n">clilen</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="n">cliaddr</span><span class="p">,</span> <span class="n">servaddr</span><span class="p">;</span>
+
+    <span class="n">listenfd</span> <span class="o">=</span> <span class="n">Socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">bzero</span><span class="p">(</span><span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_family</span>      <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">htonl</span><span class="p">(</span><span class="n">INADDR_ANY</span><span class="p">);</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_port</span>        <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="n">SERV_PORT</span><span class="p">);</span>
+
+    <span class="n">Bind</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+
+    <span class="n">Listen</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="n">LISTENQ</span><span class="p">);</span>
+
+    <span class="n">maxfd</span> <span class="o">=</span> <span class="n">listenfd</span><span class="p">;</span>           <span class="cm">/* initialize */</span>
+    <span class="n">maxi</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>                  <span class="cm">/* index into client[] array */</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">FD_SETSIZE</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>         <span class="cm">/* -1 indicates available entry */</span>
+    <span class="n">FD_ZERO</span><span class="p">(</span><span class="o">&amp;</span><span class="n">allset</span><span class="p">);</span>
+    <span class="n">FD_SET</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">allset</span><span class="p">);</span>
+<span class="cm">/* end fig01 */</span>
+
+<span class="cm">/* include fig02 */</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">rset</span> <span class="o">=</span> <span class="n">allset</span><span class="p">;</span>      <span class="cm">/* structure assignment */</span>
+        <span class="n">nready</span> <span class="o">=</span> <span class="n">Select</span><span class="p">(</span><span class="n">maxfd</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">FD_ISSET</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">))</span> <span class="p">{</span>    <span class="cm">/* new client connection */</span>
+            <span class="n">clilen</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cliaddr</span><span class="p">);</span>
+            <span class="n">connfd</span> <span class="o">=</span> <span class="n">Accept</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">clilen</span><span class="p">);</span>
+<span class="cp">#ifdef  NOTDEF</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;new client: %s, port %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+                    <span class="n">Inet_ntop</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">),</span>
+                    <span class="n">ntohs</span><span class="p">(</span><span class="n">cliaddr</span><span class="p">.</span><span class="n">sin_port</span><span class="p">));</span>
+<span class="cp">#endif</span>
+
+            <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">FD_SETSIZE</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">connfd</span><span class="p">;</span> <span class="cm">/* save descriptor */</span>
+                    <span class="k">break</span><span class="p">;</span>
+                <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">FD_SETSIZE</span><span class="p">)</span>
+                <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;too many clients&quot;</span><span class="p">);</span>
+
+            <span class="n">FD_SET</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">allset</span><span class="p">);</span>    <span class="cm">/* add new descriptor to set */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">&gt;</span> <span class="n">maxfd</span><span class="p">)</span>
+                <span class="n">maxfd</span> <span class="o">=</span> <span class="n">connfd</span><span class="p">;</span>         <span class="cm">/* for select */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;</span> <span class="n">maxi</span><span class="p">)</span>
+                <span class="n">maxi</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>               <span class="cm">/* max index in client[] array */</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">nready</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">continue</span><span class="p">;</span>               <span class="cm">/* no more readable descriptors */</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">maxi</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>   <span class="cm">/* check all clients for data */</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">sockfd</span> <span class="o">=</span> <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">continue</span><span class="p">;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">FD_ISSET</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rset</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">n</span> <span class="o">=</span> <span class="n">Read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="cm">/* connection closed by client */</span>
+                    <span class="n">Close</span><span class="p">(</span><span class="n">sockfd</span><span class="p">);</span>
+                    <span class="n">FD_CLR</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">allset</span><span class="p">);</span>
+                    <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+                <span class="p">}</span> <span class="k">else</span>
+                    <span class="n">Writen</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">nready</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="k">break</span><span class="p">;</span>              <span class="cm">/* no more readable descriptors */</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="cm">/* end fig02 */</span>
+</pre></div>
+
+
+<p>The code does the following:</p>
+<ul>
+<li><strong>Create listening socket and initialize for <code>select</code>.</strong> We create the listening socket using <code>socket</code>, <code>bind</code>, and <code>listen</code> and initialize our data structures assuming that the only descriptor that we will <code>select</code> on initially is the listening socket.</li>
+<li><strong>Block in <code>select</code></strong>. <code>select</code> waits for something to happen, which is one of the following:<ul>
+<li>The establishment of a new client connection.</li>
+<li>The arrival of data on the existing connection.</li>
+<li>A FIN on the existing connection.</li>
+<li>A RST on the existing connection.</li>
+</ul>
+</li>
+<li><strong><code>accept</code> new connections</strong>. * If the listening socket is readable, a new connection has been established.<ul>
+<li>We call <code>accept</code> and update our data structures accordingly. We use the first unused entry in the <code>client</code> array to record the connected socket.</li>
+<li>The number of ready descriptors is decremented, and if it is 0 (<a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c#L62">tcpcliserv/tcpservselect01.c#L62</a>), we can avoid the next <code>for</code> loop. This lets us use the return value from <code>select</code> to avoid checking descriptors that are not ready.</li>
+</ul>
+</li>
+<li><strong>Check existing connections</strong>.<ul>
+<li>In the second nested <code>for</code> loop, a test is made for each existing client connection as to whether or not its descriptor is in the descriptor set returned by <code>select</code>, and a line is read from the client and echoed back to the client. Otherwsie, if the client closes the connection, read returns 0 and we update our data structures accordingly.</li>
+<li>We never decrement the value of <code>maxi</code>, but we could check for this possibility each time a client closes its connection.</li>
+</ul>
+</li>
+</ul>
+<p>This server is more complicated than the earlier version (<a href="../ch5/#tcp-echo-server-main-function">Section 5.2</a> and <a href="../ch5/#tcp-echo-server-str_echo-function">5.3</a>, but it avoids all the overhead of creating a new process for each client and it is a nice example of <code>select</code>. Nevertheless, in <a href="ch16.md#nonblocking-accept">Section 16.6</a>, we will describe a problem with this server that is easily fixed by making the listening socket nonblocking and then checking for, and ignoring, a few errors from <code>accept</code>.</p>
+<h4 id="denial-of-service-attacks">Denial-of-Service Attacks</h4>
+<p>There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call <code>read</code>, which will read the single byte of data from the client and then block in the next call to <code>read</code>, waiting for more data from this client. The server is then blocked ("hung"( by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.</p>
+<p>The basic concept here is that when a server is handling multiple clients, the server can never block in a function call related to a single client. Doing so can hang the server and deny service to all other clients. This is called a <strong>denial-of-service</strong> attack, which prevents the server from servicing other legitimate clients.</p>
+<p>Possible solutions are:</p>
+<ul>
+<li>Use nonblocking I/O (<a href="ch16.md">Chapter 16</a>)</li>
+<li>Have each client serviced by a separate thread of control (either spawn a process or a thread to service each client)</li>
+<li>Place a timeout on the I/O operations</li>
+</ul>
             </div>
         </div>
 

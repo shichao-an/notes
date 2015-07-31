@@ -339,9 +339,15 @@
     
         <li class="main "><a href="#alarm-and-pause-functions">alarm and pause Functions</a></li>
         
-            <li><a href="#example-of-using-alarm-and-pause">Example of using alarm and pause</a></li>
+            <li><a href="#sleep1-example">sleep1 example</a></li>
         
-            <li><a href="#example-of-implementing-sleep-using-setjmp-and-longjmp">Example of implementing sleep using setjmp and longjmp</a></li>
+            <li><a href="#sleep2-example-using-setjmp-and-longjmp">sleep2 example: using setjmp and longjmp</a></li>
+        
+            <li><a href="#sleep2s-interaction-with-other-signals">sleep2's interaction with other signals</a></li>
+        
+            <li><a href="#implementing-a-timeout-using-alarm">Implementing a timeout using alarm</a></li>
+        
+            <li><a href="#implementing-a-timeout-with-alarm-and-longjmp">Implementing a timeout with alarm and longjmp</a></li>
         
     
         <li class="main "><a href="#signal-sets">Signal Sets</a></li>
@@ -1198,7 +1204,7 @@
 </ul>
 <p>The notable exception to these slow system calls is anything related to disk I/O. Although a read or a write of a disk file can block the caller temporarily (while the disk driver queues the request and then the request is executed), unless a hardware error occurs, the I/O operation always returns and unblocks the caller quickly.</p>
 <p>Historically, POSIX.1 semantics gave implementations a choice of how to deal with <code>read</code>s and <code>write</code>s that have processed partial amounts of data, implementations derived from System V fail the system call, whereas BSD-derived implementations return partial success. With the 2001 version of the POSIX.1 standard, the BSD-style semantics are required. [p328]</p>
-<p>The problem with interrupted system calls is that we now have to handle the error return explicitly. assuming a read operation and assuming that we want to restart the read even if it’s interrupted, the typical code sequence would be:</p>
+<p>The problem with interrupted system calls is that we now have to handle the error return explicitly. Assuming a read operation and assuming that we want to restart the read even if it’s interrupted, the typical code sequence would be:</p>
 <div class="codehilite"><pre><span class="nl">again</span><span class="p">:</span>
     <span class="k">if</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">BUFFSIZE</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span>
@@ -1626,9 +1632,8 @@ from the table because the signal may have occurred while the <code>main</code> 
 
 
 <p>The only time <code>pause</code> returns is if a signal handler is executed and that handler returns. In that case, <code>pause</code> returns −1 with <code>errno</code> set to <code>EINTR</code>.</p>
-<h4 id="example-of-using-alarm-and-pause">Example of using <code>alarm</code> and <code>pause</code></h4>
+<h4 id="sleep1-example"><code>sleep1</code> example</h4>
 <p>Using <code>alarm</code> and <code>pause</code>, we can put a process to sleep for a specified amount of time. The following implementation of <code>sleep1</code> is incomplete and has problems:</p>
-<h4 id="example-of-implementing-sleep-using-setjmp-and-longjmp">Example of implementing <code>sleep</code> using <code>setjmp</code> and <code>longjmp</code></h4>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/sleep1.c">signals/sleep1.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include    &lt;signal.h&gt;</span>
 <span class="cp">#include    &lt;unistd.h&gt;</span>
@@ -1661,6 +1666,7 @@ from the table because the signal may have occurred while the <code>main</code> 
 <li><strong>We have modified the disposition for <code>SIGALRM</code>.</strong> If we’re writing a function for others to call, we should save the disposition when our function is called and restore it when we’re done. We can correct this by saving the return value from <code>signal</code> and resetting the disposition before our function returns.</li>
 <li><strong>There is a race condition between the first call to <code>alarm</code> and the call to <code>pause</code></strong>.  On a busy system, it’s possible for the alarm to go off and the signal handler to be called before we call pause. If that happens, the caller is suspended forever in the call to <code>pause</code> (assuming that some other signal isn’t caught).</li>
 </ol>
+<h4 id="sleep2-example-using-setjmp-and-longjmp"><code>sleep2</code> example: using <code>setjmp</code> and <code>longjmp</code></h4>
 <p>The following example corrects problem 3 as described above using <code>setjmp</code>. The problem 3 can also be corrected using <code>sigprocmask</code> and <code>sigsuspend</code>, as described in <a href="#sleep-nanosleep-and-clock_nanosleep-functions">Section 10.19</a>.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/sleep2.c">signals/sleep2.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include    &lt;setjmp.h&gt;</span>
@@ -1690,6 +1696,8 @@ from the table because the signal may have occurred while the <code>main</code> 
 
 
 <p>The <code>sleep2</code> function avoids the race condition. Even if the <code>pause</code> is never executed, the <code>sleep2</code> function returns when the <code>SIGALRM</code> occurs.</p>
+<h4 id="sleep2s-interaction-with-other-signals"><code>sleep2</code>'s interaction with other signals</h4>
+<p>There is another subtle problem with the <code>sleep2</code> function involving its interaction with other signals. If the <code>SIGALRM</code> interrupts some other signal handler, then when we call <code>longjmp</code>, we abort the other signal handler, as shown in the following code:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/tsleep2.c">signals/tsleep2.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
 
@@ -1713,8 +1721,7 @@ from the table because the signal may have occurred while the <code>main</code> 
 <span class="p">{</span>
     <span class="kt">int</span>             <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
     <span class="k">volatile</span> <span class="kt">int</span>    <span class="n">k</span><span class="p">;</span>
-
-    <span class="cm">/*</span>
+<span class="cm">/*</span>
 <span class="cm">     * Tune these loops to run for more than 5 seconds</span>
 <span class="cm">     * on whatever system this test program is run.</span>
 <span class="cm">     */</span>
@@ -1727,6 +1734,7 @@ from the table because the signal may have occurred while the <code>main</code> 
 </pre></div>
 
 
+<p>The loop in the <code>SIGINT</code> handler was written so that it executes for longer than 5 seconds on one of the systems used by the author. We simply want it to execute longer than the argument to <code>sleep2</code>. The integer <code>k</code> is declared as <code>volatile</code> to prevent an optimizing compiler from discarding the loop.</p>
 <p>Run this program and interrupt the sleep by typing the interrupt character:</p>
 <div class="codehilite"><pre><span class="go">$ ./a.out</span>
 <span class="go">ˆC                 # we type the interrupt character</span>
@@ -1736,6 +1744,83 @@ from the table because the signal may have occurred while the <code>main</code> 
 
 
 <p>The <code>longjmp</code> from the <code>sleep2</code> function aborted the other signal handler, <code>sig_int</code>, even though it wasn’t finished.</p>
+<p>The above examples of <code>sleep1</code> and <code>sleep2</code> show the pitfalls in dealing naively with signals. The following sections will show ways around all these problems, so we can handle signals reliably, without interfering with other pieces of code.</p>
+<h4 id="implementing-a-timeout-using-alarm">Implementing a timeout using <code>alarm</code></h4>
+<p>A common use for <code>alarm</code>, in addition to implementing the <code>sleep</code> function, is to put an upper time limit on operations that can block. For example, if we have a <code>read</code> operation on a device that can block (slow device, as described in <a href="#interrupted-system-calls">Section 10.5</a>), we might want the <code>read</code> to time out after some amount of time. The following example reads one line from standard input (with a timeout) and writes it to standard.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/read1.c">signals/read1.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">sig_alrm</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGALRM) error&quot;</span><span class="p">);</span>
+
+    <span class="n">alarm</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error&quot;</span><span class="p">);</span>
+    <span class="n">alarm</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/* nothing to do, just return to interrupt the read */</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Though this code is common in UNIX applications, it has two problems:</p>
+<ol>
+<li>There is a a race condition between the first call to <code>alarm</code> and the call to <code>read</code>, similar to the first <code>alarm</code> and <code>pause</code> example in <a href="##sleep1-example">early this section</a>. If the kernel blocks the process between these two function calls for longer than the alarm period, the <code>read</code> could block forever, though most operations of this type use a long alarm period (a minute or more) making this unlikely.</li>
+<li>If system calls are automatically restarted, the <code>read</code> is not interrupted when the <code>SIGALRM</code> signal handler returns. In this case, the timeout does nothing.</li>
+</ol>
+<h4 id="implementing-a-timeout-with-alarm-and-longjmp">Implementing a timeout with <code>alarm</code> and <code>longjmp</code></h4>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/read2.c">signals/read2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;setjmp.h&gt;</span>
+
+<span class="k">static</span> <span class="kt">void</span>     <span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<span class="k">static</span> <span class="kt">jmp_buf</span>  <span class="n">env_alrm</span><span class="p">;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">sig_alrm</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGALRM) error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">setjmp</span><span class="p">(</span><span class="n">env_alrm</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;read timeout&quot;</span><span class="p">);</span>
+
+    <span class="n">alarm</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error&quot;</span><span class="p">);</span>
+    <span class="n">alarm</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">longjmp</span><span class="p">(</span><span class="n">env_alrm</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This version works as expected, regardless of whether the system restarts interrupted system calls. However, we still have the problem of interactions with other signal handlers, <a href="#sleep2s-interaction-with-other-signals">as described previously</a>.</p>
+<p>If we want to set a time limit on an I/O operation, we need to use <code>longjmp</code>, as shown previously, while recognizing its possible interaction with other signal handlers. Another option is to use the <code>select</code> or <code>poll</code> functions described in <a href="../io-multiplexing">Section 14.4</a>.</p>
 <h3 id="signal-sets">Signal Sets</h3>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
