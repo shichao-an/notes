@@ -85,7 +85,7 @@ The definition says nothing of the implementation. The kernel must provide the i
 
 `SYSCALL_DEFINE0` is simply a macro that defines a system call with no parameters (hence the 0). The expanded code looks like this:
 
-<small>[include/linux/syscalls.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/syscalls.h#L285)</small>
+<small>[include/linux/syscalls.h](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/syscalls.h##L285)</small>
 
 ```c
 asmlinkage long sys_getpid(void);
@@ -94,3 +94,30 @@ asmlinkage long sys_getpid(void);
 * The `asmlinkage` modifier on the function definition is a directive to tell the compiler to look only on the stack for this function’s arguments. This is a required modifier for all system calls.
 * The function returns a `long`. For compatibility between 32- and 64-bit systems, system calls defined to return an `int` in user-space return a `long` in the kernel.
 * The naming convention taken with all system calls in Linux is: System call `bar()` is implemented in the kernel as function `sys_bar()`.
+
+#### System Call Numbers
+
+In Linux, each system call is assigned a unique **syscall number** that is used to reference a specific system call. When a user-space process executes a system call, the syscall number identifies which syscall was executed; the process does not refer to the syscall by name.
+
+* When assigned, the syscall number cannot change; otherwise, compiled applications will break.
+* If a system call is removed, its system call number cannot be recycled, or previously compiled code would aim to invoke one system call but would in reality invoke another.
+* Linux provides a "not implemented" system call, `sys_ni_syscall()`, which does nothing except return `ENOSYS`, the error corresponding to an invalid system call. This function is used to "plug the hole" in the rare event that a syscall is removed or otherwise made unavailable.
+
+The kernel keeps a list of all registered system calls in the system call table, stored in `sys_call_table`, on x86-64 it is defined in [arch/x86/kernel/syscall_64.c](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/syscall_64.c).
+
+The system call numbers are defined in the file [include/asm-generic/unistd.h](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/unistd.h).
+
+#### System Call Performance
+
+System calls in Linux are faster than in many other operating systems, because of:
+
+* Linux’s fast context switch times: entering and exiting the kernel is a streamlined and simple affair
+* Simplicity of the system call handler and the individual system calls themselves
+
+### System Call Handler
+
+It is not possible for user-space applications to execute kernel code directly. They cannot simply make a function call to a method existing in kernel-space because the kernel exists in a protected memory space. Otherwise, system security and stability would be nonexistent.
+
+User-space applications signal the kernel that they want to execute a system call and have the system switch to kernel mode, where the system call can be executed in kernel-space by the kernel on behalf of the application. This mechanism is software interrupt: incur an exception, and the system will switch to kernel mode and execute the **exception handler**. The exception handler in this case is actually the **system call handler**.
+
+The defined software interrupt on x86 is interrupt number 128, which is incurred via the `int $0x80` instruction. It triggers a switch to kernel mode and the execution of exception vector 128, which is the system call handler. The system call handler is the aptly named function `system_call()`. It is architecture-dependent; on x86-64 it is implemented in assembly in `entry_64.S` ([arch/x86/kernel/entry_64.S](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S)).
