@@ -15,7 +15,7 @@ The TCP/IP model both defines and references a large collection of protocols tha
 [![Figure 2-11 Five Steps of Data Encapsulation: TCP/IP](figure_2-11.png)](figure_2-11.png "Figure 2-11 Five Steps of Data Encapsulation: TCP/IP")
 
 1. Create and encapsulate the application data with any required application layer headers.
-2. Encapsulate the data supplied by the application layer inside a transport layer header. 
+2. Encapsulate the data supplied by the application layer inside a transport layer header.
 3. Encapsulate the data supplied by the transport layer inside an Internet layer (IP) header.
 4. Encapsulate the data supplied by the Internet layer inside a data link layer header and trailer. This is the only layer that uses both a **header** and a **trailer**.
 5. Transmit the bits.
@@ -62,7 +62,7 @@ Types of cabling:
 * **[Unshielded Twisted-Pair](http://en.wikipedia.org/wiki/Twisted_pair#Unshielded_twisted_pair_.28UTP.29)** (UTP)
 * **Fiber-optic**
 
-Most IEEE standards define a different variation of Ethernet at the physical layer. 
+Most IEEE standards define a different variation of Ethernet at the physical layer.
 For the data link layer:
 
 * 802.3 Media Access Control (MAC) sublayer
@@ -99,7 +99,7 @@ UTP cabling consists of matched pairs of wires that are indeed twisted together,
 
 10BASE-T and 100BASE-TX Ethernet define that one pair should be used to send data in one direction, with the other pair used to send data in the other direction.
 
-The wires in the UTP cable must be connected to the correct **pin positions** in the RJ-45 connectors in order for communication to work correctly. 
+The wires in the UTP cable must be connected to the correct **pin positions** in the RJ-45 connectors in order for communication to work correctly.
 
 [p62-64]
 
@@ -108,7 +108,7 @@ The following applies to 10BASE-T and 100BASE-TX only:
 * Ethernet **straight-through cable**: both ends of the cable use the same EIA/TIA pinout standard on each end of the cable. A straight-through cable is used when the devices on the ends of the cable use opposite pins when they transmit data.
 * Ethernet **crossover cable**:  two devices both use the same pins to transmit and the pinouts of the cable are set up to swap the wire pair
 
-Devices That Transmit on 1,2 and Receive on 3,6 | Devices That Transmit on 3,6 and Receive on 1,2 
+Devices That Transmit on 1,2 and Receive on 3,6 | Devices That Transmit on 3,6 and Receive on 1,2
 ----------------------------------------------- | -----------------------------------------------
 PC NICs | Hubs
 Routers | Switches
@@ -244,7 +244,7 @@ J1 (Y1) | 2.048 Mbps (32 DS0s; Japanese standard)
 
 [High-Level Data Link Control](http://en.wikipedia.org/wiki/High-Level_Data_Link_Control) (HDLC) defines framing to:
 
-* Delivers data across the link 
+* Delivers data across the link
 * Check for errors
 * Identify the packet type
 
