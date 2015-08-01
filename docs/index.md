@@ -99,6 +99,7 @@ Each topic is included in a single page and references one or more books and mat
 * [Golang](golang/index.md)
 * [Bash](bash/index.md)
 * [C](c/index.md)
+* [x86 Assembly](asm/index.md)
 
 #### Software and Technologies
 
