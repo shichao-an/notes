@@ -261,6 +261,10 @@
                             <a href="../../vim/">Vim</a>
                         </li>
                     
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -491,8 +495,8 @@ when a process is to cease running and a new process is to begin running.</p>
 </ol>
 <h3 id="the-linux-scheduling-algorithm">The Linux Scheduling Algorithm</h3>
 <h4 id="scheduler-classes">Scheduler Classes</h4>
-<p>The Linux scheduler is modular, enabling different algorithms to schedule different types of processes.This modularity is called <strong>scheduler classes</strong>. The base scheduler code, which is defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c"><code>kernel/sched.c</code></a>, iterates over each scheduler class in order of priority.The highest priority scheduler class that has a runnable process wins, selecting who runs next.</p>
-<p>The Completely Fair Scheduler (CFS) is the registered scheduler class for normal processes, called <code>SCHED_NORMAL</code> in Linux (and <code>SCHED_OTHER</code> in POSIX).  CFS is defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c"><code>kernel/sched_fair.c</code></a>. The rest of this section discusses the CFS algorithm.</p>
+<p>The Linux scheduler is modular, enabling different algorithms to schedule different types of processes.This modularity is called <strong>scheduler classes</strong>. The base scheduler code, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c"><code>kernel/sched.c</code></a>, iterates over each scheduler class in order of priority.The highest priority scheduler class that has a runnable process wins, selecting who runs next.</p>
+<p>The Completely Fair Scheduler (CFS) is the registered scheduler class for normal processes, called <code>SCHED_NORMAL</code> in Linux (and <code>SCHED_OTHER</code> in POSIX).  CFS is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c"><code>kernel/sched_fair.c</code></a>. The rest of this section discusses the CFS algorithm.</p>
 <h4 id="process-scheduling-in-unix-systems">Process Scheduling in Unix Systems</h4>
 <p>To discuss fair scheduling, we must first describe how traditional Unix systems schedule processes.</p>
 <p>Modern process schedulers have two common concepts: process priority and timeslice. Processes with a higher priority run more frequently and (on many systems) receive a higher timeslice. On Unix, the priority is exported to user-space in the form of nice values. This in practice leads to several problems:</p>
@@ -510,7 +514,7 @@ when a process is to cease running and a new process is to begin running.</p>
 approximation of the "infinitely small" scheduling duration in perfect multitasking. This target is called the <strong>targeted latency</strong>. Smaller targets yield better interactivity and a closer approximation to perfect multitasking, at the expense of higher switching costs and thus worse overall throughput.  CFS imposes a floor on the timeslice assigned to each process, called the <strong>minimum granularity</strong> (by default 1 millisecond). Even as the number of runnable processes approaches infinity, each will run for at least 1 millisecond, to ensure there is a ceiling on the incurred switching costs</p>
 <p>For the nice value on weighting the proportion, consider the case of two runnable processes with disimilar nice values. One with the default nice value (zero) and one with a nice value of 5. In this case, the weights work out to about a 1⁄3 penalty for the nice-5 process. If our target latency is again 20 milliseconds, our two processes will receive 15 milliseconds and 5 milliseconds each of processor time, respectively. Put generally, the proportion of processor time that any process receives is determined only by the relative difference in niceness between it and the other runnable processes.  The nice values, instead of yielding additive increases to timeslices, yield geometric differences. [p49-50]</p>
 <h3 id="the-linux-scheduling-implementation">The Linux Scheduling Implementation</h3>
-<p>CFS’s actual implementation lives in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c">kernel/sched_fair.c</a>. Specifically,
+<p>CFS’s actual implementation lives in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c">kernel/sched_fair.c</a>. Specifically,
 this sections discusses four components of CFS:</p>
 <ul>
 <li>Time Accounting</li>
@@ -522,7 +526,7 @@ this sections discusses four components of CFS:</p>
 <p>All process schedulers must account for the time that a process runs. On each tick of the system clock, the timeslice is decremented by the tick period.When the timeslice reaches zero, the process is preempted in favor of another runnable process with a nonzero timeslice.</p>
 <h5 id="the-scheduler-entity-structure"><strong>The Scheduler Entity Structure</strong></h5>
 <p>CFS does not have the notion of a timeslice, but it must still keep account for the time that each process runs. [p50]</p>
-<p>CFS uses the <strong>scheduler entity structure</strong>, <code>struct sched_entity</code>, defined in <code>&lt;linux/sched.h&gt;</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1090">include/linux/sched.h#L1090</a>), to keep track of process accounting:</p>
+<p>CFS uses the <strong>scheduler entity structure</strong>, <code>struct sched_entity</code>, defined in <code>&lt;linux/sched.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1090">include/linux/sched.h#L1090</a>), to keep track of process accounting:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">sched_entity</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="n">load_weight</span> <span class="n">load</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">rb_node</span> <span class="n">run_node</span><span class="p">;</span>
@@ -543,9 +547,9 @@ this sections discusses four components of CFS:</p>
 </pre></div>
 
 
-<p>The scheduler entity structure is embedded in the process descriptor, <code>struct task_stuct</code>, as a member variable named <code>se</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1188">include/linux/sched.h#L1188</a>).</p>
+<p>The scheduler entity structure is embedded in the process descriptor, <code>struct task_stuct</code>, as a member variable named <code>se</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1188">include/linux/sched.h#L1188</a>).</p>
 <h5 id="mapping-of-nice-value-to-weight"><strong>Mapping of nice value to weight</strong> *</h5>
-<p>The mapping of nice to weight is defined in the <code>prio_to_weight</code> constant array (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1362">/kernel/sched.c#L1362</a>). The weight is roughly equivalent to <code>1024/(1.25)^(nice)</code>.</p>
+<p>The mapping of nice to weight is defined in the <code>prio_to_weight</code> constant array (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L1356">kernel/sched.c#L1362</a>). The weight is roughly equivalent to <code>1024/(1.25)^(nice)</code>.</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">prio_to_weight</span><span class="p">[</span><span class="mi">40</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
  <span class="cm">/* -20 */</span>     <span class="mi">88761</span><span class="p">,</span>     <span class="mi">71755</span><span class="p">,</span>     <span class="mi">56483</span><span class="p">,</span>     <span class="mi">46273</span><span class="p">,</span>     <span class="mi">36291</span><span class="p">,</span>
  <span class="cm">/* -15 */</span>     <span class="mi">29154</span><span class="p">,</span>     <span class="mi">23254</span><span class="p">,</span>     <span class="mi">18705</span><span class="p">,</span>     <span class="mi">14949</span><span class="p">,</span>     <span class="mi">11916</span><span class="p">,</span>
@@ -561,7 +565,7 @@ this sections discusses four components of CFS:</p>
 
 <h5 id="the-virtual-runtime"><strong>The Virtual Runtime</strong></h5>
 <p>The <code>vruntime</code> variable stores the <strong>virtual runtime</strong> of a process, which is the actual runtime (the amount of time spent running) normalized (or weighted) by the number of runnable processes. The virtual runtime’s units are nanoseconds and therefore <code>vruntime</code> is decoupled from the timer tick. Because processors are not capable of perfect multitasking and we must run each process in succession, CFS uses vruntime to account for how long a process has run and thus how much longer it ought to run.</p>
-<p>The function <code>update_curr()</code>, defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L518">kernel/sched_fair.c#L518</a>), manages this accounting:</p>
+<p>The function <code>update_curr()</code>, defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L518">kernel/sched_fair.c#L518</a>), manages this accounting:</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">update_curr</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">;</span>
@@ -620,7 +624,7 @@ this sections discusses four components of CFS:</p>
 <p><code>update_curr()</code> is invoked periodically by the system timer and also whenever a process becomes runnable or blocks, becoming unrunnable. In this manner, vruntime is an accurate measure of the runtime of a given process and an indicator of what process should run next.</p>
 <h5 id="the-calc_delta_fair-function"><strong>The <code>calc_delta_fair()</code> function</strong></h5>
 <p><code>__update_curr()</code> calls <code>calc_delta_fair()</code>, which in turn calls <code>calc_delta_mine()</code> (if <code>se-&gt;load.weight</code> does not equal <code>NICE_0_LOAD</code>) to calculate the weighted value:</p>
-<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L431">kernel/sched_fair.c#L431</a></small></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L431">kernel/sched_fair.c#L431</a></small></p>
 <div class="codehilite"><pre><span class="cm">/*</span>
 <span class="cm"> * delta /= w</span>
 <span class="cm"> */</span>
@@ -635,7 +639,7 @@ this sections discusses four components of CFS:</p>
 </pre></div>
 
 
-<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1300">kernel/sched.c#L1300</a></small></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L1294">kernel/sched.c#L1300</a></small></p>
 <div class="codehilite"><pre><span class="cm">/*</span>
 <span class="cm"> * delta *= weight / lw</span>
 <span class="cm"> */</span>
@@ -676,10 +680,10 @@ this sections discusses four components of CFS:</p>
 <p>For division details, see <a href="http://stackoverflow.com/questions/17776451">Explanation of the calc_delta_mine function</a>.</p>
 <h4 id="process-selection">Process Selection</h4>
 <p>CFS attempts to balance a process’s virtual runtime with a simple rule: <u>when deciding what process to run next, it picks the process with the smallest <code>vruntime</code>.</u></p>
-<p>CFS uses a <a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">red-black tree</a> to manage the list of runnable processes and efficiently find the process with the smallest <code>vruntime</code>. A red-black tree, called an <em>rbtree</em> in Linux (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/rbtree.h">include/linux/rbtree.h</a>, <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/lib/rbtree.c">lib/rbtree.c</a>), is a type of <a href="https://en.wikipedia.org/wiki/Self-balancing_binary_search_tree">self-balancing binary search tree</a>. It is a data structure that store nodes of arbitrary data, identified by a specific key, and that they enable efficient search for a given key. Specifically, obtaining a node identified by a given key is logarithmic in time as a function of total nodes in the tree.</p>
+<p>CFS uses a <a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">red-black tree</a> to manage the list of runnable processes and efficiently find the process with the smallest <code>vruntime</code>. A red-black tree, called an <em>rbtree</em> in Linux (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/rbtree.h">include/linux/rbtree.h</a>, <a href="https://github.com/shichao-an/linux/blob/v2.6.34/lib/rbtree.c">lib/rbtree.c</a>), is a type of <a href="https://en.wikipedia.org/wiki/Self-balancing_binary_search_tree">self-balancing binary search tree</a>. It is a data structure that store nodes of arbitrary data, identified by a specific key, and that they enable efficient search for a given key. Specifically, obtaining a node identified by a given key is logarithmic in time as a function of total nodes in the tree.</p>
 <h5 id="picking-the-next-task"><strong>Picking the Next Task</strong></h5>
 <p>The process that CFS wants to run next, which is the process with the smallest <code>vruntime</code>, is the leftmost node in the tree. If you follow the tree from the root down through the left child, and continue moving to the left until you reach a leaf node, you find the process with the smallest <code>vruntime</code>. CFS’s process selection algorithm is thus summed up as "run the process represented by the leftmost node in the rbtree." [p53]</p>
-<p>The function that performs this selection is <code>__pick_next_entity()</code>, defined in <code>kernel/sched_fair.c</code>(<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L377">kernel/sched_fair.c#L377</a>):</p>
+<p>The function that performs this selection is <code>__pick_next_entity()</code>, defined in <code>kernel/sched_fair.c</code>(<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L377">kernel/sched_fair.c#L377</a>):</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="nf">__pick_next_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">left</span> <span class="o">=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span><span class="p">;</span>
@@ -696,7 +700,7 @@ this sections discusses four components of CFS:</p>
 <p>The return value from this function is the process that CFS next runs. If the function returns NULL, there is no leftmost node, and thus no nodes in the tree. In that case, there are no runnable processes, and CFS schedules the idle task.</p>
 <h5 id="adding-processes-to-the-tree"><strong>Adding Processes to the Tree</strong></h5>
 <p>CFS adds processes to the rbtree and caches the leftmost node, when a process becomes runnable (wakes up) or is first created via <code>fork()</code>. Adding processes to the tree is performed by <code>enqueue_entity()</code>:</p>
-<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L773">kernel/sched_fair.c#L773</a></small></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L773">kernel/sched_fair.c#L773</a></small></p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">enqueue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
 <span class="p">{</span>
@@ -727,7 +731,7 @@ this sections discusses four components of CFS:</p>
 
 
 <p>This function updates the runtime and other statistics and then invokes <code>__enqueue_entity()</code> to perform the actual heavy lifting of inserting the entry into the red-black tree.</p>
-<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L328">kernel/sched_fair.c#L328</a></small></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L328">kernel/sched_fair.c#L328</a></small></p>
 <div class="codehilite"><pre><span class="cm">/*</span>
 <span class="cm"> * Enqueue an entity into the rb-tree:</span>
 <span class="cm"> */</span>
@@ -773,7 +777,7 @@ this sections discusses four components of CFS:</p>
 <p>This function traverses the tree in the <code>while()</code> loop to search for a matching key (inserted process’s <code>vruntime</code>). It moves to the left child if the key is smaller than the current node’s key and to the right child if the key is larger.  If it ever moves to the right, even once, it knows the inserted process cannot be the new leftmost node, and it sets leftmost to zero. If it moves only to the left, <code>leftmost</code> remains one, and we have a new leftmost node and can update the cache by setting <code>rb_leftmost</code> to the inserted process. When out of the loop, the function calls <code>rb_link_node()</code> on the parent node, making the inserted process the new child. The function <code>rb_insert_color()</code> updates the self-balancing properties of the tree.</p>
 <h5 id="removing-processes-from-the-tree"><strong>Removing Processes from the Tree</strong></h5>
 <p>CFS removes processes from the red-black tree when a process blocks (becomes unrunnable) or terminates (ceases to exist):</p>
-<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L815">kernel/sched_fair.c#L815</a></small></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L815">kernel/sched_fair.c#L815</a></small></p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span>
 <span class="nf">dequeue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sleep</span><span class="p">)</span>
 <span class="p">{</span>
@@ -818,8 +822,8 @@ this sections discusses four components of CFS:</p>
 
 <p>Removing a process from the tree is much simpler because the rbtree implementation provides the <code>rb_erase()</code> function that performs all the work. The rest of this function updates the <code>rb_leftmost</code> cache. If the process-to-remove is the leftmost node, the function invokes <code>rb_next()</code> to find what would be the next node in an in-order traversal. This is what will be the leftmost node when the current leftmost node is removed.</p>
 <h4 id="the-scheduler-entry-point">The Scheduler Entry Point</h4>
-<p>The main entry point into the process schedule is the function <code>schedule()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L3701">kernel/sched.c#L3701</a>). This is the function that the rest of the kernel uses to invoke the process scheduler, deciding which process to run and then running it.</p>
-<p><u><code>schedule()</code> is generic to scheduler classes. It finds the highest priority scheduler class with a runnable process and asks it what to run next.</u> Thus, <code>schedule()</code> is simple. The only important part of the function is its invocation of <code>pick_next_task()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L3670">kernel/sched.c#L3670</a>), which goes through each scheduler class, starting with the highest priority, and selects the highest priority process in the highest priority class:</p>
+<p>The main entry point into the process schedule is the function <code>schedule()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L3698">kernel/sched.c#L3701</a>). This is the function that the rest of the kernel uses to invoke the process scheduler, deciding which process to run and then running it.</p>
+<p><u><code>schedule()</code> is generic to scheduler classes. It finds the highest priority scheduler class with a runnable process and asks it what to run next.</u> Thus, <code>schedule()</code> is simple. The only important part of the function is its invocation of <code>pick_next_task()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L3667">kernel/sched.c#L3670</a>), which goes through each scheduler class, starting with the highest priority, and selects the highest priority process in the highest priority class:</p>
 <div class="codehilite"><pre><span class="cm">/*</span>
 <span class="cm"> * Pick up the highest-prio task:</span>
 <span class="cm"> */</span>
@@ -857,7 +861,7 @@ this sections discusses four components of CFS:</p>
 <p>Note the optimization at the beginning of the function. CFS is the scheduler class for normal processes, and most systems run mostly normal processes, there is a small hack to quickly select the next CFS-provided process if the number of runnable processes is equal to the number of CFS runnable processes (which suggests that all runnable processes are provided by CFS).</p>
 <p>The core of the function is the <code>for()</code> loop, which iterates over each class in priority order, starting with the highest priority class. Each class implements the <code>pick_next_task()</code> function, which returns a pointer to its next runnable process or, if there is not one, <code>NULL</code>.The first class to return a non-<code>NULL</code> value has selected the next runnable process. CFS’s implementation of <code>pick_next_task()</code> calls <code>pick_next_entity()</code>, which in turn calls the <code>__pick_next_entity()</code> function (see <a href="#picking-the-next-task">Picking the Next Task</a> in the previous section).</p>
 <h5 id="fair_sched_class-scheduler-class"><strong><code>fair_sched_class</code> scheduler class</strong> *</h5>
-<p><code>fair_sched_class</code> is a <code>struct sched_class</code> (defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1029">include/linux/sched.h</a>) structure defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_fair.c#L3688">kernel/sched_fair.c#L3688</a>). <code>kernel/sched_fair.c</code> is included by <code>/kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L1936">kernel/sched.c#L1936</a>), so <code>fair_sched_class</code> is avaialble to the <code>pick_next_task</code> function in <code>/kernel/sched.c</code>.</p>
+<p><code>fair_sched_class</code> is a <code>struct sched_class</code> (defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1029">include/linux/sched.h</a>) structure defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L3688">kernel/sched_fair.c#L3688</a>). <code>kernel/sched_fair.c</code> is included by <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L1933">kernel/sched.c#L1936</a>), so <code>fair_sched_class</code> is avaialble to the <code>pick_next_task</code> function in <code>/kernel/sched.c</code>.</p>
 <h4 id="sleeping-and-waking-up">Sleeping and Waking Up</h4>
 <p>Tasks that are sleeping (blocked) are in a special non-runnable state. [p58]</p>
 <p>A task sleeps while it is waiting for some event, which may be:</p>
@@ -909,7 +913,7 @@ this sections discusses four components of CFS:</p>
 <li>After the condition is true, the task sets itself to <code>TASK_RUNNING</code> and removes itself from the wait queue via <code>finish_wait()</code>.</li>
 </ol>
 <p>If the condition occurs before the task goes to sleep, the loop terminates, and the task does not erroneously go to sleep. Note that kernel code often has to perform various other tasks in the body of the loop. For example, it might need to release locks before calling <code>schedule()</code> and reacquire them after or react to other events.</p>
-<p>The function <code>inotify_read()</code> in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/fs/notify/inotify/inotify_user.c#L229">fs/notify/inotify/inotify_user.c</a>, which handles reading from the inotify file descriptor, is a straightforward example of using wait queues:</p>
+<p>The function <code>inotify_read()</code> in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/fs/notify/inotify/inotify_user.c#L229">fs/notify/inotify/inotify_user.c</a>, which handles reading from the inotify file descriptor, is a straightforward example of using wait queues:</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">inotify_read</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
                 <span class="kt">size_t</span> <span class="n">count</span><span class="p">,</span> <span class="kt">loff_t</span> <span class="o">*</span><span class="n">pos</span><span class="p">)</span>
 <span class="p">{</span>
@@ -982,10 +986,10 @@ this sections discusses four components of CFS:</p>
 The figure below depicts the relationship between each scheduler state.</p>
 <p><a href="../figure_4.1.png" title="Figure 4.1 Sleeping and waking up."><img alt="Figure 4.1 Sleeping and waking up." src="../figure_4.1_600.png" /></a></p>
 <h3 id="preemption-and-context-switching">Preemption and Context Switching</h3>
-<p>Context switching, the switching from one runnable task to another, is handled by the <code>context_switch()</code> function defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched.c#L2908">kernel/sched.c</a>. It is called by <code>schedule()</code> when a new process has been selected to run. It does two basic jobs:</p>
+<p>Context switching, the switching from one runnable task to another, is handled by the <code>context_switch()</code> function defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L2905">kernel/sched.c</a>. It is called by <code>schedule()</code> when a new process has been selected to run. It does two basic jobs:</p>
 <ul>
-<li>Calls <code>switch_mm()</code>, declared in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/mmu_context.h"><code>&lt;asm/mmu_context.h&gt;</code></a>, to switch the virtual memory mapping from the previous process’s to that of the new process.</li>
-<li>Calls <code>switch_to()</code>, declared in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/asm-generic/system.h"><code>&lt;asm/system.h&gt;</code></a>, to switch the processor state from the previous process’s to the current’s. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.</li>
+<li>Calls <code>switch_mm()</code>, declared in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/mmu_context.h"><code>&lt;asm/mmu_context.h&gt;</code></a>, to switch the virtual memory mapping from the previous process’s to that of the new process.</li>
+<li>Calls <code>switch_to()</code>, declared in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/system.h"><code>&lt;asm/system.h&gt;</code></a>, to switch the processor state from the previous process’s to the current’s. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.</li>
 </ul>
 <h4 id="the-need_resched-flag">The <code>need_resched</code> flag *</h4>
 <p>The kernel must know when to call <code>schedule()</code>. If it called <code>schedule()</code> only when code explicitly did so, user-space programs could run indefinitely.</p>
@@ -1019,7 +1023,7 @@ The figure below depicts the relationship between each scheduler state.</p>
 </tr>
 </tbody>
 </table>
-<p>The flag is per-process, and not simply global, because it is faster to access a value in the process descriptor (because of the speed of current and high probability of it being cache hot) than a global variable. Historically, the flag was global before the 2.2 kernel. In 2.2 and 2.4, the flag was an int inside the <code>task_struct</code>. In 2.6, it was moved into a single bit of a special flag variable inside the <code>thread_info</code> structure (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h#L26</a>).</p>
+<p>The flag is per-process, and not simply global, because it is faster to access a value in the process descriptor (because of the speed of current and high probability of it being cache hot) than a global variable. Historically, the flag was global before the 2.2 kernel. In 2.2 and 2.4, the flag was an int inside the <code>task_struct</code>. In 2.6, it was moved into a single bit of a special flag variable inside the <code>thread_info</code> structure (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h#L26</a>).</p>
 <h4 id="user-preemption">User Preemption</h4>
 <p>User preemption occurs when the kernel is about to return to user-space, <code>need_resched</code> is set, and therefore, the scheduler is invoked. If the kernel is returning to user-space, it knows it is in a safe quiescent state. In other words, if it is safe to continue executing the current task, it is also safe to pick a new task to execute.</p>
 <p>Whenever the kernel is preparing to return to user-space either on return from an interrupt or after a system call, the value of <code>need_resched</code> is checked. If it is set, the scheduler is invoked to select a new (more fit) process to execute. Both the return paths for return from interrupt and return from system call are architecture-dependent and typically implemented in assembly in <code>entry.S</code> (which, aside from kernel entry code, also contains kernel exit code).</p>
@@ -1034,7 +1038,7 @@ scheduled cooperatively, not preemptively. Kernel code runs until it finishes (r
 <p>The Linux kernel (since 2.6), unlike most other Unix variants and many other operating systems, is a fully preemptive kernel. It is possible to preempt a task at any point, so long as the kernel is in a state in which it is safe to reschedule.</p>
 <p>The kernel can preempt a task running in the kernel so long as it does not hold a lock. Locks are used as markers of regions of non-preemptibility. <u>Because the kernel is SMP-safe, if a lock is not held, the current code is reentrant and capable of being preempted.</u></p>
 <h5 id="the-preemption-counter-preempt_count"><strong>The preemption counter <code>preempt_count</code></strong> *</h5>
-<p>To support kernel preemption, preemption counter, <code>preempt_count</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L32">arch/x86/include/asm/thread_info.h#L32</a>), was added to each process’s <code>thread_info</code>. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released.When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of <code>need_resched</code> and <code>preempt_count</code>:</p>
+<p>To support kernel preemption, preemption counter, <code>preempt_count</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h#L32</a>), was added to each process’s <code>thread_info</code>. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released.When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of <code>need_resched</code> and <code>preempt_count</code>:</p>
 <ul>
 <li>If <code>need_resched</code> is set and <code>preempt_count</code> is zero, then a more important task is runnable, and it is safe to preempt. Thus, the scheduler is invoked.</li>
 <li>If <code>preempt_count</code> is nonzero, a lock is held, and it is unsafe to reschedule. In that case, the interrupt returns as usual to the currently executing task.</li>
@@ -1061,7 +1065,7 @@ scheduled cooperatively, not preemptively. Kernel code runs until it finishes (r
 <li><code>SCHED_RR</code>
 The normal, not real-time scheduling policy is <code>SCHED_NORMAL</code>.</li>
 </ul>
-<p>Via the <strong>scheduling classes</strong> framework, these real-time policies are managed not by the Completely Fair Scheduler, but by a special real-time scheduler, defined in <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/kernel/sched_rt.c">kernel/sched_rt.c</a>.</p>
+<p>Via the <strong>scheduling classes</strong> framework, these real-time policies are managed not by the Completely Fair Scheduler, but by a special real-time scheduler, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_rt.c">kernel/sched_rt.c</a>.</p>
 <h4 id="the-sched_fifo-policy">The <code>SCHED_FIFO</code> policy *</h4>
 <p><code>SCHED_FIFO</code> implements a simple first-in, first-out scheduling algorithm without timeslices.</p>
 <ul>
@@ -1150,7 +1154,7 @@ The normal, not real-time scheduling policy is <code>SCHED_NORMAL</code>.</li>
 <h4 id="scheduling-policy-and-priority-related-system-calls">Scheduling Policy and Priority-Related System Calls</h4>
 <ul>
 <li>The <code>sched_setscheduler()</code> and <code>sched_getscheduler()</code> system calls set and get a given process’s scheduling policy and real-time priority. The major work  of these functions is merely to read or write the <code>policy</code> and <code>rt_priority</code> values in the process’s <code>task_struct</code>. [p66]</li>
-<li>The <code>sched_setparam()</code> and <code>sched_getparam()</code> system calls set and get a process’s real-time priority. These calls merely encode <code>rt_priority</code> in a special <code>sched_param</code> structure (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L46">include/linux/sched.h#L46</a>).</li>
+<li>The <code>sched_setparam()</code> and <code>sched_getparam()</code> system calls set and get a process’s real-time priority. These calls merely encode <code>rt_priority</code> in a special <code>sched_param</code> structure (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L46">include/linux/sched.h#L46</a>).</li>
 <li>The calls <code>sched_get_priority_max()</code> and <code>sched_get_priority_min()</code> return the maximum and minimum priorities, respectively, for a given scheduling policy. The maximum priority for the real-time policies is <code>MAX_USER_RT_PRIO</code> minus one; the minimum is one.</li>
 <li>For normal tasks, the <code>nice()</code> function increments the given process’s static priority by the given amount.<ul>
 <li>Only root can provide a negative value, which lowers the nice value and increase the priority.</li>
@@ -1160,7 +1164,7 @@ The normal, not real-time scheduling policy is <code>SCHED_NORMAL</code>.</li>
 </ul>
 <h4 id="processor-affinity-system-calls">Processor Affinity System Calls</h4>
 <p>The Linux scheduler enforces hard processor affinity, which means that, aside from providing soft or natural affinity by attempting to keep processes on the same processor, the scheduler enables a user to enforce "a task must remain on this subset of the available processors no matter what".</p>
-<p>TThe hard affinity is stored as a bitmask in the task’s <code>task_struct</code> as <code>cpus_allowed</code> (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1210">include/linux/sched.h#L1210</a>). The bitmask contains one bit per possible processor on the system. By default, all bits are set and, therefore, a process is potentially runnable on any processor. The following system calls set and get the bitmask:</p>
+<p>TThe hard affinity is stored as a bitmask in the task’s <code>task_struct</code> as <code>cpus_allowed</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1210">include/linux/sched.h#L1210</a>). The bitmask contains one bit per possible processor on the system. By default, all bits are set and, therefore, a process is potentially runnable on any processor. The following system calls set and get the bitmask:</p>
 <ul>
 <li><code>sched_setaffinity()</code> sets a different bitmask of any combination of one or more bits.</li>
 <li><code>sched_getaffinity()</code> returns the current <code>cpus_allowed</code> bitmask.</li>
