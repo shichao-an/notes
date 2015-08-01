@@ -121,3 +121,13 @@ It is not possible for user-space applications to execute kernel code directly. 
 User-space applications signal the kernel that they want to execute a system call and have the system switch to kernel mode, where the system call can be executed in kernel-space by the kernel on behalf of the application. This mechanism is software interrupt: incur an exception, and the system will switch to kernel mode and execute the **exception handler**. The exception handler in this case is actually the **system call handler**.
 
 The defined software interrupt on x86 is interrupt number 128, which is incurred via the `int $0x80` instruction. It triggers a switch to kernel mode and the execution of exception vector 128, which is the system call handler. The system call handler is the aptly named function `system_call()`. It is architecture-dependent; on x86-64 it is implemented in assembly in `entry_64.S` ([arch/x86/kernel/entry_64.S](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S)).
+
+Recently, x86 processors added a feature known as *sysenter*, which provides a faster, more specialized way of trapping into a kernel to execute a system call than using the `int` interrupt instruction. Support for this feature was quickly added to the kernel. Regardless of how the system call handler is invoked, however, the important notion is that somehow user-space causes an exception or trap to enter the kernel.
+
+#### Denoting the Correct System Call
+
+For more details of Linux system call from the assembly perspective, see [Interfacing with Linux](../asm/index.md#interfacing-with-linux-system-calls).
+
+Simply entering kernel-space alone is not sufficient: the system call number must be passed into the kernel.
+
+On x86, the syscall number is passed to the kernel via the `eax` register.

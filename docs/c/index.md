@@ -1,5 +1,5 @@
-## C
-> If you think like a computer, writing C actually makes sense. 
+### **C**
+> If you think like a computer, writing C actually makes sense.
 > <small> Linus Torvalds </small>
 
 ### First-class ADT
@@ -41,7 +41,7 @@ The First-class ADT pattern will eliminate dependency problems. Thuis pattern pr
 
 #### Incomplete Types
 
-The C standard (C99) allows us to declare objects of incomplete types in a context where their sizes aren’t needed. 
+The C standard (C99) allows us to declare objects of incomplete types in a context where their sizes aren’t needed.
 
 In the following code:
 
@@ -57,7 +57,7 @@ Clients only use a handle, which is declared as a pointer, to the ADT. Copies of
 
 #### Dependencies managed
 
-Internals of the data structure are encapsulated in the implementation and clients cannot access them. 
+Internals of the data structure are encapsulated in the implementation and clients cannot access them.
 
 #### Consequences
 Pros:

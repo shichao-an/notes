@@ -563,7 +563,7 @@ pid_t waitpid (pid_t pid, int *statloc, int options);
 
 `wait` and `waitpid` both return two values: the return value of the function is the process ID of the terminated child, and the termination status of the child (an integer) is returned through the statloc pointer.
 
-There are three macros that we can call that examine the termination status (see [APUE](/apue/ch8/#wait-and-waitpid-functions)):
+There are three macros that we can call that examine the termination status (see [APUE](../apue/ch8.md#wait-and-waitpid-functions)):
 
 * `WIFEXITED`: tells if the child terminated normally
 * `WIFSIGNALED`: tells if the child was killed by a signal
