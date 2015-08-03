@@ -294,12 +294,191 @@
         <li class="main active"><a href="#chapter-4-elementary-tcp-sockets">Chapter 4. Elementary TCP Sockets</a></li>
         
     
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#socket-function">socket Function</a></li>
+        
+            <li><a href="#af_xxx-versus-pf_xxx">AF_xxx Versus PF_xxx</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-4-elementary-tcp-sockets"><strong>Chapter 4. Elementary TCP Sockets</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>This chapter describes the elementary socket functions required to write a complete TCP client and server, along with concurrent servers, a common Unix technique for providing concurrency when numerous clients are connected to the same server at the same time. Each client connection causes the server to fork a new process just for that client. In this chapter, we consider only the one-process-per-client model using <code>fork</code>.</p>
+<p>The figure below shows a timeline of the typical scenario that takes place between a TCP client and server. First, the server is started, then sometime later, a client is started that connects to the server. We assume that the client sends a request to the server, the server processes the request, and the server sends a reply back to the client. This continues until the client closes its end of the connection, which sends an end-of-file notification to the server. The server then closes its end of the connection and either terminates or waits for a new client connection.</p>
+<p><a href="../figure_4.1.png" title="Figure 4.1. Socket functions for elementary TCP client/server."><img alt="Figure 4.1. Socket functions for elementary TCP client/server." src="../figure_4.1.png" /></a></p>
+<h3 id="socket-function"><code>socket</code> Function</h3>
+<p>To perform network I/O, the first thing a process must do is call the <code>socket</code> function, specifying the type of communication protocol desired (TCP using IPv4, UDP using IPv6, Unix domain stream protocol, etc.).</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/socket.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">socket</span> <span class="p">(</span><span class="kt">int</span> <span class="n">family</span><span class="p">,</span> <span class="kt">int</span> <span class="n">type</span><span class="p">,</span> <span class="kt">int</span> <span class="n">protocol</span><span class="p">);</span>
+
+<span class="cm">/* Returns: non-negative descriptor if OK, -1 on error */</span>
+</pre></div>
+
+
+<p>Arguments:</p>
+<ul>
+<li>
+<p><em>family</em> specifies the protocol family and is one of the constants in the table below. This argument is often referred to as <em>domain</em> instead of <em>family</em>.</p>
+<table>
+<thead>
+<tr>
+<th><em>family</em></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AF_INET</code></td>
+<td>IPv4 protocols</td>
+</tr>
+<tr>
+<td><code>AF_INET6</code></td>
+<td>IPv6 protocols</td>
+</tr>
+<tr>
+<td><code>AF_LOCAL</code></td>
+<td>Unix domain protocols (<a href="ch15.md">Chapter 15</a>)</td>
+</tr>
+<tr>
+<td><code>AF_ROUTE</code></td>
+<td>Routing sockets (<a href="ch18.md">Chapter 18</a>)</td>
+</tr>
+<tr>
+<td><code>AF_KEY</code></td>
+<td>Key socket (<a href="ch19.md">Chapter 19</a>)</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>The socket <em>type</em> is one of the constants shown in table below:</p>
+<table>
+<thead>
+<tr>
+<th><em>type</em></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SOCK_STREAM</code></td>
+<td>stream socket</td>
+</tr>
+<tr>
+<td><code>SOCK_DGRAM</code></td>
+<td>datagram socket</td>
+</tr>
+<tr>
+<td><code>SOCK_SEQPACKET</code></td>
+<td>sequenced packet socket</td>
+</tr>
+<tr>
+<td><code>SOCK_RAW</code></td>
+<td>raw socket</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>The <em>protocol</em> argument to the <code>socket</code> function should be set to the specific protocol type found in the table below, or 0 to select the system's default for the given combination of <em>family</em> and <em>type</em>.</p>
+<table>
+<thead>
+<tr>
+<th><em>protocol</em></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IPPROTO_TCP</code></td>
+<td>TCP transport protocol</td>
+</tr>
+<tr>
+<td><code>IPPROTO_UDP</code></td>
+<td>UDP transport protocol</td>
+</tr>
+<tr>
+<td><code>IPPROTO_SCTP</code></td>
+<td>SCTP transport protocol</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+<p>Not all combinations of socket <em>family</em> and <em>type</em> are valid. The table below shows the valid combinations, along with the actual protocols that are valid for each pair. The boxes marked "Yes" are valid but do not have handy acronyms. The blank boxes are not supported.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td><code>AF_INET</code></td>
+<td><code>AF_INET6</code></td>
+<td><code>AF_LOCAL</code></td>
+<td><code>AF_ROUTE</code></td>
+<td><code>AF_KEY</code></td>
+</tr>
+<tr>
+<td><code>SOCK_STREAM</code></td>
+<td>TCP/SCTP</td>
+<td>TCP/SCTP</td>
+<td>Yes</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SOCK_DGRAM</code></td>
+<td>UDP</td>
+<td>UDP</td>
+<td>Yes</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SOCK_SEQPACKET</code></td>
+<td>SCTP</td>
+<td>SCTP</td>
+<td>Yes</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SOCK_RAW</code></td>
+<td>IPv4</td>
+<td>IPv6</td>
+<td></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>Notes:</p>
+<ul>
+<li>You may also encounter the corresponding <code>PF_</code><em>xxx</em> constant as the first argument to socket. This is discussed in the next section in this Chapter.</li>
+<li>You may encounter <code>AF_UNIX</code> (the historical Unix name) instead of <code>AF_LOCAL</code> (the POSIX name). This is discussed in <a href="ch15.md">Chapter 15</a>.</li>
+<li>Linux supports a new socket type, <code>SOCK_PACKET</code>, that provides access to the datalink, similar to BPF and DLPI (<a href="../ch2/#the-big-picture">Section 2.2</a>). This is discussed in <a href="ch29.md">Chapter 29</a></li>
+<li>The key socket, <code>AF_KEY</code>, is newer than the others. It provides support for cryptographic security. Similar to the way that a routing socket (<code>AF_ROUTE</code>) is an interface to the kernel's routing table, the key socket is an interface into the kernel's key table. This is discussed in <a href="ch19.md">Chapter 19</a>.</li>
+</ul>
+<p>On success, the socket function returns a small non-negative integer value, similar to a file descriptor. We call this a <strong>socket descriptor</strong>, or a <em>sockfd</em>. To obtain this socket descriptor, all we have specified is a protocol family (IPv4, IPv6, or Unix) and the socket type (stream, datagram, or raw). We have not yet specified either the local protocol address or the foreign protocol address.</p>
+<h4 id="af_xxx-versus-pf_xxx"><code>AF_</code><em>xxx</em> Versus <code>PF_</code><em>xxx</em></h4>
+<p>The "<code>AF_</code>" prefix stands for "address family" and the "<code>PF_</code>" prefix stands for "protocol family." Historically, the intent was that a single protocol family might support multiple address families and that the <code>PF_</code> value was used to create the socket and the <code>AF_</code> value was used in socket address structures. But in actuality, a protocol family supporting multiple address families has never been supported and the <code>&lt;sys/socket.h&gt;</code> header defines the <code>PF_</code> value for a given protocol to be equal to the <code>AF_</code> value for that protocol. While there is no guarantee that this equality between the two will always be true, should anyone change this for existing protocols, lots of existing code would break.</p>
+<p>To conform to existing coding practice, we use only the <code>AF_</code> constants in this text, although you may encounter the <code>PF_</code> value, mainly in calls to <code>socket</code>.</p>
+<p>[p98-99]</p>
             </div>
         </div>
 
