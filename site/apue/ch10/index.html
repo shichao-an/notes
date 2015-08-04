@@ -369,6 +369,13 @@
     
         <li class="main "><a href="#sigaction-function">sigaction Function</a></li>
         
+            <li><a href="#example-signal-function">Example: signal Function</a></li>
+        
+            <li><a href="#example-signal_intr-function">Example: signal_intr Function</a></li>
+        
+    
+        <li class="main "><a href="#sigsetjmp-and-siglongjmp-functions">sigsetjmp and siglongjmp Functions</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -2196,6 +2203,97 @@ from the table because the signal may have occurred while the <code>main</code> 
 </tr>
 </tbody>
 </table>
+<p>Normally, the signal handler is called as:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">handler</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">);</span>
+</pre></div>
+
+
+<p>If the <code>SA_SIGINFO</code> flag is set, the signal handler is called as:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">handler</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="kt">siginfo_t</span> <span class="o">*</span><span class="n">info</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">context</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The <code>siginfo</code> structure contains information about why the signal was generated. All POSIX.1-compliant implementations must include at least the <code>si_signo</code> and <code>si_code</code> members. Additionally, implementations that are XSI compliant contain at least the following fields:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">siginfo</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">si_signo</span><span class="p">;</span> <span class="cm">/* signal number */</span>
+    <span class="kt">int</span> <span class="n">si_errno</span><span class="p">;</span> <span class="cm">/* if nonzero, errno value from errno.h */</span>
+    <span class="kt">int</span> <span class="n">si_code</span><span class="p">;</span> <span class="cm">/* additional info (depends on signal) */</span>
+    <span class="kt">pid_t</span> <span class="n">si_pid</span><span class="p">;</span> <span class="cm">/* sending process ID */</span>
+    <span class="kt">uid_t</span> <span class="n">si_uid</span><span class="p">;</span> <span class="cm">/* sending process real user ID */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">si_addr</span><span class="p">;</span> <span class="cm">/* address that caused the fault */</span>
+    <span class="kt">int</span> <span class="n">si_status</span><span class="p">;</span> <span class="cm">/* exit value or signal number */</span>
+    <span class="k">union</span> <span class="n">sigval</span> <span class="n">si_value</span><span class="p">;</span> <span class="cm">/* application-specific value */</span>
+    <span class="cm">/* possibly other fields also */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The <code>sigval</code> union contains the following fields:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">sival_int</span><span class="p">;</span>
+<span class="kt">void</span> <span class="o">*</span><span class="n">sival_ptr</span><span class="p">;</span>
+</pre></div>
+
+
+<p>Applications pass an integer value in <code>si_value.sival_int</code> or pass a pointer value in <code>si_value.sival_ptr</code> when delivering signals.</p>
+<p>If the signal is <code>SIGCHLD</code>, then the <code>si_pid</code>, <code>si_status</code>, and <code>si_uid</code> fields will be set.
+If the signal is <code>SIGBUS</code>, <code>SIGILL</code>, <code>SIGFPE</code>, or <code>SIGSEGV</code>, then the <code>si_addr</code> contains the address responsible for the fault.
+The <code>si_errno</code> field contains the error number corresponding to the condition that caused the signal to be generated.</p>
+<p>The table shows values of <code>si_code</code> for various signals, as defined by the Single UNIX Specification:</p>
+<p><a href="../figure_10.17.png" title="Figure 10.17 siginfo_t code values"><img alt="Figure 10.17 siginfo_t code values" src="../figure_10.17.png" /></a></p>
+<p>The <em>context</em> argument to the signal handler is a typeless pointer that can be cast to a <code>ucontext_t</code> structure identifying the process context at the time of signal delivery. This structure contains at least the following fields:</p>
+<div class="codehilite"><pre><span class="kt">ucontext_t</span> <span class="o">*</span><span class="n">uc_link</span><span class="p">;</span>    <span class="cm">/* pointer to context resumed when */</span>
+                        <span class="cm">/* this context returns */</span>
+<span class="kt">sigset_t</span> <span class="n">uc_sigmask</span><span class="p">;</span>    <span class="cm">/* signals blocked when this context */</span>
+                        <span class="cm">/* is active */</span>
+<span class="kt">stack_t</span> <span class="n">uc_stack</span><span class="p">;</span>       <span class="cm">/* stack used by this context */</span>
+<span class="kt">mcontext_t</span> <span class="n">uc_mcontext</span><span class="p">;</span> <span class="cm">/* machine-specific representation of */</span>
+                        <span class="cm">/* saved context */</span>
+</pre></div>
+
+
+<p>The <code>uc_stack</code> field describes the stack used by the current context. It contains at least the following members:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span><span class="n">ss_sp</span><span class="p">;</span> <span class="cm">/* stack base or pointer */</span>
+<span class="kt">size_t</span> <span class="n">ss_size</span><span class="p">;</span> <span class="cm">/* stack size */</span>
+<span class="kt">int</span> <span class="n">ss_flags</span><span class="p">;</span> <span class="cm">/* flags */</span>
+</pre></div>
+
+
+<p>When an implementation supports the real-time signal extensions, signal handlers established with the <code>SA_SIGINFO</code> flag will result in signals being queued reliably. A separate range of reserved signal numbers is available for real-time application use. Applications can pass information along with the signal by using the sigqueue function (<a href="../sigqueue-function">Section 10.20</a>).</p>
+<h4 id="example-signal-function">Example: <code>signal</code> Function</h4>
+<p>The following is the implementation of the <code>signal</code> function using <code>sigaction</code>. [p354]</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/signal.c">lib/signal.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="cm">/* Reliable version of signal(), using POSIX sigaction().  */</span>
+<span class="n">Sigfunc</span> <span class="o">*</span>
+<span class="nf">signal</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="n">Sigfunc</span> <span class="o">*</span><span class="n">func</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sigaction</span>    <span class="n">act</span><span class="p">,</span> <span class="n">oact</span><span class="p">;</span>
+
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">act</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signo</span> <span class="o">==</span> <span class="n">SIGALRM</span><span class="p">)</span> <span class="p">{</span>
+<span class="cp">#ifdef  SA_INTERRUPT</span>
+        <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">|=</span> <span class="n">SA_INTERRUPT</span><span class="p">;</span>
+<span class="cp">#endif</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">|=</span> <span class="n">SA_RESTART</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">signo</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">act</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oact</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">SIG_ERR</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">oact</span><span class="p">.</span><span class="n">sa_handler</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>We must use <code>sigemptyset</code> to initialize the <code>sa_mask</code> member of the structure since we’re not guaranteed that <code>act.sa_mask = 0</code> does the same thing.</li>
+<li>We intentionally set the <code>SA_RESTART</code> flag for all signals other than <code>SIGALRM</code>, so that any system call interrupted by these other signals will be automatically restarted. The reason we don’t want SIGALRM restarted is to allow us to set a timeout for I/O operations. (<a href="#implementing-a-timeout-using-alarm">Figure 10.10</a>)</li>
+<li>Some older systems, such as SunOS, define the <code>SA_INTERRUPT</code> flag. These systems restart interrupted system calls by default, so specifying this flag causes system calls to be interrupted. Linux defines the <code>SA_INTERRUPT</code> flag for compatibility with applications that use it, but by default does not restart system calls when the signal handler is installed with <code>sigaction</code>. The Single UNIX Specification specifies that the <code>sigaction</code> function not restart interrupted system calls unless the <code>SA_RESTART</code> flag is specified.</li>
+</ul>
+<h4 id="example-signal_intr-function">Example: <code>signal_intr</code> Function</h4>
+<h3 id="sigsetjmp-and-siglongjmp-functions"><code>sigsetjmp</code> and <code>siglongjmp</code> Functions</h3>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
