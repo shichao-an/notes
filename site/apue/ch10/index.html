@@ -2104,6 +2104,98 @@ from the table because the signal may have occurred while the <code>main</code> 
 </pre></div>
 
 
+<p>If the <code>sa_handler</code> field contains the address of a signal-catching function (rather than <code>SIG_IGN</code> or <code>SIG_DFL</code>), then the <code>sa_mask</code> field specifies a set of signals that are added to the signal mask of the process before the signal-catching function is called. If and when the signal-catching function returns, the signal mask of the process is reset to its previous value. This enables us to block certain signals whenever a signal handler is invoked. <u>The operating system includes the signal being delivered in the signal mask when the handler is invoked. Hence, we are guaranteed that whenever we are processing a given signal, another occurrence of that same signal is blocked until we’re finished processing the first occurrence.</u> Additional occurrences of the same signal are usually not queued (<a href="#reliable-signal-terminology-and-semantics">Section 10.8</a>). If the signal occurs five times while it is blocked, when we unblock the signal, the signal-handling function for that signal will usually be invoked only one time.</p>
+<p>Once we install an action for a given signal, that action remains installed until we explicitly change it by calling <code>sigaction</code>. [p350]</p>
+<p>The <code>sa_flags</code> field of the act structure specifies various options for the handling of this signal. The table below details the meaning of these options when set.</p>
+<p>The <code>sa_sigaction</code> field is an alternative signal handler used when the <code>SA_SIGINFO</code> flag is used with <code>sigaction</code>. Implementations might use the same storage for both the <code>sa_sigaction</code> field and the <code>sa_handler</code> field, so applications can use only one of these fields at a time.</p>
+<p>Option flags (<code>sa_flags</code>) for the handling of each signal:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>SUS</th>
+<th>FreeBSD</th>
+<th>Linux</th>
+<th>Mac OS X</th>
+<th>Solaris</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SA_INTERRUPT</code></td>
+<td></td>
+<td></td>
+<td>x</td>
+<td></td>
+<td></td>
+<td>System calls interrupted by this signal are not automatically restarted (the XSI default for <code>sigaction</code>). See <a href="#interrupted-system-calls">Section 10.5</a>.</td>
+</tr>
+<tr>
+<td><code>SA_NOCLDSTOP</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>If <em>signo</em> is <code>SIGCHLD</code>, do not generate this signal when a child process stops (job control). This signal is still generated, of course, when a child terminates (but see the <code>SA_NOCLDWAIT</code> option below). When the XSI option is supported, <code>SIGCHLD</code> won’t be sent when a stopped child continues if this flag is set.</td>
+</tr>
+<tr>
+<td><code>SA_NOCLDWAIT</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>If <em>signo</em> is <code>SIGCHLD</code>, this option prevents the system from creating zombie processes when children of the calling process terminate. If it subsequently calls <code>wait</code>, the calling process blocks until all its child processes have terminated and then returns −1 with <code>errno</code> set to <code>ECHILD</code>. (<a href="#sigcld-semantics">Section 10.7</a>)</td>
+</tr>
+<tr>
+<td><code>SA_NODEFER</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>When this signal is caught, the signal is not automatically blocked by the system while the signal-catching function executes (unless the signal is also included in <code>sa_mask</code>). Note that this type of operation corresponds to the earlier unreliable signals.</td>
+</tr>
+<tr>
+<td><code>SA_ONSTACK</code></td>
+<td>XSI</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>If an alternative stack has been declared with <code>sigaltstack(2)</code>, this signal is delivered to the process on the alternative stack.</td>
+</tr>
+<tr>
+<td><code>SA_RESETHAND</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>The disposition for this signal is reset to <code>SIG_DFL</code>, and the <code>SA_SIGINFO</code> flag is cleared on entry to the signal-catching function. Note that this type of operation corresponds to the earlier unreliable signals. The disposition for the two signals <code>SIGILL</code> and <code>SIGTRAP</code> can’t be reset automatically, however. Setting this flag can optionally cause sigaction to behave as if <code>SA_NODEFER</code> is also set.</td>
+</tr>
+<tr>
+<td><code>SA_RESTART</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>System calls interrupted by this signal are automatically restarted. (<a href="#interrupted-system-calls">Section 10.5</a>)</td>
+</tr>
+<tr>
+<td><code>SA_SIGINFO</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>This option provides additional information to a signal handler: a pointer to a <code>siginfo</code> structure and a pointer to an identifier for the process context.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>

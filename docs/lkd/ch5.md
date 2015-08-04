@@ -130,4 +130,31 @@ For more details of Linux system call from the assembly perspective, see [Interf
 
 Simply entering kernel-space alone is not sufficient: the system call number must be passed into the kernel.
 
-On x86, the syscall number is passed to the kernel via the `eax` register.
+On x86, the syscall number is passed to the kernel via the `eax` register:
+
+* Before causing the trap into the kernel, user-space sticks in `eax` the number corresponding to the desired system call.
+* The system call handler then reads the value from `eax`
+
+The `system_call()` function checks the validity of the given system call number by comparing it to `NR_syscalls`. If it is larger than or equal to `NR_syscalls`, the function returns -`ENOSYS`. Otherwise, the specified system call is invoked:
+
+<small>[arch/x86/kernel/entry_64.S#L487](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S#L487)</small>
+
+```gas
+call *sys_call_table(,%rax,8)
+```
+
+Because each element in the system call table is 64 bits (8 bytes), the kernel multiplies the given system call number by eight to arrive at its location in the system call table. On x86-32, the code is similar, with the 8 replaced by 4.
+
+[![Figure 5.2 Invoking the system call handler and executing a system call.](figure_5.2.png)](figure_5.2.png "Figure 5.2 Invoking the system call handler and executing a system call.")
+
+#### Parameter Passing
+
+In addition to the system call number, most syscalls require that one or more parameters be passed to them. User-space must relay the parameters to the kernel during the trap. The easiest way to do this is similar to how the syscall number is passed: The parameters are stored in registers. On x86-32, the registers `ebx`, `ecx`, `edx`, `esi`, and `edi` contain, in order, the first five arguments. In the unlikely case of six or more arguments, a single register is used to hold a pointer to user-space where all the parameters are stored.
+
+The return value is sent to user-space also via register. On x86, it is written into the `eax` register.
+
+### System Call Implementation
+
+The actual implementation of a system call in Linux does not need to be concerned with the behavior of the system call handler. Thus, adding a new system call to Linux is relatively easy. The hard work lies in designing and implementing the system call; registering it with the kernel is simple.
+
+#### Implementing System Calls

@@ -317,6 +317,13 @@
         
             <li><a href="#denoting-the-correct-system-call">Denoting the Correct System Call</a></li>
         
+            <li><a href="#parameter-passing">Parameter Passing</a></li>
+        
+    
+        <li class="main "><a href="#system-call-implementation">System Call Implementation</a></li>
+        
+            <li><a href="#implementing-system-calls">Implementing System Calls</a></li>
+        
     
     </ul>
 </div></div>
@@ -428,7 +435,25 @@
 <h4 id="denoting-the-correct-system-call">Denoting the Correct System Call</h4>
 <p>For more details of Linux system call from the assembly perspective, see <a href="../../asm/#interfacing-with-linux-system-calls">Interfacing with Linux</a>.</p>
 <p>Simply entering kernel-space alone is not sufficient: the system call number must be passed into the kernel.</p>
-<p>On x86, the syscall number is passed to the kernel via the <code>eax</code> register.</p>
+<p>On x86, the syscall number is passed to the kernel via the <code>eax</code> register:</p>
+<ul>
+<li>Before causing the trap into the kernel, user-space sticks in <code>eax</code> the number corresponding to the desired system call.</li>
+<li>The system call handler then reads the value from <code>eax</code></li>
+</ul>
+<p>The <code>system_call()</code> function checks the validity of the given system call number by comparing it to <code>NR_syscalls</code>. If it is larger than or equal to <code>NR_syscalls</code>, the function returns -<code>ENOSYS</code>. Otherwise, the specified system call is invoked:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S#L487">arch/x86/kernel/entry_64.S#L487</a></small></p>
+<div class="codehilite"><pre><span class="nf">call</span> <span class="p">*</span><span class="no">sys_call_table</span><span class="p">(,</span><span class="nv">%rax</span><span class="p">,</span><span class="mi">8</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Because each element in the system call table is 64 bits (8 bytes), the kernel multiplies the given system call number by eight to arrive at its location in the system call table. On x86-32, the code is similar, with the 8 replaced by 4.</p>
+<p><a href="../figure_5.2.png" title="Figure 5.2 Invoking the system call handler and executing a system call."><img alt="Figure 5.2 Invoking the system call handler and executing a system call." src="../figure_5.2.png" /></a></p>
+<h4 id="parameter-passing">Parameter Passing</h4>
+<p>In addition to the system call number, most syscalls require that one or more parameters be passed to them. User-space must relay the parameters to the kernel during the trap. The easiest way to do this is similar to how the syscall number is passed: The parameters are stored in registers. On x86-32, the registers <code>ebx</code>, <code>ecx</code>, <code>edx</code>, <code>esi</code>, and <code>edi</code> contain, in order, the first five arguments. In the unlikely case of six or more arguments, a single register is used to hold a pointer to user-space where all the parameters are stored.</p>
+<p>The return value is sent to user-space also via register. On x86, it is written into the <code>eax</code> register.</p>
+<h3 id="system-call-implementation">System Call Implementation</h3>
+<p>The actual implementation of a system call in Linux does not need to be concerned with the behavior of the system call handler. Thus, adding a new system call to Linux is relatively easy. The hard work lies in designing and implementing the system call; registering it with the kernel is simple.</p>
+<h4 id="implementing-system-calls">Implementing System Calls</h4>
             </div>
         </div>
 
