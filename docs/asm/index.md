@@ -774,7 +774,7 @@ msg: .ascii "Hello World\n"
 
 ##### **`int 0x80`**
 
-As defined in `arch/x86/include/asm/unistd_32.h`, the syscall numbers for write and _exit are:
+As defined in `arch/x86/include/asm/unistd_32.h`, the syscall numbers for `write` and `_exit` are:
 
 ```c
 #define __NR_exit 1
