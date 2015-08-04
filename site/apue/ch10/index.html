@@ -356,6 +356,19 @@
     
         <li class="main "><a href="#signal-sets">Signal Sets</a></li>
         
+            <li><a href="#implementation-of-signal-sets">Implementation of signal sets</a></li>
+        
+    
+        <li class="main "><a href="#sigprocmask-function">sigprocmask Function</a></li>
+        
+    
+        <li class="main "><a href="#sigpending-function">sigpending Function</a></li>
+        
+            <li><a href="#example-of-sigpending-and-other-signal-features">Example of sigpending and other signal features</a></li>
+        
+    
+        <li class="main "><a href="#sigaction-function">sigaction Function</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1826,6 +1839,271 @@ from the table because the signal may have occurred while the <code>main</code> 
 <p>This version works as expected, regardless of whether the system restarts interrupted system calls. However, we still have the problem of interactions with other signal handlers, <a href="#sleep2s-interaction-with-other-signals">as described previously</a>.</p>
 <p>If we want to set a time limit on an I/O operation, we need to use <code>longjmp</code>, as shown previously, while recognizing its possible interaction with other signal handlers. Another option is to use the <code>select</code> or <code>poll</code> functions described in <a href="../io-multiplexing">Section 14.4</a>.</p>
 <h3 id="signal-sets">Signal Sets</h3>
+<p>A <strong>signal set</strong> is a data type to represent multiple signals. This data type is used with functions like <code>sigprocmask</code> to tell the kernel not to allow any of the signals in the set to occur. As mentioned earlier, the number of different signals can exceed the number of bits in an integer, so in general we can’t use an integer to represent the set with one bit per signal.</p>
+<p>POSIX.1 defines the data type <code>sigset_t</code> to contain a signal set and the following five functions to manipulate signal sets.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">sigemptyset</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">sigfillset</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">sigaddset</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">sigdelset</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">);</span>
+
+<span class="cm">/* All four return: 0 if OK, −1 on error */</span>
+
+<span class="kt">int</span> <span class="nf">sigismember</span><span class="p">(</span><span class="k">const</span> <span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">);</span>
+<span class="cm">/* Returns: 1 if true, 0 if false, −1 on error */</span>
+</pre></div>
+
+
+<ul>
+<li><code>sigemptyset</code> initializes the signal set pointed to by <em>set</em> so that all signals are excluded.</li>
+<li><code>sigfillset</code> initializes the signal set so that all signals are included.</li>
+<li><code>sigaddset</code> adds a single signal to an existing set.</li>
+<li><code>sigdelset</code> removes a single signal from a set.</li>
+</ul>
+<p>All applications have to call either <code>sigemptyset</code> or <code>sigfillset</code> once for each signal set, before using the signal set, because we cannot assume that the C initialization for external and static variables (0) corresponds to the implementation of signal sets on a given system.</p>
+<p>In all the functions that take a signal set as an argument, we always pass the address of the signal set as the argument.</p>
+<h4 id="implementation-of-signal-sets">Implementation of signal sets</h4>
+<p>If the implementation has fewer signals than bits in an integer,asignal set can be implemented using one bit per signal. This section assumes that an implementation has 31 signals and 32-bit integers. The <code>sigemptyset</code> function zeros the integer, and the <code>sigfillset</code> function turns on all the bits in the integer. These two functions can be implemented as macros in the <code>&lt;signal.h&gt;</code> header:</p>
+<div class="codehilite"><pre><span class="cp">#define sigemptyset(ptr) (*(ptr) = 0)</span>
+<span class="cp">#define sigfillset(ptr) (*(ptr) = ~(sigset_t)0, 0)</span>
+</pre></div>
+
+
+<p>Note that <u><code>sigfillset</code> must return 0, in addition to setting all the bits on in the signal set, so we use C’s comma operator, which returns the value after the comma as the value of the expression.</u></p>
+<p>Using this implementation, <code>sigaddset</code> turns on a single bit and <code>sigdelset</code> turns off a single bit; <code>sigismember</code> tests a certain bit. Since no signal is ever numbered 0, we subtract 1 from the signal number to obtain the bit to manipulate.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/setops.c">signals/setops.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include    &lt;signal.h&gt;</span>
+<span class="cp">#include    &lt;errno.h&gt;</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * &lt;signal.h&gt; usually defines NSIG to include signal number 0.</span>
+<span class="cm"> */</span>
+<span class="cp">#define SIGBAD(signo)   ((signo) &lt;= 0 || (signo) &gt;= NSIG)</span>
+
+<span class="kt">int</span>
+<span class="nf">sigaddset</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">SIGBAD</span><span class="p">(</span><span class="n">signo</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">set</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">signo</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>       <span class="cm">/* turn bit on */</span>
+    <span class="k">return</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">sigdelset</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">SIGBAD</span><span class="p">(</span><span class="n">signo</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">set</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">signo</span> <span class="o">-</span> <span class="mi">1</span><span class="p">));</span>    <span class="cm">/* turn bit off */</span>
+    <span class="k">return</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">sigismember</span><span class="p">(</span><span class="k">const</span> <span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">SIGBAD</span><span class="p">(</span><span class="n">signo</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">((</span><span class="o">*</span><span class="n">set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">signo</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="sigprocmask-function"><code>sigprocmask</code> Function</h3>
+<p>As discussed in <a href="#reliable-signal-terminology-and-semantics">Section 10.8</a>, the signal mask of a process is the set of signals currently blocked from delivery to that process. A process can examine its signal mask, change its signal mask, or perform both operations in one step by calling the following function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">sigprocmask</span><span class="p">(</span><span class="kt">int</span> <span class="n">how</span><span class="p">,</span> <span class="k">const</span> <span class="kt">sigset_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">set</span><span class="p">,</span>
+                <span class="kt">sigset_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">oset</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
+
+<ul>
+<li>If <em>oset</em> is a non-null pointer, the current signal mask for the process is returned through <em>oset</em>.</li>
+<li>If <em>set</em> is a non-null pointer, the <em>how</em> argument indicates how the current signal mask is modified; if <em>set</em> is a null pointer, the signal mask of the process is not changed, and <em>how</em> is ignored.</li>
+<li>
+<p>The <em>how</em> argument is one in the following table:</p>
+<table>
+<thead>
+<tr>
+<th><em>how</em></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SIG_BLOCK</code></td>
+<td>The new signal mask for the process is the union of its current signal mask and the signal set pointed to by <em>set</em>. That is, <em>set</em> contains the additional signals that we want to block.</td>
+</tr>
+<tr>
+<td><code>SIG_UNBLOCK</code></td>
+<td>The new signal mask for the process is the intersection of its current signal mask and the complement of the signal set pointed to by <em>set</em>. That is, <em>set</em> contains the signals that we want to unblock.</td>
+</tr>
+<tr>
+<td><code>SIG_SETMASK</code></td>
+<td>The new signal mask for the process is replaced by the value of the signal set pointed to by <em>set</em>.</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+<p>After calling <code>sigprocmask</code>, if any unblocked signals are pending, at least one of these signals is delivered to the process before <code>sigprocmask</code> returns.</p>
+<p>Note that the <code>sigprocmask</code> function is defined only for single-threaded processes. A separate function, discussed in <a href="ch12.md#threads-and-signals">Section 12.8</a> is provided to manipulate a thread’s signal mask in a multithreaded process.</p>
+<p>The following example shows a function that prints the names of the signals in the signal mask of the calling process.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/prmask.c">lib/prmask.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">pr_mask</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">sigset_t</span>    <span class="n">sigset</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">errno_save</span><span class="p">;</span>
+
+    <span class="n">errno_save</span> <span class="o">=</span> <span class="n">errno</span><span class="p">;</span>     <span class="cm">/* we can be called by signal handlers */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sigset</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_ret</span><span class="p">(</span><span class="s">&quot;sigprocmask error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sigismember</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sigset</span><span class="p">,</span> <span class="n">SIGINT</span><span class="p">))</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot; SIGINT&quot;</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sigismember</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sigset</span><span class="p">,</span> <span class="n">SIGQUIT</span><span class="p">))</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot; SIGQUIT&quot;</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sigismember</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sigset</span><span class="p">,</span> <span class="n">SIGUSR1</span><span class="p">))</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot; SIGUSR1&quot;</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sigismember</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sigset</span><span class="p">,</span> <span class="n">SIGALRM</span><span class="p">))</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot; SIGALRM&quot;</span><span class="p">);</span>
+
+        <span class="cm">/* remaining signals can go here  */</span>
+
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">errno</span> <span class="o">=</span> <span class="n">errno_save</span><span class="p">;</span>     <span class="cm">/* restore errno */</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="sigpending-function"><code>sigpending</code> Function</h3>
+<p>The <code>sigpending</code> function returns the set of signals that are blocked from delivery and currently pending for the calling process. The set of signals is returned through the <em>set</em> argument.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">sigpending</span><span class="p">(</span><span class="kt">sigset_t</span> <span class="o">*</span><span class="n">set</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
+
+<h4 id="example-of-sigpending-and-other-signal-features">Example of <code>sigpending</code> and other signal features</h4>
+<p>The example below shows many of the signal features that have been described.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/critical.c">signals/critical.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">sig_quit</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">sigset_t</span>    <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">,</span> <span class="n">pendmask</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">sig_quit</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;can&#39;t catch SIGQUIT&quot;</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Block SIGQUIT and save current signal mask.</span>
+<span class="cm">     */</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGQUIT</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_BLOCK error&quot;</span><span class="p">);</span>
+
+    <span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>   <span class="cm">/* SIGQUIT here will remain pending */</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigpending</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pendmask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;sigpending error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigismember</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pendmask</span><span class="p">,</span> <span class="n">SIGQUIT</span><span class="p">))</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">SIGQUIT pending</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Restore signal mask which unblocks SIGQUIT.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_SETMASK error&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;SIGQUIT unblocked</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+
+    <span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>   <span class="cm">/* SIGQUIT here will terminate with core file */</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_quit</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;caught SIGQUIT</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">SIG_DFL</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;can&#39;t reset SIGQUIT&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Run this program:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">ˆ\                    # generate signal once (before 5 seconds are up)</span>
+<span class="go">SIGQUIT               # pending after return from sleep</span>
+<span class="go">caught SIGQUIT        # in signal handler</span>
+<span class="go">SIGQUIT unblocked     # after return from sigprocmask</span>
+<span class="go">ˆ\Quit(coredump)      # generate signal again</span>
+<span class="go">$ ./a.out</span>
+<span class="go">ˆ\ˆ\ˆ\ˆ\ˆ\ˆ\ˆ\ˆ\ˆ\ˆ\  # generate signal 10 times (before 5 seconds are up)</span>
+<span class="go">SIGQUIT pending</span>
+<span class="go">caught SIGQUIT        # signal is generated only once</span>
+<span class="go">SIGQUIT unblocked</span>
+<span class="go">ˆ\Quit(coredump)      # generate signal again</span>
+</pre></div>
+
+
+<p>[p349]</p>
+<p>Some notes from this example:</p>
+<ul>
+<li>We saved the old mask when we blocked the signal. To unblock the signal, we did a <code>SIG_SETMASK</code> of the old mask. Alternatively, we could <code>SIG_UNBLOCK</code> only the signal that we had blocked. Be aware, however, if we write a function that can be called by others and if we need to block a signal in our function, we can’t use <code>SIG_UNBLOCK</code> to unblock the signal. In this case, we have to use <code>SIG_SETMASK</code> and restore the signal mask to its prior value, because it’s possible that the caller had specifically blocked this signal before calling our function. We’ll see an example of this in the <code>system</code> function in <a href="#system-function">Section 10.18</a>.</li>
+<li>When we run the program the second time, we generate the quit signal ten times while the process is asleep, yet the signal is delivered only once to the process when it’s unblocked. This demonstrates that signals are not queued on this system</li>
+</ul>
+<h3 id="sigaction-function"><code>sigaction</code> Function</h3>
+<p>The <code>sigaction</code> function allows us to examine or modify (or both) the action associated with a particular signal. This function supersedes the <code>signal</code> function from earlier releases of the UNIX System. Indeed, at the end of this section, we show an implementation of <code>signal</code> using <code>sigaction</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">sigaction</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">sigaction</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">act</span><span class="p">,</span>
+              <span class="k">struct</span> <span class="n">sigaction</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">oact</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
+
+<ul>
+<li>The argument <em>signo</em> is the signal number whose action we are examining or modifying.</li>
+<li>If the <em>act</em> pointer is non-null, we are modifying the action.</li>
+<li>If the <em>oact</em> pointer is non-null, the system returns the previous action for the signal through the <em>oact</em> pointer</li>
+</ul>
+<p>This function uses the following structure:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sigaction</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">sa_handler</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>  <span class="cm">/* addr of signal handler, */</span>
+                              <span class="cm">/* or SIG_IGN, or SIG_DFL */</span>
+    <span class="kt">sigset_t</span> <span class="n">sa_mask</span><span class="p">;</span>         <span class="cm">/* additional signals to block */</span>
+    <span class="kt">int</span> <span class="n">sa_flags</span><span class="p">;</span>             <span class="cm">/* signal options, Figure 10.16 */</span>
+
+    <span class="cm">/* alternate handler */</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">sa_sigaction</span><span class="p">)(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">siginfo_t</span> <span class="o">*</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
