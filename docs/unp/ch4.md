@@ -75,3 +75,72 @@ The "`AF_`" prefix stands for "address family" and the "`PF_`" prefix stands for
 To conform to existing coding practice, we use only the `AF_` constants in this text, although you may encounter the `PF_` value, mainly in calls to `socket`.
 
 [p98-99]
+
+### `connect` Function
+
+The `connect` function is used by a TCP client to establish a connection with a TCP server.
+
+```c
+#include <sys/socket.h>
+
+int connect(int sockfd, const struct sockaddr *servaddr, socklen_t addrlen);
+
+/* Returns: 0 if OK, -1 on error */
+```
+
+* *sockfd* is a socket descriptor returned by the `socket` function.
+* The *servaddr* and *addrlen* arguments are a pointer to a socket address structure (which contains the IP address and port number of the server) and its size. ([Section 3.3](ch3.md#value-result-arguments))
+
+<u>The client does not have to call `bind` before calling `connect`: the kernel will choose both an ephemeral port and the source IP address if necessary.</u>
+
+In the case of a TCP socket, the connect function initiates TCP's three-way handshake ([Section 2.6](ch2.md#tcp-connection-establishment-and-termination)). The function returns only when the connection is established or an error occurs. There are several different error returns possible:
+
+1. If the client TCP receives no response to its SYN segment, `ETIMEDOUT` is returned.
+    * For example, in 4.4BSD, the client sends one SYN when `connect` is called, sends another SYN 6 seconds later, and sends another SYN 24 seconds later. If no response is received after a total of 75 seconds, the error is returned.
+    * Some systems provide administrative control over this timeout.
+2. If the server's response to the client's SYN is a reset (RST), this indicates that no process is waiting for connections on the server host at the port specified (the server process is probably not running). This is a **hard error** and the error `ECONNREFUSED` is returned to the client as soon as the RST is received. An RST is a type of TCP segment that is sent by TCP when something is wrong. Three conditions that generate an RST are:
+    * When a SYN arrives for a port that has no listening server.
+    * When TCP wants to abort an existing connection.
+    * When TCP receives a segment for a connection that does not exist.
+3. If the client's SYN elicits an ICMP "destination unreachable" from some intermediate router, this is considered a **soft error**. The client kernel saves the message but keeps sending SYNs with the same time between each SYN as in the first scenario. If no response is received after some fixed amount of time (75 seconds for 4.4BSD), the saved ICMP error is returned to the process as either `EHOSTUNREACH` or `ENETUNREACH`. It is also possible that the remote system is not reachable by any route in the local system's forwarding table, or that the connect call returns without waiting at all. Note that Network unreachables are considered obsolete, and applications should just treat `ENETUNREACH` and `EHOSTUNREACH` as the same error.
+
+#### Example: nonexistent host on the local subnet *
+
+We run the client `daytimetcpcli` ([Figure 1.5](ch1.md#a-simple-daytime-client)) and specify an IP address that is on the local subnet (192.168.1/24) but the host ID (100) is nonexistent. When the client host sends out ARP requests (asking for that host to respond with its hardware address), it will never receive an ARP reply.
+
+```shell-session
+solaris % daytimetcpcli 192.168.1.100
+connect error: Connection timed out
+```
+
+We only get the error after the connect times out. Notice that our `err_sys` function prints the human-readable string associated with the `ETIMEDOUT` error.
+
+#### Example: no server process running *
+
+We specify a host (a local router) that is not running a daytime server:
+
+```shell-session
+solaris % daytimetcpcli 192.168.1.5
+connect error: Connection refused
+```
+
+The server responds immediately with an RST.
+
+#### Example: destination not reachable on the Internet *
+
+Our final example specifies an IP address that is not reachable on the Internet. If we watch the packets with `tcpdump`, we see that a router six hops away returns an ICMP host unreachable error.
+
+```shell-session
+solaris % daytimetcpcli 192.3.4.5
+connect error: No route to host
+```
+
+As with the `ETIMEDOUT` error, `connect` returns the `EHOSTUNREACH` error only after waiting its specified amount of time.
+
+
+In terms of the TCP state transition diagram ([Figure 2.4](figure_2.4.png)):
+
+* `connect` moves from the CLOSED state (the state in which a socket begins when it is created by the `socket` function) to the SYN_SENT state, and then, on success, to the ESTABLISHED state.
+* If `connect` fails, the socket is no longer usable and must be closed. We cannot call `connect` again on the socket.
+
+In [Figure 11.10](ch4.md#tcp_connect-function), we will see that when we call `connect` in a loop, trying each IP address for a given host until one works, each time `connect` fails, we must close the socket descriptor and call `socket` again.
