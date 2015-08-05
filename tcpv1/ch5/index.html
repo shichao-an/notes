@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/tcpv1/headers/">
+        <link rel="canonical" href="https://notes.shichao.io/tcpv1/ch5/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Headers - Shichao's Notes</title>
+	<title>Chapter 5. The Internet Protocol (IP) - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -216,16 +216,16 @@
                             <a href="../ch2/">Chapter 2. The Internet Address Architecture</a>
                         </li>
                     
-                        <li >
-                            <a href="../ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        <li class="active">
+                            <a href="./">Chapter 5. The Internet Protocol (IP)</a>
                         </li>
                     
                         <li >
                             <a href="../ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
                         </li>
                     
-                        <li class="active">
-                            <a href="./">Headers</a>
+                        <li >
+                            <a href="../headers/">Headers</a>
                         </li>
                     
                     </ul>
@@ -295,15 +295,19 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#headers">Headers</a></li>
+        <li class="main active"><a href="#chapter-5-the-internet-protocol-ip">Chapter 5. The Internet Protocol (IP)</a></li>
         
-            <li><a href="#ipv4-header">IPv4 Header</a></li>
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
         
-            <li><a href="#ipv6-header">IPv6 Header</a></li>
+    
+        <li class="main "><a href="#ipv4-and-ipv6-headers">IPv4 and IPv6 Headers</a></li>
         
-            <li><a href="#udp-header">UDP Header</a></li>
+            <li><a href="#ipv4-header">IPv4 Header *</a></li>
         
-            <li><a href="#tcp-header">TCP Header</a></li>
+            <li><a href="#ipv6-header">IPv6 Header *</a></li>
+        
+            <li><a href="#size-and-network-byte-order">Size and network byte order *</a></li>
         
     
     </ul>
@@ -311,15 +315,30 @@
             <div class="col-md-9" role="main">
               
 
-<h2 id="headers">Headers</h2>
-<h3 id="ipv4-header">IPv4 Header</h3>
-<p><a href="../ipv4_header.png" title="IPv4 Header"><img alt="IPv4 Header" src="../ipv4_header_600.png" /></a></p>
-<h3 id="ipv6-header">IPv6 Header</h3>
-<p><a href="../ipv6_header.png" title="IPv6 Header"><img alt="IPv6 Header" src="../ipv6_header_600.png" /></a></p>
-<h3 id="udp-header">UDP Header</h3>
-<p><a href="../udp_header.png" title="UDP Header"><img alt="UDP Header" src="../udp_header_600.png" /></a></p>
-<h3 id="tcp-header">TCP Header</h3>
-<p><a href="../tcp_header.png" title="TCP Header"><img alt="TCP Header" src="../tcp_header_600.png" /></a></p>
+<h3 id="chapter-5-the-internet-protocol-ip"><strong>Chapter 5. The Internet Protocol (IP)</strong></h3>
+<blockquote>
+<p>IP is the workhorse protocol of the TCP/IP protocol suite.
+<small><em>TCPv1</em></small></p>
+</blockquote>
+<h3 id="introduction">Introduction</h3>
+<p>IP provides a best-effort, connectionless datagram delivery service. When something goes wrong, such as a router temporarily running out of buffers, IP simly throws away some data. Any required reliability must be provided by the upper layers (e.g. TCP). IPv4 and IPv6 both use this basic best-effort delivery model.</p>
+<p>The term <em>connectionless</em> means that IP does not maintain any connection state information about related datagrams within the network elements (within the routers):</p>
+<ul>
+<li>Each IP datagram is handled independently from all other others.</li>
+<li>Datagrams can be delivered out of order.</li>
+</ul>
+<p>This chapter is on IPv4 and IPv6 header fields, and describes how IP forwarding works.</p>
+<h3 id="ipv4-and-ipv6-headers">IPv4 and IPv6 Headers</h3>
+<h5 id="ipv4-header"><strong>IPv4 Header</strong> *</h5>
+<p><a href="../figure_5-1.png" title="The IPv4 datagram. The header is of variable size, limited to fifteen 32-bit words (60 bytes) by the 4-bit IHL field. A typical IPv4 header contains 20 bytes (no options). The source and destination addresses are 32 bits long. Most of the second 32-bit word is used for the IPv4 fragmentation function. A header checksum helps ensure that the fields in the header are delivered correctly to the proper destination but does not protect the data."><img alt="The IPv4 datagram. The header is of variable size, limited to fifteen 32-bit words (60 bytes) by the 4-bit IHL field. A typical IPv4 header contains 20 bytes (no options). The source and destination addresses are 32 bits long. Most of the second 32-bit word is used for the IPv4 fragmentation function. A header checksum helps ensure that the fields in the header are delivered correctly to the proper destination but does not protect the data." src="../figure_5-1_600.png" /></a></p>
+<h5 id="ipv6-header"><strong>IPv6 Header</strong> *</h5>
+<p><a href="../figure_5-1.png" title="The IPv6 header is of fixed size (40 bytes) and contains 128-bit source and destination addresses. The Next Header field is used to indicate the presence and types of additional extension headers that follow the IPv6 header, forming a daisy chain of headers that may include special extensions or processing directives. Application data follows the header chain, usually immediately following a transport-layer header."><img alt="The IPv6 header is of fixed size (40 bytes) and contains 128-bit source and destination addresses. The Next Header field is used to indicate the presence and types of additional extension headers that follow the IPv6 header, forming a daisy chain of headers that may include special extensions or processing directives. Application data follows the header chain, usually immediately following a transport-layer header." src="../figure_5-1_600.png" /></a></p>
+<h5 id="size-and-network-byte-order"><strong>Size and network byte order</strong> *</h5>
+<ul>
+<li>The normal size of the IPv4 header is 20 bytes, unless options are present (which is rare).</li>
+<li><u>The IPv6 header is twice as large as the IPv4 Header but never has any options.</u> It may have <em>extension headers</em>.</li>
+</ul>
+<p>In our pictures of headers and datagrams, for a 32-bit value, <u>the most significant bit is numbered 0 at the left, and the least significant bit of a 32-bit value is numbered 31 on the right.</u> The 4 bytes in a 32-bit value are transmitted in the following order: bits 0–7 first, then bits 8–15, then 16–23, and bits 24–31 last. This is called <strong>big endian</strong> byte ordering, which is the byte ordering required for all binary integers in the TCP/IP headers as they traverse a network. It is also called <strong>network byte order</strong>. Computer CPUs that store binary integers in little endian format must convert the header values into network byte order for transmission and back again for reception.</p>
             </div>
         </div>
 
