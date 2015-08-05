@@ -1,5 +1,8 @@
 ### **Chapter 5. System Calls**
 
+> Look at `ioctl()` as an example of what not to do (when implementing a system call).
+> <small>*LKD*</small>
+
 In any modern operating system, the kernel provides a set of interfaces by which processes running in user-space can interact with the system. These interfaces give applications: [p69]
 
 * controlled access to hardware,
@@ -158,3 +161,13 @@ The return value is sent to user-space also via register. On x86, it is written 
 The actual implementation of a system call in Linux does not need to be concerned with the behavior of the system call handler. Thus, adding a new system call to Linux is relatively easy. The hard work lies in designing and implementing the system call; registering it with the kernel is simple.
 
 #### Implementing System Calls
+
+The first step in implementing a system call is defining its purpose and the syscall should have exactly one purpose. Multiplexing syscalls (a single system call that does wildly different things depending on a flag argument) is discouraged in Linux. `ioctl()` is an example of what *not* to do.
+
+Think of the new system call’s arguments, return value, and error codes. The system call should have a clean and simple interface with the smallest number of arguments possible.The semantics and behavior of a system call are important; they must not change, because existing applications will come to rely on them. Many system calls provide a flag argument to address forward compatibility. The flag is not used to multiplex different behavior across a single system call (which is not acceptable), but to enable new functionality and options without breaking backward compatibility or needing to add a new system call. [p75]
+
+Design the system call to be as general as possible with an eye toward the future. <u>The *purpose* of the system call will remain constant but its *uses* may change.</u> Remember the Unix motto: "Provide mechanism, not policy." [p75]
+
+When you write a system call, you need to realize the need for portability and robustness, not just today but in the future.The basic Unix system calls have survived this test of time; most of them are just as useful and applicable today as they were 30 years ago!
+
+#### Verifying the Parameters
