@@ -217,6 +217,10 @@
                         </li>
                     
                         <li >
+                            <a href="../../tcpv1/ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                    
+                        <li >
                             <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
                         </li>
                     
@@ -2289,11 +2293,145 @@ The <code>si_errno</code> field contains the error number corresponding to the c
 
 <ul>
 <li>We must use <code>sigemptyset</code> to initialize the <code>sa_mask</code> member of the structure since we’re not guaranteed that <code>act.sa_mask = 0</code> does the same thing.</li>
-<li>We intentionally set the <code>SA_RESTART</code> flag for all signals other than <code>SIGALRM</code>, so that any system call interrupted by these other signals will be automatically restarted. The reason we don’t want SIGALRM restarted is to allow us to set a timeout for I/O operations. (<a href="#implementing-a-timeout-using-alarm">Figure 10.10</a>)</li>
+<li>We intentionally set the <code>SA_RESTART</code> flag for all signals other than <code>SIGALRM</code>, so that any system call interrupted by these other signals will be automatically restarted. The reason we don’t want <code>SIGALRM</code> restarted is to allow us to set a timeout for I/O operations. (<a href="#implementing-a-timeout-using-alarm">Figure 10.10</a>)</li>
 <li>Some older systems, such as SunOS, define the <code>SA_INTERRUPT</code> flag. These systems restart interrupted system calls by default, so specifying this flag causes system calls to be interrupted. Linux defines the <code>SA_INTERRUPT</code> flag for compatibility with applications that use it, but by default does not restart system calls when the signal handler is installed with <code>sigaction</code>. The Single UNIX Specification specifies that the <code>sigaction</code> function not restart interrupted system calls unless the <code>SA_RESTART</code> flag is specified.</li>
 </ul>
 <h4 id="example-signal_intr-function">Example: <code>signal_intr</code> Function</h4>
+<p>The following code shows a version of the <code>signal</code> function that tries to prevent any interrupted system calls from being restarted.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/signalintr.c">lib/signalintr.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="n">Sigfunc</span> <span class="o">*</span>
+<span class="nf">signal_intr</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="n">Sigfunc</span> <span class="o">*</span><span class="n">func</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sigaction</span>    <span class="n">act</span><span class="p">,</span> <span class="n">oact</span><span class="p">;</span>
+
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">act</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="cp">#ifdef  SA_INTERRUPT</span>
+    <span class="n">act</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">|=</span> <span class="n">SA_INTERRUPT</span><span class="p">;</span>
+<span class="cp">#endif</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">signo</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">act</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oact</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">SIG_ERR</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">oact</span><span class="p">.</span><span class="n">sa_handler</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>For improved portability, we specify the <code>SA_INTERRUPT</code> flag, if defined by the system, to prevent interrupted system calls from being restarted.</p>
 <h3 id="sigsetjmp-and-siglongjmp-functions"><code>sigsetjmp</code> and <code>siglongjmp</code> Functions</h3>
+<p><code>setjmp</code> and <code>longjmp</code> functions (<a href="../ch7/#setjmp-and-longjmp-functions">Section 7.10</a>) can be used for nonlocal branching. The <code>longjmp</code> function is often called from a signal handler to return to the main loop of a program, instead of returning from the handler. (<a href="#sleep2-example-using-setjmp-and-longjmp">Figure 10.8</a> and <a href="#implementing-a-timeout-with-alarm-and-longjmp">Figure 10.11</a>).</p>
+<p>However, there is a problem in calling <code>longjmp</code>. When a signal is caught, the signal-catching function is entered, with the current signal automatically being added to the signal mask of the process. This prevents subsequent occurrences of that signal from interrupting the signal handler. If we <code>longjmp</code> out of the signal handler, what happens to the signal mask for the process depends on the platform:</p>
+<ul>
+<li>Under FreeBSD 8.0 and Mac OS X 10.6.8, <code>setjmp</code> and <code>longjmp</code> save and restore the signal mask.</li>
+<li>Linux 3.2.0 and Solaris 10, however, do not save and restore the signal mask, although Linux supports an option to provide BSD behavior.</li>
+<li>FreeBSD and Mac OS X provide the functions <code>_setjmp</code> and <code>_longjmp</code>, which do not save and restore the signal mask.</li>
+</ul>
+<p>To allow either form of behavior, POSIX.1 does not specify the effect of <code>setjmp</code> and <code>longjmp</code> on signal masks. Instead, two new functions, <code>sigsetjmp</code> and <code>siglongjmp</code>, are defined by POSIX.1. These two functions should always be used when branching from a signal handler.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;setjmp.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">sigsetjmp</span><span class="p">(</span><span class="n">sigjmp_buf</span> <span class="n">env</span><span class="p">,</span> <span class="kt">int</span> <span class="n">savemask</span><span class="p">);</span>
+<span class="cm">/* Returns: 0 if called directly, nonzero if returning from a call to siglongjmp */</span>
+
+<span class="kt">void</span> <span class="nf">siglongjmp</span><span class="p">(</span><span class="n">sigjmp_buf</span> <span class="n">env</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The only difference between these functions and the <code>setjmp</code> and <code>longjmp</code> functions is that <code>sigsetjmp</code> has an additional argument. If <em>savemask</em> is nonzero, then <code>sigsetjmp</code> also saves the current signal mask of the process in <em>env</em>. When <code>siglongjmp</code> is called, if the <em>env</em> argument was saved by a call to <code>sigsetjmp</code> with a nonzero <em>savemask</em>, then <code>siglongjmp</code> restores the saved signal mask.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/mask.c">signals/mask.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;setjmp.h&gt;</span>
+<span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="k">static</span> <span class="kt">void</span>                     <span class="nf">sig_usr1</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<span class="k">static</span> <span class="kt">void</span>                     <span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<span class="k">static</span> <span class="n">sigjmp_buf</span>               <span class="n">jmpbuf</span><span class="p">;</span>
+<span class="k">static</span> <span class="k">volatile</span> <span class="kt">sig_atomic_t</span>    <span class="n">canjump</span><span class="p">;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">sig_usr1</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGUSR1) error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">sig_alrm</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGALRM) error&quot;</span><span class="p">);</span>
+
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;starting main: &quot;</span><span class="p">);</span>     <span class="cm">/* {Prog prmask} */</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigsetjmp</span><span class="p">(</span><span class="n">jmpbuf</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
+
+        <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;ending main: &quot;</span><span class="p">);</span>
+
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">canjump</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>    <span class="cm">/* now sigsetjmp() is OK */</span>
+
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span>
+        <span class="n">pause</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_usr1</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">time_t</span>  <span class="n">starttime</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">canjump</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">;</span>     <span class="cm">/* unexpected signal, ignore */</span>
+
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;starting sig_usr1: &quot;</span><span class="p">);</span>
+
+    <span class="n">alarm</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>               <span class="cm">/* SIGALRM in 3 seconds */</span>
+    <span class="n">starttime</span> <span class="o">=</span> <span class="n">time</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span>             <span class="cm">/* busy wait for 5 seconds */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">time</span><span class="p">(</span><span class="nb">NULL</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">starttime</span> <span class="o">+</span> <span class="mi">5</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;finishing sig_usr1: &quot;</span><span class="p">);</span>
+
+    <span class="n">canjump</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">siglongjmp</span><span class="p">(</span><span class="n">jmpbuf</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>  <span class="cm">/* jump back to main, don&#39;t return */</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;in sig_alrm: &quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>We set the variable <code>canjump</code> to a nonzero value only after we’ve called <code>sigsetjmp</code>. This variable is examined in the signal handler, and <code>siglongjmp</code> is called only if the flag <code>canjump</code> is nonzero. This technique provides protection against the signal handler being called at some earlier or later time, when the jump buffer hasn’t been initialized by <code>sigsetjmp</code>. This technique should be used whenever <code>siglongjmp</code> is called from a signal handler, but is not required with longjmp in normal C code. Since a signal can occur at any time, therefore we need the added protection in a signal handler.</li>
+<li>We use the data type <code>sig_atomic_t</code>, which is defined by the ISO C standard to be the type of variable that can be written without being interrupted.<ul>
+<li>This means that a variable of type <code>sig_atomic_t</code> should not extend across page boundaries on a system with virtual memory and can be accessed with a single machine instruction, for example.</li>
+<li>We always include the ISO type qualifier <code>volatile</code> for these data types as well, since the variable is being accessed by two different threads of control: the <code>main</code> function and the asynchronously executing signal handler.</li>
+</ul>
+</li>
+</ul>
+<p>We can divide the following figure into three parts:</p>
+<ul>
+<li>Left part (corresponding to <code>main</code>)</li>
+<li>Center part (<code>sig_usr1</code>)</li>
+<li>Right part (<code>sig_alrm</code>).</li>
+</ul>
+<p>While the process is executing in the left part, its signal mask is 0 (no signals are blocked). While executing in the center part, its signal mask is <code>SIGUSR1</code>. While executing in the right part, its signal mask is <code>SIGUSR1</code>|<code>SIGALRM</code>.</p>
+<p><a href="../figure_10.21.png" title="Figure 10.21 Timeline for example program handling two signals"><img alt="Figure 10.21 Timeline for example program handling two signals" src="../figure_10.21_600.png" /></a></p>
+<p>The output of the program:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out &amp;             # start process in background</span>
+<span class="go">starting main:</span>
+<span class="go">[1] 531                 # the job-control shell prints its process ID</span>
+<span class="go">$ kill -USR1 531        # send the process SIGUSR1</span>
+<span class="go">starting sig_usr1: SIGUSR1</span>
+<span class="go">$ in sig_alrm: SIGUSR1 SIGALRM</span>
+<span class="go">finishing sig_usr1: SIGUSR1</span>
+<span class="go">ending main:</span>
+<span class="go">                        # just press RETURN</span>
+<span class="go">[1] + Done ./a.out &amp;</span>
+</pre></div>
+
+
+<p>The output is what we expect: when a signal handler is invoked, the signal being caught is added to the current signal mask of the process. The original mask is restored when the signal handler returns. Also, <code>siglongjmp</code> restores the signal mask that was saved by <code>sigsetjmp</code>.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
