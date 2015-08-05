@@ -308,6 +308,15 @@
             <li><a href="#af_xxx-versus-pf_xxx">AF_xxx Versus PF_xxx</a></li>
         
     
+        <li class="main "><a href="#connect-function">connect Function</a></li>
+        
+            <li><a href="#example-nonexistent-host-on-the-local-subnet">Example: nonexistent host on the local subnet *</a></li>
+        
+            <li><a href="#example-no-server-process-running">Example: no server process running *</a></li>
+        
+            <li><a href="#example-destination-not-reachable-on-the-internet">Example: destination not reachable on the Internet *</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -485,6 +494,66 @@
 <p>The "<code>AF_</code>" prefix stands for "address family" and the "<code>PF_</code>" prefix stands for "protocol family." Historically, the intent was that a single protocol family might support multiple address families and that the <code>PF_</code> value was used to create the socket and the <code>AF_</code> value was used in socket address structures. But in actuality, a protocol family supporting multiple address families has never been supported and the <code>&lt;sys/socket.h&gt;</code> header defines the <code>PF_</code> value for a given protocol to be equal to the <code>AF_</code> value for that protocol. While there is no guarantee that this equality between the two will always be true, should anyone change this for existing protocols, lots of existing code would break.</p>
 <p>To conform to existing coding practice, we use only the <code>AF_</code> constants in this text, although you may encounter the <code>PF_</code> value, mainly in calls to <code>socket</code>.</p>
 <p>[p98-99]</p>
+<h3 id="connect-function"><code>connect</code> Function</h3>
+<p>The <code>connect</code> function is used by a TCP client to establish a connection with a TCP server.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/socket.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">connect</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">servaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="n">addrlen</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, -1 on error */</span>
+</pre></div>
+
+
+<ul>
+<li><em>sockfd</em> is a socket descriptor returned by the <code>socket</code> function.</li>
+<li>The <em>servaddr</em> and <em>addrlen</em> arguments are a pointer to a socket address structure (which contains the IP address and port number of the server) and its size. (<a href="../ch3/#value-result-arguments">Section 3.3</a>)</li>
+</ul>
+<p><u>The client does not have to call <code>bind</code> before calling <code>connect</code>: the kernel will choose both an ephemeral port and the source IP address if necessary.</u></p>
+<p>In the case of a TCP socket, the connect function initiates TCP's three-way handshake (<a href="../ch2/#tcp-connection-establishment-and-termination">Section 2.6</a>). The function returns only when the connection is established or an error occurs. There are several different error returns possible:</p>
+<ol>
+<li>If the client TCP receives no response to its SYN segment, <code>ETIMEDOUT</code> is returned.<ul>
+<li>For example, in 4.4BSD, the client sends one SYN when <code>connect</code> is called, sends another SYN 6 seconds later, and sends another SYN 24 seconds later. If no response is received after a total of 75 seconds, the error is returned.</li>
+<li>Some systems provide administrative control over this timeout.</li>
+</ul>
+</li>
+<li>If the server's response to the client's SYN is a reset (RST), this indicates that no process is waiting for connections on the server host at the port specified (the server process is probably not running). This is a <strong>hard error</strong> and the error <code>ECONNREFUSED</code> is returned to the client as soon as the RST is received. An RST is a type of TCP segment that is sent by TCP when something is wrong. Three conditions that generate an RST are:<ul>
+<li>When a SYN arrives for a port that has no listening server.</li>
+<li>When TCP wants to abort an existing connection.</li>
+<li>When TCP receives a segment for a connection that does not exist.</li>
+</ul>
+</li>
+<li>If the client's SYN elicits an ICMP "destination unreachable" from some intermediate router, this is considered a <strong>soft error</strong>. The client kernel saves the message but keeps sending SYNs with the same time between each SYN as in the first scenario. If no response is received after some fixed amount of time (75 seconds for 4.4BSD), the saved ICMP error is returned to the process as either <code>EHOSTUNREACH</code> or <code>ENETUNREACH</code>. It is also possible that the remote system is not reachable by any route in the local system's forwarding table, or that the connect call returns without waiting at all. Note that Network unreachables are considered obsolete, and applications should just treat <code>ENETUNREACH</code> and <code>EHOSTUNREACH</code> as the same error.</li>
+</ol>
+<h4 id="example-nonexistent-host-on-the-local-subnet">Example: nonexistent host on the local subnet *</h4>
+<p>We run the client <code>daytimetcpcli</code> (<a href="../ch1/#a-simple-daytime-client">Figure 1.5</a>) and specify an IP address that is on the local subnet (192.168.1/24) but the host ID (100) is nonexistent. When the client host sends out ARP requests (asking for that host to respond with its hardware address), it will never receive an ARP reply.</p>
+<div class="codehilite"><pre><span class="go">solaris % daytimetcpcli 192.168.1.100</span>
+<span class="go">connect error: Connection timed out</span>
+</pre></div>
+
+
+<p>We only get the error after the connect times out. Notice that our <code>err_sys</code> function prints the human-readable string associated with the <code>ETIMEDOUT</code> error.</p>
+<h4 id="example-no-server-process-running">Example: no server process running *</h4>
+<p>We specify a host (a local router) that is not running a daytime server:</p>
+<div class="codehilite"><pre><span class="go">solaris % daytimetcpcli 192.168.1.5</span>
+<span class="go">connect error: Connection refused</span>
+</pre></div>
+
+
+<p>The server responds immediately with an RST.</p>
+<h4 id="example-destination-not-reachable-on-the-internet">Example: destination not reachable on the Internet *</h4>
+<p>Our final example specifies an IP address that is not reachable on the Internet. If we watch the packets with <code>tcpdump</code>, we see that a router six hops away returns an ICMP host unreachable error.</p>
+<div class="codehilite"><pre><span class="go">solaris % daytimetcpcli 192.3.4.5</span>
+<span class="go">connect error: No route to host</span>
+</pre></div>
+
+
+<p>As with the <code>ETIMEDOUT</code> error, <code>connect</code> returns the <code>EHOSTUNREACH</code> error only after waiting its specified amount of time.</p>
+<p>In terms of the TCP state transition diagram (<a href="../figure_2.4.png">Figure 2.4</a>):</p>
+<ul>
+<li><code>connect</code> moves from the CLOSED state (the state in which a socket begins when it is created by the <code>socket</code> function) to the SYN_SENT state, and then, on success, to the ESTABLISHED state.</li>
+<li>If <code>connect</code> fails, the socket is no longer usable and must be closed. We cannot call <code>connect</code> again on the socket.</li>
+</ul>
+<p>In <a href="./#tcp_connect-function">Figure 11.10</a>, we will see that when we call <code>connect</code> in a loop, trying each IP address for a given host until one works, each time <code>connect</code> fails, we must close the socket descriptor and call <code>socket</code> again.</p>
             </div>
         </div>
 
