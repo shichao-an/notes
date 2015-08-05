@@ -278,7 +278,9 @@
             <ul class="nav navbar-nav navbar-right">
                 
                 <li>
-                    <a href="https://github.com/shichao-an/notes">
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch5.md">
+                    
                         
                             <i class="fa fa-github"></i>
                         
@@ -328,6 +330,8 @@
         
             <li><a href="#implementing-system-calls">Implementing System Calls</a></li>
         
+            <li><a href="#verifying-the-parameters">Verifying the Parameters</a></li>
+        
     
     </ul>
 </div></div>
@@ -335,6 +339,10 @@
               
 
 <h3 id="chapter-5-system-calls"><strong>Chapter 5. System Calls</strong></h3>
+<blockquote>
+<p>Look at <code>ioctl()</code> as an example of what not to do (when implementing a system call).
+<small><em>LKD</em></small></p>
+</blockquote>
 <p>In any modern operating system, the kernel provides a set of interfaces by which processes running in user-space can interact with the system. These interfaces give applications: [p69]</p>
 <ul>
 <li>controlled access to hardware,</li>
@@ -458,6 +466,11 @@
 <h3 id="system-call-implementation">System Call Implementation</h3>
 <p>The actual implementation of a system call in Linux does not need to be concerned with the behavior of the system call handler. Thus, adding a new system call to Linux is relatively easy. The hard work lies in designing and implementing the system call; registering it with the kernel is simple.</p>
 <h4 id="implementing-system-calls">Implementing System Calls</h4>
+<p>The first step in implementing a system call is defining its purpose and the syscall should have exactly one purpose. Multiplexing syscalls (a single system call that does wildly different things depending on a flag argument) is discouraged in Linux. <code>ioctl()</code> is an example of what <em>not</em> to do.</p>
+<p>Think of the new system call’s arguments, return value, and error codes. The system call should have a clean and simple interface with the smallest number of arguments possible.The semantics and behavior of a system call are important; they must not change, because existing applications will come to rely on them. Many system calls provide a flag argument to address forward compatibility. The flag is not used to multiplex different behavior across a single system call (which is not acceptable), but to enable new functionality and options without breaking backward compatibility or needing to add a new system call. [p75]</p>
+<p>Design the system call to be as general as possible with an eye toward the future. <u>The <em>purpose</em> of the system call will remain constant but its <em>uses</em> may change.</u> Remember the Unix motto: "Provide mechanism, not policy." [p75]</p>
+<p>When you write a system call, you need to realize the need for portability and robustness, not just today but in the future.The basic Unix system calls have survived this test of time; most of them are just as useful and applicable today as they were 30 years ago!</p>
+<h4 id="verifying-the-parameters">Verifying the Parameters</h4>
             </div>
         </div>
 
