@@ -389,6 +389,11 @@
         
             <li><a href="#example-of-sigsuspend-to-wait-for-a-signal-handler-to-set-a-global-variable">Example of sigsuspend to wait for a signal handler to set a global variable</a></li>
         
+            <li><a href="#example-of-signals-that-synchronize-a-parent-and-child">Example of signals that synchronize a parent and child</a></li>
+        
+    
+        <li class="main "><a href="#abort-function">abort Function</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -2618,6 +2623,111 @@ that we saved earlier (oldmask).</p>
 </pre></div>
 
 
+<h4 id="example-of-signals-that-synchronize-a-parent-and-child">Example of signals that synchronize a parent and child</h4>
+<p>This example shows how signals can be used to synchronize a parent and child. The following example shows implementations of the five routines <code>TELL_WAIT</code>, <code>TELL_PARENT</code>, <code>TELL_CHILD</code>, <code>WAIT_PARENT</code>, and <code>WAIT_CHILD</code> from <a href="../ch8/#race-conditions">Section 8.9</a>.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/tellwait.c">lib/tellwait.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="k">volatile</span> <span class="kt">sig_atomic_t</span> <span class="n">sigflag</span><span class="p">;</span> <span class="cm">/* set nonzero by sig handler */</span>
+<span class="k">static</span> <span class="kt">sigset_t</span> <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">,</span> <span class="n">zeromask</span><span class="p">;</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_usr</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>  <span class="cm">/* one signal handler for SIGUSR1 and SIGUSR2 */</span>
+<span class="p">{</span>
+    <span class="n">sigflag</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">TELL_WAIT</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">sig_usr</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGUSR1) error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGUSR2</span><span class="p">,</span> <span class="n">sig_usr</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGUSR2) error&quot;</span><span class="p">);</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">zeromask</span><span class="p">);</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGUSR1</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGUSR2</span><span class="p">);</span>
+
+    <span class="cm">/* Block SIGUSR1 and SIGUSR2, and save current signal mask */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_BLOCK error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">TELL_PARENT</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">kill</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">SIGUSR2</span><span class="p">);</span>     <span class="cm">/* tell parent we&#39;re done */</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">WAIT_PARENT</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">sigflag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">sigsuspend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">zeromask</span><span class="p">);</span>  <span class="cm">/* and wait for parent */</span>
+    <span class="n">sigflag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="cm">/* Reset signal mask to original value */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_SETMASK error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">TELL_CHILD</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">kill</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">SIGUSR1</span><span class="p">);</span>         <span class="cm">/* tell child we&#39;re done */</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">WAIT_CHILD</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">sigflag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">sigsuspend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">zeromask</span><span class="p">);</span>  <span class="cm">/* and wait for child */</span>
+    <span class="n">sigflag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="cm">/* Reset signal mask to original value */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_SETMASK error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In the example, two user-defined signals are used: <code>SIGUSR1</code> is sent by the parent to the child, and <code>SIGUSR2</code> is sent by the child to the parent.</p>
+<p>The <code>sigsuspend</code> function is fine if we want to go to sleep while we’re waiting for a signal to occur. If we want to call other system functions while we’re waiting, the only solution is to use multiple threads and dedicate a separate thread to handling signals (<a href="ch12.md#threads-and-signals">Section 12.8</a>).</p>
+<p>Without using threads, the best we can do is to set a global variable in the signal handler when the signal occurs. For example, if we catch both <code>SIGINT</code> and <code>SIGALRM</code> and install the signal handlers using the <a href="#example-signal_intr-function"><code>signal_intr</code> function</a>, the signals will interrupt any slow system call that is blocked. The signals are most likely to occur when we’re blocked in a call to the <code>read</code> function waiting for input from a slow device.  (This is especially true for <code>SIGALRM</code>, since we set the alarm clock to prevent us from waiting forever for input.) The code to handle this looks similar to the following:</p>
+<div class="codehilite"><pre>    <span class="k">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>      <span class="cm">/* flag set by our SIGINT handler */</span>
+        <span class="n">handle_intr</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">alrm_flag</span><span class="p">)</span>      <span class="cm">/* flag set by our SIGALRM handler */</span>
+        <span class="n">handle_alrm</span><span class="p">();</span>
+
+    <span class="cm">/* signals occurring in here are lost */</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span> <span class="p">...</span> <span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">alrm_flag</span><span class="p">)</span>
+            <span class="n">handle_alrm</span><span class="p">();</span>
+            <span class="k">else</span> <span class="nf">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>
+            <span class="n">handle_intr</span><span class="p">();</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="cm">/* some other error */</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="cm">/* end of file */</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="cm">/* process input */</span>
+    <span class="p">}</span>
+</pre></div>
+
+
+<p>We test each of the global flags before calling <code>read</code> and again if <code>read</code> returns an interrupted system call error. The problem occurs if either signal is caught between the first two if statements and the subsequent call to read. Signals occurring in here are lost, as indicated by the code comment. The signal handlers are called, and they set the appropriate global variable, but the <code>read</code> never returns (unless some data is ready to be read).</p>
+<p>What we would like to be able to do is the following sequence of steps, in order.</p>
+<ol>
+<li>Block <code>SIGINT</code> and <code>SIGALRM</code>.</li>
+<li>Test the two global variables to see whether either signal has occurred and, if so, handle the condition.</li>
+<li>Call <code>read</code> (or any other system function) and unblock the two signals, as an atomic operation.</li>
+</ol>
+<p>The <code>sigsuspend</code> function helps us only if step 3 is a <code>pause</code> operation.</p>
+<h3 id="abort-function"><code>abort</code> Function</h3>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>

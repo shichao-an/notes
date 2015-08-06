@@ -1,7 +1,7 @@
 ### **Chapter 5. System Calls**
 
 > Look at `ioctl()` as an example of what not to do (when implementing a system call).
-> <small>*LKD*</small>
+> <small>Robert Love</small>
 
 In any modern operating system, the kernel provides a set of interfaces by which processes running in user-space can interact with the system. These interfaces give applications: [p69]
 

@@ -1,5 +1,8 @@
 ### **Chapter 4. Elementary TCP Sockets**
 
+> In C, we cannot represent a constant structure on the right-hand side of an assignment.
+> <small>[*UNP*](#wildcard-address-and-inaddr_any)</small>
+
 ### Introduction
 
 This chapter describes the elementary socket functions required to write a complete TCP client and server, along with concurrent servers, a common Unix technique for providing concurrency when numerous clients are connected to the same server at the same time. Each client connection causes the server to fork a new process just for that client. In this chapter, we consider only the one-process-per-client model using `fork`.
@@ -137,10 +140,87 @@ connect error: No route to host
 
 As with the `ETIMEDOUT` error, `connect` returns the `EHOSTUNREACH` error only after waiting its specified amount of time.
 
-
 In terms of the TCP state transition diagram ([Figure 2.4](figure_2.4.png)):
 
 * `connect` moves from the CLOSED state (the state in which a socket begins when it is created by the `socket` function) to the SYN_SENT state, and then, on success, to the ESTABLISHED state.
 * If `connect` fails, the socket is no longer usable and must be closed. We cannot call `connect` again on the socket.
 
 In [Figure 11.10](ch4.md#tcp_connect-function), we will see that when we call `connect` in a loop, trying each IP address for a given host until one works, each time `connect` fails, we must close the socket descriptor and call `socket` again.
+
+### `bind` Function
+
+The `bind` function assigns a local protocol address to a socket. The protocol address is the combination of either a 32-bit IPv4 address or a 128-bit IPv6 address, along with a 16-bit TCP or UDP port number.
+
+```c
+#include <sys/socket.h>
+
+int bind (int sockfd, const struct sockaddr *myaddr, socklen_t addrlen);
+
+/* Returns: 0 if OK,-1 on error */
+```
+
+* The second argument *myaddr* is a pointer to a protocol-specific addres
+* The third argument *addrlen* is the size of this address structure.
+
+<u>With TCP, calling `bind` lets us specify a port number, an IP address, both, or neither.</u>
+
+* **Servers bind their well-known port when they start.** ([Figure 1.9](ch1.md#a-simple-daytime-server)) If a TCP client or server does not do this, the kernel chooses an ephemeral port for the socket when either `connect` or `listen` is called.
+    * It is normal for a TCP client to let the kernel choose an ephemeral port, unless the application requires a reserved port ([Figure 2.10](figure_2.10.png))
+    * However, it is rare for a TCP server to let the kernel choose an ephemeral port, since servers are known by their well-known port.
+
+    Exceptions to this rule are Remote Procedure Call (RPC) servers. They normally let the kernel choose an ephemeral port for their listening socket since this port is then registered with the RPC [port mapper](https://en.wikipedia.org/wiki/Portmap). Clients have to contact the port mapper to obtain the ephemeral port before they can connect to the server. This also applies to RPC servers using UDP.
+
+* **A process can bind a specific IP address to its socket.** <u>The IP address must belong to an interface on the host.</u>
+    * For a TCP client, this assigns the source IP address that will be used for IP datagrams sent on the socket. Normally, a TCP client does not `bind` an IP address to its socket. The kernel chooses the source IP address when the socket is connected, based on the outgoing interface that is used, which in turn is based on the route required to reach the server
+    * For a TCP server, this restricts the socket to receive incoming client connections destined only to that IP address. <u>If a TCP server does not `bind` an IP address to its socket, the kernel uses the destination IP address of the client's SYN as the server's source IP address.</u>
+
+As mentioned, calling `bind` lets us specify the IP address, the port, both, or neither. The following table summarizes the values to which we set `sin_addr` and `sin_port`, or `sin6_addr` and `sin6_port`, depending on the desired result.
+
+IP address | Port | Result
+---------- | ---- | ------
+Wildcard | 0 | Kernel chooses IP address and port
+Wildcard | nonzero | Kernel chooses IP address, process specifies port
+Local IP address | 0 | Process specifies IP address, kernel chooses port
+Local IP address | nonzero | Process specifies IP address and port
+
+* If we specify a port number of 0, the kernel chooses an ephemeral port when `bind` is called.
+* If we specify a wildcard IP address, the kernel does not choose the local IP address until either the socket is connected (TCP) or a datagram is sent on the socket (UDP).
+
+#### Wildcard Address and `INADDR_ANY` *
+
+With IPv4, the *wildcard* address is specified by the constant `INADDR_ANY`, whose value is normally 0. This tells the kernel to choose the IP address. [Figure 1.9](ch1.md#a-simple-daytime-server) has the assignment:
+
+```c
+    struct sockaddr_in   servaddr;
+    servaddr.sin_addr.s_addr = htonl (INADDR_ANY);     /* wildcard */
+```
+
+While this works with IPv4, where an IP address is a 32-bit value that can be represented as a simple numeric constant (0 in this case), we cannot use this technique with IPv6, since the 128-bit IPv6 address is stored in a structure. <u>In C we cannot represent a constant structure on the right-hand side of an assignment.</u> To solve this problem, we write:
+
+```c
+struct sockaddr_in6    serv;
+serv.sin6_addr = in6addr_any;     /* wildcard */
+```
+
+The system allocates and initializes the `in6addr_any` variable to the constant `IN6ADDR_ANY_INIT`. The `<netinet/in.h>` header contains the extern declaration for `in6addr_any`.
+
+The value of `INADDR_ANY` (0) is the same in either network or host byte order, so the use of `htonl` is not really required. But, since all the `INADDR_`constants defined by the `<netinet/in.h>` header are defined in host byte order, we should use `htonl` with any of these constants.
+
+If we tell the kernel to choose an ephemeral port number for our socket (by specifying a 0 for port number), `bind` does not return the chosen value. It cannot return this value since the second argument to `bind` has the `const` qualifier. <u>To obtain the value of the ephemeral port assigned by the kernel, we must call `getsockname` to return the protocol address.</u>
+
+#### Binding a non-wildcard IP address *
+
+A common example of a process binding a non-wildcard IP address to a socket is a host that provides Web servers to multiple organizations:
+
+* First, each organization has its own domain name, such as www.organization.com.
+* Next, each organization's domain name maps into a different IP address, but typically on the same subnet.
+
+For example, if the subnet is 198.69.10, the first organization's IP address could be 198.69.10.128, the next 198.69.10.129, and so on. All these IP addresses are then *aliased* onto a single network interface (using the `alias` option of the `ifconfig` command on 4.4BSD, for example) so that the IP layer will accept incoming datagrams destined for any of the aliased addresses. Finally, one copy of the HTTP server is started for each organization and each copy `bind`s only the IP address for that organization.
+
+An alternative technique is to run a single server that binds the wildcard address. When a connection arrives, the server calls `getsockname` to obtain the destination IP address from the client, which in our discussion above could be 198.69.10.128, 198.69.10.129, and so on. The server then handles the client request based on the IP address to which the connection was issued.
+
+One advantage in binding a non-wildcard IP address is that the demultiplexing of a given destination IP address to a given server process is then done by the kernel.
+
+We must be careful to distinguish between the interface on which a packet arrives versus the destination IP address of that packet. In [Section 8.8](ch8.md#verifying-received-response), we will talk about the **weak end system model** and the **strong end system model**. Most implementations employ the former, meaning it is okay for a packet to arrive with a destination IP address that identifies an interface other than the interface on which the packet arrives. (This assumes a multihomed host.) Binding a non-wildcard IP address restricts the datagrams that will be delivered to the socket based only on the destination IP address. It says nothing about the arriving interface, unless the host employs the strong end system model.
+
+A common error from bind is `EADDRINUSE` ("Address already in use"), which is detailed in [Section 7.5](ch7.md#generic-socket-options) when discussing the `SO_REUSEADDR` and `SO_REUSEPORT` socket options.
