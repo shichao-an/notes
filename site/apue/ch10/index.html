@@ -383,6 +383,13 @@
         <li class="main "><a href="#sigsetjmp-and-siglongjmp-functions">sigsetjmp and siglongjmp Functions</a></li>
         
     
+        <li class="main "><a href="#sigsuspend-function">sigsuspend Function</a></li>
+        
+            <li><a href="#example-of-sigsuspend-to-protect-a-critial-region">Example of sigsuspend to protect a critial region</a></li>
+        
+            <li><a href="#example-of-sigsuspend-to-wait-for-a-signal-handler-to-set-a-global-variable">Example of sigsuspend to wait for a signal handler to set a global variable</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -2434,6 +2441,183 @@ The <code>si_errno</code> field contains the error number corresponding to the c
 
 
 <p>The output is what we expect: when a signal handler is invoked, the signal being caught is added to the current signal mask of the process. The original mask is restored when the signal handler returns. Also, <code>siglongjmp</code> restores the signal mask that was saved by <code>sigsetjmp</code>.</p>
+<h3 id="sigsuspend-function"><code>sigsuspend</code> Function</h3>
+<p>We have seen how we can change the signal mask for a process to block and unblock selected signals. We can use this technique to protect critical regions of code that we don’t want interrupted by a signal. But what if we want to unblock a signal and then <code>pause</code>, waiting for the previously blocked signal to occur? Assuming that the signal is <code>SIGINT</code>, the incorrect way to do this is:</p>
+<div class="codehilite"><pre>  <span class="kt">sigset_t</span> <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">;</span>
+
+  <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+  <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGINT</span><span class="p">);</span>
+
+  <span class="cm">/* block SIGINT and save current signal mask */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_BLOCK error&quot;</span><span class="p">);</span>
+
+  <span class="cm">/* critical region of code */</span>
+
+  <span class="cm">/* restore signal mask, which unblocks SIGINT */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_SETMASK error&quot;</span><span class="p">);</span>
+
+  <span class="cm">/* window is open */</span>
+  <span class="n">pause</span><span class="p">();</span> <span class="cm">/* wait for signal to occur */</span>
+
+  <span class="cm">/* continue processing */</span>
+</pre></div>
+
+
+<p>If the signal is sent to the process while it is blocked, the signal delivery will be deferred until the signal is unblocked. To the application, this can look as if the signal occurs between the unblocking and the <code>pause</code> (depending on how the kernel implements signals). If this happens, or if the signal does occur between the unblocking and the <code>pause</code>, we have a problem. Any occurrence of the signal in this window of time is lost, in the sense that we might not see the signal again, in which case the <code>pause</code> will block indefinitely. This is another problem with the earlier unreliable signals.</p>
+<p>To correct this problem, we need a way to both restore the signal mask and put the process to sleep in a single atomic operation. This feature is provided by the <code>sigsuspend</code> function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">sigsuspend</span><span class="p">(</span><span class="k">const</span> <span class="kt">sigset_t</span> <span class="o">*</span><span class="n">sigmask</span><span class="p">);</span>
+
+<span class="cm">/* Returns: −1 with errno set to EINTR */</span>
+</pre></div>
+
+
+<p>The signal mask of the process is set to the value pointed to by <em>sigmask</em>. Then the process is suspended until a signal is caught or until a signal occurs that terminates the process. If a signal is caught and if the signal handler returns, then <code>sigsuspend</code> returns, and the signal mask of the process is set to its value before the call to <code>sigsuspend</code>.</p>
+<h4 id="example-of-sigsuspend-to-protect-a-critial-region">Example of <code>sigsuspend</code> to protect a critial region</h4>
+<p>The following code shows the correct way to protect a critical region of code from a specific signal.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/suspend1.c">signals/suspend1.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">sig_int</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">sigset_t</span>    <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">,</span> <span class="n">waitmask</span><span class="p">;</span>
+
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;program start: &quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGINT) error&quot;</span><span class="p">);</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">waitmask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">waitmask</span><span class="p">,</span> <span class="n">SIGUSR1</span><span class="p">);</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGINT</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Block SIGINT and save current signal mask.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_BLOCK error&quot;</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Critical region of code.</span>
+<span class="cm">     */</span>
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;in critical region: &quot;</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Pause, allowing all signals except SIGUSR1.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigsuspend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">waitmask</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;sigsuspend error&quot;</span><span class="p">);</span>
+
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;after return from sigsuspend: &quot;</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Reset signal mask which unblocks SIGINT.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_SETMASK error&quot;</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * And continue processing ...</span>
+<span class="cm">     */</span>
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;program exit: &quot;</span><span class="p">);</span>
+
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pr_mask</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">in sig_int: &quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When <code>sigsuspend</code> returns, it sets the signal mask to its value before the cal SIGINT signal will be blocked, so we restore the signal mask to the value
+that we saved earlier (oldmask).</p>
+<p>Running the program produces the following output:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">program start:</span>
+<span class="go">in critical region: SIGINT</span>
+<span class="go">ˆC                          # type the interrupt character</span>
+<span class="go">in sig_int: SIGINT SIGUSR1</span>
+<span class="go">after return from sigsuspend: SIGINT</span>
+<span class="go">program exit:</span>
+</pre></div>
+
+
+<h4 id="example-of-sigsuspend-to-wait-for-a-signal-handler-to-set-a-global-variable">Example of <code>sigsuspend</code> to wait for a signal handler to set a global variable</h4>
+<p>In the following program, we catch both the interrupt signal and the quit signal, but want to wake up the main routine only when the quit signal is caught.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/suspend2.c">signals/suspend2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">volatile</span> <span class="kt">sig_atomic_t</span>   <span class="n">quitflag</span><span class="p">;</span>   <span class="cm">/* set nonzero by signal handler */</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>  <span class="cm">/* one signal handler for SIGINT and SIGQUIT */</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signo</span> <span class="o">==</span> <span class="n">SIGINT</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">interrupt</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">signo</span> <span class="o">==</span> <span class="n">SIGQUIT</span><span class="p">)</span>
+        <span class="n">quitflag</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>   <span class="cm">/* set flag for main loop */</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">sigset_t</span>    <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">,</span> <span class="n">zeromask</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGINT) error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGQUIT) error&quot;</span><span class="p">);</span>
+
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">zeromask</span><span class="p">);</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGQUIT</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Block SIGQUIT and save current signal mask.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_BLOCK error&quot;</span><span class="p">);</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="n">quitflag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">sigsuspend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">zeromask</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * SIGQUIT has been caught and is now blocked; do whatever.</span>
+<span class="cm">     */</span>
+    <span class="n">quitflag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Reset signal mask which unblocks SIGQUIT.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;SIG_SETMASK error&quot;</span><span class="p">);</span>
+
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Sample output from this program is:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">ˆC           # type the interrupt character</span>
+<span class="go">interrupt</span>
+<span class="go">ˆC           # type the interrupt character again</span>
+<span class="go">interrupt</span>
+<span class="go">ˆC           # and again</span>
+<span class="go">interrupt</span>
+<span class="go">ˆ\ $         # now terminate with the quit character</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
@@ -2446,6 +2630,11 @@ The <code>si_errno</code> field contains the error number corresponding to the c
 <ul>
 <li><a href="http://stackoverflow.com/questions/22344303">Stack Overflow</a></li>
 </ul>
+<p>[p359] on unblocking signals:</p>
+<blockquote>
+<p>If the signal is sent to the process while it is blocked, the signal delivery will be deferred until the signal is unblocked. To the application, this can look as if the signal occurs between the unblocking and the <code>pause</code> (depending on how the kernel implements signals). If this happens, or if the signal does occur between the unblocking and the <code>pause</code>, we have a problem. Any occurrence of the signal in this window of time is lost, in the sense that we might not see the signal again, in which case the <code>pause</code> will block indefinitely. This is another problem with the earlier unreliable signals.</p>
+</blockquote>
+<p>What is exactly the window? Shouldn't be the unblocked signals delivered to the process? Not fully understood.</p>
             </div>
         </div>
 
