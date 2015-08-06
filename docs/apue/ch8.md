@@ -1230,7 +1230,7 @@ Since `system` is implemented by calling `fork`, `exec`, and `waitpid`, there ar
 2. If the `exec` fails, implying that the shell can’t be executed, the return value is as if the shell had executed `exit(127)`.
 3. If all three functions succeed, the return value is the termination status of the shell, in the format specified for `waitpid`.
 
-The code below is an implementation of the `system` function, which doesn't handle is signals.
+The code below is an implementation of the `system` function, which doesn't handle signals.
 
 ```c
 #include	<sys/wait.h>
@@ -1264,7 +1264,7 @@ system(const char *cmdstring)	/* version without signal handling */
 }
 ```
 * The shell’s `-c` option tells it to take the next command-line argument, *cmdstring*, as its command input instead of reading from standard input or from a given file. The shell parses this null-terminated C string and breaks it up into separate command-line arguments for the command. The actual command string that is passed to the shell can contain any valid shell commands.
-* `_exit` is called instead of `exit`. This prevents any standard I/O buffers, which would have been copied from the parent to the child across the fork, from being flushed in the child.
+* `_exit` is called instead of `exit`. This prevents any standard I/O buffers, which would have been copied from the parent to the child across the `fork`, from being flushed in the child.
 
 [p266-267]
 
