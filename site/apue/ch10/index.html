@@ -395,6 +395,11 @@
         <li class="main "><a href="#abort-function">abort Function</a></li>
         
     
+        <li class="main "><a href="#system-function">system Function</a></li>
+        
+            <li><a href="#example-of-system-invoking-ed-editor">Example of system invoking ed editor</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -2728,6 +2733,146 @@ that we saved earlier (oldmask).</p>
 </ol>
 <p>The <code>sigsuspend</code> function helps us only if step 3 is a <code>pause</code> operation.</p>
 <h3 id="abort-function"><code>abort</code> Function</h3>
+<p>The <code>abort</code> function causes abnormal program termination.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">abort</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="cm">/* This function never returns */</span>
+</pre></div>
+
+
+<p>The <code>abort</code> function sends the <code>SIGABRT</code> signal to the caller. Processes should not ignore this signal. ISO C states that calling abort will deliver an unsuccessful termination notification to the host environment by calling <code>raise(SIGABRT)</code>.</p>
+<p>[p365]</p>
+<p>ISO C:</p>
+<ul>
+<li>If the signal is caught and the signal handler returns, <code>abort</code> still doesn’t return to its caller. If this signal is caught, the only way the signal handler can’t return is if it calls <code>exit</code>, <code>_exit</code>, <code>_Exit</code>, <code>longjmp</code>, or <code>siglongjmp</code>.</li>
+<li>It is up to the implementation as to whether output streams are flushed and whether temporary files (<a href="../ch5/#temporary-files">Section 5.13</a>) are deleted.</li>
+</ul>
+<p>POSIX.1:</p>
+<ul>
+<li><code>abort</code> overrides the blocking or ignoring of the signal by the process.</li>
+<li>The intent of letting the process catch the <code>SIGABRT</code> is to allow it to perform any cleanup that it wants to do before the process terminates.</li>
+<li>If the process doesn’t terminate itself from this signal handler, when the signal handler returns, <code>abort</code> terminates the process.</li>
+<li>An implementation is allowed to call <code>fclose</code> on open standard I/O streams before terminating if the call to abort terminates the process.</li>
+</ul>
+<p>Since most UNIX System implementations of <code>tmpfile</code> call <code>unlink</code> immediately after creating the file, the ISO C warning about temporary files does not usually concern us. [p366]</p>
+<p>The following is an implementation of the <code>abort</code> function as specified by POSIX.1:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">abort</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>         <span class="cm">/* POSIX-style abort() function */</span>
+<span class="p">{</span>
+    <span class="kt">sigset_t</span>            <span class="n">mask</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sigaction</span>    <span class="n">action</span><span class="p">;</span>
+
+    <span class="cm">/* Caller can&#39;t ignore SIGABRT, if so reset to default */</span>
+    <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGABRT</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">action</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">action</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">==</span> <span class="n">SIG_IGN</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">action</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_DFL</span><span class="p">;</span>
+        <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGABRT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">action</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">action</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">==</span> <span class="n">SIG_DFL</span><span class="p">)</span>
+        <span class="n">fflush</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>           <span class="cm">/* flush all open stdio streams */</span>
+
+    <span class="cm">/* Caller can&#39;t block SIGABRT; make sure it&#39;s unblocked */</span>
+    <span class="n">sigfillset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mask</span><span class="p">);</span>
+    <span class="n">sigdelset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mask</span><span class="p">,</span> <span class="n">SIGABRT</span><span class="p">);</span>  <span class="cm">/* mask has only SIGABRT turned off */</span>
+    <span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">mask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">kill</span><span class="p">(</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">SIGABRT</span><span class="p">);</span>    <span class="cm">/* send the signal */</span>
+
+    <span class="cm">/* If we&#39;re here, process caught SIGABRT and returned */</span>
+    <span class="n">fflush</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>               <span class="cm">/* flush all open stdio streams */</span>
+    <span class="n">action</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_DFL</span><span class="p">;</span>
+    <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGABRT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">action</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>  <span class="cm">/* reset to default */</span>
+    <span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">mask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>  <span class="cm">/* just in case ... */</span>
+    <span class="n">kill</span><span class="p">(</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">SIGABRT</span><span class="p">);</span>                <span class="cm">/* and one more time */</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>    <span class="cm">/* this should never be executed ... */</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>This implementation of <code>abort</code> first check whether the default action will occur; if so, it flush all the standard I/O streams. This is not equivalent to calling <code>fclose</code> on all the open streams (since it just flushes them and doesn’t close them), but when the process terminates, the system closes all open files.</li>
+<li>If the process catches the signal and returns, we flush all the streams again, since the process could have generated more output.</li>
+<li>The only condition we don’t handle is the case where the process catches the signal and calls <code>_exit</code> or <code>_Exit</code>. In this case, any unflushed standard I/O buffers in memory are discarded. (We assume that a caller that does this doesn’t want the buffers flushed.)</li>
+<li>As mentioned in <a href="#kill-and-raise-functions">Section 10.9</a>, if calling <code>kill</code> causes the signal to be generated for the caller, and if the signal is not blocked, then the signal (or some other pending, unlocked signal) is delivered to the process before <code>kill</code> returns. We block all signals except <code>SIGABRT</code>, so we know that if the call to <code>kill</code> returns, the process caught the signal and the signal handler returned.</li>
+</ul>
+<h3 id="system-function"><code>system</code> Function</h3>
+<p><a href="../ch8/##system-function">Section 8.13</a> showed an implementation of the <code>system</code> function, which did not do any signal handling. POSIX.1 requires that system ignore <code>SIGINT</code> and <code>SIGQUIT</code> and block <code>SIGCHLD</code>. Before showing a version that handles these signals correctly, let’s see why we need to worry about signal handling.</p>
+<h4 id="example-of-system-invoking-ed-editor">Example of <code>system</code> invoking <code>ed</code> editor</h4>
+<p>The program (Figure 10.26) shown below uses the <code>system</code> function from <a href="../ch8/##system-function">Section 8.13</a> to invoke the <code>ed(1)</code> editor. It is an interactive program that catches the interrupt and quit signals. If <code>ed</code> is invoked from a shell and type the interrupt character, it catches the interrupt signal and prints a question mark. The <code>ed</code> program also sets the disposition of the quit signal so that it is ignored.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/systest2.c">signals/systest2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;caught SIGINT</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_chld</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;caught SIGCHLD</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sig_int</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGINT) error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGCHLD</span><span class="p">,</span> <span class="n">sig_chld</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal(SIGCHLD) error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">system</span><span class="p">(</span><span class="s">&quot;/bin/ed&quot;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;system() error&quot;</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program catches both <code>SIGINT</code> and <code>SIGCHLD</code>. If we invoke the program, we get:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">a                         # append text to the editor’s buffer</span>
+<span class="go">Here is one line of text</span>
+<span class="go">.                         # period on a line by itself stops append mode</span>
+<span class="go">1,$p                      # print first through last lines of buffer to see what’s there</span>
+<span class="go">Here is one line of text</span>
+<span class="go">w temp.foo                # write the buffer to a file</span>
+<span class="go">25                        # editor says it wrote 25 bytes</span>
+<span class="go">q                         # and leave the editor</span>
+<span class="go">caught SIGCHLD</span>
+</pre></div>
+
+
+<ul>
+<li>When the editor terminates, the kernel sends the <code>SIGCHLD</code> signal to the parent (the <code>a.out</code> process) and it is caught and returned from the signal handler. The parent should be catching the <code>SIGCHLD</code> signal because it has created its own children, so that it knows when its children have terminated.</li>
+<li><u>The delivery of the <code>SIGCHLD</code> signal in the parent should be blocked while the <code>system</code> function is executing</u>, as specified by POSIX.1. Otherwise, when the child created by <code>system</code> terminates, it would fool the caller of <code>system</code> into thinking that one of its own children terminated. The caller would then use one of the <code>wait</code> functions to get the termination status of the child, thereby preventing the <code>system</code> function from being able to obtain the child’s termination status for its return value.</li>
+</ul>
+<p>If we run the program again, this time sending the editor an interrupt signal, we get</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">a                # append text to the editor’s buffer</span>
+<span class="go">hello, world</span>
+<span class="go">.                # period on a line by itself stops append mode</span>
+<span class="go">1,$p             # print first through last lines to see what’s there</span>
+<span class="go">hello, world</span>
+<span class="go">w temp.foo       # write the buffer to a file</span>
+<span class="go">13               # editor says it wrote 13 bytes</span>
+<span class="go">ˆC               # type the interrupt character</span>
+<span class="go">?                # editor catches signal, prints question mark</span>
+<span class="go">caught SIGINT    # and so does the parent process</span>
+<span class="go">q                # leave editor</span>
+<span class="go">caught SIGCHLD</span>
+</pre></div>
+
+
+<p>As mentioned in <a href="../ch9/#controlling-terminal">Section 9.6</a>, typing the interrupt character causes the interrupt signal to be sent to all the processes in the foreground process group. The following figure shows the arrangement of the processes when the editor is running.</p>
+<p><a href="../figure_10.27.png" title="Figure 10.27 Foreground and background process groups for Figure 10.26"><img alt="Figure 10.27 Foreground and background process groups for Figure 10.26" src="../figure_10.27.png" /></a></p>
+<p>In this example:</p>
+<p><code>SIGINT</code> is sent to all three foreground processes (the shell ignores it) and both the <code>a.out</code> process and the editor catch the signal. When running another program with the <code>system</code> function, we shouldn’t have both the parent and the child catching the two terminal-generated signals: interrupt and quit. Instead, these two signals should be sent to the program that is running: the child. Since the command that is executed by system can be an interactive command (the <code>ed</code> program in this example) and since the caller of <code>system</code> gives up control while the program executes, waiting for it to finish, <u>the caller of <code>system</code> should not be receiving these two terminal-generated signals.</u> For this reason, POSIX.1 specifies that <u>the <code>system</code> function should ignore the <code>SIGINT</code> and <code>SIGQUIT</code> signals while waiting for the command to complete.</u></p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
