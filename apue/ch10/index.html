@@ -399,6 +399,16 @@
         
             <li><a href="#example-of-system-invoking-ed-editor">Example of system invoking ed editor</a></li>
         
+            <li><a href="#implementation-of-system-with-signal-handling">Implementation of system with signal handling</a></li>
+        
+            <li><a href="#return-value-from-system">Return Value from system</a></li>
+        
+    
+        <li class="main "><a href="#sleep-nanosleep-and-clock_nanosleep-functions">sleep, nanosleep, and clock_nanosleep Functions</a></li>
+        
+    
+        <li class="main "><a href="#sigqueue-function">sigqueue Function</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -2873,6 +2883,249 @@ that we saved earlier (oldmask).</p>
 <p><a href="../figure_10.27.png" title="Figure 10.27 Foreground and background process groups for Figure 10.26"><img alt="Figure 10.27 Foreground and background process groups for Figure 10.26" src="../figure_10.27.png" /></a></p>
 <p>In this example:</p>
 <p><code>SIGINT</code> is sent to all three foreground processes (the shell ignores it) and both the <code>a.out</code> process and the editor catch the signal. When running another program with the <code>system</code> function, we shouldn’t have both the parent and the child catching the two terminal-generated signals: interrupt and quit. Instead, these two signals should be sent to the program that is running: the child. Since the command that is executed by system can be an interactive command (the <code>ed</code> program in this example) and since the caller of <code>system</code> gives up control while the program executes, waiting for it to finish, <u>the caller of <code>system</code> should not be receiving these two terminal-generated signals.</u> For this reason, POSIX.1 specifies that <u>the <code>system</code> function should ignore the <code>SIGINT</code> and <code>SIGQUIT</code> signals while waiting for the command to complete.</u></p>
+<h4 id="implementation-of-system-with-signal-handling">Implementation of <code>system</code> with signal handling</h4>
+<p>The program below shows an implementation of the system function with the required signal handling.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/system.c">signals/system.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include    &lt;sys/wait.h&gt;</span>
+<span class="cp">#include    &lt;errno.h&gt;</span>
+<span class="cp">#include    &lt;signal.h&gt;</span>
+<span class="cp">#include    &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">system</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmdstring</span><span class="p">)</span>   <span class="cm">/* with appropriate signal handling */</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>               <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">int</span>                 <span class="n">status</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sigaction</span>    <span class="n">ignore</span><span class="p">,</span> <span class="n">saveintr</span><span class="p">,</span> <span class="n">savequit</span><span class="p">;</span>
+    <span class="kt">sigset_t</span>            <span class="n">chldmask</span><span class="p">,</span> <span class="n">savemask</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">cmdstring</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>      <span class="cm">/* always a command processor with UNIX */</span>
+
+    <span class="n">ignore</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_IGN</span><span class="p">;</span>    <span class="cm">/* ignore SIGINT and SIGQUIT */</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ignore</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">ignore</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ignore</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">saveintr</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ignore</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">savequit</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">chldmask</span><span class="p">);</span>         <span class="cm">/* now block SIGCHLD */</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">chldmask</span><span class="p">,</span> <span class="n">SIGCHLD</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">chldmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">savemask</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>    <span class="cm">/* probably out of processes */</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>          <span class="cm">/* child */</span>
+        <span class="cm">/* restore previous signal actions &amp; reset signal mask */</span>
+        <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">saveintr</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+        <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">savequit</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+        <span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">savemask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+        <span class="n">execl</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">,</span> <span class="s">&quot;sh&quot;</span><span class="p">,</span> <span class="s">&quot;-c&quot;</span><span class="p">,</span> <span class="n">cmdstring</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+        <span class="n">_exit</span><span class="p">(</span><span class="mi">127</span><span class="p">);</span>     <span class="cm">/* exec error */</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                        <span class="cm">/* parent */</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">EINTR</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span> <span class="cm">/* error other than EINTR from waitpid() */</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* restore previous signal actions &amp; reset signal mask */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">saveintr</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">savequit</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">savemask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">status</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This implementation of <code>system</code> differs from the previous flawed one in the following ways:</p>
+<ol>
+<li>No signal is sent to the calling process when we type the interrupt or quit character.</li>
+<li>When the <code>ed</code> command exits, <code>SIGCHLD</code> is not sent to the calling process. Instead, it is blocked until we unblock it in the last call to <code>sigprocmask</code>, after the <code>system</code> function retrieves the child’s termination status by calling <code>waitpid</code>.</li>
+</ol>
+<p>POSIX.1 states that if <code>wait</code> or <code>waitpid</code> returns the status of a child process while <code>SIGCHLD</code> is pending, then <code>SIGCHLD</code> should not be delivered to the process unless the status of another child process is also available. FreeBSD 8.0, Mac OS X 10.6.8, and Solaris 10 all implement this semantic, while Linux 3.2.0 doesn’t. In Linux, <code>SIGCHLD</code> remains pending after the <code>system</code> function calls <code>waitpid</code>; when the signal is unblocked, it is delivered to the caller. If we called <code>wait</code> in the <code>sig_chld</code> function in <a href="#example-of-system-invoking-ed-editor">Figure 10.26</a>, a Linux system would return −1 with <code>errno</code> set to <code>ECHILD</code>, since the <code>system</code> function already retrieved the termination status of the child.</p>
+<p>Many older texts show the ignoring of the interrupt and quit signals as follows:</p>
+<div class="codehilite"><pre>  <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* child */</span>
+    <span class="n">execl</span><span class="p">(...);</span>
+    <span class="n">_exit</span><span class="p">(</span><span class="mi">127</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* parent */</span>
+  <span class="n">old_intr</span> <span class="o">=</span> <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">SIG_IGN</span><span class="p">);</span>
+  <span class="n">old_quit</span> <span class="o">=</span> <span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">SIG_IGN</span><span class="p">);</span>
+  <span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+  <span class="n">signal</span><span class="p">(</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">old_intr</span><span class="p">);</span>
+  <span class="n">signal</span><span class="p">(</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">old_quit</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The problem with this sequence of code is that we have no guarantee after the <code>fork</code> regarding whether the parent or child runs first. If the child runs first and the parent doesn’t run for some time after, an interrupt signal might be generated before the parent is able to change its disposition to be ignored. For this reason, in the implementation of <code>system</code>, we change the disposition of the signals before the <code>fork</code>.</p>
+<p>Note that we have to reset the dispositions of these two signals in the child before the call to <code>execl</code>. This allows execl to change their dispositions to the default, based on the caller’s dispositions, as described in <a href="../ch8/#exec-functions">Section 8.10</a>.</p>
+<h4 id="return-value-from-system">Return Value from <code>system</code></h4>
+<p>The return value from <code>system</code> is the termination status of the shell, which isn’t always the termination status of the command string. [p371]</p>
+<p>Run the program in <a href="https://github.com/shichao-an/apue.3e/blob/master/proc/systest3.c">Figure 8.24</a> and send some signals to the command that’s executing:</p>
+<div class="codehilite"><pre><span class="go">$ tsys &quot;sleep 30&quot;</span>
+<span class="go">ˆCnormal termination, exit status = 130  # we press the interrupt key</span>
+<span class="go">$ tsys &quot;sleep 30&quot;</span>
+<span class="go">ˆ\sh: 946                                # Quit we press the quit key</span>
+<span class="go">normal termination, exit status = 131</span>
+</pre></div>
+
+
+<p>When we terminate the <code>sleep</code> call with the interrupt signal, the <code>pr_exit</code> function (Figure 8.5) thinks that it terminated normally. The same thing happens when we kill the <code>sleep</code> call with the quit key. This is because the Bourne shell has a poorly documented feature in which its termination status is 128 plus the signal number, when the command it was executing is terminated by a signal. [p372]</p>
+<p>Try a similar example, but this time we’ll send a signal directly to the shell and see what is returned by system:</p>
+<div class="codehilite"><pre><span class="go">$ tsys &quot;sleep 30&quot; &amp;      # start it in background this time</span>
+<span class="go">9257</span>
+<span class="go">$ ps -f                  # look at the process IDs</span>
+<span class="go">UID PID PPID TTY TIME CMD</span>
+<span class="go">sar 9260 949 pts/5 0:00 ps -f</span>
+<span class="go">sar 9258 9257 pts/5 0:00 sh -c sleep 30</span>
+<span class="go">sar 949 947 pts/5 0:01 /bin/sh</span>
+<span class="go">sar 9257 949 pts/5 0:00 tsys sleep 30</span>
+<span class="go">sar 9259 9258 pts/5 0:00 sleep 30</span>
+<span class="go">$ kill -KILL 9258        # kill the shell itself</span>
+<span class="go">abnormal termination, signal number = 9</span>
+</pre></div>
+
+
+<p>We can see that the return value from system reports an abnormal termination only when the shell itself terminates abnormally.</p>
+<p>Other shells behave differently when handling terminal-generated signals, such as <code>SIGINT</code> and <code>SIGQUIT</code>. With <code>bash</code> and <code>dash</code>, for example, pressing the interrupt or quit key will result in an exit status indicating abnormal termination with the corresponding signal number. However, if we find our process executing <code>sleep</code> and send it a signal directly, so that the signal goes only to the individual process instead of the entire foreground process group, we will find that these shells behave like the Bourne shell and exit with a normal termination status of 128 plus the signal number.</p>
+<p>When writing programs that use the <code>system</code> function, be sure to interpret the return value correctly. If you call <code>fork</code>, <code>exec</code>, and <code>wait</code> yourself, the termination status is not the same as if you call system.</p>
+<h3 id="sleep-nanosleep-and-clock_nanosleep-functions"><code>sleep</code>, <code>nanosleep</code>, and <code>clock_nanosleep</code> Functions</h3>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">unsigned</span> <span class="kt">int</span> <span class="nf">sleep</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">seconds</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 or number of unslept seconds */</span>
+</pre></div>
+
+
+<p>The <code>sleep</code> function causes the calling process to be suspended until either:</p>
+<ol>
+<li>The amount of wall clock time specified by seconds has elapsed. In this case, the return value is 0.</li>
+<li>A signal is caught by the process and the signal handler returns. In this case the return value is the number of unslept seconds (the requested time minus the actual time slept).</li>
+</ol>
+<p>As with an <code>alarm</code> signal, the actual return may occur at a time later than requested because of other system activity.</p>
+<p>Although sleep can be implemented with the <code>alarm</code> function (<a href="#alarm-and-pause-functions">Section 10.10</a>), this isn’t required. If <code>alarm</code> is used, there can be interactions between the two functions. The POSIX.1 standard leaves all these interactions unspecified.</p>
+<p>FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10 implement <code>sleep</code> using the <code>nanosleep</code> function, which allows the implementation to be independent of signals and the alarm timer.</p>
+<p>The follow example shows an implementation of the POSIX.1 <code>sleep</code> function. This function is a modification of <a href="#sleep1-example">Figure 10.7</a>, which handles signals reliably, avoiding the race condition in the earlier implementation, but does not handle any interactions with previously set alarms.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/sleep.c">lib/sleep.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_alrm</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/* nothing to do, just returning wakes up sigsuspend() */</span>
+<span class="p">}</span>
+
+<span class="kt">unsigned</span> <span class="kt">int</span>
+<span class="nf">sleep</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">seconds</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sigaction</span>    <span class="n">newact</span><span class="p">,</span> <span class="n">oldact</span><span class="p">;</span>
+    <span class="kt">sigset_t</span>            <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">,</span> <span class="n">suspmask</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span>        <span class="n">unslept</span><span class="p">;</span>
+
+    <span class="cm">/* set our handler, save previous information */</span>
+    <span class="n">newact</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">sig_alrm</span><span class="p">;</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newact</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">newact</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newact</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldact</span><span class="p">);</span>
+
+    <span class="cm">/* block SIGALRM and save current signal mask */</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGALRM</span><span class="p">);</span>
+    <span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">);</span>
+
+    <span class="n">alarm</span><span class="p">(</span><span class="n">seconds</span><span class="p">);</span>
+    <span class="n">suspmask</span> <span class="o">=</span> <span class="n">oldmask</span><span class="p">;</span>
+
+    <span class="cm">/* make sure SIGALRM isn&#39;t blocked */</span>
+    <span class="n">sigdelset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">suspmask</span><span class="p">,</span> <span class="n">SIGALRM</span><span class="p">);</span>
+
+    <span class="cm">/* wait for any signal to be caught */</span>
+    <span class="n">sigsuspend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">suspmask</span><span class="p">);</span>
+
+    <span class="cm">/* some signal has been caught, SIGALRM is now blocked */</span>
+
+    <span class="n">unslept</span> <span class="o">=</span> <span class="n">alarm</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/* reset previous action */</span>
+    <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldact</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="cm">/* reset signal mask, which unblocks SIGALRM */</span>
+    <span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_SETMASK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">unslept</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This code doesn't use any form of nonlocal branching (as in <a href="#sleep2-example-using-setjmp-and-longjmp">Figure 10.8</a> to avoid the race condition between alarm and pause), so there is no effect on other signal handlers that may be executing when the <code>SIGALRM</code> is handled.</p>
+<p>The <code>nanosleep</code> function is similar to the <code>sleep</code> function, but provides nanosecond-level granularity.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">nanosleep</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">reqtp</span><span class="p">,</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">remtp</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if slept for requested time or −1 on error */</span>
+</pre></div>
+
+
+<p>This function suspends the calling process until either the requested time has elapsed or the function is interrupted by a signal.</p>
+<p>Arguments:</p>
+<ul>
+<li>The <em>reqtp</em> parameter specifies the amount of time to sleep in seconds and nanoseconds.</li>
+<li>The <em>remtp</em> parameter. If the sleep interval is interrupted by a signal and the process doesn’t terminate, the <code>timespec</code> structure pointed to by the <em>remtp</em> parameter will be set to the amount of time left in the sleep interval. We can set this parameter to NULL if we are uninterested in the time unslept.</li>
+</ul>
+<p>Notes on <code>nanosleep</code>:</p>
+<ul>
+<li>If the system doesn’t support nanosecond granularity, the requested time is rounded up.</li>
+<li>Because the nanosleep function doesn’t involve the generation of any signals, we can use it without worrying about interactions with other functions.</li>
+</ul>
+<p>The <code>clock_nanosleep</code> function provides the capability to suspend the calling thread using a delay time relative to a particular clock, using multiple system clocks (<a href="../ch6/#time-and-date-routines">Section 6.10</a>)</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">clock_nanosleep</span><span class="p">(</span><span class="kt">clockid_t</span> <span class="n">clock_id</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span>
+                    <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">reqtp</span><span class="p">,</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">remtp</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if slept for requested time or error number on failure */</span>
+</pre></div>
+
+
+<p>Arguments:</p>
+<ul>
+<li>The <em>clock_id</em> argument specifies the clock against which the time delay is evaluated. Identifiers for clocks are listed in <a href="#clock-type-identifiers">Figure 6.8</a>.</li>
+<li>The <em>flags</em> argument is used to control whether the delay is absolute or relative.<ul>
+<li>When flags is set to 0, the sleep time is relative (how long we want to sleep).</li>
+<li>When it is set to <code>TIMER_ABSTIME</code>, the sleep time is absolute (we want to sleep until the clock reaches the specified time).</li>
+</ul>
+</li>
+<li>The <em>reqtp</em> and <em>remtp</em> arguments are the same as in the <code>nanosleep</code> function. However:<ul>
+<li>When we use an absolute time, the <em>remtp</em> argument is unused, because it isn’t needed.</li>
+<li>We can reuse the same value for the <em>reqtp</em> argument for additional calls to <code>clock_nanosleep</code> until the clock reaches the specified absolute time value.</li>
+</ul>
+</li>
+</ul>
+<p>Except for error returns, the call:</p>
+<div class="codehilite"><pre><span class="n">clock_nanosleep</span><span class="p">(</span><span class="n">CLOCK_REALTIME</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">reqtp</span><span class="p">,</span> <span class="n">remtp</span><span class="p">);</span>
+</pre></div>
+
+
+<p>has the same effect as the call:</p>
+<div class="codehilite"><pre><span class="n">nanosleep</span><span class="p">(</span><span class="n">reqtp</span><span class="p">,</span> <span class="n">remtp</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Some applications require precision with how long they sleep, and a relative sleep time can lead to sleeping longer than desired. Using an absolute time improves the precision, even though a time-sharing process scheduler makes no guarantee that our task will execute immediately after our sleep time has ended. [p375]</p>
+<h3 id="sigqueue-function"><code>sigqueue</code> Function</h3>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
