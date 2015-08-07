@@ -311,6 +311,8 @@
         
             <li><a href="#size-and-network-byte-order">Size and network byte order *</a></li>
         
+            <li><a href="#ip-header-fields">IP Header Fields</a></li>
+        
     
     </ul>
 </div></div>
@@ -334,13 +336,72 @@
 <h5 id="ipv4-header"><strong>IPv4 Header</strong> *</h5>
 <p><a href="../figure_5-1.png" title="The IPv4 datagram. The header is of variable size, limited to fifteen 32-bit words (60 bytes) by the 4-bit IHL field. A typical IPv4 header contains 20 bytes (no options). The source and destination addresses are 32 bits long. Most of the second 32-bit word is used for the IPv4 fragmentation function. A header checksum helps ensure that the fields in the header are delivered correctly to the proper destination but does not protect the data."><img alt="The IPv4 datagram. The header is of variable size, limited to fifteen 32-bit words (60 bytes) by the 4-bit IHL field. A typical IPv4 header contains 20 bytes (no options). The source and destination addresses are 32 bits long. Most of the second 32-bit word is used for the IPv4 fragmentation function. A header checksum helps ensure that the fields in the header are delivered correctly to the proper destination but does not protect the data." src="../figure_5-1_600.png" /></a></p>
 <h5 id="ipv6-header"><strong>IPv6 Header</strong> *</h5>
-<p><a href="../figure_5-1.png" title="The IPv6 header is of fixed size (40 bytes) and contains 128-bit source and destination addresses. The Next Header field is used to indicate the presence and types of additional extension headers that follow the IPv6 header, forming a daisy chain of headers that may include special extensions or processing directives. Application data follows the header chain, usually immediately following a transport-layer header."><img alt="The IPv6 header is of fixed size (40 bytes) and contains 128-bit source and destination addresses. The Next Header field is used to indicate the presence and types of additional extension headers that follow the IPv6 header, forming a daisy chain of headers that may include special extensions or processing directives. Application data follows the header chain, usually immediately following a transport-layer header." src="../figure_5-1_600.png" /></a></p>
+<p><a href="../figure_5-2.png" title="The IPv6 header is of fixed size (40 bytes) and contains 128-bit source and destination addresses. The Next Header field is used to indicate the presence and types of additional extension headers that follow the IPv6 header, forming a daisy chain of headers that may include special extensions or processing directives. Application data follows the header chain, usually immediately following a transport-layer header."><img alt="The IPv6 header is of fixed size (40 bytes) and contains 128-bit source and destination addresses. The Next Header field is used to indicate the presence and types of additional extension headers that follow the IPv6 header, forming a daisy chain of headers that may include special extensions or processing directives. Application data follows the header chain, usually immediately following a transport-layer header." src="../figure_5-2_600.png" /></a></p>
 <h5 id="size-and-network-byte-order"><strong>Size and network byte order</strong> *</h5>
 <ul>
 <li>The normal size of the IPv4 header is 20 bytes, unless options are present (which is rare).</li>
 <li><u>The IPv6 header is twice as large as the IPv4 Header but never has any options.</u> It may have <em>extension headers</em>.</li>
 </ul>
 <p>In our pictures of headers and datagrams, for a 32-bit value, <u>the most significant bit is numbered 0 at the left, and the least significant bit of a 32-bit value is numbered 31 on the right.</u> The 4 bytes in a 32-bit value are transmitted in the following order: bits 0–7 first, then bits 8–15, then 16–23, and bits 24–31 last. This is called <strong>big endian</strong> byte ordering, which is the byte ordering required for all binary integers in the TCP/IP headers as they traverse a network. It is also called <strong>network byte order</strong>. Computer CPUs that store binary integers in little endian format must convert the header values into network byte order for transmission and back again for reception.</p>
+<h4 id="ip-header-fields">IP Header Fields</h4>
+<ul>
+<li>The <strong>Version</strong> field is the first field (only 4 bits or one nibble wide). It contains the version number of the IP datagram: 4 for IPv4 and 6 for IPv6.<ul>
+<li>This is the only field that IPv4 and IPv6 of which share the location. The two protocols are not directly interoperable, which means a host or router must handle either IPv4 or IPv6 (or both, called <strong>dual stack</strong>) separately.</li>
+</ul>
+</li>
+<li>The <strong>Internet Header Length (IHL)</strong> field is the number of 32-bit words in the IPv4 header, including any options.<ul>
+<li>Because this is also a 4-bit field, the IPv4 header is limited to a maximum of fifteen 32-bit words or 60 bytes.</li>
+<li>The normal value of this field (when no options are present) is 5. There is no such field in IPv6 because the header length is fixed at 40 bytes.</li>
+</ul>
+</li>
+<li>The 8 bits following the header length (IPv4) are two fields used for special processing of the datagram when it is forwarded, in both IPv4 and IPv6:<ul>
+<li>The first 6 bits are the <strong>Differentiated Services Field (DS)</strong> field.</li>
+<li>The last 2 bits are the <strong>Explicit Congestion Notification (ECN)</strong> field or indicator bits.</li>
+</ul>
+</li>
+<li>
+<p>The <strong>Total Length</strong> field is the total length of the IPv4 datagram in bytes.</p>
+<ul>
+<li>Using this field and the IHL field can indicate where the data portion of the datagram starts, and its length.</li>
+<li>Because this is a 16-bit field, the maximum size of an IPv4 datagram (including header) is 65,535 bytes.</li>
+<li>This field is required in the header because some lower-layer protocols that carry IPv4 datagrams do not (accurately) convey the size of encapsulated datagrams on their own. For example, Ethernet pads small frames to be a minimum length (64 bytes) and an IPv4 datagram (minimum 20 bytes) can be smaller than the minimum Ethernet payload size (46 bytes). Without the Total Length field, the IPv4 implementation would not know how much of a 46-byte Ethernet frame was really an IP datagram, as opposed to padding.</li>
+<li>
+<p>Although it is possible to send a 65,535-byte IP datagram, most link layers (such as Ethernet) are not able to carry one this large without fragmenting it into smaller pieces.</p>
+<ul>
+<li><u>In IPv4, a host is not required to be able to receive an IPv4 datagram larger than 576 bytes.</u></li>
+<li><u>In IPv6 a host must be able to process a datagram at least as large as the MTU of the link to which it is attached, and the minimum link MTU is 1280 bytes.</u></li>
+</ul>
+<p>Many applications that use the UDP protocol (<a href="../ch10/">Chapter 10</a>) for data transport (e.g., DNS, DHCP, etc.) use a limited data size of 512 bytes to avoid the 576-byte IPv4 limit. TCP chooses its own datagram size based on additional information (<a href="ch15.md">Chapter 15</a>).</p>
+</li>
+<li>
+<p>When an IPv4 datagram is fragmented into multiple smaller fragments, each of which itself is an independent IP datagram, the Total Length field reflects the length of the particular fragment.</p>
+</li>
+</ul>
+</li>
+<li>
+<p>The <strong>Payload Length</strong> field is the length of the IPv6 datagram not including the length of the header; extension headers, however, are included in the Payload Length field. In IPv6, fragmentation is not supported by the header.</p>
+<ul>
+<li>The 16-bit size of this field limits its maximum value to 65,535 (64KB), which applies to the payload length, not the entire datagram.</li>
+<li>In addition, IPv6 supports a <strong>jumbogram</strong> option that provides for the possibility (at least theoretically) of single packets with payloads as large as 4GB (4,294,967,295 bytes).</li>
+</ul>
+</li>
+<li>The <strong>Identification</strong> field (IPv4) indentifies each datagram sent by an IPv4 host. To prevent confusion among fragments of a datagrams, the sending host normally increments an internal counter by 1 each time a datagram is sent (from one of its IP addresses) and copies the value of the counter into the IPv4 Identification field.<ul>
+<li>This field is most important for implementing fragmentation, along with the Flags and Fragment Offset fields.</li>
+<li>In IPv6, this field shows up in the Fragmentation extension header,</li>
+</ul>
+</li>
+<li>The <strong>Time-to-Live</strong> field, or <strong>TTL</strong>, sets an upper limit on the number of routers through which a datagram can pass.<ul>
+<li>This field initialized by the sender to some value (64 is recommended, although 128 or 255 is not uncommon) and decremented by 1 by every router that forwards the datagram. <u>When this field reaches 0, the datagram is thrown away, and the sender is notified with an ICMP message (<a href="ch8.md">Chapter 8</a>).</u> This prevents packets from getting caught in the network forever should an unwanted routing loop occur.</li>
+</ul>
+</li>
+<li>The <strong>Protocol</strong> field in the IPv4 header contains a number indicating the type of data found in the payload portion of the datagram. The most common values are 17 (for UDP) and 6 (for TCP).<ul>
+<li>This field provides a demultiplexing feature so that the IP protocol can be used to carry payloads of more than one protocol type. Although this field originally specified the transport-layer protocol the datagram is encapsulating, it now can identify the encapsulated protocol, which may or not be a transport protocol. Other encapsulations are possible, such as IPv4-in-IPv4 (value 4). The official list of the possible values of the Protocol field
+is given in the <a href="http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml">assigned numbers page</a>.</li>
+</ul>
+</li>
+<li>The <strong>Next Header</strong> field in the IPv6 header generalizes the Protocol field from IPv4. It is used to indicate the type of header following the IPv6 header. This field may contain any values defined for the IPv4 Protocol field, or any of the values associated with the IPv6 extension headers.</li>
+<li>The <strong>Header Checksum</strong> field is calculated <em>over the IPv4 header only</em>, which means that <u>the payload of the IPv4 datagram (e.g., TCP or UDP data) is not checked for correctness by the IP protocol.</u> To ensure that payload portion of an IP datagram has been correctly delivered, other protocols must cover any important data that follows the header with their own data-integrity-checking mechanisms.</li>
+</ul>
             </div>
         </div>
 

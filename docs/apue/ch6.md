@@ -274,6 +274,8 @@ time_t time(time_t *calptr);
 
 The time value is always returned as the value of the function. If the argument is non-null, the time value is also stored at the location pointed to by *calptr*.
 
+#### Clock type identifiers
+
 The real-time extensions to POSIX.1 added support for multiple system clocks. A clock is identified by the `clockid_t` type.
 
 Identifier | Option | Description
