@@ -410,6 +410,15 @@
         <li class="main "><a href="#sigqueue-function">sigqueue Function</a></li>
         
     
+        <li class="main "><a href="#job-control-signals">Job-Control Signals</a></li>
+        
+    
+        <li class="main "><a href="#signal-names-and-numbers">Signal Names and Numbers</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -3126,6 +3135,201 @@ that we saved earlier (oldmask).</p>
 
 <p>Some applications require precision with how long they sleep, and a relative sleep time can lead to sleeping longer than desired. Using an absolute time improves the precision, even though a time-sharing process scheduler makes no guarantee that our task will execute immediately after our sleep time has ended. [p375]</p>
 <h3 id="sigqueue-function"><code>sigqueue</code> Function</h3>
+<p>As discussed in <a href="#reliable-signal-terminology-and-semantics">Section 10.8</a>, most UNIX systems don’t queue signals. With the real-time extensions to POSIX.1, some systems began adding support for queueing signals. With SUSv4, the queued signal functionality has moved from the real-time extensions to the base specification.</p>
+<p>These extensions allow applications to pass more information along with the delivery (<a href="#sigaction-function">Section 10.14</a>). This information is embedded in a <code>siginfo</code> structure.</p>
+<p>To use queued signals we have to do the following:</p>
+<ol>
+<li>Specify the <code>SA_SIGINFO</code> flag when we install a signal handler using the <code>sigaction</code> function. Without this flag, it is left up to the implementation whether the signal is queued.</li>
+<li>Provide a signal handler in the <code>sa_sigaction</code> member of the <code>sigaction</code> structure instead of using the usual <code>sa_handler</code> field. Implementations might allow us to use the <code>sa_handler</code> field, but we won’t be able to obtain the extra information sent with the <code>sigqueue</code> function.</li>
+<li>Use the <code>sigqueue</code> function to send signals.</li>
+</ol>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">int</span> <span class="n">sigqueue</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">,</span> <span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="k">const</span> <span class="k">union</span> <span class="n">sigval</span> <span class="n">value</span><span class="p">)</span>
+
+<span class="cm">/* Returns: 0 if OK, −1 on error */</span>
+</pre></div>
+
+
+<p>The <code>sigqueue</code> function is similar to the <code>kill</code> function, except that:</p>
+<ul>
+<li>We can only direct signals to a single process</li>
+<li>We can use the <em>value</em> argument to transmit either an integer or a pointer value to the signal handler.</li>
+</ul>
+<p>Signals can’t be queued infinitely. When the SIGQUEUE_MAX limit (<a href="../ch2/#posix-limits">POSIX Limits</a>) is reached, <code>sigqueue</code> can fail with <code>errno</code> set to
+<code>EAGAIN</code>.</p>
+<p>With the real-time signal enhancements, other signal numbers between <code>SIGRTMIN</code> and <code>SIGRTMAX</code> inclusive can be queued, and the  default action for these signals is to terminate the process. [p376]</p>
+<p>The table below summarizes behavior of queued signals on various platforms:</p>
+<table>
+<thead>
+<tr>
+<th>Behavior</th>
+<th>SUS</th>
+<th>FreeBSD</th>
+<th>Linux</th>
+<th>Mac OS X</th>
+<th>Solaris</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>supports <code>sigqueue</code></td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+</tr>
+<tr>
+<td>queues other signals besides SIGRTMIN to SIGRTMAX</td>
+<td>optional</td>
+<td>x</td>
+<td></td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>queues signals even if the caller doesn’t use the <code>SA_SIGINFO</code></td>
+<td>optional</td>
+<td>x</td>
+<td>x</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="job-control-signals">Job-Control Signals</h3>
+<p>POSIX.1 considers six to be job-control signals:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SIGCHLD</code></td>
+<td>Child process has stopped or terminated.</td>
+</tr>
+<tr>
+<td><code>SIGCONT</code></td>
+<td>Continue process, if stopped.</td>
+</tr>
+<tr>
+<td><code>SIGSTOP</code></td>
+<td>Stop signal (can’t be caught or ignored).</td>
+</tr>
+<tr>
+<td><code>SIGTSTP</code></td>
+<td>Interactive stop signal.</td>
+</tr>
+<tr>
+<td><code>SIGTTIN</code></td>
+<td>Read from controlling terminal by background process group member.</td>
+</tr>
+<tr>
+<td><code>SIGTTOU</code></td>
+<td>Write to controlling terminal by a background process group member.</td>
+</tr>
+</tbody>
+</table>
+<p>The following program demonstrates the normal sequence of code used when a program handles job control.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/signals/sigtstp.c">signals/sigtstp.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="cp">#define BUFFSIZE    1024</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_tstp</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span> <span class="cm">/* signal handler for SIGTSTP */</span>
+<span class="p">{</span>
+    <span class="kt">sigset_t</span>    <span class="n">mask</span><span class="p">;</span>
+
+    <span class="cm">/* ... move cursor to lower left corner, reset tty mode ... */</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Unblock SIGTSTP, since it&#39;s blocked while we&#39;re handling it.</span>
+<span class="cm">     */</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mask</span><span class="p">);</span>
+    <span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mask</span><span class="p">,</span> <span class="n">SIGTSTP</span><span class="p">);</span>
+    <span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_UNBLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">mask</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGTSTP</span><span class="p">,</span> <span class="n">SIG_DFL</span><span class="p">);</span>   <span class="cm">/* reset disposition to default */</span>
+
+    <span class="n">kill</span><span class="p">(</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">SIGTSTP</span><span class="p">);</span>    <span class="cm">/* and send the signal to ourself */</span>
+
+    <span class="cm">/* we won&#39;t return from the kill until we&#39;re continued */</span>
+
+    <span class="n">signal</span><span class="p">(</span><span class="n">SIGTSTP</span><span class="p">,</span> <span class="n">sig_tstp</span><span class="p">);</span>  <span class="cm">/* reestablish signal handler */</span>
+
+    <span class="cm">/* ... reset tty mode, redraw screen ... */</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">buf</span><span class="p">[</span><span class="n">BUFFSIZE</span><span class="p">];</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Only catch SIGTSTP if we&#39;re running with a job-control shell.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGTSTP</span><span class="p">,</span> <span class="n">SIG_IGN</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_DFL</span><span class="p">)</span>
+        <span class="n">signal</span><span class="p">(</span><span class="n">SIGTSTP</span><span class="p">,</span> <span class="n">sig_tstp</span><span class="p">);</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">BUFFSIZE</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error&quot;</span><span class="p">);</span>
+
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program does the following:</p>
+<ul>
+<li>When the program starts, it arranges to catch the <code>SIGTSTP</code> signal only if the signal’s disposition is <code>SIG_DFL</code>. The reason is that <u>when the program is started by a shell that doesn’t support job control (<code>/bin/sh</code>, for example), the signal’s disposition should be set to <code>SIG_IGN</code>. In fact, the shell doesn’t explicitly ignore this signal; <code>init</code> sets the disposition of the three job-control signals (<code>SIGTSTP</code>, <code>SIGTTIN</code>, and <code>SIGTTOU</code>) to <code>SIG_IGN</code>. This disposition is then inherited by all login shells. Only a job-control shell should reset the disposition of these three signals to <code>SIG_DFL</code>.</u></li>
+<li>When we type the suspend character, the process receives the <code>SIGTSTP</code> signal and the signal handler is invoked. At this point, we would do any terminal-related processing: move the cursor to the lower-left corner, restore the terminal mode, etc.</li>
+<li>After resetting the disposition of <code>SIGSTOP</code> to its default (stop the process) and unblocking it, we send ourself the <code>SIGSTOP</code> signal (<code>kill(getpid(), SIGTSTP);</code>). We have to unblock it since we’re currently handling that same signal, and the system blocks it automatically while it’s being caught.</li>
+<li>At this point, the system stops the process. It is continued only when it receives (usually from the job-control shell, in response to an interactive <code>fg</code> command) a <code>SIGCONT</code> signal.</li>
+<li>We don’t catch <code>SIGCONT</code> since its default disposition is to continue the stopped process; when this happens, the program continues as though it returned from the <code>kill</code> function. When the program is continued, we reset the disposition for the <code>SIGTSTP</code> signal and do any terminal processing (as indicated in the comments).</li>
+</ul>
+<h3 id="signal-names-and-numbers">Signal Names and Numbers</h3>
+<p>This section discusses how to map between signal numbers and names. Some systems provide the array:</p>
+<div class="codehilite"><pre><span class="k">extern</span> <span class="kt">char</span> <span class="o">*</span><span class="n">sys_siglist</span><span class="p">[];</span>
+</pre></div>
+
+
+<p>The array index is the signal number, giving a pointer to the character string name of the signal. [p379]</p>
+<p>To print the signal's character string in a portable manner, use the <code>psignal</code> function:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">psignal</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">msg</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The string <em>msg</em> (which normally includes the name of the program) is output to the standard error, followed by a colon and a space, followed by a description of the signal, followed by a newline. If <em>msg</em> is <code>NULL</code>, then only the description is written to the standard error. This function is similar to perror (<a href="../ch1/#error-handling">Section 1.7</a>).</p>
+<p>If you have a <code>siginfo</code> structure from an alternative <code>sigaction</code> signal handler, you can print the signal information with the <code>psiginfo</code> function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">psiginfo</span><span class="p">(</span><span class="k">const</span> <span class="kt">siginfo_t</span> <span class="o">*</span><span class="n">info</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">msg</span><span class="p">);</span>
+</pre></div>
+
+
+<p>You can use the <code>strsignal</code> function if you only need the string description of the signal. This function is similar to <code>strerror</code> (<a href="../ch1/#error-handling">Section 1.7</a>).</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;string.h&gt;</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">strsignal</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">);</span>
+
+<span class="cm">/* Returns: a pointer to a string describing the signal */</span>
+</pre></div>
+
+
+<h3 id="summary">Summary</h3>
+<p>An understanding of signal handling is essential to advanced UNIX System programming. This chapter has taken a long and thorough look at UNIX System signals, from previous implementations to the POSIX.1 reliable-signal concept and all the related functions, followed by POSIX.1 <code>abort</code>, <code>system</code>, and <code>sleep</code> functions.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>[p324] on some macro constants in <code>&lt;signal.h&gt;</code>:</p>
