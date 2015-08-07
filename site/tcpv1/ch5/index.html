@@ -313,6 +313,8 @@
         
             <li><a href="#ip-header-fields">IP Header Fields</a></li>
         
+            <li><a href="#the-internet-checksum">The Internet Checksum</a></li>
+        
     
     </ul>
 </div></div>
@@ -400,8 +402,30 @@ is given in the <a href="http://www.iana.org/assignments/protocol-numbers/protoc
 </ul>
 </li>
 <li>The <strong>Next Header</strong> field in the IPv6 header generalizes the Protocol field from IPv4. It is used to indicate the type of header following the IPv6 header. This field may contain any values defined for the IPv4 Protocol field, or any of the values associated with the IPv6 extension headers.</li>
-<li>The <strong>Header Checksum</strong> field is calculated <em>over the IPv4 header only</em>, which means that <u>the payload of the IPv4 datagram (e.g., TCP or UDP data) is not checked for correctness by the IP protocol.</u> To ensure that payload portion of an IP datagram has been correctly delivered, other protocols must cover any important data that follows the header with their own data-integrity-checking mechanisms.</li>
+<li>The <strong>Header Checksum</strong> field is calculated <em>over the IPv4 header only</em>, which means that <u>the payload of the IPv4 datagram (e.g., TCP or UDP data) is not checked for correctness by the IP protocol.</u> To ensure the payload has been correctly delivered, other protocols must cover any important data that follows the header with their own data-integrity-checking mechanisms.<ul>
+<li>Almost all protocols encapsulated in IP (ICMP, IGMP, UDP, and TCP) have a checksum in their own headers to cover their header and data and also to cover certain parts of the IP header they deem important (a form of "layering violation").</li>
+<li>The IPv6 header does not have any checksum field.</li>
+<li>The algorithm used in computing a checksum (also used by most of the other Internet-related protocols) is sometimes known as the <strong>Internet checksum</strong>.</li>
+<li>When an IPv4 datagram passes through a router, its header checksum must change as a result of decrementing the TTL field.</li>
 </ul>
+</li>
+<li>The <strong>Source IP Address</strong> is the IP address of the datagram's sender and the <strong>Destination IP Address</strong> of where the datagram is destined. These are 32-bit values for IPv4 and 128-bit values for IPv6, and they usually identify a single interface on a computer, although multicast and broadcast addresses (<a href="../ch2/">Chapter 2</a>) violate this rule.</li>
+</ul>
+<h4 id="the-internet-checksum">The Internet Checksum</h4>
+<p>The <strong>Internet checksum</strong> is a 16-bit mathematical sum used to determine, with reasonably high probability, whether a received message or portion of a message matches the one sent. the Internet checksum algorithm is not the same as the common <strong>cyclic redundancy check</strong> (CRC), which offers stronger protection.</p>
+<p>To compute the IPv4 header checksum for an outgoing datagram, the value of the datagram’s Checksum field is first set to 0. Then, the 16-bit one’s complement sum of the header is calculated (the entire header is considered a sequence of 16-bit words). The 16-bit one’s complement of this sum is then stored in the Checksum field to make the datagram ready for transmission.</p>
+<p>When an IPv4 datagram is received, a checksum is computed across the whole header, including the value of the Checksum field itself. Assuming there are no errors, the computed checksum value is always 0 (a one’s complement of the value FFFF). <u>The value of the Checksum field in the packet can never be FFFF.</u> If it were, the sum (prior to the final one’s complement operation at the sender) would have to have been 0. No sum can ever be 0 using one’s complement addition unless all the bytes are 0. (<a href="https://en.wikipedia.org/wiki/Signed_number_representations#Ones.27_complement">end-round carry</a>)</p>
+<p>When the header is found to be bad (the computed checksum is nonzero), the IPv4 implementation discards the received datagram. No error message is generated. It is up to the higher layers to somehow detect the missing datagram and retransmit if necessary.</p>
+<h5 id="mathematics-of-the-internet-checksum"><strong>Mathematics of the Internet Checksum</strong></h5>
+<p>For the mathematically inclined, the set of 16-bit hexadecimal values V = {0001, . . . , FFFF} and the one’s complement sum operation + together form an <a href="https://en.wikipedia.org/wiki/Abelian_group">Abelian group</a>. The following properties are obeyed:</p>
+<ul>
+<li>For any X,Y in V, (X + Y) is in V [closure]</li>
+<li>For any X,Y,Z in V, X + (Y + Z) = (X + Y) + Z [associativity]</li>
+<li>For any X in V, e + X = X + e = X where e = FFFF [identity]</li>
+<li>For any X in V, there is an X′ in V such that X + X′ = e [inverse]</li>
+<li>For any X,Y in V, (X + Y) = (Y + X) [commutativity]</li>
+</ul>
+<p>Note that in the set V and the group &lt;V,+&gt;, number 0000 deleted the from consideration. If we put the number 0000 in the set V, then &lt;V,+&gt; is not a group any longer. [p187-188]</p>
             </div>
         </div>
 
