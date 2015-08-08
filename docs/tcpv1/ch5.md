@@ -104,3 +104,56 @@ Differentiated Services (called *DiffServ*) is a framework and set of standards 
 The Differentiated Services Code Point (DSCP) is a number (in the DS Field) that refers to a particular predefined arrangement of bits with agreed-upon meaning. Datagrams have a DSCP assigned to them when they are given to the network infrastructure that remains unmodified during delivery ,but policies (such as how many high-priority packets are allowed to be sent in a period of time) may cause a change in DSCP during delivery. [p188]
 
 The pair of ECN bits marks a datagram with a *congestion indicator* when passing through a router that has a significant amount of internally queued traffic. Both bits are set by persistently congested ECN-aware routers when forwarding packets. When a marked packet is received at the destination, some protocol (such as TCP) will notice that the packet is marked and indicate this fact back to the sender, which would then slow down, thereby easing congestion before a router is forced to drop traffic because of overload. This mechanism is one of several aimed at avoiding or dealing with network congestion.
+
+(Original uses for the ToS and Traffic Class skipped) [p188-189]
+
+The 6-bit DS Field holds the DSCP, providing support for 64 distinct code points. The particular value of the DSCP, expressed as **per-hop behavior** (PHB), tells a router the forwarding treatment or special handling the datagram should receive. The default value for the DSCP is generally 0, which corresponds to routine, best-effort Internet traffic.
+
+[![The DS Field contains the DSCP in 6 bits (5 bits are currently standardized to indicate the forwarding treatment the datagram should receive when forwarded by a compliant router). The following 2 bits are used for ECN and may be turned on in the datagram when it passes through a persistently congested router. When such datagrams arrive at their destinations, the congestion indication is sent back to the source in a later datagram to inform the source that its datagrams are passing through one or more congested routers.](figure_5-5_600.png)](figure_5-5.png "The DS Field contains the DSCP in 6 bits (5 bits are currently standardized to indicate the forwarding treatment the datagram should receive when forwarded by a compliant router). The following 2 bits are used for ECN and may be turned on in the datagram when it passes through a persistently congested router. When such datagrams arrive at their destinations, the congestion indication is sent back to the source in a later datagram to inform the source that its datagrams are passing through one or more congested routers.")
+
+As indicated in the table below, the DSCP values are divided into three pools: standardized, experimental/local use (EXP/LU), and experimental/local use.
+
+Pool | Code Point Prefix | Policy
+---- | ----------------- | ------
+1 | xxxxx0 | Standards
+2 | xxxx11 | EXP/LU
+3 | xxxx01 | EXP/LU(*)
+
+A router is to first segregate traffic into different classes. Traffic within a common class may have different drop probabilities, allowing the router to decide what traffic to drop first if it is forced to discard traffic. The 3-bit class selector provides for eight defined code points (called the **class selector code points**) that correspond to PHBs with a specified minimum set of features providing similar functionality to the earlier IP precedence capability. These are called **class selector compliant PHBs**. Code points of the form xxx000 always map to such PHBs.
+
+The **Assured Forwarding** (AF) group provides forwarding of IP packets in a fixed number of independent AF classes. Traffic from one class is forwarded separately from other classes. Within a traffic class, a datagram is assigned a **drop precedence**. Datagrams of higher drop precedence in a class areare discarded with higher priority over those with lower drop precedence in the same class. Combining the traffic class and drop precedence, the name *AFij* corresponds to assured forwarding class *i* with drop precedence *j*.
+
+The **Expedited Forwarding** (EF) service provides the appearance of an uncongested network (EF traffic should receive relatively low delay, jitter, and loss). This requires the rate of EF traffic going out of a router to be at least as large as the rate coming in. Consequently, EF traffic will only ever have to wait in a router queue behind other EF traffic.
+
+The following table indicates the class selector DSCP values:
+
+<small>
+
+Name | Value | Reference | Description
+---- | ----- | --------- | -----------
+CS0 | 000000 | [RFC2474] | Class selector (best-effort/routine)
+CS1 | 001000 | [RFC2474] | Class selector (priority)
+CS2 | 010000 | [RFC2474] | Class selector (immediate)
+CS3 | 011000 | [RFC2474] | Class selector (flash)
+CS4 | 100000 | [RFC2474] | Class selector (flash override)
+CS5 | 101000 | [RFC2474] | Class selector (CRITIC/ECP)
+CS6 | 110000 | [RFC2474] | Class selector (internetwork control)
+CS7 | 111000 | [RFC2474] | Class selector (control)
+AF11 | 001010 | [RFC2597] | Assured Forwarding (class 1,dp 1)
+AF12 | 001100 | [RFC2597] | Assured Forwarding (1,2)
+AF13 | 001110 | [RFC2597] | Assured Forwarding (1,3)
+AF21 | 010010 | [RFC2597] | Assured Forwarding (2,1)
+AF22 | 010100 | [RFC2597] | Assured Forwarding (2,2)
+AF23 | 010110 | [RFC2597] | Assured Forwarding (2,3)
+AF31 | 011010 | [RFC2597] | Assured Forwarding (3,1)
+AF32 | 011100 | [RFC2597] | Assured Forwarding (3,2)
+AF33 | 011110 | [RFC2597] | Assured Forwarding (3,3)
+AF41 | 100010 | [RFC2597] | Assured Forwarding (4,1)
+AF42 | 100100 | [RFC2597] | Assured Forwarding (4,2)
+AF43 | 100110 | [RFC2597] | Assured Forwarding (4,3)
+EF PHB | 101110 | [RFC3246] | Expedited Forwarding
+VOICE-ADMIT | 101100 | [RFC5865] | Capacity-Admitted Traffic
+
+</small>
+
+#### IP Options
