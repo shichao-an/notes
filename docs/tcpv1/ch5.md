@@ -39,7 +39,7 @@ In our pictures of headers and datagrams, for a 32-bit value, <u>the most signif
     * Because this is also a 4-bit field, the IPv4 header is limited to a maximum of fifteen 32-bit words or 60 bytes.
     * The normal value of this field (when no options are present) is 5. There is no such field in IPv6 because the header length is fixed at 40 bytes.
 * The 8 bits following the header length (IPv4) are two fields used for special processing of the datagram when it is forwarded, in both IPv4 and IPv6:
-    * The first 6 bits are the **Differentiated Services Field (DS)** field.
+    * The first 6 bits are the **Differentiated Services (DS)** field.
     * The last 2 bits are the **Explicit Congestion Notification (ECN)** field or indicator bits.
 * The **Total Length** field is the total length of the IPv4 datagram in bytes.
     * Using this field and the IHL field can indicate where the data portion of the datagram starts, and its length.
@@ -60,7 +60,8 @@ In our pictures of headers and datagrams, for a 32-bit value, <u>the most signif
     * This field is most important for implementing fragmentation, along with the Flags and Fragment Offset fields.
     * In IPv6, this field shows up in the Fragmentation extension header,
 * The **Time-to-Live** field, or **TTL**, sets an upper limit on the number of routers through which a datagram can pass.
-    * This field initialized by the sender to some value (64 is recommended, although 128 or 255 is not uncommon) and decremented by 1 by every router that forwards the datagram. <u>When this field reaches 0, the datagram is thrown away, and the sender is notified with an ICMP message ([Chapter 8](ch8.md)).</u> This prevents packets from getting caught in the network forever should an unwanted routing loop occur.
+    * This field initialized by the sender to some value (64 is recommended, although 128 or 255 is not uncommon) and decremented by 1 by every router that forwards the datagram. <u>When this field reaches 0, the datagram is thrown away, and the sender is notified with an ICMP message</u> ([Chapter 8](ch8.md)). This prevents packets from getting caught in the network forever should an unwanted routing loop occur.
+    * In IPv6, the field has been renamed to its de facto use: **Hop Limit**.
 * The **Protocol** field in the IPv4 header contains a number indicating the type of data found in the payload portion of the datagram. The most common values are 17 (for UDP) and 6 (for TCP).
     * This field provides a demultiplexing feature so that the IP protocol can be used to carry payloads of more than one protocol type. Although this field originally specified the transport-layer protocol the datagram is encapsulating, it now can identify the encapsulated protocol, which may or not be a transport protocol. Other encapsulations are possible, such as IPv4-in-IPv4 (value 4). The official list of the possible values of the Protocol field
 is given in the [assigned numbers page](http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml).
@@ -93,3 +94,13 @@ For the mathematically inclined, the set of 16-bit hexadecimal values V = {0001,
 * For any X,Y in V, (X + Y) = (Y + X) [commutativity]
 
 Note that in the set V and the group &lt;V,+&gt;, number 0000 deleted the from consideration. If we put the number 0000 in the set V, then &lt;V,+&gt; is not a group any longer. [p187-188]
+
+#### DS Field and ECN
+
+The third and fourth fields of the IPv4 header (second and third fields of the IPv6 header) are the **Differentiated Services** (called DS Field) and **ECN** fields, formerly called the **ToS Byte** or IPv6 **Traffic Class**.
+
+Differentiated Services (called *DiffServ*) is a framework and set of standards aimed at supporting differentiated classes of service (beyond just best-effort) on the Internet. IP datagrams that are marked in certain ways may be forwarded differently (e.g., with higher priority) and can lead to increased or decreased queuing delay in the network and other special effects (possibly with associated special fees imposed by an ISP). [p188]
+
+The Differentiated Services Code Point (DSCP) is a number (in the DS Field) that refers to a particular predefined arrangement of bits with agreed-upon meaning. Datagrams have a DSCP assigned to them when they are given to the network infrastructure that remains unmodified during delivery ,but policies (such as how many high-priority packets are allowed to be sent in a period of time) may cause a change in DSCP during delivery. [p188]
+
+The pair of ECN bits marks a datagram with a *congestion indicator* when passing through a router that has a significant amount of internally queued traffic. Both bits are set by persistently congested ECN-aware routers when forwarding packets. When a marked packet is received at the destination, some protocol (such as TCP) will notice that the packet is marked and indicate this fact back to the sender, which would then slow down, thereby easing congestion before a router is forced to drop traffic because of overload. This mechanism is one of several aimed at avoiding or dealing with network congestion.
