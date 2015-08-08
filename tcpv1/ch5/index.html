@@ -321,6 +321,8 @@
         
             <li><a href="#ds-field-and-ecn">DS Field and ECN</a></li>
         
+            <li><a href="#ip-options">IP Options</a></li>
+        
     
     </ul>
 </div></div>
@@ -438,6 +440,187 @@ is given in the <a href="http://www.iana.org/assignments/protocol-numbers/protoc
 <p>Differentiated Services (called <em>DiffServ</em>) is a framework and set of standards aimed at supporting differentiated classes of service (beyond just best-effort) on the Internet. IP datagrams that are marked in certain ways may be forwarded differently (e.g., with higher priority) and can lead to increased or decreased queuing delay in the network and other special effects (possibly with associated special fees imposed by an ISP). [p188]</p>
 <p>The Differentiated Services Code Point (DSCP) is a number (in the DS Field) that refers to a particular predefined arrangement of bits with agreed-upon meaning. Datagrams have a DSCP assigned to them when they are given to the network infrastructure that remains unmodified during delivery ,but policies (such as how many high-priority packets are allowed to be sent in a period of time) may cause a change in DSCP during delivery. [p188]</p>
 <p>The pair of ECN bits marks a datagram with a <em>congestion indicator</em> when passing through a router that has a significant amount of internally queued traffic. Both bits are set by persistently congested ECN-aware routers when forwarding packets. When a marked packet is received at the destination, some protocol (such as TCP) will notice that the packet is marked and indicate this fact back to the sender, which would then slow down, thereby easing congestion before a router is forced to drop traffic because of overload. This mechanism is one of several aimed at avoiding or dealing with network congestion.</p>
+<p>(Original uses for the ToS and Traffic Class skipped) [p188-189]</p>
+<p>The 6-bit DS Field holds the DSCP, providing support for 64 distinct code points. The particular value of the DSCP, expressed as <strong>per-hop behavior</strong> (PHB), tells a router the forwarding treatment or special handling the datagram should receive. The default value for the DSCP is generally 0, which corresponds to routine, best-effort Internet traffic.</p>
+<p><a href="../figure_5-5.png" title="The DS Field contains the DSCP in 6 bits (5 bits are currently standardized to indicate the forwarding treatment the datagram should receive when forwarded by a compliant router). The following 2 bits are used for ECN and may be turned on in the datagram when it passes through a persistently congested router. When such datagrams arrive at their destinations, the congestion indication is sent back to the source in a later datagram to inform the source that its datagrams are passing through one or more congested routers."><img alt="The DS Field contains the DSCP in 6 bits (5 bits are currently standardized to indicate the forwarding treatment the datagram should receive when forwarded by a compliant router). The following 2 bits are used for ECN and may be turned on in the datagram when it passes through a persistently congested router. When such datagrams arrive at their destinations, the congestion indication is sent back to the source in a later datagram to inform the source that its datagrams are passing through one or more congested routers." src="../figure_5-5_600.png" /></a></p>
+<p>As indicated in the table below, the DSCP values are divided into three pools: standardized, experimental/local use (EXP/LU), and experimental/local use.</p>
+<table>
+<thead>
+<tr>
+<th>Pool</th>
+<th>Code Point Prefix</th>
+<th>Policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>xxxxx0</td>
+<td>Standards</td>
+</tr>
+<tr>
+<td>2</td>
+<td>xxxx11</td>
+<td>EXP/LU</td>
+</tr>
+<tr>
+<td>3</td>
+<td>xxxx01</td>
+<td>EXP/LU(*)</td>
+</tr>
+</tbody>
+</table>
+<p>A router is to first segregate traffic into different classes. Traffic within a common class may have different drop probabilities, allowing the router to decide what traffic to drop first if it is forced to discard traffic. The 3-bit class selector provides for eight defined code points (called the <strong>class selector code points</strong>) that correspond to PHBs with a specified minimum set of features providing similar functionality to the earlier IP precedence capability. These are called <strong>class selector compliant PHBs</strong>. Code points of the form xxx000 always map to such PHBs.</p>
+<p>The <strong>Assured Forwarding</strong> (AF) group provides forwarding of IP packets in a fixed number of independent AF classes. Traffic from one class is forwarded separately from other classes. Within a traffic class, a datagram is assigned a <strong>drop precedence</strong>. Datagrams of higher drop precedence in a class areare discarded with higher priority over those with lower drop precedence in the same class. Combining the traffic class and drop precedence, the name <em>AFij</em> corresponds to assured forwarding class <em>i</em> with drop precedence <em>j</em>.</p>
+<p>The <strong>Expedited Forwarding</strong> (EF) service provides the appearance of an uncongested network (EF traffic should receive relatively low delay, jitter, and loss). This requires the rate of EF traffic going out of a router to be at least as large as the rate coming in. Consequently, EF traffic will only ever have to wait in a router queue behind other EF traffic.</p>
+<p>The following table indicates the class selector DSCP values:</p>
+<p><small></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th>Reference</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CS0</td>
+<td>000000</td>
+<td>[RFC2474]</td>
+<td>Class selector (best-effort/routine)</td>
+</tr>
+<tr>
+<td>CS1</td>
+<td>001000</td>
+<td>[RFC2474]</td>
+<td>Class selector (priority)</td>
+</tr>
+<tr>
+<td>CS2</td>
+<td>010000</td>
+<td>[RFC2474]</td>
+<td>Class selector (immediate)</td>
+</tr>
+<tr>
+<td>CS3</td>
+<td>011000</td>
+<td>[RFC2474]</td>
+<td>Class selector (flash)</td>
+</tr>
+<tr>
+<td>CS4</td>
+<td>100000</td>
+<td>[RFC2474]</td>
+<td>Class selector (flash override)</td>
+</tr>
+<tr>
+<td>CS5</td>
+<td>101000</td>
+<td>[RFC2474]</td>
+<td>Class selector (CRITIC/ECP)</td>
+</tr>
+<tr>
+<td>CS6</td>
+<td>110000</td>
+<td>[RFC2474]</td>
+<td>Class selector (internetwork control)</td>
+</tr>
+<tr>
+<td>CS7</td>
+<td>111000</td>
+<td>[RFC2474]</td>
+<td>Class selector (control)</td>
+</tr>
+<tr>
+<td>AF11</td>
+<td>001010</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (class 1,dp 1)</td>
+</tr>
+<tr>
+<td>AF12</td>
+<td>001100</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (1,2)</td>
+</tr>
+<tr>
+<td>AF13</td>
+<td>001110</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (1,3)</td>
+</tr>
+<tr>
+<td>AF21</td>
+<td>010010</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (2,1)</td>
+</tr>
+<tr>
+<td>AF22</td>
+<td>010100</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (2,2)</td>
+</tr>
+<tr>
+<td>AF23</td>
+<td>010110</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (2,3)</td>
+</tr>
+<tr>
+<td>AF31</td>
+<td>011010</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (3,1)</td>
+</tr>
+<tr>
+<td>AF32</td>
+<td>011100</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (3,2)</td>
+</tr>
+<tr>
+<td>AF33</td>
+<td>011110</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (3,3)</td>
+</tr>
+<tr>
+<td>AF41</td>
+<td>100010</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (4,1)</td>
+</tr>
+<tr>
+<td>AF42</td>
+<td>100100</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (4,2)</td>
+</tr>
+<tr>
+<td>AF43</td>
+<td>100110</td>
+<td>[RFC2597]</td>
+<td>Assured Forwarding (4,3)</td>
+</tr>
+<tr>
+<td>EF PHB</td>
+<td>101110</td>
+<td>[RFC3246]</td>
+<td>Expedited Forwarding</td>
+</tr>
+<tr>
+<td>VOICE-ADMIT</td>
+<td>101100</td>
+<td>[RFC5865]</td>
+<td>Capacity-Admitted Traffic</td>
+</tr>
+</tbody>
+</table>
+<p></small></p>
+<h4 id="ip-options">IP Options</h4>
             </div>
         </div>
 
