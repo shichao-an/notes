@@ -324,6 +324,18 @@
             <li><a href="#ip-options">IP Options</a></li>
         
     
+        <li class="main "><a href="#ipv6-extension-headers">IPv6 Extension Headers</a></li>
+        
+            <li><a href="#ipv6-options">IPv6 Options</a></li>
+        
+            <li><a href="#routing-header">Routing Header</a></li>
+        
+            <li><a href="#fragment-header">Fragment Header</a></li>
+        
+    
+        <li class="main "><a href="#ip-forwarding">IP Forwarding</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -470,9 +482,12 @@ is given in the <a href="http://www.iana.org/assignments/protocol-numbers/protoc
 </tr>
 </tbody>
 </table>
-<p>A router is to first segregate traffic into different classes. Traffic within a common class may have different drop probabilities, allowing the router to decide what traffic to drop first if it is forced to discard traffic. The 3-bit class selector provides for eight defined code points (called the <strong>class selector code points</strong>) that correspond to PHBs with a specified minimum set of features providing similar functionality to the earlier IP precedence capability. These are called <strong>class selector compliant PHBs</strong>. Code points of the form xxx000 always map to such PHBs.</p>
-<p>The <strong>Assured Forwarding</strong> (AF) group provides forwarding of IP packets in a fixed number of independent AF classes. Traffic from one class is forwarded separately from other classes. Within a traffic class, a datagram is assigned a <strong>drop precedence</strong>. Datagrams of higher drop precedence in a class areare discarded with higher priority over those with lower drop precedence in the same class. Combining the traffic class and drop precedence, the name <em>AFij</em> corresponds to assured forwarding class <em>i</em> with drop precedence <em>j</em>.</p>
-<p>The <strong>Expedited Forwarding</strong> (EF) service provides the appearance of an uncongested network (EF traffic should receive relatively low delay, jitter, and loss). This requires the rate of EF traffic going out of a router to be at least as large as the rate coming in. Consequently, EF traffic will only ever have to wait in a router queue behind other EF traffic.</p>
+<p>A router is to first segregate traffic into different classes. Traffic within a common class may have different drop probabilities, allowing the router to decide what traffic to drop first if it is forced to discard traffic.</p>
+<ul>
+<li>The 3-bit class selector provides for eight defined code points (called the <strong>class selector code points</strong>) that correspond to PHBs with a specified minimum set of features providing similar functionality to the earlier IP precedence capability. These are called <strong>class selector compliant PHBs</strong>. Code points of the form xxx000 always map to such PHBs.</li>
+<li>The <strong>Assured Forwarding</strong> (AF) group provides forwarding of IP packets in a fixed number of independent AF classes. Traffic from one class is forwarded separately from other classes. Within a traffic class, a datagram is assigned a <strong>drop precedence</strong>. Datagrams of higher drop precedence in a class areare discarded with higher priority over those with lower drop precedence in the same class. Combining the traffic class and drop precedence, the name <em>AFij</em> corresponds to assured forwarding class <em>i</em> with drop precedence <em>j</em>.</li>
+<li>The <strong>Expedited Forwarding</strong> (EF) service provides the appearance of an uncongested network (EF traffic should receive relatively low delay, jitter, and loss). This requires the rate of EF traffic going out of a router to be at least as large as the rate coming in. Consequently, EF traffic will only ever have to wait in a router queue behind other EF traffic.</li>
+</ul>
 <p>The following table indicates the class selector DSCP values:</p>
 <p><small></p>
 <table>
@@ -621,6 +636,142 @@ is given in the <a href="http://www.iana.org/assignments/protocol-numbers/protoc
 </table>
 <p></small></p>
 <h4 id="ip-options">IP Options</h4>
+<p>IP options may be selected on a per-datagram basis. Many of the options are no longer practical or desirable because of the limited size of the IPv4 header or concerns regarding security. With IPv6, most of the options have been removed or altered and are in the basic IPv6 header but are placed after the IPv6 header in one or more extension headers.</p>
+<p>An IP router that receives a datagram containing options should perform special processing. In some cases IPv6 routers process extension headers, but many headers are designed to be processed only by end hosts. In some routers, datagrams with options or extensions are not forwarded as fast as ordinary datagrams.</p>
+<p>The table shows most of the IPv4 options that have been standardized over the years.</p>
+<p><a href="../table_5-4.png" title="Options, if present, are carried in IPv4 packets immediately after the basic IPv4 header. Options are identified by an 8-bit option Type field. This field is subdivided into three subfields: Copy (1 bit), Class (2 bits), and Number (5 bits). Options 0 and 1 are a single byte long, and most others are variable in length. Variable options consist of 1 byte of type identifier, 1 byte of length, and the option itself."><img alt="Options, if present, are carried in IPv4 packets immediately after the basic IPv4 header. Options are identified by an 8-bit option Type field. This field is subdivided into three subfields: Copy (1 bit), Class (2 bits), and Number (5 bits). Options 0 and 1 are a single byte long, and most others are variable in length. Variable options consist of 1 byte of type identifier, 1 byte of length, and the option itself." src="../table_5-4.png" /></a></p>
+<p>The options area always ends on a 32-bit boundary. Pad bytes with a value of 0 are added if necessary. This ensures that the IPv4 header is always a multiple of 32 bits (as required by the IHL field). [p192]</p>
+<p>Options are identified by an 8-bit option <em>Type</em> field. This field is subdivided into three subfields: <em>Copy</em> (1 bit), <em>Class</em> (2 bits), and <em>Number</em> (5 bits). Options 0 and 1 are a single byte long, and most others are variable in length. Variable options consist of 1 byte of type identifier, 1 byte of length, and the option itself.</p>
+<p>Most of the standardized options are rarely or never used in the Internet today. In addition, the options are primarily for diagnostic purposes and make the construction of firewalls more cumbersome and risky. Thus, IPv4 options are typically disallowed or stripped at the perimeter of enterprise networks by firewalls. (<a href="../ch7.m">Chapter 7</a>)</p>
+<p>Within enterprise networks, where the average path length is smaller and protection from malicious users may be less of a concern, options can still be useful. In addition, since the <strong>Router Alert</strong> option is designed primarily as a performance optimization and does not change fundamental router behavior, it is permitted more often than the other options. Some router implementations have a highly optimized internal pathway for forwarding IP traffic containing no options. The Router Alert option informs routers that a packet requires processing beyond the conventional forwarding algorithms. The experimental <strong>Quick-Start</strong> option at the end of the table is applicable to both IPv4 and IPv6.</p>
+<h3 id="ipv6-extension-headers">IPv6 Extension Headers</h3>
+<p>In IPv6, special functions such as those provided by options in IPv4 can be enabled by adding extension headers that follow the IPv6 header. IPv6 header is fixed at 40 bytes, and extension headers are added only when needed. [p194]</p>
+<p>In choosing the IPv6 header to be of a fixed size, and requiring that extension headers be processed only by end hosts (with one exception), design and construction of high-performance routers are easier because the demands on packet processing at routers can be simpler than with IPv4.</p>
+<p>Extension headers, along with headers of higher-layer protocols such as TCP or UDP, are chained together with the IPv6 header to form a cascade of headers (see the figure below). The <strong>Next Header</strong> field in each header indicates the type of the subsequent header, which could be an IPv6 extension header or some other type.  The value of 59 indicates the end of the header chain. The most possible values for the Next Header field are provided in the following table.</p>
+<p><a href="../figure_5-6.png" title="IPv6 headers form a chain using the Next Header field. Headers in the chain may be IPv6 extension headers or transport headers. The IPv6 header appears at the beginning of the datagram and is always 40 bytes long."><img alt="IPv6 headers form a chain using the Next Header field. Headers in the chain may be IPv6 extension headers or transport headers. The IPv6 header appears at the beginning of the datagram and is always 40 bytes long." src="../figure_5-6.png" /></a></p>
+<p>This figure shows IPv6 headers form a chain using the Next Header field. Headers in the chain may be IPv6 extension headers or transport headers. The IPv6 header appears at the beginning of the datagram and is always 40 bytes long.</p>
+<p><a href="../table_5-5.png" title="The values for the IPv6 Next Header field may indicate extensions or headers for other protocols. The same values are used with the IPv4 Protocol field, where appropriate."><img alt="The values for the IPv6 Next Header field may indicate extensions or headers for other protocols. The same values are used with the IPv4 Protocol field, where appropriate." src="../table_5-5.png" /></a></p>
+<p>This table show values for the IPv6 Next Header field may indicate extensions or headers for other protocols. The same values are used with the IPv4 Protocol field, where appropriate. The IPv6 extension header mechanism distinguishes some functions (e.g., routing and fragmentation) from options.</p>
+<ul>
+<li>The order of the extension headers is given as a recommendation, except for the location of the <strong>Hop-by-Hop Options</strong> (HOPOPT)), which is mandatory, so an IPv6 implementation must be prepared to process extension headers in the order in which they are received.</li>
+<li>Only the <strong>Destination Options</strong> header can be used twice: the first time for options pertaining to the destination IPv6 address contained in the IPv6 header and the second time (position 8) for options pertaining to the final destination of the datagram.</li>
+<li>In some cases (e.g., when the <a href="#routing-header">Routing header</a> is used), the <strong>Destination IP Address</strong> field in the IPv6 header changes as the datagram is forwarded to its ultimate destination.</li>
+</ul>
+<h4 id="ipv6-options">IPv6 Options</h4>
+<p>IPv6 options, if present, are grouped into either of the following:</p>
+<ul>
+<li><strong>Hop-by-Hop Options</strong>: relevant to every router along a datagram’s path</li>
+<li><strong>Destination Options</strong>: relevant only to the recipient</li>
+</ul>
+<p>Hopby-Hop Options (called HOPOPTs) are the only ones that need to be processed by every router a packet encounters.  The format for encoding options within the Hop-by-Hop and Destination Options extension headers is common.</p>
+<p>The Hop-by-Hop and Destination Options headers are capable of holding more than one option. Each of these options is encoded as <strong>type-length-value</strong> (TLV) sets, as shown below:</p>
+<p><a href="../figure_5-7.png" title="Hop-by-hop and Destination Options are encoded as TLV sets. The first byte gives the option type, including subfields indicating how an IPv6 node should behave if the option is not recognized, and whether the option data might change as the datagram is forwarded. The Opt Data Len field gives the size of the option data in bytes."><img alt="Hop-by-hop and Destination Options are encoded as TLV sets. The first byte gives the option type, including subfields indicating how an IPv6 node should behave if the option is not recognized, and whether the option data might change as the datagram is forwarded. The Opt Data Len field gives the size of the option data in bytes." src="../figure_5-7.png" /></a></p>
+<p>In the TLV sets, the first byte gives the option type, including subfields indicating how an IPv6 node should behave if the option is not recognized, and whether the option data might change as the datagram is forwarded. The <strong>Opt Data Len</strong> field gives the size of the option data in bytes.</p>
+<p>The 2 high-order bits in an IPv6 TLV option type indicate whether an IPv6 node should forward or drop the datagram if the option is not recognized, and whether a message indicating the datagram’s fate should be sent back to the sender, as shown in the table below:</p>
+<p><a href="../table_5-6.png" title="The 2 high-order bits in an IPv6 TLV option type indicate whether an IPv6 node should forward or drop the datagram if the option is not recognized, and whether a message indicating the datagram’s fate should be sent back to the sender."><img alt="The 2 high-order bits in an IPv6 TLV option type indicate whether an IPv6 node should forward or drop the datagram if the option is not recognized, and whether a message indicating the datagram’s fate should be sent back to the sender." src="../table_5-6.png" /></a></p>
+<p>Options in IPv6 are carried in either Hop-by-Hop (H) or Destination (D) Options extension headers. The option Type field contains the value from the "Type" column with the Action and Change subfields denoted in binary. The "Length" column contains the value of the Opt Data Len byte. See the table below:</p>
+<p><a href="../table_5-7.png" title="Options in IPv6 are carried in either Hop-by-Hop (H) or Destination (D) Options extension headers. The option Type field contains the value from the “Type” column with the Action and Change subfields denoted in binary. The “Length” column contains the value of the Opt Data Len byte from Figure 5-7. The Pad1 option is the only one lacking this byte."><img alt="Options in IPv6 are carried in either Hop-by-Hop (H) or Destination (D) Options extension headers. The option Type field contains the value from the “Type” column with the Action and Change subfields denoted in binary. The “Length” column contains the value of the Opt Data Len byte from Figure 5-7. The Pad1 option is the only one lacking this byte." src="../table_5-7.png" /></a></p>
+<p>[p196-197]</p>
+<h5 id="pad1-and-padn"><strong>Pad1 and PadN</strong></h5>
+<p>IPv6 options are aligned to 8-byte offsets, so options that are naturally smaller are padded with 0 bytes to round out their lengths to the nearest 8 bytes. [p197]</p>
+<h5 id="ipv6-jumbo-payload"><strong>IPv6 Jumbo Payload</strong></h5>
+<p>In some TCP/IP networks, such as those used to interconnect supercomputers, the normal 64KB limit on the IP datagram size can lead to unwanted overhead when moving large amounts of data. The IPv6 <strong>Jumbo Payload</strong> option specifies an IPv6 datagram with payload size larger than 65,535 bytes, called a <strong>jumbogram</strong>. This option need not be implemented by nodes attached to links with MTU sizes below 64KB. The Jumbo Payload option provides a 32-bit field for holding the payload size for datagrams with payloads of sizes between 65,535 and 4,294,967,295 bytes (4 GB).</p>
+<p>When a jumbogram is formed for transmission, its normal Payload Length field is set to 0. The TCP protocol makes use of the Payload Length field in order to compute its checksum using the Internet checksum algorithm described previously. When the Jumbo Payload option is used, TCP must be careful to use the length value from the option instead of the regular Length field in the base header. [p198]</p>
+<h5 id="tunnel-encapsulation-limit"><strong>Tunnel Encapsulation Limit</strong></h5>
+<p><a href="https://en.wikipedia.org/wiki/Tunneling_protocol"><strong>Tunneling</strong></a> refers to the encapsulation of one protocol in another that does not conform to traditional layering. For example, IP datagrams may be encapsulated inside the payload portion of another IP datagram.</p>
+<ul>
+<li>Tunneling can be used to form virtual <a href="https://en.wikipedia.org/wiki/Overlay_network">overlay networks</a>, in which one network (e.g., the Internet) acts as a well-connected link layer for another layer of IP.</li>
+<li>Tunnels can be nested in the sense that datagrams that are in a tunnel may themselves be placed in a tunnel, in a recursive fashion.</li>
+</ul>
+<p>Using Tunnel Encapsulation Limit option, a sender can specify a limit to have control over how many tunnel levels are ultimately used for encapsulation. Using this option.</p>
+<h5 id="router-alert"><strong>Router Alert</strong></h5>
+<p>The Router Alert option indicates that the datagram contains information that needs to be processed by a router. It is used for the same purpose as the IPv4 Router Alert option.</p>
+<h5 id="quick-start"><strong>Quick-Start</strong></h5>
+<p>The Quick-Start (QS) option is used in conjunction with the experimental QuickStart procedure for TCP/IP specified in [RFC4782]. It is applicable to both IPv4 and IPv6 but at present is suggested only for private networks and not the global Internet. [p199]</p>
+<h5 id="calipso"><strong>CALIPSO</strong></h5>
+<p>This option is used for supporting the <strong>Common Architecture Label IPv6 Security Option</strong> (CALIPSO) [RFC5570] in certain private networks.</p>
+<h5 id="home-address"><strong>Home Address</strong></h5>
+<p>This option holds the "home" address of the IPv6 node sending the datagram when IPv6 mobility options are in use. Mobile IP (<a href="#mobile-ip">Section 5.5</a>) specifies a set of procedures for handling IP nodes that may change their point of network attachment without losing their higher-layer network connections. [p199]</p>
+<h4 id="routing-header">Routing Header</h4>
+<p>The IPv6 Routing header provides a mechanism for the sender of an IPv6 datagram to control the path the datagram takes through the network. Two different versions of the routing extension header have been specified: type 0 (RH0) and type 2 (RH2):</p>
+<ul>
+<li>RH0 has been deprecated because of security concerns [RFC5095]</li>
+<li>RH2 is defined in conjunction with Mobile IP.</li>
+</ul>
+<p>To best understand the Routing header, we begin by discussing RH0 and then investigate why it has been deprecated and how it differs from RH2. RH0 specifies one or more IPv6 nodes to be "visited" as the datagram is forwarded.</p>
+<p><a href="../figure_5-8.png" title="The now-deprecated Routing header type 0 (RH0) generalizes the IPv4 loose and strict Source Route and Record Route options. It is constructed by the sender to include IPv6 node addresses that act as waypoints when the datagram is forwarded. Each address can be specified as a loose or strict address. A strict address must be reached by a single IPv6 hop, whereas a loose address may contain one or more other hops in between. The IPv6 Destination IP Address field in the base header is modified to contain the next waypoint address as the datagram is forwarded."><img alt="The now-deprecated Routing header type 0 (RH0) generalizes the IPv4 loose and strict Source Route and Record Route options. It is constructed by the sender to include IPv6 node addresses that act as waypoints when the datagram is forwarded. Each address can be specified as a loose or strict address. A strict address must be reached by a single IPv6 hop, whereas a loose address may contain one or more other hops in between. The IPv6 Destination IP Address field in the base header is modified to contain the next waypoint address as the datagram is forwarded." src="../figure_5-8_600.png" /></a></p>
+<p>The IPv6 Routing header shown below generalizes the loose Source and Record Route options from IPv4. RH0 allows the sender to specify a vector of IPv6 addresses for nodes to be visited. [p200-201]</p>
+<ul>
+<li>The header contains an 8-bit <strong>Routing Type</strong> identifier and an 8-bit <strong>Segments Left</strong> field.<ul>
+<li>The Routing Type identifier for IPv6 addresses is 0 for RH0 and 2 for RH2.</li>
+<li>The Segments Left field indicates how many route segments remain to be processed. (The number of explicitly listed intermediate nodes still to be visited before reaching the final destination.) [p201]</li>
+</ul>
+</li>
+</ul>
+<p>A Routing header is not processed until it reaches the node whose address is contained in the <strong>Destination IP Address</strong> field of the IPv6 header. At this time, the Segments Left field is used to determine the next hop address from the address vector, and this address is swapped with the Destination IP Address field in the IPv6 header. Thus, as the datagram is forwarded, the Segments Left field grows smaller, and the list of addresses in the header reflects the node addresses that forwarded the datagram.</p>
+<p>The forwarding procedure is shown in the below figure:</p>
+<p><a href="../figure_5-9.png" title="Using an IPv6 Routing header (RH0), the sender (S) is able to direct the datagram through the intermediate nodes R2 and R3 . The other nodes traversed are determined by the normal IPv6 routing. Note that the destination address in the IPv6 header is updated at each hop specified in the Routing header."><img alt="Using an IPv6 Routing header (RH0), the sender (S) is able to direct the datagram through the intermediate nodes R2 and R3 . The other nodes traversed are determined by the normal IPv6 routing. Note that the destination address in the IPv6 header is updated at each hop specified in the Routing header." src="../figure_5-9_600.png" /></a></p>
+<ol>
+<li>The sender (S) constructs the datagram with destination address R1 and a Routing header (type 0) containing the addresses R2, R3, and D. The final destination of the datagram is the last address in the list (D). The Segments Left field (labeled "Left") starts at 3.</li>
+<li>The datagram is forwarded toward R1 automatically by S and R0 . Because R0's address is not present in the datagram, no modifications of the Routing header or addresses are performed by R0 .</li>
+<li>Upon reaching R1, the destination address from the base header is swapped with the first address listed in the Routing header and the Segments Left field is decremented.</li>
+<li>As the datagram is forwarded, the process of swapping the destination address with the next address from the address list in the Routing header repeats until the last destination listed in the Routing header is reached.</li>
+</ol>
+<p>RH0 has been deprecated by [RFC5095] because of a security concern that allows RH0 to be used to increase the effectiveness of DoS attacks. <u>The problem is that RH0 allows the same address to be specified in multiple locations within the Routing header. This can lead to traffic being forwarded many times between two or more hosts or routers along a particular path.</u> The potentially high traffic loads that can be created along particular paths in the network can cause disruption to other traffic flows competing for bandwidth across the same path. Consequently, RH0 has been deprecated and only RH2 remains as the sole Routing header supported by IPv6. RH2 is equivalent to RH0 except it has room for only a single address and uses a different value in the <strong>Routing Type</strong> field.</p>
+<h4 id="fragment-header">Fragment Header</h4>
+<p>The Fragment header is used by an IPv6 source when sending a datagram larger than the path MTU of the datagram’s intended destination. (Path MTU and how it is determined are detailed in <a href="ch13.md">Chapter 13</a>). 1280 bytes is a network-wide link-layer minimum MTU for IPv6 [RFC2460].</p>
+<ul>
+<li>In IPv4, any host or router can fragment a datagram if it is too large for the MTU on the next hop, and fields within the second 32-bit word of the IPv4 header indicate the fragmentation information.</li>
+<li>In IPv6, only the sender of the datagram is permitted to perform fragmentation, and in such cases a Fragment header is added.</li>
+</ul>
+<p>The Fragment header includes the same information as is found in the IPv4 header, but the Identification field is 32 bits instead of the 16 that are used for IPv4. The larger field provides the ability for more fragmented packets to be outstanding in the network simultaneously. The Fragment header uses the format shown in the figure below:</p>
+<p><a href="../figure_5-11.png" title="The IPv6 Fragment header contains a 32-bit Identification field (twice as large as the Identification field in IPv4). The M bit field indicates whether the fragment is the last of an original datagram. As with IPv4, the Fragment Offset field gives the offset of the payload into the original datagram in 8-byte units."><img alt="The IPv6 Fragment header contains a 32-bit Identification field (twice as large as the Identification field in IPv4). The M bit field indicates whether the fragment is the last of an original datagram. As with IPv4, the Fragment Offset field gives the offset of the payload into the original datagram in 8-byte units." src="../figure_5-11_600.png" /></a></p>
+<ul>
+<li>The <strong>Reserved</strong> field and 2-bit Res field are both zero and ignored by receivers.</li>
+<li>The <strong>Fragment Offset</strong> field indicates where the data that follows the Fragment header is located, as a positive offset in 8-byte units, relative to the "fragmentable part" of the original IPv6 datagram.</li>
+</ul>
+<p>The datagram serving as input to the fragmentation process is called the "original packet" and consists of two parts: the "unfragmentable part" and the "fragmentable part":</p>
+<ul>
+<li>The <strong>unfragmentable part</strong> includes the IPv6 header and any included extension headers required to be processed by intermediate nodes to the destination, which includes:<ul>
+<li>All headers up to and including the Routing header, or,</li>
+<li>the Hop-by-Hop Options extension header if only it is present.</li>
+</ul>
+</li>
+<li>The <strong>fragmentable part</strong> constitutes the remainder of the datagram, which includes:<ul>
+<li>Destination Options header</li>
+<li>Upper-layer headers</li>
+<li>Payload data)</li>
+</ul>
+</li>
+</ul>
+<p>When the original packet is fragmented, multiple fragment packets are produced, each of which contains a copy of the unfragmentable part of the original packet followed by the Fragment header. In each fragmented IPv6 packet:</p>
+<ul>
+<li>The IPv6 header has the <strong>Payload Length</strong> field altered to reflect the size of the fragment packet it describes.</li>
+<li>Following the unfragmentable part, each new fragment packet contains a Fragment header with the following fields:<ul>
+<li>An appropriately assigned <strong>Fragment Offset</strong> field (the first fragment contains offset 0)</li>
+<li>A copy of the original packet’s <strong>Identification</strong> field.</li>
+<li>The last fragment has its <strong>M</strong> (<em>More Fragments</em>) bit field set to 0.</li>
+</ul>
+</li>
+</ul>
+<p>The following example illustrates the way an IPv6 source might fragment a datagram:</p>
+<p><a href="../figure_5-12.png" title=" An example of IPv6 fragmentation where a 3960-byte payload is split into three fragment packets of size 1448 bytes or less. Each fragment contains a Fragment header with the identical Identification field. All but the last fragment have the More Fragments field (M) set to 1. The offset is given in 8-byte units—the last fragment, for example, contains data beginning at offset (362 * 8) = 2896 bytes from the beginning of the original packet’s data. The scheme is similar to fragmentation in IPv4."><img alt=" An example of IPv6 fragmentation where a 3960-byte payload is split into three fragment packets of size 1448 bytes or less. Each fragment contains a Fragment header with the identical Identification field. All but the last fragment have the More Fragments field (M) set to 1. The offset is given in 8-byte units—the last fragment, for example, contains data beginning at offset (362 * 8) = 2896 bytes from the beginning of the original packet’s data. The scheme is similar to fragmentation in IPv4." src="../figure_5-12_600.png" /></a></p>
+<p>In the figure above, a payload of 3960 bytes is fragmented such that no fragment’s total packet size exceeds 1500 bytes (a typical MTU for Ethernet), yet the <u>fragment data sizes still are arranged to be multiples of 8 bytes.</u> [p204-205]</p>
+<ul>
+<li>A 3960-byte payload is split into three fragment packets of size 1448 bytes or less.</li>
+<li>The Fragment header in each fragment contains a common Identification field</li>
+<li>All but the last fragment have the More Fragments field (M) set to 1. The offset is given in 8-byte units—the last fragment, for example, contains data beginning at offset (362 * 8) = 2896 bytes from the beginning of the original packet’s data. The scheme is similar to fragmentation in IPv4.</li>
+<li>The IPv6 header’s Payload Length field is modified to reflect the size of the data and newly formed Fragment header.</li>
+</ul>
+<p>The receiver must ensure that all fragments of an original datagram have been received before performing reassembly. As with fragmentation in IPv4 (<a href="../ch10/">Chapter 10</a>), fragments may arrive out of order at the receiver but are reassembled in order to form a datagram that is given to other protocols for processing.</p>
+<p>[p205-208]</p>
+<p>(Wireshark example skipped)</p>
+<h3 id="ip-forwarding">IP Forwarding</h3>
+<p>IP forwarding is simple, especially for a host:</p>
+<ul>
+<li>If the destination is directly connected to the host (e.g., a point-to-point link) or on a shared network (e.g., Ethernet), the IP datagram is sent directly to the destination; a router is not required or used.</li>
+<li>Otherwise, the host sends the datagram to a single router (called the <em>default</em> router) and lets the router deliver the datagram to its destination.</li>
+</ul>
             </div>
         </div>
 
