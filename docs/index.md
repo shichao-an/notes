@@ -20,7 +20,6 @@ This site documents reading and learning notes of the following books and materi
   </div>
 </div>
 
-
 ### Reading Notes
 
 Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
