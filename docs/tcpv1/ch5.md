@@ -339,3 +339,41 @@ IP forwarding is simple, especially for a host:
 
 * If the destination is directly connected to the host (e.g., a point-to-point link) or on a shared network (e.g., Ethernet), the IP datagram is sent directly to the destination; a router is not required or used.
 * Otherwise, the host sends the datagram to a single router (called the *default* router) and lets the router deliver the datagram to its destination.
+
+A host differs from a router in how IP datagrams are handled: a host never forwards datagrams it does not originate, whereas routers do.
+
+The IP protocol can receive a datagram from either of the following:
+
+* Another protocol on the same machine (TCP, UDP, etc.),
+* A network interface.
+
+The IP layer has some information in memory, called a **routing table** or **forwarding table**, which it searches each time it receives a datagram to send.
+
+When a datagram is received from a network interface, IP first checks if the destination IP address is one of its own IP addresses (one of the IP addresses associated with one of its network interfaces) or some other address for which it should receive traffic such as an IP broadcast or multicast address:
+
+* If so, the datagram is delivered to the protocol module specified by the **Protocol** field in the IPv4 header or **Next Header** field in the IPv6 header.
+* If the datagram is not destined for one of the IP addresses being used locally by the IP module, then:
+    * If the IP layer was configured to act as a router, the datagram is forwarded (that is, handled as an outgoing datagram as described in [Section 5.4.2](#ip-forwarding-actions)); or,
+    * The datagram is silently discarded. Under some circumstances (e.g., no route is known in case 1), an ICMP message may be sent back to the source indicating an error condition.
+
+#### Forwarding Table
+
+The data in a forwarding table is up to the implementation, though several key pieces of information are generally required to implement the forwarding table for IP. Each entry in the routing or forwarding table contains (at least conceptually) the following information fields:
+
+* **Destination**: This contains a 32-bit field (or 128-bit field for IPv6) used for matching the result of a masking operation. The destination can be:
+    * Zero, for a "default route" covering all destinations, or,
+    * Full length of an IP address, for a "host route" that describes only a single destination.
+* **Mask**: This contains a 32-bit field (or 128-bit field for IPv6) applied as a bitwise AND mask to the destination IP address of a datagram being looked up in the forwarding table. The masked result is compared with the set of destinations in the forwarding table entries.
+* **Next-hop**: This contains the 32-bit IPv4 address or 128-bit IPv6 address of the next IP entity (router or host) to which the datagram should be sent. The next-hop entity is typically on a network shared with the system performing the forwarding lookup, meaning the two share the same network prefix.
+* **Interface**: This contains an identifier used by the IP layer to reference the network interface that should be used to send the datagram to its next hop. For example, it could refer to a host’s 802.11 wireless interface, a wired Ethernet interface, or a PPP interface associated with a serial port. If the forwarding system is also the sender of the IP datagram, this field is used in selecting which source IP address to use on the outgoing datagram (see [Section 5.6.2.1](the-source-address-selection-algorithm)).
+
+IP forwarding is performed on a *hop-by-hop* basis. The routers and hosts do not contain the complete forwarding path to any destination, except those destinations that are directly connected to the host or router. IP forwarding provides the IP address of only the next-hop entity to which the datagram is sent. The following assumption are made:
+
+* The next hop is really "closer" to the destination than the forwarding system is, and that the next-hop router is directly connected to (shares a common network prefix with) the forwarding system.
+* No "loops" are constructed between the next hops so that a datagram does not circulate around the network until its TTL or hop limit expires.
+
+The job of ensuring correctness of the routing table is given to one or more routing protocols. Many different routing protocols are available to do this job, including [RIP](https://en.wikipedia.org/wiki/Routing_Information_Protocol), [OSPF](https://en.wikipedia.org/wiki/Open_Shortest_Path_First), [BGP](https://en.wikipedia.org/wiki/Border_Gateway_Protocol), and [IS-IS](https://en.wikipedia.org/wiki/IS-IS).
+
+#### IP Forwarding Actions
+
+When the IP layer in a host or router needs to send an IP datagram to a next-hop router or host, it first examines the destination IP address (*D*) in the datagram  Using the value *D*, the following **longest prefix match** algorithm is executed on the forwarding table:
