@@ -377,3 +377,135 @@ The job of ensuring correctness of the routing table is given to one or more rou
 #### IP Forwarding Actions
 
 When the IP layer in a host or router needs to send an IP datagram to a next-hop router or host, it first examines the destination IP address (*D*) in the datagram  Using the value *D*, the following **longest prefix match** algorithm is executed on the forwarding table:
+
+1. Search the table for all entries (masking and comparing) for which the following property holds:
+
+    (*D* & *m*<sub>j</sub>) = *d*<sub>j</sub>
+
+    Where:
+
+    * *m*<sub>j</sub> is the value of the mask field associated with the forwarding entry *e*<sub>j</sub> having index j
+    * *d*<sub>j</sub> is the value of the destination field associated with *e*<sub>j</sub>.
+
+    This means that the destination IP address *D* is bitwise ANDed with the mask in each forwarding table entry (*m*<sub>j</sub>), and the result is compared against the destination in the same forwarding table entry (*d*<sub>j</sub>). If the property holds, the entry (*e*<sub>j</sub> here) is a "match" for the destination IP address. When a match happens, the algorithm notes the entry index (*j* here) and how many bits in the mask *m*<sub>j</sub> were 1. The more bits are 1, the "better" the match.
+
+2. The best matching entry *e*<sub>k</sub> (the one with the largest number of 1 bits in its mask *m*<sub>j</sub>) is selected, and its next-hop field *nm*<sub>k</sub> is used as the next-hop IP address in forwarding the datagram.
+
+If no matches in the forwarding table are found, the datagram is undeliverable:
+
+* If on a host (the undeliverable datagram was generated locally), a "host unreachable" error is normally returned to the application that generated the datagram.
+* If on a router, an ICMP message is normally sent back to the host that sent the datagram.
+
+In some circumstances, more than one entry may match an equal number of 1 bits: for example, when more than one default route is available (e.g., when attached to more than one ISP, called [multihoming](https://en.wikipedia.org/wiki/Multihoming)). A common behavior is for the system to simply choose the first match. More sophisticated systems may attempt to load-balance or split traffic across the multiple routes. Studies suggest that multihoming can be beneficial not only for large enterprises, but also for residential users. [p210]
+
+#### Examples of IP Forwarding
+
+There are two cases of IP forwarding:
+
+* **Direct delivery**: all systems are using the same network prefix.
+* **Indirect delivery** ([Figure 5-16](figure_5-16.png)).
+
+##### **Direct Delivery**
+
+Host S (with IPv4 address S and MAC address <u>S</u>) has an IP datagram to send to Host D (IPv4 address D, MAC address <u>D</u>). Both hosts are on the same Ethernet ([front cover](front_cover.jpg)) and are interconnected using a switch. [p210]
+
+The top part of the following figure shows the delivery of the datagram and the forwarding table on S to contain the information as shown in the following table:
+
+[![Direct delivery does not require the presence of a router—IP datagrams are encapsulated in a link-layer frame that directly identifies the source and destination. Indirect delivery involves a router—data is forwarded to the router using the router’s link-layer address as the destination link-layer address. The router’s IP address does not appear in the IP datagram (unless the router itself is the source or destination, or when source routing is used).](figure_5-16_600.png)](figure_5-16.png "Direct delivery does not require the presence of a router—IP datagrams are encapsulated in a link-layer frame that directly identifies the source and destination. Indirect delivery involves a router—data is forwarded to the router using the router’s link-layer address as the destination link-layer address. The router’s IP address does not appear in the IP datagram (unless the router itself is the source or destination, or when source routing is used).")
+
+Destination | Mask | Gateway (Next Hop) | Interface
+----------- | ---- | ------------------ | ---------
+0.0.0.0 | 0.0.0.0 | 10.0.0.1 | 10.0.0.100
+10.0.0.0 | 255.255.255.128 | 10.0.0.100 | 10.0.0.100
+
+<small>
+The (unicast) IPv4 forwarding table at host S contains only two entries. Host S is configured with IPv4 address and subnet mask 10.0.0.100/25. Datagrams destined for addresses in the range 10.0.0.1 through 10.0.0.126 use the second forwarding table entry and are sent using direct delivery. All other datagrams use the first entry and are given to router R with IPv4 address 10.0.0.1.
+</small>
+
+Direct delivery does not require the presence of a router: IP datagrams are encapsulated in a link-layer frame that directly identifies the source and destination. In the above forwarding table, the destination IPv4 address D (10.0.0.9) matches both the first and second forwarding table entries. Because it matches the second entry better (25 bits instead of none), the "gateway" or next-hop address is 10.0.0.100, the address S. Thus, <u>the gateway portion of the entry contains the address of the sending host’s own network interface (no router is referenced), indicating that direct delivery is to be used to send the datagram.</u>
+
+The datagram is encapsulated in a lower-layer frame destined for the target host D. If the lower-layer address of the target host is unknown, the ARP protocol (for IPv4; [Chapter 4](ch4.md)) or Neighbor Solicitation (for IPv6; [Chapter 8](ch8.md)) operation may be invoked at this point to determine the correct lower-layer address, <u>D</u>. Once known, the destination address in the datagram is D’s IPv4 address (10.0.0.9), and <u>D</u> is placed in the **Destination IP Address** field in the lower-layer header. The switch delivers the frame to D based solely on the link-layer address <u>D</u>; it pays no attention to the IP addresses.
+
+##### **Indirect Delivery**
+
+Host S has an IP datagram to send to the Host D (`ftp.uu.net`), whose IPv4 address is 192.48.96.9. The bottom part of the [Figure 5-16](figure_5-16.png) shows the conceptual path of the datagram through four routers. Host S searches its forwarding table but does not find a matching prefix on the local network. It uses its default route entry (which matches every destination, but with no 1 bits at all).
+
+The IP addresses correspond to the source and destination hosts, but the lower-layer addresses do not. The lower-layer addresses determine which machines receive the frame containing the datagram on a per-hop basis.
+
+In this example:
+
+* The lower-layer address needs the Ethernet address of the next-hop router R1’s a-side interface (the lower-layer address corresponding to IPv4 address 10.0.0.1). This is accomplished by ARP (or a Neighbor Solicitation request for IPv6) on the network interconnecting S and R1.
+* Once R1 responds with its a-side lower-layer address, S sends the datagram to R1. Delivery from S to R1 takes place based on processing only the lower-layer headers (the lower-layer destination address).
+* Upon receipt of the datagram, R1 checks its forwarding table.
+
+The following table is the forwarding table of R1:
+
+Destination | Mask | Gateway (Next Hop) | Interface | Note
+----------- | ---- | ------------------ | --------- | ----
+0.0.0.0 | 0.0.0.0 | 70.231.159.254 | 70.231.132.85 | NAT
+10.0.0.0 | 255.255.255.128 | 10.0.0.100 | 10.0.0.1 | NAT
+
+<small>
+The forwarding table at R1 indicates that address translation should be performed for traffic. The router has a private address on one side (10.0.0.1) and a public address on the other (70.231.132.85). Address translation is used to make datagrams originating on the 10.0.0.0/25 network appear to the Internet as though they had been sent from 70.231.132.85.
+</small>
+
+* When R1 receives the datagram, it realizes that the datagram’s destination IP address is not one of its own, so it forwards the datagram. Its forwarding table is searched and the default entry is used. The default entry in this case has a next hop within the ISP servicing the network, 70.231.159.254 (this is R2’s a-side interface).
+* Because this router is in the global Internet and the source address of Host S is the private address 10.0.0.100, R1 performs [Network Address Translation](https://en.wikipedia.org/wiki/Network_address_translation) (NAT) on the datagram to make it routable on the Internet. The NAT operation results in the datagram having the new source address 70.231.132.85, which corresponds to R1’s b-side interface.
+* When router R2 (inside the ISP) receives the datagram, it goes through the same steps that the local router R1 did (except for the NAT operation). If the datagram is not destined for one of its own IP addresses, the datagram is forwarded.
+
+IPv6 uses a slightly different mechanism (Neighbor Solicitation messages) from IPv4 (which uses ARP) to ascertain the lower-layer address of its next hop ([Chapter 8](ch8.md)). In addition, IPv6 has both link-local addresses and global addresses ([Chapter 2](ch2.md)). While global addresses behave like regular IP addresses, link-local addresses can be used only on the same link. In addition, because all the link-local addresses share the same IPv6 prefix (fe80::/10), a multihomed host may require user to determine which interface to use when sending a datagram destined for a link-local destination.
+
+[p213-214]
+
+To see the path taken to an IP destination, we can use the [`traceroute`](https://en.wikipedia.org/wiki/Traceroute) program:
+
+```text
+Linux% traceroute -n ftp.uu.net
+traceroute to ftp.uu.net (192.48.96.9), 30 hops max, 38 byte packets
+ 1 70.231.159.254 9.285 ms 8.404 ms 8.887 ms
+ 2 206.171.134.131 8.412 ms 8.764 ms 8.661 ms
+ 3 216.102.176.226 8.502 ms 8.995 ms 8.644 ms
+ 4 151.164.190.185 8.705 ms 8.673 ms 9.014 ms
+ 5 151.164.92.181 9.149 ms 9.057 ms 9.537 ms
+ 6 151.164.240.134 9.680 ms 10.389 ms 11.003 ms
+ 7 151.164.41.10 11.605 ms 37.699 ms 11.374 ms
+ 8 12.122.79.97 13.449 ms 12.804 ms 13.126 ms
+ 9 12.122.85.134 15.114 ms 15.020 ms 13.654 ms
+ MPLS Label=32307 CoS=5 TTL=1 S=0
+10 12.123.12.18 16.011 ms 13.555 ms 13.167 ms
+11 192.205.33.198 15.594 ms 15.497 ms 16.093 ms
+12 152.63.57.102 15.103 ms 14.769 ms 15.128 ms
+13 152.63.34.133 77.501 ms 77.593 ms 76.974 ms
+14 152.63.38.1 77.906 ms 78.101 ms 78.398 ms
+15 207.18.173.162 81.146 ms 81.281 ms 80.918 ms
+16 198.5.240.36 77.988 ms 78.007 ms 77.947 ms
+17 198.5.241.101 81.912 ms 82.231 ms 83.115 ms
+```
+
+This program lists each of the IP hops traversed while sending a series of datagrams to the destination `ftp.uu.net` (192.48.96.9). The `traceroute` program uses a combination of UDP datagrams (with increasing TTL over time) and ICMP messages (used to detect each hop when the UDP datagrams expire) to accomplish its task. Three UDP packets are sent at each TTL value, providing three roundtrip-time measurements to each hop. The following line indicates that [Multiprotocol Label Switching](https://en.wikipedia.org/wiki/Multiprotocol_Label_Switching) (MPLS) [RFC3031] is being used.
+
+```text
+MPLS Label=32307 CoS=5 TTL=1 S=0
+```
+
+MPLS is a form of link-layer network capable of carrying multiple network-layer protocols. Many network operators use it for traffic engineering purposes (controlling where network traffic flows through their networks). [p215]
+
+#### Discussion (IP Forwarding)
+
+Key points regarding the operation of IP unicast forwarding:
+
+1. Most of the hosts and routers in this example used a default route consisting of a single forwarding table entry of this form: mask 0, destination 0, next hop &lt;some IP address&gt;. Indeed, most hosts and most routers at the edge of the Internet can use a default route for everything other than destinations on local networks because there is only one interface available that provides connectivity to the rest of the Internet.
+2. The source and destination IP addresses in the datagram never change once in the regular Internet. This is always the case unless either source routing is used, or when other functions (such as NAT, as in the example) are encountered along the data path. Forwarding decisions at the IP layer are based on the destination address.
+3. A different lower-layer header is used on each link that uses addressing, and the lower-layer destination address (if present) always contains the lower-layer address of the next hop. Therefore, lower-layer headers routinely change as the datagram is moved along each hop toward its destination.  In our example, both Ethernet LANs encapsulated a link-layer header containing the next hop’s Ethernet address, but the DSL link did not. Lower-layer addresses are normally obtained using ARP (see Chap
+
+
+
+### Mobile IP
+
+(skipped)
+
+[p215-220]
+
+### Host Processing of IP Datagrams
+
+#### Host Models
