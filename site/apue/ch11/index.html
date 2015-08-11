@@ -327,6 +327,11 @@
             <li><a href="#the-pthread_detach-function">The pthread_detach function</a></li>
         
     
+        <li class="main "><a href="#thread-synchronization">Thread Synchronization</a></li>
+        
+            <li><a href="#mutexes">Mutexes</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -728,6 +733,126 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>We can create a thread that is already in the detached state by modifying the thread attributes we pass to <code>pthread_create</code>. This is detailed in the next chapter.</p>
+<h3 id="thread-synchronization">Thread Synchronization</h3>
+<p>When multiple threads of control share the same memory, one thread can modify a variable that other threads can read or modify, thus we need to synchronize the threads to ensure that they don’t use an invalid value when accessing the variable’s memory contents.</p>
+<p>When one thread modifies a variable, other threads can potentially see inconsistencies when reading the value of that variable. On processor architectures in which the modification takes more than one memory cycle, this can happen when the memory read is interleaved between the memory write cycles.</p>
+<p>In the following figure, thread A reads the variable and then writes a new value to it, but the write operation takes two memory cycles.  If thread B reads the same variable between the two write cycles, it will see an inconsistent value:</p>
+<p><a href="../figure_11.7.png" title="Figure 11.7 Interleaved memory cycles with two threads"><img alt="Figure 11.7 Interleaved memory cycles with two threads" src="../figure_11.7.png" /></a></p>
+<p>To solve this problem, the threads have to use a lock that will allow only one thread to access the variable at a time, as show in the following figure:</p>
+<p><a href="../figure_11.8.png" title="Figure 11.8 Two threads synchronizing memory access"><img alt="Figure 11.8 Two threads synchronizing memory access" src="../figure_11.8.png" /></a></p>
+<ul>
+<li>If thread B wants to read the variable, it acquires a lock.</li>
+<li>When thread A updates the variable, it acquires the same lock. Thus thread B will be unable to read the variable until thread A releases the lock.</li>
+</ul>
+<p>We also need to synchronize two or more threads that might try to modify the same variable at the same time.</p>
+<p>For example (as in the following figure), the increment operation is usually broken down into three steps.</p>
+<ol>
+<li>Read the memory location into a register.</li>
+<li>Increment the value in the register.</li>
+<li>Write the new value back to the memory location.</li>
+</ol>
+<p><a href="../figure_11.9.png" title="Figure 11.9 Two unsynchronized threads incrementing the same variable"><img alt="Figure 11.9 Two unsynchronized threads incrementing the same variable" src="../figure_11.9.png" /></a></p>
+<p>If two threads try to increment the same variable at almost the same time without synchronizing with each other, the results can be inconsistent. [p398]</p>
+<p>There is no race if one of the following (assumed) condition occurs:</p>
+<ul>
+<li>The modification is atomic.</li>
+<li>(In the previous example) The increment takes only one memory cycle.</li>
+<li>Data always appears to be <a href="https://en.wikipedia.org/wiki/Sequential_consistency"><strong>sequentially consistent</strong></a>.</li>
+</ul>
+<p>Our operations are sequentially consistent when multiple threads can’t observe inconsistencies in our data. In modern computer systems, memory accesses take multiple bus cycles, and multiprocessors generally interleave bus cycles among multiple processors, so we aren’t guaranteed that our data is sequentially consistent.</p>
+<p>[p399]</p>
+<p>Besides the computer architecture, races can arise from the ways in which our programs use variables, creating places where it is possible to view inconsistencies. For example, we might increment a variable and then make a decision based on its value. The combination of the increment step and the decision-making step isn’t atomic, which opens a window where inconsistencies can arise.</p>
+<h4 id="mutexes">Mutexes</h4>
+<p>We can protect our data and ensure access by only one thread at a time by using the pthreads mutual-exclusion interfaces. A <a href="https://en.wikipedia.org/wiki/Mutual_exclusion"><strong>mutex</strong></a> is basically a lock that we set (lock) before accessing a shared resource and release (unlock) when we’re done.</p>
+<ul>
+<li>While it is set, any other thread that tries to set it will block until we release it.</li>
+<li>If more than one thread is blocked when we unlock the mutex, then all threads blocked on the lock will be made runnable, and the first one to run will be able to set the lock. The others will see that the mutex is still locked and go back to waiting for it to become available again.</li>
+</ul>
+<p>In this way, only one thread will proceed at a time.</p>
+<p>[p400]</p>
+<p>A mutex variable is represented by the <code>pthread_mutex_t</code> data type. Before we can use a mutex variable, we must first initialize it by either setting it to the constant <code>PTHREAD_MUTEX_INITIALIZER</code> (for statically allocated mutexes only) or calling <code>pthread_mutex_init</code>. If we allocate the mutex dynamically (by calling <code>malloc</code>, for example), then we need to call <code>pthread_mutex_destroy</code> before freeing the memory.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_init</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                       <span class="k">const</span> <span class="kt">pthread_mutexattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_destroy</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="../synchronization-attributes">Section 12.4</a>).</p>
+<p>To lock a mutex, we call <code>pthread_mutex_lock</code>. If the mutex is already locked, the calling thread will block until the mutex is unlocked. To unlock a mutex, we call <code>pthread_mutex_unlock</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_lock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_trylock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_unlock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+
+<span class="cm">/* All return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>If a thread can’t afford to block, it can use <code>pthread_mutex_trylock</code> to lock the mutex conditionally. If the mutex is unlocked at the time <code>pthread_mutex_trylock</code> is called, then <code>pthread_mutex_trylock</code> will lock the mutex without blocking and return 0. Otherwise, <code>pthread_mutex_trylock</code> will fail, returning <code>EBUSY</code> without locking the mutex.</p>
+<p>The following example illustrates a mutex used to protect a data structure. When more than one thread needs to access a dynamically allocated object, we can embed a reference count in the object to ensure that we don’t free its memory before all threads are done using it.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex1.c">threads/mutex1.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_alloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* allocate the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span><span class="p">)))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">=</span> <span class="n">id</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_mutex_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="cm">/* ... continue initialization ... */</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_hold</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* add a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_rele</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* release a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* last reference */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_destroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>We lock the mutex before incrementing the reference count, decrementing the reference count, and checking whether the reference count reaches zero.</li>
+<li><u>No locking is necessary when we initialize the reference count to 1 in the <code>foo_alloc</code> function, because the allocating thread is the only reference to it so far.</u> If we were to place the structure on a list at this point, it could be found by other threads, so we would need to lock it first.</li>
+</ul>
+<p>Before using the object, threads are expected to add a reference to it by calling <code>foo_hold</code>. When they are done, they must call <code>foo_rele</code> to release the reference. When the last reference is released, the object’s memory is freed.</p>
+<p>In this example, we have ignored how threads find an object before calling <code>foo_hold</code>. Even though the reference count is zero, it would be a mistake for <code>foo_rele</code> to free the object’s memory if another thread is blocked on the mutex in a call to <code>foo_hold</code>. We can avoid this problem by ensuring that the object can’t be found before freeing its memory. We’ll see how to do this in the examples that follow.</p>
             </div>
         </div>
 
