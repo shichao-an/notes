@@ -332,6 +332,22 @@
             <li><a href="#mutexes">Mutexes</a></li>
         
     
+        <li class="main "><a href="#deadlock-avoidance">Deadlock Avoidance</a></li>
+        
+            <li><a href="#example-of-two-mutexes">Example of two mutexes</a></li>
+        
+            <li><a href="#example-of-two-mutexes-simplified">Example of two mutexes (simplified)</a></li>
+        
+            <li><a href="#pthread_mutex_timedlock-function">pthread_mutex_timedlock Function</a></li>
+        
+            <li><a href="#readerwriter-locks">Reader–Writer Locks</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -853,6 +869,294 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </ul>
 <p>Before using the object, threads are expected to add a reference to it by calling <code>foo_hold</code>. When they are done, they must call <code>foo_rele</code> to release the reference. When the last reference is released, the object’s memory is freed.</p>
 <p>In this example, we have ignored how threads find an object before calling <code>foo_hold</code>. Even though the reference count is zero, it would be a mistake for <code>foo_rele</code> to free the object’s memory if another thread is blocked on the mutex in a call to <code>foo_hold</code>. We can avoid this problem by ensuring that the object can’t be found before freeing its memory. We’ll see how to do this in the examples that follow.</p>
+<h3 id="deadlock-avoidance">Deadlock Avoidance</h3>
+<p>A thread will deadlock itself if it tries to lock the same mutex twice. There are less obvious ways to create deadlocks with mutexes. For example, when we use more than one mutex in our programs, a deadlock can occur if we allow one thread to hold a mutex and block while trying to lock a second mutex at the same time that another thread holding the second mutex tries to lock the first mutex. Neither thread can proceed, because each needs a resource that is held by the other.</p>
+<p>Deadlocks can be avoided by carefully controlling the order in which mutexes are locked. For example, assume that you have two mutexes, A and B, that you need to lock at the same time. If all threads always lock mutex A before mutex B (vice versa), no deadlock can occur from the use of the two mutexes (but you can still deadlock on other resources). You’ll have the potential for a deadlock only when one thread attempts to lock the mutexes in the opposite order from another thread.</p>
+<p>Another approach when many locks and data structures are involved (it is difficult to apply the previous approach) is that you might be able to release your locks and try again at a later time. You can use the <code>pthread_mutex_trylock</code> interface to avoid deadlocking in this case. If you are already holding locks and <code>pthread_mutex_trylock</code> is successful, then you can proceed. If it can’t acquire the lock, however, you can release the locks you already hold, clean up, and try again later.</p>
+<h4 id="example-of-two-mutexes">Example of two mutexes</h4>
+<p>In the following example which shows the use of two mutexes, we avoid deadlocks by ensuring that when we need to acquire two mutexes at the same time, we always lock them in the same order. The second mutex protects a hash list that we use to keep track of the foo data structures. Thus the hashlock mutex protects both the fh hash table and the <code>f_next</code> hash link field in the foo structure. The <code>f_lock</code> mutex in the foo structure protects access to the remainder of the foo structure’s fields.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex2.c">threads/mutex2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="cp">#define NHASH 29</span>
+<span class="cp">#define HASH(id) (((unsigned long)id)%NHASH)</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fh</span><span class="p">[</span><span class="n">NHASH</span><span class="p">];</span>
+
+<span class="kt">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">foo</span>     <span class="o">*</span><span class="n">f_next</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_alloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* allocate the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span><span class="p">)))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">=</span> <span class="n">id</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_mutex_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="p">;</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="cm">/* ... continue initialization ... */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_hold</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* add a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_find</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* find an existing object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">)];</span> <span class="n">fp</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="n">fp</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">==</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">foo_hold</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_rele</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* release a reference to the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">tfp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* last reference */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="cm">/* need to recheck the condition */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">--</span><span class="p">;</span>
+            <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+            <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="cm">/* remove from list */</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span><span class="p">);</span>
+        <span class="n">tfp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tfp</span> <span class="o">==</span> <span class="n">fp</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">!=</span> <span class="n">fp</span><span class="p">)</span>
+                <span class="n">tfp</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+            <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_destroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">--</span><span class="p">;</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Comparing <a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex2.c">threads/mutex2.c</a> with <a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex1.c">threads/mutex1.c</a>, we can see;</p>
+<ul>
+<li>The allocation function <code>foo_alloc</code> now locks the hash list lock, adds the new structure to a hash bucket, and <u>before unlocking the hash list lock, locks the mutex in the new structure.</u> Since the new structure is placed on a global list, other threads can find it, so we need to block them if they try to access the new structure, until we are done initializing it.</li>
+<li>The <code>foo_find</code> function locks the hash list lock and searches for the requested structure. If it is found, we increase the reference count and return a pointer to the structure. This follows the lock ordering by locking the hash list lock in <code>foo_find</code> before <code>foo_hold</code> locks the foo structure’s f_lock mutex.</li>
+<li>With two locks, the <code>foo_rele</code> function is more complicated. If this is the last reference, we need to unlock the structure mutex so that we can acquire the hash list lock, since we’ll need to remove the structure from the hash list. Then we reacquire the structure mutex. Because we could have blocked since the last time we held the structure mutex, we need to recheck the condition to see whether we still need to free the structure. If another thread found the structure and added a reference to it while we blocked to honor the lock ordering, we simply need to decrement the reference count, unlock everything, and return.</li>
+</ul>
+<h4 id="example-of-two-mutexes-simplified">Example of two mutexes (simplified)</h4>
+<p>We can simplify the previous example considerably by using the hash list lock to protect the structure reference count. The structure mutex can be used to protect everything else in the <code>foo</code> structure.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex3.c">threads/mutex3.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="cp">#define NHASH 29</span>
+<span class="cp">#define HASH(id) (((unsigned long)id)%NHASH)</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fh</span><span class="p">[</span><span class="n">NHASH</span><span class="p">];</span>
+<span class="kt">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">foo</span>     <span class="o">*</span><span class="n">f_next</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_alloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* allocate the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span><span class="p">)))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">=</span> <span class="n">id</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_mutex_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="p">;</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="cm">/* ... continue initialization ... */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_hold</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* add a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_find</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* find an existing object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">)];</span> <span class="n">fp</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="n">fp</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">==</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_rele</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* release a reference to the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">tfp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* last reference, remove from list */</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span><span class="p">);</span>
+        <span class="n">tfp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tfp</span> <span class="o">==</span> <span class="n">fp</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">!=</span> <span class="n">fp</span><span class="p">)</span>
+                <span class="n">tfp</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+            <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_destroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example, we solved the lock-ordering issues surrounding the hash list and the reference count when we use the same lock for both purposes. Multithreaded software design involves these types of trade-offs:</p>
+<ul>
+<li>If the locking granularity is too coarse, you end up with too many threads blocking behind the same locks, with little improvement possible from concurrency.</li>
+<li>If the locking granularity is too fine, then you suffer bad performance from excess locking overhead, and you end up with complex code.</li>
+</ul>
+<p>As a programmer, you need to find the correct balance between code complexity and performance, while still satisfying your locking requirements.</p>
+<h4 id="pthread_mutex_timedlock-function"><code>pthread_mutex_timedlock</code> Function</h4>
+<p>The <code>pthread_mutex_timedlock</code> function allows us to bound the time that a thread blocks when a mutex it is trying to acquire is already locked is equivalent to <code>pthread_mutex_lock</code>, but if the timeout value is reached, <code>pthread_mutex_timedlock</code> will return the error code <code>ETIMEDOUT</code> without locking the mutex:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_timedlock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The timeout is represented by the <code>timespec</code> structure (seconds and nanoseconds) and is <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_timedlock.html">absolute time</a>.</p>
+<p>The following is the output:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">mutex is locked</span>
+<span class="go">current time is 11:41:58 AM</span>
+<span class="go">the time is now 11:42:08 AM</span>
+<span class="go">can’t lock mutex again: Connection timed out</span>
+</pre></div>
+
+
+<p>This strategy is not recommended in practice, because it can lead to deadlock.</p>
+<p>Mac OS X 10.6.8 doesn’t support <code>pthread_mutex_timedlock</code> yet, but FreeBSD 8.0, Linux 3.2.0, and Solaris 10 do support it.</p>
+<h4 id="readerwriter-locks">Reader–Writer Locks</h4>
+<p>The state of a mutex is either locked or unlocked, and only one thread can lock it at a time. A reader–writer lock (also called shared–exclusive lock) has three possible states:</p>
+<ul>
+<li>Locked in read mode (also called locked in shared mode)</li>
+<li>Locked in write mode (also called locked in exclusive mode)</li>
+<li>Unlocked</li>
+</ul>
+<p>Only one thread at a time can hold a reader–writer lock in write mode, but multiple threads can hold a reader–writer lock in read mode at the same time.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_init</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                        <span class="k">const</span> <span class="kt">pthread_rwlockattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_destroy</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>A reader–writer lock is initialized by <code>pthread_rwlock_init</code>. A <code>NULL</code> value of <em>attr</em> indicates default attributes.</p>
+<p>Before freeing the memory backing a reader–writer lock, we need to call <code>pthread_rwlock_destroy</code> to clean it up. If <code>pthread_rwlock_init</code> allocated any resources for the reader–writer lock, <code>pthread_rwlock_destroy</code> frees those resources. If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost (see <a href="#doubts-and-solutions">Doubts and Solutions</a>).</p>
+<p>A reader–writer lock can be read locked, write locked and unlocked with the following functions:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_rdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_wrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_unlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+
+<span class="cm">/* All return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>Implementations might limit the number of times a reader–writer lock can be locked in shared mode, so we need to check the return value of <code>pthread_rwlock_rdlock</code>.</li>
+</ul>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p409-410 on Reader–Writer Locks</p>
+<blockquote>
+<p>If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost.</p>
+</blockquote>
+<p>"any resources assigned to the lock will be lost" probably means a form of <a href="https://en.wikipedia.org/wiki/Resource_leak">resource leak</a>.</p>
             </div>
         </div>
 
