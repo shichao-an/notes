@@ -475,6 +475,137 @@
 <p>Design the system call to be as general as possible with an eye toward the future. <u>The <em>purpose</em> of the system call will remain constant but its <em>uses</em> may change.</u> Remember the Unix motto: "Provide mechanism, not policy." [p75]</p>
 <p>When you write a system call, you need to realize the need for portability and robustness, not just today but in the future.The basic Unix system calls have survived this test of time; most of them are just as useful and applicable today as they were 30 years ago!</p>
 <h4 id="verifying-the-parameters">Verifying the Parameters</h4>
+<p>System calls must carefully verify all their parameters to ensure that they are valid, legal and correct to guarantee the system’s security and stability. [p75]</p>
+<p>One of the most important checks is the validity of any pointers that the user provides. Before following a pointer into user-space, the system must ensure that:</p>
+<ul>
+<li>The pointer points to a region of memory in user-space. Processes must not be able to trick the kernel into reading data in kernel-space on their behalf.</li>
+<li>The pointer points to a region of memory in the process’s address space.The process must not be able to trick the kernel into reading someone else’s data.</li>
+<li>The process must not be able to bypass memory access restrictions. If reading, the memory is marked readable. If writing, the memory is marked writable. If executing, the memory is marked executable.</li>
+</ul>
+<p>The kernel provides two methods for performing the requisite checks and the desired copy to and from user-space. <u>Note kernel code must never blindly follow a pointer into user-space. One of these two methods must always be used.</u></p>
+<ul>
+<li><code>copy_to_user()</code> is for writing into user-space. It takes three parameters:<ul>
+<li>The first argument is the destination memory address in the process’s address space.</li>
+<li>The second argument is the source pointer in kernel-space.</li>
+<li>The third argument is the size in bytes of the data to copy.</li>
+</ul>
+</li>
+<li><code>copy_from_user()</code> is for reading from user-space. It is analogous to <code>copy_to_user()</code>. The function reads from the second parameter into the first parameter the number of bytes specified in the third parameter.</li>
+</ul>
+<p>Both of these functions return the number of bytes they failed to copy on error. On success, they return zero. It is standard for the syscall to return <code>-EFAULT</code> in the case of such an error.</p>
+<p>The following example <code>silly_copy()</code> uses both <code>copy_from_user()</code> and <code>copy_to_user()</code>. It copies data from its first parameter into its second. This is suboptimal in that it involves an intermediate and extraneous copy into kernel-space for no gain. But it helps illustrate the point:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm">* silly_copy - pointless syscall that copies the len bytes from</span>
+<span class="cm">* ‘src’ to ‘dst’ using the kernel as an intermediary in the copy.</span>
+<span class="cm">* Intended as an example of copying to and from the kernel.</span>
+<span class="cm">*/</span>
+<span class="n">SYSCALL_DEFINE3</span><span class="p">(</span><span class="n">silly_copy</span><span class="p">,</span>
+                <span class="kt">unsigned</span> <span class="kt">long</span> <span class="o">*</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span>
+                <span class="kt">unsigned</span> <span class="kt">long</span> <span class="o">*</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span>
+                <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">len</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">buf</span><span class="p">;</span>
+
+    <span class="cm">/* copy src, which is in the user’s address space, into buf */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">copy_from_user</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">len</span><span class="p">))</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">EFAULT</span><span class="p">;</span>
+
+    <span class="cm">/* copy buf into dst, which is in the user’s address space */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">copy_to_user</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">,</span> <span class="n">len</span><span class="p">))</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">EFAULT</span><span class="p">;</span>
+
+    <span class="cm">/* return amount of data copied */</span>
+    <span class="k">return</span> <span class="n">len</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Both <code>copy_to_user()</code> and <code>copy_from_user()</code> may block. This occurs, for example, if the page containing the user data is not in physical memory but is swapped to disk. In that case, the process sleeps until the page fault handler can bring the page from the swap file on disk into physical memory.</p>
+<p>A final possible check is for valid permission. In older versions of Linux, it was standard for syscalls that require root privilege to use <code>suser()</code>. This function merely checked whether a user was root; this is now removed and a finer-grained “capabilities” system is in place.</p>
+<p>The new system enables specific access checks on specific resources. A call to <code>capable()</code> with a valid capabilities flag returns nonzero if the caller holds the specified capability and zero otherwise. For example, <code>capable(CAP_SYS_NICE)</code> checks whether the caller has the ability to modify nice values of other processes. By default, the superuser possesses all capabilities and nonroot possesses none.</p>
+<p>The following example is the <code>reboot()</code> system call. Note how its first step is ensuring that the calling process has the <code>CAP_SYS_REBOOT</code>. If that one conditional statement were removed, any process could reboot the system.</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sys.c#L368">kernel/sys.c#L368</a></small></p>
+<div class="codehilite"><pre><span class="n">SYSCALL_DEFINE4</span><span class="p">(</span><span class="n">reboot</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="n">magic1</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="n">magic2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span>
+        <span class="kt">void</span> <span class="n">__user</span> <span class="o">*</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">256</span><span class="p">];</span>
+    <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="cm">/* We only trust the superuser with rebooting the system. */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">capable</span><span class="p">(</span><span class="n">CAP_SYS_BOOT</span><span class="p">))</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">EPERM</span><span class="p">;</span>
+
+    <span class="cm">/* For safety, we require &quot;magic&quot; arguments. */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">magic1</span> <span class="o">!=</span> <span class="n">LINUX_REBOOT_MAGIC1</span> <span class="o">||</span>
+        <span class="p">(</span><span class="n">magic2</span> <span class="o">!=</span> <span class="n">LINUX_REBOOT_MAGIC2</span> <span class="o">&amp;&amp;</span>
+                    <span class="n">magic2</span> <span class="o">!=</span> <span class="n">LINUX_REBOOT_MAGIC2A</span> <span class="o">&amp;&amp;</span>
+            <span class="n">magic2</span> <span class="o">!=</span> <span class="n">LINUX_REBOOT_MAGIC2B</span> <span class="o">&amp;&amp;</span>
+                    <span class="n">magic2</span> <span class="o">!=</span> <span class="n">LINUX_REBOOT_MAGIC2C</span><span class="p">))</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">EINVAL</span><span class="p">;</span>
+
+    <span class="cm">/* Instead of trying to make the power_off code look like</span>
+<span class="cm">     * halt when pm_power_off is not set do it the easy way.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">cmd</span> <span class="o">==</span> <span class="n">LINUX_REBOOT_CMD_POWER_OFF</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">pm_power_off</span><span class="p">)</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">LINUX_REBOOT_CMD_HALT</span><span class="p">;</span>
+
+    <span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">reboot_mutex</span><span class="p">);</span>
+    <span class="k">switch</span> <span class="p">(</span><span class="n">cmd</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_RESTART</span><span class="p">:</span>
+        <span class="n">kernel_restart</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_CAD_ON</span><span class="p">:</span>
+        <span class="n">C_A_D</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_CAD_OFF</span><span class="p">:</span>
+        <span class="n">C_A_D</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_HALT</span><span class="p">:</span>
+        <span class="n">kernel_halt</span><span class="p">();</span>
+        <span class="n">do_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+        <span class="n">panic</span><span class="p">(</span><span class="s">&quot;cannot halt&quot;</span><span class="p">);</span>
+
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_POWER_OFF</span><span class="p">:</span>
+        <span class="n">kernel_power_off</span><span class="p">();</span>
+        <span class="n">do_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_RESTART2</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">strncpy_from_user</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buffer</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">arg</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="n">EFAULT</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">buffer</span><span class="p">[</span><span class="k">sizeof</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;\0&#39;</span><span class="p">;</span>
+
+        <span class="n">kernel_restart</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+
+<span class="cp">#ifdef CONFIG_KEXEC</span>
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_KEXEC</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">kernel_kexec</span><span class="p">();</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#ifdef CONFIG_HIBERNATION</span>
+    <span class="k">case</span> <span class="nl">LINUX_REBOOT_CMD_SW_SUSPEND</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">hibernate</span><span class="p">();</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="cp">#endif</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">reboot_mutex</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>See <code>&lt;linux/capability.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/capability.h">include/linux/capability.h</a>) for a list of all capabilities and what rights they entail.</p>
             </div>
         </div>
 
