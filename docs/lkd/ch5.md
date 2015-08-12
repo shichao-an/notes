@@ -171,3 +171,141 @@ Design the system call to be as general as possible with an eye toward the futur
 When you write a system call, you need to realize the need for portability and robustness, not just today but in the future.The basic Unix system calls have survived this test of time; most of them are just as useful and applicable today as they were 30 years ago!
 
 #### Verifying the Parameters
+
+System calls must carefully verify all their parameters to ensure that they are valid, legal and correct to guarantee the system’s security and stability. [p75]
+
+One of the most important checks is the validity of any pointers that the user provides. Before following a pointer into user-space, the system must ensure that:
+
+* The pointer points to a region of memory in user-space. Processes must not be able to trick the kernel into reading data in kernel-space on their behalf.
+* The pointer points to a region of memory in the process’s address space.The process must not be able to trick the kernel into reading someone else’s data.
+* The process must not be able to bypass memory access restrictions. If reading, the memory is marked readable. If writing, the memory is marked writable. If executing, the memory is marked executable.
+
+The kernel provides two methods for performing the requisite checks and the desired copy to and from user-space. <u>Note kernel code must never blindly follow a pointer into user-space. One of these two methods must always be used.</u>
+
+* `copy_to_user()` is for writing into user-space. It takes three parameters:
+    * The first argument is the destination memory address in the process’s address space.
+    * The second argument is the source pointer in kernel-space.
+    * The third argument is the size in bytes of the data to copy.
+* `copy_from_user()` is for reading from user-space. It is analogous to `copy_to_user()`. The function reads from the second parameter into the first parameter the number of bytes specified in the third parameter.
+
+Both of these functions return the number of bytes they failed to copy on error. On success, they return zero. It is standard for the syscall to return `-EFAULT` in the case of such an error.
+
+The following example `silly_copy()` uses both `copy_from_user()` and `copy_to_user()`. It copies data from its first parameter into its second. This is suboptimal in that it involves an intermediate and extraneous copy into kernel-space for no gain. But it helps illustrate the point:
+
+```c
+/*
+* silly_copy - pointless syscall that copies the len bytes from
+* ‘src’ to ‘dst’ using the kernel as an intermediary in the copy.
+* Intended as an example of copying to and from the kernel.
+*/
+SYSCALL_DEFINE3(silly_copy,
+                unsigned long *, src,
+                unsigned long *, dst,
+                unsigned long len)
+{
+    unsigned long buf;
+
+    /* copy src, which is in the user’s address space, into buf */
+    if (copy_from_user(&buf, src, len))
+        return -EFAULT;
+
+    /* copy buf into dst, which is in the user’s address space */
+    if (copy_to_user(dst, &buf, len))
+        return -EFAULT;
+
+    /* return amount of data copied */
+    return len;
+}
+```
+
+Both `copy_to_user()` and `copy_from_user()` may block. This occurs, for example, if the page containing the user data is not in physical memory but is swapped to disk. In that case, the process sleeps until the page fault handler can bring the page from the swap file on disk into physical memory.
+
+A final possible check is for valid permission. In older versions of Linux, it was standard for syscalls that require root privilege to use `suser()`. This function merely checked whether a user was root; this is now removed and a finer-grained “capabilities” system is in place.
+
+The new system enables specific access checks on specific resources. A call to `capable()` with a valid capabilities flag returns nonzero if the caller holds the specified capability and zero otherwise. For example, `capable(CAP_SYS_NICE)` checks whether the caller has the ability to modify nice values of other processes. By default, the superuser possesses all capabilities and nonroot possesses none.
+
+The following example is the `reboot()` system call. Note how its first step is ensuring that the calling process has the `CAP_SYS_REBOOT`. If that one conditional statement were removed, any process could reboot the system.
+
+<small>[kernel/sys.c#L368](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sys.c#L368)</small>
+
+```c
+SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
+		void __user *, arg)
+{
+	char buffer[256];
+	int ret = 0;
+
+	/* We only trust the superuser with rebooting the system. */
+	if (!capable(CAP_SYS_BOOT))
+		return -EPERM;
+
+	/* For safety, we require "magic" arguments. */
+	if (magic1 != LINUX_REBOOT_MAGIC1 ||
+	    (magic2 != LINUX_REBOOT_MAGIC2 &&
+	                magic2 != LINUX_REBOOT_MAGIC2A &&
+			magic2 != LINUX_REBOOT_MAGIC2B &&
+	                magic2 != LINUX_REBOOT_MAGIC2C))
+		return -EINVAL;
+
+	/* Instead of trying to make the power_off code look like
+	 * halt when pm_power_off is not set do it the easy way.
+	 */
+	if ((cmd == LINUX_REBOOT_CMD_POWER_OFF) && !pm_power_off)
+		cmd = LINUX_REBOOT_CMD_HALT;
+
+	mutex_lock(&reboot_mutex);
+	switch (cmd) {
+	case LINUX_REBOOT_CMD_RESTART:
+		kernel_restart(NULL);
+		break;
+
+	case LINUX_REBOOT_CMD_CAD_ON:
+		C_A_D = 1;
+		break;
+
+	case LINUX_REBOOT_CMD_CAD_OFF:
+		C_A_D = 0;
+		break;
+
+	case LINUX_REBOOT_CMD_HALT:
+		kernel_halt();
+		do_exit(0);
+		panic("cannot halt");
+
+	case LINUX_REBOOT_CMD_POWER_OFF:
+		kernel_power_off();
+		do_exit(0);
+		break;
+
+	case LINUX_REBOOT_CMD_RESTART2:
+		if (strncpy_from_user(&buffer[0], arg, sizeof(buffer) - 1) < 0) {
+			ret = -EFAULT;
+			break;
+		}
+		buffer[sizeof(buffer) - 1] = '\0';
+
+		kernel_restart(buffer);
+		break;
+
+#ifdef CONFIG_KEXEC
+	case LINUX_REBOOT_CMD_KEXEC:
+		ret = kernel_kexec();
+		break;
+#endif
+
+#ifdef CONFIG_HIBERNATION
+	case LINUX_REBOOT_CMD_SW_SUSPEND:
+		ret = hibernate();
+		break;
+#endif
+
+	default:
+		ret = -EINVAL;
+		break;
+	}
+	mutex_unlock(&reboot_mutex);
+	return ret;
+}
+```
+
+See `<linux/capability.h>` ([include/linux/capability.h](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/capability.h)) for a list of all capabilities and what rights they entail.
