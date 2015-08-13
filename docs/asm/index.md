@@ -798,7 +798,7 @@ _start:
 
 ##### **`syscall`**
 
-In arch/x86/include/asm/unistd_64.h, the syscall numbers are defined as following:
+In `arch/x86/include/asm/unistd_64.h`, the syscall numbers are defined as following:
 
 ```c
 #define __NR_write 1
