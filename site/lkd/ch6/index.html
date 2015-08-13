@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/lkd/ch1/">
+        <link rel="canonical" href="https://notes.shichao.io/lkd/ch6/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 1. Introduction to the Linux Kernel - Shichao's Notes</title>
+	<title>Chapter 6. Kernel Data Structures - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -133,8 +133,8 @@
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
-                        <li class="active">
-                            <a href="./">Chapter 1. Introduction to the Linux Kernel</a>
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
                         </li>
                     
                         <li >
@@ -153,8 +153,8 @@
                             <a href="../ch5/">Chapter 5. System Calls</a>
                         </li>
                     
-                        <li >
-                            <a href="../ch6/">Chapter 6. Kernel Data Structures</a>
+                        <li class="active">
+                            <a href="./">Chapter 6. Kernel Data Structures</a>
                         </li>
                     
                     </ul>
@@ -287,7 +287,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch1.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch6.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -305,19 +305,27 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-1-introduction-to-the-linux-kernel">Chapter 1. Introduction to the Linux Kernel</a></li>
+        <li class="main active"><a href="#chapter-6-kernel-data-structures">Chapter 6. Kernel Data Structures</a></li>
         
     
-        <li class="main "><a href="#overview-of-operating-systems-and-kernels">Overview of Operating Systems and Kernels</a></li>
+        <li class="main "><a href="#linked-lists">Linked Lists</a></li>
+        
+            <li><a href="#singly-and-doubly-linked-lists">Singly and Doubly Linked Lists</a></li>
+        
+            <li><a href="#circular-linked-lists">Circular Linked Lists</a></li>
+        
+            <li><a href="#moving-through-a-linked-list">Moving Through a Linked List</a></li>
+        
+            <li><a href="#the-linux-kernels-implementation">The Linux Kernel’s Implementation</a></li>
         
     
-        <li class="main "><a href="#linux-versus-classic-unix-kernels">Linux Versus Classic Unix Kernels</a></li>
+        <li class="main "><a href="#queues">Queues</a></li>
         
     
-        <li class="main "><a href="#linux-kernel-versions">Linux Kernel Versions</a></li>
+        <li class="main "><a href="#maps">Maps</a></li>
         
     
-        <li class="main "><a href="#the-linux-kernel-development-community">The Linux Kernel Development Community</a></li>
+        <li class="main "><a href="#binary-trees">Binary Trees</a></li>
         
     
     </ul>
@@ -325,30 +333,114 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-1-introduction-to-the-linux-kernel"><strong>Chapter 1. Introduction to the Linux Kernel</strong></h3>
-<h3 id="overview-of-operating-systems-and-kernels">Overview of Operating Systems and Kernels</h3>
-<p>In Linux, we can generalize that each processor is doing exactly one of three things at any given moment:</p>
+<h3 id="chapter-6-kernel-data-structures"><strong>Chapter 6. Kernel Data Structures</strong></h3>
+<p>This chapter introduces several built-in data structures for use in Linux kernel code: [p85]</p>
 <ul>
-<li>In user-space, executing user code in a process</li>
-<li>In kernel-space, in process context, executing on behalf of a specific process</li>
-<li>In kernel-space, in interrupt context, not associated with a process, handling an interrupt</li>
+<li>Linked lists</li>
+<li>Queues</li>
+<li>Maps</li>
+<li>Binary trees</li>
 </ul>
-<h3 id="linux-versus-classic-unix-kernels">Linux Versus Classic Unix Kernels</h3>
-<p>Notable differences exist between the Linux kernel and classic Unix systems:</p>
+<p>These generic data structures are provided to encourage code reuse. Kernel developers should use these data structures whenever possible and not "roll your own" solutions.</p>
+<h3 id="linked-lists">Linked Lists</h3>
+<p>As the simplest and most common data structure in the Linux kernel, a <strong>linked list</strong> is a data structure that allows the storage and manipulation of a variable number of <em>elements</em>, called the <em>nodes</em> of the list.</p>
+<p>Unlike in a static array, the elements in a linked list are dynamically created and inserted into the list, which enables the management of a varying number of elements unknown at compile time. The elements do not necessarily occupy contiguous regions in memory and thus need to be linked together (each element in the list contains a pointer to the <em>next</em> element).</p>
+<h4 id="singly-and-doubly-linked-lists">Singly and Doubly Linked Lists</h4>
+<p>The simplest data structure for a linked list is like:</p>
+<div class="codehilite"><pre><span class="cm">/* an element in a linked list */</span>
+<span class="k">struct</span> <span class="n">list_element</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span> <span class="cm">/* the payload */</span>
+    <span class="k">struct</span> <span class="n">list_element</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="cm">/* pointer to the next element */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The following figure shows a linked list:</p>
+<p><a href="../figure_6.1.png" title="Figure 6.1 A singly linked list."><img alt="Figure 6.1 A singly linked list." src="../figure_6.1.png" /></a></p>
 <ul>
-<li>Linux supports the dynamic loading of kernel modules.Although the Linux kernel is monolithic, it can dynamically load and unload kernel code on demand.</li>
-<li>Linux has symmetrical multiprocessor (SMP) support.</li>
-<li>The Linux kernel is preemptive.</li>
-<li>Linux takes an interesting approach to thread support: It does not differentiate between threads and normal processes.To the kernel, all processes are the same (some just happen to share resources).</li>
-<li>Linux provides an object-oriented device model with device classes, hot-pluggable events, and a user-space device filesystem (sysfs).</li>
-<li>Linux ignores some common Unix features that the kernel developers consider poorly designed, such as STREAMS, or standards that are impossible to cleanly implement.</li>
-<li>Linux is free in every sense of the word</li>
+<li>A <strong>singly linked lists</strong>: each element does not have a pointer to the <em>previous</em> element.</li>
+<li>A <strong>doubly linked lists</strong>: each element also contains a pointer to the <em>previous</em> element (linked both forward and backward).</li>
 </ul>
-<h3 id="linux-kernel-versions">Linux Kernel Versions</h3>
-<p>Linux kernels come in two flavors: stable and development. </p>
-<p><a href="../figure_1.2.png" title="Figure 1.2 Kernel version naming convention."><img alt="Figure 1.2 Kernel version naming convention." src="../figure_1.2.png" /></a></p>
-<h3 id="the-linux-kernel-development-community">The Linux Kernel Development Community</h3>
-<p>The main forum for this community is the Linux Kernel Mailing List (oft-shortened to <em>lkml</em>). Subscription information is available at <a href="http://vger.kernel.org">http://vger.kernel.org</a>.</p>
+<p>A data structure representing a doubly linked list would look similar to this:</p>
+<div class="codehilite"><pre><span class="cm">/* an element in a linked list */</span>
+<span class="k">struct</span> <span class="n">list_element</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span> <span class="cm">/* the payload */</span>
+    <span class="k">struct</span> <span class="n">list_element</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="cm">/* pointer to the next element */</span>
+    <span class="k">struct</span> <span class="n">list_element</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="cm">/* pointer to the previous element */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The following figure shows doubly linked list:</p>
+<p><a href="../figure_6.2.png" title="Figure 6.2 A doubly linked list."><img alt="Figure 6.2 A doubly linked list." src="../figure_6.2.png" /></a></p>
+<h4 id="circular-linked-lists">Circular Linked Lists</h4>
+<p>Normally, the last element in a linked list has no next element, so it is set to point to a special value, such as <code>NULL</code>. In a <strong>circular linked list</strong>, last element does not point to a special value, but points back to the first value.</p>
+<p><u>Circular linked lists can come in both doubly and singly linked versions. In a circular doubly linked list, the first node’s "previous" pointer points at the last node.</u></p>
+<p>The following two figures are singly and doubly circular linked lists, respectively:</p>
+<p><a href="../figure_6.3.png" title="Figure 6.3 A circular singly linked list."><img alt="Figure 6.3 A circular singly linked list." src="../figure_6.3.png" /></a>
+<a href="../figure_6.4.png" title="Figure 6.4 A circular doubly linked list."><img alt="Figure 6.4 A circular doubly linked list." src="../figure_6.4.png" /></a></p>
+<h4 id="moving-through-a-linked-list">Moving Through a Linked List</h4>
+<p>To move through a linked list, simply follow the next pointer of an element, and visit the next element. This is linear movement.</p>
+<p><u>Linked lists are ill-suited for use cases where random access is an important operation.</u> Instead, you use linked lists when iterating over the whole list is important and the dynamic addition and removal of elements is required.</p>
+<p>In linked list implementations:</p>
+<ul>
+<li>The first element is often represented by a special pointer, <em>head</em>, that enables easy access to the "start" of the list.</li>
+<li>In a noncircular-linked list, the last element is delineated by its next pointer being <code>NULL</code>.</li>
+<li>In a circular-linked list, the last element is delineated because it points to the <em>head</em> element.</li>
+</ul>
+<p>[p87-88]</p>
+<h4 id="the-linux-kernels-implementation">The Linux Kernel’s Implementation</h4>
+<p>The Linux kernel’s implementation is unique, in comparison to most linked list implementations including those described in the previous sections.</p>
+<p>The common pattern for storing this structure in a linked list is to embed the list pointer in the structure. For example, to describe that member of the <a href="https://en.wikipedia.org/wiki/Canidae"><em>Canidae</em></a> family:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">;</span> <span class="cm">/* weight in kilograms */</span>
+    <span class="kt">bool</span> <span class="n">is_fantastic</span><span class="p">;</span> <span class="cm">/* is this fox fantastic? */</span>
+    <span class="k">struct</span> <span class="n">fox</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="cm">/* next fox in linked list */</span>
+    <span class="k">struct</span> <span class="n">fox</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="cm">/* previous fox in linked list */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The Linux kernel approach is different. Instead of turning the structure into a linked list, the Linux approach is to "<u>embed a linked list node in the structure</u>".</p>
+<h5 id="the-linked-list-structure"><strong>The Linked List Structure</strong></h5>
+<p>The linked-list code is declared in the header file <code>&lt;linux/list.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h#L19">include/linux/list.h#L19</a>) and the data structure is simple:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">next</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The utility is in <em>how</em> the <code>list_head</code> structure is used:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">;</span> <span class="cm">/* weight in kilograms */</span>
+    <span class="kt">bool</span> <span class="n">is_fantastic</span><span class="p">;</span> <span class="cm">/* is this fox fantastic? */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span> <span class="cm">/* list of all fox structures */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>With this, <code>list.next</code> in fox points to the next element, and <code>list.prev</code> in fox points to the previous.</p>
+<p>The kernel provides a family of routines to manipulate linked lists (for example, the <code>list_add()</code> method adds a new node to an existing linked list). These methods accept only <code>list_head</code> structures. <u>Using the macro <code>container_of()</code>, we can easily find the parent structure containing any given member variable. In C, the offset of a given variable into a structure is fixed by the ABI at compile time.</u></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/kernel.h#L709">include/linux/kernel.h#L709</a></small></p>
+<div class="codehilite"><pre><span class="cp">#define container_of(ptr, type, member) ({ \</span>
+<span class="cp">        const typeof( ((type *)0)-&gt;member ) *__mptr = (ptr); \</span>
+<span class="cp">        (type *)( (char *)__mptr - offsetof(type,member) );})</span>
+</pre></div>
+
+
+<p>Using <code>container_of()</code>, we can define a simple function to return the parent structure containing any <code>list_head</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h#L348">include/linux/list.h#L348</a></small></p>
+<div class="codehilite"><pre><span class="cp">#define list_entry(ptr, type, member) \</span>
+<span class="cp">        container_of(ptr, type, member)</span>
+</pre></div>
+
+
+<h3 id="queues">Queues</h3>
+<h3 id="maps">Maps</h3>
+<h3 id="binary-trees">Binary Trees</h3>
             </div>
         </div>
 

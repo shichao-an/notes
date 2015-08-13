@@ -309,3 +309,176 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 ```
 
 See `<linux/capability.h>` ([include/linux/capability.h](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/capability.h)) for a list of all capabilities and what rights they entail.
+
+### System Call Context
+
+The kernel is in process context during the execution of a system call ([Chapter 3](ch3.md#process-context)). The `current` pointer points to the current task, which is the process that issued the syscall.
+
+In process context, the kernel is capable of sleeping (for example, if the system call blocks on a call or explicitly calls `schedule()`) and is fully preemptible. These two points are important:
+
+1. **The capability to sleep** means that system calls can make use of the majority of the kernel’s functionality.
+    * The capability to sleep greatly simplifies kernel programming ([Chapter 7](ch7.md))
+    * Interrupt handlers cannot sleep and thus are much more limited in what they can do than system calls running in process context.
+2. The fact that **process context is preemptible** implies that, like user-space, the current task may be preempted by another task.
+    * <u>Because the new task may then execute the same system call, care must be exercised to ensure that system calls are reentrant.</u> This is the same concern that symmetrical multiprocessing introduces. (Synchronizing reentrancy is covered in [Chapter 9](ch9.md)).
+
+<u>When the system call returns, control continues in `system_call()`, which ultimately switches to user-space and continues the execution of the user process.</u> ([Figure 5.2](figure_5.2.png))
+
+#### Final Steps in Binding a System Call
+
+It is trivial to register a (official) system call after it is written:
+
+1. Add an entry to the end of the system call table. This needs to be done for each architecture that supports the system call. The position of the syscall in the table, starting at zero, is its system call number.
+2. For each supported architecture, define the syscall number in `<asm/unistd.h>`.
+3. Compile the syscall into the kernel image (as opposed to compiling as a module). This can be as simple as putting the system call in a relevant file in `kernel/`, such as `sys.c`, which is home to miscellaneous system calls.
+
+For example of a fictional system call `foo()`. We want to add `sys_foo()` to the system call table. For most architectures, the table is located in `entry.S` and looks like this (The new system call is then appended to the tail of this list):
+
+```c
+ENTRY(sys_call_table)
+.long sys_restart_syscall /* 0 */
+.long sys_exit
+.long sys_fork
+.long sys_read
+.long sys_write
+.long sys_open /* 5 */
+...
+.long sys_eventfd2
+.long sys_epoll_create1
+.long sys_dup3 /* 330 */
+.long sys_pipe2
+.long sys_inotify_init1
+.long sys_preadv
+.long sys_pwritev
+.long sys_rt_tgsigqueueinfo /* 335 */
+.long sys_perf_event_open
+.long sys_recvmmsg
+.long sys_foo
+```
+
+Though not explicitly specified, the system call is then given the next subsequent syscall number (338, in this case).
+
+* For each architecture you want to support, the system call must be added to the architecture’s system call table.
+* The system call does not need to receive the same syscall number under each architecture, as the system call number is part of the architecture’s unique ABI.
+* Usually, you would want to make the system call available to each architecture.
+* Note the convention of placing the number in a comment every five entries; this makes it easy to find out which syscall is assigned which number.
+
+Next, the system call number is added to `<asm/unistd.h>` like below:
+
+```c
+/*
+* This file contains the system call numbers.
+*/
+#define __NR_restart_syscall 0
+#define __NR_exit 1
+#define __NR_fork 2
+#define __NR_read 3
+#define __NR_write 4
+#define __NR_open 5
+...
+#define __NR_signalfd4 327
+#define __NR_eventfd2 328
+#define __NR_epoll_create1 329
+#define __NR_dup3 330
+#define __NR_pipe2 331
+#define __NR_inotify_init1 332
+#define __NR_preadv 333
+#define __NR_pwritev 334
+#define __NR_rt_tgsigqueueinfo 335
+#define __NR_perf_event_open 336
+#define __NR_recvmmsg 337
+#define __NR_foo
+```
+
+Finally, the actual `foo()` system call is implemented. Because the system call must be compiled into the core kernel image in all configurations, in this example we define it in `kernel/sys.c`. You should put it wherever the function is most relevant; for example, if the function is related to scheduling, you could define it in `kernel/sched.c`.
+
+```c
+#include <asm/page.h>
+
+/*
+* sys_foo – everyone’s favorite system call.
+*
+* Returns the size of the per-process kernel stack.
+*/
+asmlinkage long sys_foo(void)
+{
+    return THREAD_SIZE;
+}
+```
+
+Boot this kernel and user-space can invoke the `foo()` system call
+
+#### Accessing the System Call from User-Space
+
+The C library provides support for system calls. User applications can pull in function prototypes from the standard headers and link with the C library to use your system call. [p81]
+
+Linux provides a set of macros for wrapping access to system calls. It sets up the register contents and issues the trap instructions. These macros are named `_syscalln()`, where *n* is between 0 and 6. The number corresponds to the number of parameters passed into the syscall, because the macro needs to know how many parameters to push into registers.
+
+For example, consider the system call `open()`, defined as
+
+```c
+long open(const char *filename, int flags, int mode)
+```
+
+The syscall macro to use this system call without explicit library support would be:
+
+```c
+#define __NR_open 5
+_syscall3(long, open, const char *, filename, int, flags, int, mode)
+```
+
+The application can simply call `open()`.
+
+An macro has 2 + 2 × *n* parameters:
+
+* The first parameter corresponds to the return type of the syscall.
+* The second is the name of the system call.
+* The remainder are type and name for each parameter in order of the system call.
+
+The `__NR_open` ([arch/x86/include/asm/unistd_64.h#L19](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/unistd_64.h#L19)) is defined in `<asm/unistd.h>`; it is the system call number.
+
+<u>The `_syscall3` macro expands into a C function with inline assembly;</u> the assembly performs the steps discussed in the previous section to push the system call number and parameters into the correct registers and issue the software interrupt to trap into the kernel. <u>Placing this macro in an application is all that is required to use the `open()` system call.</u>
+
+For example of the `foo()` system call, we can use it from an application like this:
+
+```c
+#define __NR_foo 283
+__syscall0(long, foo)
+
+int main ()
+{
+    long stack_size;
+    stack_size = foo ();
+    printf ("The kernel stack size is %ld\n", stack_size);
+    return 0;
+}
+```
+
+#### Why Not to Implement a System Call
+
+Adding new syscall is not encouraged, and you should otherwise exercise caution and restraint in adding one. [p82]o
+
+The followings are pros and cons of implementing a new interface as a syscall:
+
+* Pros:
+    * System calls are simple to implement and easy to use.
+    * System call performance on Linux is fast.
+* Cons:
+    * You need a syscall number, which needs to be officially assigned to you.
+    * After the system call is in a stable series kernel, it is written in stone. The interface cannot change without breaking user-space applications.
+    * Each architecture needs to separately register the system call and support it.
+    * System calls are not easily used from scripts and cannot be accessed directly from the filesystem.
+    * Because you need an assigned syscall number, it is hard to maintain and use a system call outside of the master kernel tree.
+    * For simple exchanges of information, a system call is overkill.
+
+The alternatives to implementing a syscall:
+
+* Implement a device node and `read()` and `write()` to it. Use `ioctl()` to manipulate specific settings or retrieve specific information.
+* Certain interfaces, such as semaphores, can be represented as file descriptors and manipulated as such.
+* Add the information as a file to the appropriate location in sysfs
+
+The slow rate of addition of new system calls is a sign that Linux is a relatively stable and feature-complete operating system. [p83]
+
+### Conclusion
+
+In this chapter discusses what system calls are and how they relate to library calls and the application programming interface (API). This includes how the Linux kernel implements system calls and the chain of events required to execute a system call: trapping into the kernel, transmitting the syscall number and any arguments, executing the correct system call function, and returning to user-space with the syscall’s return value. [p83]

@@ -55,6 +55,7 @@ by Robert Love
 3. [Process Management](lkd/ch3.md)
 4. [Process Scheduling](lkd/ch4.md)
 5. [System Calls](lkd/ch5.md)
+5. [Kernel Data Structures](lkd/ch6.md)
 
 #### Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 
