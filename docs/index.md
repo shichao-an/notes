@@ -39,13 +39,6 @@ by W. Richard Stevens and Stephen A. Rago
 9. [Process Relationships](apue/ch9.md)
 10. [Signals](apue/ch10.md)
 
-#### Understanding the Linux Kernel, Third Edition
-
-by Daniel P. Bovet and Marco Cesati
-
-1. [Introduction](utlk/ch1.md)
-2. [Memory Addressing](utlk/ch2.md)
-
 #### Linux Kernel Development (3rd Edition)
 
 by Robert Love
@@ -74,6 +67,13 @@ by Kevin R. Fall and W. Richard Stevens
 
 1. [Introduction](tcpv1/ch1.md)
 2. [The Internet Address Architecture](tcpv1/ch2.md)
+
+#### Understanding the Linux Kernel, Third Edition
+
+by Daniel P. Bovet and Marco Cesati
+
+1. [Introduction](utlk/ch1.md)
+2. [Memory Addressing](utlk/ch2.md)
 
 #### CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
