@@ -332,6 +332,9 @@
             <li><a href="#binding-a-non-wildcard-ip-address">Binding a non-wildcard IP address *</a></li>
         
     
+        <li class="main "><a href="#listen-function">listen Function</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -668,6 +671,23 @@
 <p>One advantage in binding a non-wildcard IP address is that the demultiplexing of a given destination IP address to a given server process is then done by the kernel.</p>
 <p>We must be careful to distinguish between the interface on which a packet arrives versus the destination IP address of that packet. In <a href="ch8.md#verifying-received-response">Section 8.8</a>, we will talk about the <strong>weak end system model</strong> and the <strong>strong end system model</strong>. Most implementations employ the former, meaning it is okay for a packet to arrive with a destination IP address that identifies an interface other than the interface on which the packet arrives. (This assumes a multihomed host.) Binding a non-wildcard IP address restricts the datagrams that will be delivered to the socket based only on the destination IP address. It says nothing about the arriving interface, unless the host employs the strong end system model.</p>
 <p>A common error from bind is <code>EADDRINUSE</code> ("Address already in use"), which is detailed in <a href="ch7.md#generic-socket-options">Section 7.5</a> when discussing the <code>SO_REUSEADDR</code> and <code>SO_REUSEPORT</code> socket options.</p>
+<h3 id="listen-function"><code>listen</code> Function</h3>
+<p>The <code>listen</code> function is called only by a TCP server and it performs two actions:</p>
+<ol>
+<li>The <code>listen</code> function converts an unconnected socket into a passive socket, indicating that the kernel should accept incoming connection requests directed to this socket. In terms of the TCP state transition diagram (<a href="../figure_2.4.png">Figure 2.4</a>), the call to <code>listen</code> moves the socket from the CLOSED state to the LISTEN state.<ul>
+<li>When a socket is created by the <code>socket</code> function (and before calling <code>listen</code>), it is assumed to be an active socket, that is, a client socket that will issue a <code>connect</code>.</li>
+</ul>
+</li>
+<li>The second argument <em>backlog</em> to this function specifies the maximum number of connections the kernel should queue for this socket.</li>
+</ol>
+<p>This function is normally called after both the <code>socket</code> and <code>bind</code> functions and must be called before calling the <code>accept</code> function.</p>
+<p>To understand the <em>backlog</em> argument, we must realize that for a given listening socket, the kernel maintains two queues:</p>
+<ol>
+<li>An <strong>incomplete connection queue</strong>, which contains an entry for each SYN that has arrived from a client for which the server is awaiting completion of the TCP three-way handshake. These sockets are in the <code>SYN_RCVD</code> state (<a href="../figure_2.4.png">Figure 2.4</a>).</li>
+<li>A <strong>completed connection queue</strong>, which contains an entry for each client with whom the TCP three-way handshake has completed. These sockets are in the ESTABLISHED state (<a href="../figure_2.4.png">Figure 2.4</a>).</li>
+</ol>
+<p>These two queues are depicted in the figure below:</p>
+<p><a href="../figure_4.7.png" title="Figure 4.7. The two queues maintained by TCP for a listening socket."><img alt="Figure 4.7. The two queues maintained by TCP for a listening socket." src="../figure_4.7.png" /></a></p>
             </div>
         </div>
 
