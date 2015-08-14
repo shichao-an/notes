@@ -224,3 +224,22 @@ One advantage in binding a non-wildcard IP address is that the demultiplexing of
 We must be careful to distinguish between the interface on which a packet arrives versus the destination IP address of that packet. In [Section 8.8](ch8.md#verifying-received-response), we will talk about the **weak end system model** and the **strong end system model**. Most implementations employ the former, meaning it is okay for a packet to arrive with a destination IP address that identifies an interface other than the interface on which the packet arrives. (This assumes a multihomed host.) Binding a non-wildcard IP address restricts the datagrams that will be delivered to the socket based only on the destination IP address. It says nothing about the arriving interface, unless the host employs the strong end system model.
 
 A common error from bind is `EADDRINUSE` ("Address already in use"), which is detailed in [Section 7.5](ch7.md#generic-socket-options) when discussing the `SO_REUSEADDR` and `SO_REUSEPORT` socket options.
+
+### `listen` Function
+
+The `listen` function is called only by a TCP server and it performs two actions:
+
+1. The `listen` function converts an unconnected socket into a passive socket, indicating that the kernel should accept incoming connection requests directed to this socket. In terms of the TCP state transition diagram ([Figure 2.4](figure_2.4.png)), the call to `listen` moves the socket from the CLOSED state to the LISTEN state.
+    * When a socket is created by the `socket` function (and before calling `listen`), it is assumed to be an active socket, that is, a client socket that will issue a `connect`.
+2. The second argument *backlog* to this function specifies the maximum number of connections the kernel should queue for this socket.
+
+This function is normally called after both the `socket` and `bind` functions and must be called before calling the `accept` function.
+
+To understand the *backlog* argument, we must realize that for a given listening socket, the kernel maintains two queues:
+
+1. An **incomplete connection queue**, which contains an entry for each SYN that has arrived from a client for which the server is awaiting completion of the TCP three-way handshake. These sockets are in the `SYN_RCVD` state ([Figure 2.4](figure_2.4.png)).
+2. A **completed connection queue**, which contains an entry for each client with whom the TCP three-way handshake has completed. These sockets are in the ESTABLISHED state ([Figure 2.4](figure_2.4.png)).
+
+These two queues are depicted in the figure below:
+
+[![Figure 4.7. The two queues maintained by TCP for a listening socket.](figure_4.7.png)](figure_4.7.png "Figure 4.7. The two queues maintained by TCP for a listening socket.")
