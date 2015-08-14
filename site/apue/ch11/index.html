@@ -113,23 +113,6 @@
             
             
                 <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UTLK <b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                    
-                        <li >
-                            <a href="../../utlk/ch1/">Chapter 1. Introduction</a>
-                        </li>
-                    
-                        <li >
-                            <a href="../../utlk/ch2/">Chapter 2. Memory Addressing</a>
-                        </li>
-                    
-                    </ul>
-                </li>
-            
-            
-            
-                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
@@ -196,23 +179,6 @@
             
             
                 <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">ICND <b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                    
-                        <li >
-                            <a href="../../icnd1/part1/">ICND1 Part I: Networking Fundamentals</a>
-                        </li>
-                    
-                        <li >
-                            <a href="../../icnd2/part1/">ICND2 Part I: LAN Switching</a>
-                        </li>
-                    
-                    </ul>
-                </li>
-            
-            
-            
-                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
@@ -234,6 +200,40 @@
                     
                         <li >
                             <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UTLK <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../utlk/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../utlk/ch2/">Chapter 2. Memory Addressing</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">ICND <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../icnd1/part1/">ICND1 Part I: Networking Fundamentals</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../icnd2/part1/">ICND2 Part I: LAN Switching</a>
                         </li>
                     
                     </ul>
@@ -345,6 +345,10 @@
             <li><a href="#pthread_mutex_timedlock-function">pthread_mutex_timedlock Function</a></li>
         
             <li><a href="#readerwriter-locks">Reader–Writer Locks</a></li>
+        
+            <li><a href="#readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts</a></li>
+        
+            <li><a href="#condition-variables">Condition Variables</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -1108,6 +1112,42 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>The timeout is represented by the <code>timespec</code> structure (seconds and nanoseconds) and is <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_timedlock.html">absolute time</a>.</p>
+<p>The following example uses <code>pthread_mutex_timedlock</code> to avoid blocking indefinitely:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/timedlock.c">threads/timedlock.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">err</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">timespec</span> <span class="n">tout</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">tm</span> <span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">64</span><span class="p">];</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">lock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;mutex is locked</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">clock_gettime</span><span class="p">(</span><span class="n">CLOCK_REALTIME</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tout</span><span class="p">);</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">localtime</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tout</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">);</span>
+    <span class="n">strftime</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&quot;%r&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;current time is %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+    <span class="n">tout</span><span class="p">.</span><span class="n">tv_sec</span> <span class="o">+=</span> <span class="mi">10</span><span class="p">;</span>  <span class="cm">/* 10 seconds from now */</span>
+    <span class="cm">/* caution: this could lead to deadlock */</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_mutex_timedlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tout</span><span class="p">);</span>
+    <span class="n">clock_gettime</span><span class="p">(</span><span class="n">CLOCK_REALTIME</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tout</span><span class="p">);</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">localtime</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tout</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">);</span>
+    <span class="n">strftime</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&quot;%r&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;the time is now %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;mutex locked again!</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">else</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;can&#39;t lock mutex again: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">err</span><span class="p">));</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <p>The following is the output:</p>
 <div class="codehilite"><pre><span class="go">$ ./a.out</span>
 <span class="go">mutex is locked</span>
@@ -1280,6 +1320,138 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 
 
 <p>In this example, we lock the queue’s reader–writer lock in write mode whenever we need to add a job to the queue or remove a job from the queue. Whenever we search the queue, we grab the lock in read mode, allowing all the worker threads to search the queue concurrently. Using a reader–writer lock will improve performance in this case only if threads search the queue much more frequently than they add or remove jobs. The worker threads take only those jobs that match their thread ID off the queue. Since the job structures are used only by one thread at a time, they don’t need any extra locking.</p>
+<h4 id="readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts</h4>
+<p>As with mutexes, the SUS provides functions to lock reader–writer locks with a timeout to give applications a way to avoid blocking
+indefinitely while trying to acquire a reader–writer lock.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_timedrdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_timedwrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The <em>tsptr</em> argument points to a <code>timespec</code> structure specifying the time at which the thread should stop blocking. If they can’t acquire the lock, these functions return the <code>ETIMEDOUT</code> error when the timeout expires. Like the <code>pthread_mutex_timedlock</code> function, the timeout specifies an absolute time, not a relative one.</p>
+<h4 id="condition-variables">Condition Variables</h4>
+<p>Condition variables are another synchronization mechanism available to threads. These synchronization objects provide a place for threads to rendezvous. When used with mutexes, condition variables allow threads to wait in a race-free way for arbitrary conditions to occur.</p>
+<p>The condition itself is protected by a mutex. A thread must first lock the mutex to change the condition state. Other threads will not notice the change until they acquire the mutex, because the mutex must be locked to be able to evaluate the condition.</p>
+<p>A condition variable, represented by the pthread_cond_t data type, must be initialized and can be initialized in two ways:</p>
+<ul>
+<li>Assign the constant <code>PTHREAD_COND_INITIALIZER</code> to a statically allocated condition</li>
+<li>Use the <code>pthread_cond_init</code> function to initialize a dynamically allocated condition</li>
+</ul>
+<p><code>pthread_cond_destroy</code> deinitializes a condition variable before freeing its underlying memory.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_init</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                      <span class="k">const</span> <span class="kt">pthread_condattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_destroy</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>Unless using nondefault attributes, the <em>attr</em> argument to <code>pthread_cond_init</code> can be set to <code>NULL</code>.</p>
+<p>We use <code>pthread_cond_wait</code> to wait for a condition to be true. A variant <code>pthread_cond_timedwait</code> is provided to return an error code if the condition hasn’t been satisfied in the specified amount of time.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_wait</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                      <span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_timedwait</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                           <span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The mutex passed to <code>pthread_cond_wait</code> protects the condition. <u>The caller passes the locked mutex to the function, which then atomically places the calling thread on the list of threads waiting for the condition and unlocks the mutex. This closes the window between the time that the condition is checked and the time that the thread goes to sleep waiting for the condition to change, so that the thread doesn’t miss a change in the condition. When <code>pthread_cond_wait</code> returns, the mutex is again locked.</u></p>
+<p>The <code>pthread_cond_timedwait</code> function provides the same functionality as the <code>pthread_cond_wait</code> function with the addition of the timeout (<em>tsptr</em>). The timeout value specifies how long we are willing to wait expressed as a <em>timespec</em> structure, as an absolute time instead of a relative time, as in the <a href="#pthread_mutex_timedlock-function">example</a> of <code>pthread_mutex_timedlock</code>.</p>
+<p>Alternatively to the <code>clock_gettime</code> function, we can use the <code>gettimeofday</code> function to get the current time expressed as a timeval structure and translate it into a <code>timespec</code> structure. The following function can be used to obtain the absolute time for the timeout value</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/maketimeout.c">threads/maketimeout.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/time.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">maketimeout</span><span class="p">(</span><span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">tsp</span><span class="p">,</span> <span class="kt">long</span> <span class="n">minutes</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">timeval</span> <span class="n">now</span><span class="p">;</span>
+
+    <span class="cm">/* get the current time */</span>
+    <span class="n">gettimeofday</span><span class="p">(</span><span class="o">&amp;</span><span class="n">now</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">tsp</span><span class="o">-&gt;</span><span class="n">tv_sec</span> <span class="o">=</span> <span class="n">now</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">;</span>
+    <span class="n">tsp</span><span class="o">-&gt;</span><span class="n">tv_nsec</span> <span class="o">=</span> <span class="n">now</span><span class="p">.</span><span class="n">tv_usec</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">;</span> <span class="cm">/* usec to nsec */</span>
+    <span class="cm">/* add the offset to get timeout value */</span>
+    <span class="n">tsp</span><span class="o">-&gt;</span><span class="n">tv_sec</span> <span class="o">+=</span> <span class="n">minutes</span> <span class="o">*</span> <span class="mi">60</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If the timeout expires without the condition occurring, <code>pthread_cond_timedwait</code> will reacquire the mutex and return the error <code>ETIMEDOUT</code>. When it returns from a successful call to <code>pthread_cond_wait</code> or <code>pthread_cond_timedwait</code>, a thread needs to reevaluate the condition, since another thread might have run and already changed the condition.</p>
+<p>There are two functions to notify threads that a condition has been satisfied. The <code>pthread_cond_signal</code> function will wake up at least one thread waiting on a condition (The POSIX specification allows for implementations of <code>pthread_cond_signal</code> to wake up more than one thread, to make the implementation simpler.), whereas the <code>pthread_cond_broadcast</code> function will wake up all threads waiting on a condition.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_signal</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_broadcast</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>When we call <code>pthread_cond_signal</code> or <code>pthread_cond_broadcast</code>, we are said to be signaling the thread or condition. We have to be careful to signal the threads only after changing the state of the condition.</p>
+<p>The following example shows how to use a condition variable and a mutex together to synchronize threads.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/condvar.c">threads/condvar.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">msg</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">m_next</span><span class="p">;</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">workq</span><span class="p">;</span>
+
+<span class="kt">pthread_cond_t</span> <span class="n">qready</span> <span class="o">=</span> <span class="n">PTHREAD_COND_INITIALIZER</span><span class="p">;</span>
+
+<span class="kt">pthread_mutex_t</span> <span class="n">qlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+<span class="kt">void</span>
+<span class="nf">process_msg</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">mp</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">workq</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="n">pthread_cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qready</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="n">workq</span><span class="p">;</span>
+        <span class="n">workq</span> <span class="o">=</span> <span class="n">mp</span><span class="o">-&gt;</span><span class="n">m_next</span><span class="p">;</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+        <span class="cm">/* now process the message mp */</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">enqueue_msg</span><span class="p">(</span><span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">mp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+    <span class="n">mp</span><span class="o">-&gt;</span><span class="n">m_next</span> <span class="o">=</span> <span class="n">workq</span><span class="p">;</span>
+    <span class="n">workq</span> <span class="o">=</span> <span class="n">mp</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+    <span class="n">pthread_cond_signal</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qready</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li><u>The condition is the state of the work queue.</u></li>
+<li>We protect the condition with a mutex and evaluate the condition in a while loop.</li>
+<li>When we put a message on the work queue, we need to hold the mutex, but we don’t need to hold the mutex when we signal the waiting threads.</li>
+<li>As long as it is okay for a thread to pull the message off the queue before we call <code>pthread_cond_signal</code>, we can do this after releasing the mutex. Since we check the condition in a while loop, this doesn’t present a problem; a thread will wake up, find that the queue is still empty, and go back to waiting again. If the code couldn’t tolerate this race, we would need to hold the mutex when we signal the threads.</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p409-410 on Reader–Writer Locks</p>

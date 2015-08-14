@@ -26,6 +26,7 @@ struct list_element {
     struct list_element *next; /* pointer to the next element */
 };
 ```
+
 The following figure shows a linked list:
 
 [![Figure 6.1 A singly linked list.](figure_6.1.png)](figure_6.1.png "Figure 6.1 A singly linked list.")
@@ -134,8 +135,202 @@ Using `container_of()`, we can define a simple function to return the parent str
         container_of(ptr, type, member)
 ```
 
+With `list_entry()`, the kernel provides routines manipulate linked lists without knowing anything about the structures that the `list_head` resides within.
+
+##### **Defining a Linked List**
+
+A `list_head` is normally embedded inside your own structure:
+
+```c
+struct fox {
+    unsigned long tail_length; /* length in centimeters of tail */
+    unsigned long weight; /* weight in kilograms */
+    bool is_fantastic; /* is this fox fantastic? */
+    struct list_head list; /* list of all fox structures */
+};
+```
+
+The list needs to be initialized before it can be used. Because most of the elements of the linked list are created dynamically, the most common way of initializing the linked list is at runtime using `INIT_LIST_HEAD`:
+
+```c
+struct fox *red_fox;
+red_fox = kmalloc(sizeof(*red_fox), GFP_KERNEL);
+red_fox->tail_length = 40;
+red_fox->weight = 6;
+red_fox->is_fantastic = false;
+INIT_LIST_HEAD(&red_fox->list);
+```
+
+If the structure is statically created at compile time, and you have a direct reference to it, you can simply do this (using `LIST_HEAD_INIT`):
+
+```c
+struct fox red_fox = {
+    .tail_length = 40,
+    .weight = 6,
+    .list = LIST_HEAD_INIT(red_fox.list),
+};
+```
+
+##### **List Heads**
+
+But before we can use kernel’s linked list routines to manage our structure, we need a canonical pointer to refer to the list as a whole: a *head* pointer.
+
+Since each contains a `list_head`, and we can iterate from any one node to the next. We need a special pointer that refers to your linked list, without being a list node itself. This special node is in fact a normal `list_head`: [p90]
+
+```c
+static LIST_HEAD(fox_list);
+```
+
+This defines and initializes a `list_head` named `fox_list`. The majority of the linked list routines accept one or two parameters: the `head` node or the `head` node plus an actual list node.
+
+#### Manipulating Linked Lists
+
+The kernel provides a family of functions to manipulate linked lists. They all take pointers to one or more `list_head` structures. The functions are implemented as inline functions in generic C and can be found in `<linux/list.h>` ([include/linux/list.h](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h)).
+
+All these functions are `O(1)`. This means they execute in constant time, regardless of the size of the list or any other inputs
+
+##### **Adding a Node to a Linked List**
+
+To add a node to a linked list:
+
+<small>[include/linux/list.h#L64](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L64)</small>
+
+```c
+list_add(struct list_head *new, struct list_head *head)
+```
+
+This function adds the new node to the given list immediately after the `head` node. Because the list is circular and generally has no concept of first or last nodes, you can pass any element for head. If you pass the "last" element as `head`, this function can be used to implement a stack.
+
+For example, assume we had a new `struct fox` to add to the `fox_list` list. We can do this:
+
+```c
+list_add(&f->list, &fox_list);
+```
+
+To add a node to the end of a linked list:
+
+<small>[include/linux/list.h#L78](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L78)</small>
+
+```c
+list_add_tail(struct list_head *new, struct list_head *head)
+```
+
+If you pass the "first" element as `head`, this function can be used to implement a stack.
+
+##### **Deleting a Node from a Linked List**
+
+To delete a node from a linked list, use `list_del()`:
+
+<small>[include/linux/list.h#L103](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L103)</small>
+
+```c
+list_del(struct list_head *entry)
+```
+
+This function removes the element entry from the list. Note that <u>`list_del` does not free any memory belonging to `entry` or the data structure in which it is embedded;</u> this function merely removes the element from the list. After calling this, you would typically destroy your data structure and the `list_head` inside it.
+
+For example, to delete the fox node we previous added to `fox_list`:
+
+```c
+list_del(&f->list);
+```
+
+It simply receives a specific node and modifies the pointers of the previous and subsequent nodes such that the given node is no longer part of the list. The implementation is instructive:
+
+<small>[include/linux/list.h#L90](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L90)</small>
+
+```c
+static inline void __list_del(struct list_head *prev, struct list_head *next)
+{
+    next->prev = prev;
+    prev->next = next;
+}
+
+static inline void list_del(struct list_head *entry)
+{
+    __list_del(entry->prev, entry->next);
+}
+```
+
+To delete a node from a linked list and reinitialize it, the kernel provides `list_del_init()`:
+
+<small>[include/linux/list.h#L140](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L140)</small>
+
+```c
+list_del_init(struct list_head *entry)
+```
+
+This function behaves the same as `list_del()`, except it also reinitializes the given `list_head` with the rationale that you no longer want the entry in the list, but you can reuse the data structure itself.
+
+##### **Moving and Splicing Linked List Nodes**
+
+To move a node from one list to another:
+
+<small>[include/linux/list.h#L151](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L151)</small>
+
+```c
+list_move(struct list_head *list, struct list_head *head)
+```
+
+This function removes the list entry from its linked list and adds it to the given list after the `head` element.
+
+To move a node from one list to the end of another:
+
+<small>[include/linux/list.h#L162](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L162)</small>
+
+```c
+list_move_tail(struct list_head *list, struct list_head *head)
+```
+
+This function does the same as `list_move()`, but inserts the list element before the head entry.
+
+To check whether a list is empty:
+
+<small>[include/linux/list.h#L184](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L184)</small>
+
+```c
+list_empty(struct list_head *head)
+```
+
+This returns nonzero if the given list is empty; otherwise, it returns zero.
+
+To splice two unconnected lists together;
+
+<small>[include/linux/list.h#L290](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L290)</small>
+
+```c
+list_splice(struct list_head *list, struct list_head *head)
+```
+
+This function splices together two lists by inserting the list pointed to by `list` to the given list after the element `head`.
+
+To splice two unconnected lists together and reinitialize the old list:
+
+<small>[include/linux/list.h#L302](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L302)</small>
+
+```c
+list_splice_init(struct list_head *list, struct list_head *head)
+```
+
+This function works the same as `list_splice()`, except that the emptied list pointed to by `list` is reinitialized.
+
+If you already have the `next` and `prev` pointers available, you can save a couple cycles (specifically, the dereferences to get the pointers) by calling the internal list functions directly. For example, rather than call `list_del(list)`, you can call `__list_del(prev, next)`. [p92]
+
+
 ### Queues
 
 ### Maps
 
 ### Binary Trees
+
+### Doubts and Solutions
+
+#### Verbatim
+
+p91 on `list_add` and `list_add_tail`:
+
+> If you do pass the "last" element, however, this function (`list_add`) can be used to implement a stack
+> ...
+> This function (`list_add_tail`) can be used to implement a queue, however, if you pass the "first" element.
+
+Implementation details are required to understand this.
