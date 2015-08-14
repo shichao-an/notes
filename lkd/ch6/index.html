@@ -112,23 +112,6 @@
             
             
             
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UTLK <b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                    
-                        <li >
-                            <a href="../../utlk/ch1/">Chapter 1. Introduction</a>
-                        </li>
-                    
-                        <li >
-                            <a href="../../utlk/ch2/">Chapter 2. Memory Addressing</a>
-                        </li>
-                    
-                    </ul>
-                </li>
-            
-            
-            
                 <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
                     <ul class="dropdown-menu">
@@ -196,23 +179,6 @@
             
             
                 <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">ICND <b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                    
-                        <li >
-                            <a href="../../icnd1/part1/">ICND1 Part I: Networking Fundamentals</a>
-                        </li>
-                    
-                        <li >
-                            <a href="../../icnd2/part1/">ICND2 Part I: LAN Switching</a>
-                        </li>
-                    
-                    </ul>
-                </li>
-            
-            
-            
-                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
@@ -234,6 +200,40 @@
                     
                         <li >
                             <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UTLK <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../utlk/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../utlk/ch2/">Chapter 2. Memory Addressing</a>
+                        </li>
+                    
+                    </ul>
+                </li>
+            
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">ICND <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                        <li >
+                            <a href="../../icnd1/part1/">ICND1 Part I: Networking Fundamentals</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../icnd2/part1/">ICND2 Part I: LAN Switching</a>
                         </li>
                     
                     </ul>
@@ -318,6 +318,8 @@
         
             <li><a href="#the-linux-kernels-implementation">The Linux Kernel’s Implementation</a></li>
         
+            <li><a href="#manipulating-linked-lists">Manipulating Linked Lists</a></li>
+        
     
         <li class="main "><a href="#queues">Queues</a></li>
         
@@ -326,6 +328,11 @@
         
     
         <li class="main "><a href="#binary-trees">Binary Trees</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
         
     
     </ul>
@@ -438,9 +445,152 @@
 </pre></div>
 
 
+<p>With <code>list_entry()</code>, the kernel provides routines manipulate linked lists without knowing anything about the structures that the <code>list_head</code> resides within.</p>
+<h5 id="defining-a-linked-list"><strong>Defining a Linked List</strong></h5>
+<p>A <code>list_head</code> is normally embedded inside your own structure:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">;</span> <span class="cm">/* weight in kilograms */</span>
+    <span class="kt">bool</span> <span class="n">is_fantastic</span><span class="p">;</span> <span class="cm">/* is this fox fantastic? */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span> <span class="cm">/* list of all fox structures */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The list needs to be initialized before it can be used. Because most of the elements of the linked list are created dynamically, the most common way of initializing the linked list is at runtime using <code>INIT_LIST_HEAD</code>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="o">*</span><span class="n">red_fox</span><span class="p">;</span>
+<span class="n">red_fox</span> <span class="o">=</span> <span class="n">kmalloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">red_fox</span><span class="p">),</span> <span class="n">GFP_KERNEL</span><span class="p">);</span>
+<span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">tail_length</span> <span class="o">=</span> <span class="mi">40</span><span class="p">;</span>
+<span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">weight</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">is_fantastic</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+<span class="n">INIT_LIST_HEAD</span><span class="p">(</span><span class="o">&amp;</span><span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>If the structure is statically created at compile time, and you have a direct reference to it, you can simply do this (using <code>LIST_HEAD_INIT</code>):</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="n">red_fox</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">.</span><span class="n">tail_length</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">weight</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">list</span> <span class="o">=</span> <span class="n">LIST_HEAD_INIT</span><span class="p">(</span><span class="n">red_fox</span><span class="p">.</span><span class="n">list</span><span class="p">),</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<h5 id="list-heads"><strong>List Heads</strong></h5>
+<p>But before we can use kernel’s linked list routines to manage our structure, we need a canonical pointer to refer to the list as a whole: a <em>head</em> pointer.</p>
+<p>Since each contains a <code>list_head</code>, and we can iterate from any one node to the next. We need a special pointer that refers to your linked list, without being a list node itself. This special node is in fact a normal <code>list_head</code>: [p90]</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="nf">LIST_HEAD</span><span class="p">(</span><span class="n">fox_list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This defines and initializes a <code>list_head</code> named <code>fox_list</code>. The majority of the linked list routines accept one or two parameters: the <code>head</code> node or the <code>head</code> node plus an actual list node.</p>
+<h4 id="manipulating-linked-lists">Manipulating Linked Lists</h4>
+<p>The kernel provides a family of functions to manipulate linked lists. They all take pointers to one or more <code>list_head</code> structures. The functions are implemented as inline functions in generic C and can be found in <code>&lt;linux/list.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h">include/linux/list.h</a>).</p>
+<p>All these functions are <code>O(1)</code>. This means they execute in constant time, regardless of the size of the list or any other inputs</p>
+<h5 id="adding-a-node-to-a-linked-list"><strong>Adding a Node to a Linked List</strong></h5>
+<p>To add a node to a linked list:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L64">include/linux/list.h#L64</a></small></p>
+<div class="codehilite"><pre><span class="n">list_add</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">new</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function adds the new node to the given list immediately after the <code>head</code> node. Because the list is circular and generally has no concept of first or last nodes, you can pass any element for head. If you pass the "last" element as <code>head</code>, this function can be used to implement a stack.</p>
+<p>For example, assume we had a new <code>struct fox</code> to add to the <code>fox_list</code> list. We can do this:</p>
+<div class="codehilite"><pre><span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fox_list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>To add a node to the end of a linked list:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L78">include/linux/list.h#L78</a></small></p>
+<div class="codehilite"><pre><span class="n">list_add_tail</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">new</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>If you pass the "first" element as <code>head</code>, this function can be used to implement a stack.</p>
+<h5 id="deleting-a-node-from-a-linked-list"><strong>Deleting a Node from a Linked List</strong></h5>
+<p>To delete a node from a linked list, use <code>list_del()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L103">include/linux/list.h#L103</a></small></p>
+<div class="codehilite"><pre><span class="n">list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function removes the element entry from the list. Note that <u><code>list_del</code> does not free any memory belonging to <code>entry</code> or the data structure in which it is embedded;</u> this function merely removes the element from the list. After calling this, you would typically destroy your data structure and the <code>list_head</code> inside it.</p>
+<p>For example, to delete the fox node we previous added to <code>fox_list</code>:</p>
+<div class="codehilite"><pre><span class="n">list_del</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>It simply receives a specific node and modifies the pointers of the previous and subsequent nodes such that the given node is no longer part of the list. The implementation is instructive:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L90">include/linux/list.h#L90</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">__list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="p">;</span>
+    <span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">next</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">__list_del</span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span> <span class="n">entry</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To delete a node from a linked list and reinitialize it, the kernel provides <code>list_del_init()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L140">include/linux/list.h#L140</a></small></p>
+<div class="codehilite"><pre><span class="n">list_del_init</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function behaves the same as <code>list_del()</code>, except it also reinitializes the given <code>list_head</code> with the rationale that you no longer want the entry in the list, but you can reuse the data structure itself.</p>
+<h5 id="moving-and-splicing-linked-list-nodes"><strong>Moving and Splicing Linked List Nodes</strong></h5>
+<p>To move a node from one list to another:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L151">include/linux/list.h#L151</a></small></p>
+<div class="codehilite"><pre><span class="n">list_move</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function removes the list entry from its linked list and adds it to the given list after the <code>head</code> element.</p>
+<p>To move a node from one list to the end of another:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L162">include/linux/list.h#L162</a></small></p>
+<div class="codehilite"><pre><span class="n">list_move_tail</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function does the same as <code>list_move()</code>, but inserts the list element before the head entry.</p>
+<p>To check whether a list is empty:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L184">include/linux/list.h#L184</a></small></p>
+<div class="codehilite"><pre><span class="n">list_empty</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This returns nonzero if the given list is empty; otherwise, it returns zero.</p>
+<p>To splice two unconnected lists together;</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L290">include/linux/list.h#L290</a></small></p>
+<div class="codehilite"><pre><span class="n">list_splice</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function splices together two lists by inserting the list pointed to by <code>list</code> to the given list after the element <code>head</code>.</p>
+<p>To splice two unconnected lists together and reinitialize the old list:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L302">include/linux/list.h#L302</a></small></p>
+<div class="codehilite"><pre><span class="n">list_splice_init</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function works the same as <code>list_splice()</code>, except that the emptied list pointed to by <code>list</code> is reinitialized.</p>
+<p>If you already have the <code>next</code> and <code>prev</code> pointers available, you can save a couple cycles (specifically, the dereferences to get the pointers) by calling the internal list functions directly. For example, rather than call <code>list_del(list)</code>, you can call <code>__list_del(prev, next)</code>. [p92]</p>
 <h3 id="queues">Queues</h3>
 <h3 id="maps">Maps</h3>
 <h3 id="binary-trees">Binary Trees</h3>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p91 on <code>list_add</code> and <code>list_add_tail</code>:</p>
+<blockquote>
+<p>If you do pass the "last" element, however, this function (<code>list_add</code>) can be used to implement a stack
+...
+This function (<code>list_add_tail</code>) can be used to implement a queue, however, if you pass the "first" element.</p>
+</blockquote>
+<p>Implementation details are required to understand this.</p>
             </div>
         </div>
 
