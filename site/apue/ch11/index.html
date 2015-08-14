@@ -350,6 +350,8 @@
         
             <li><a href="#condition-variables">Condition Variables</a></li>
         
+            <li><a href="#spin-locks">Spin Locks</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -806,7 +808,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </pre></div>
 
 
-<p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="../synchronization-attributes">Section 12.4</a>).</p>
+<p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="ch12.md#synchronization-attributes">Section 12.4</a>).</p>
 <p>To lock a mutex, we call <code>pthread_mutex_lock</code>. If the mutex is already locked, the calling thread will block until the mutex is unlocked. To unlock a mutex, we call <code>pthread_mutex_unlock</code>.</p>
 <div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
 
@@ -1448,9 +1450,54 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 
 <ul>
 <li><u>The condition is the state of the work queue.</u></li>
-<li>We protect the condition with a mutex and evaluate the condition in a while loop.</li>
+<li>We protect the condition with a mutex and evaluate the condition in a <code>while</code> loop.</li>
 <li>When we put a message on the work queue, we need to hold the mutex, but we don’t need to hold the mutex when we signal the waiting threads.</li>
-<li>As long as it is okay for a thread to pull the message off the queue before we call <code>pthread_cond_signal</code>, we can do this after releasing the mutex. Since we check the condition in a while loop, this doesn’t present a problem; a thread will wake up, find that the queue is still empty, and go back to waiting again. If the code couldn’t tolerate this race, we would need to hold the mutex when we signal the threads.</li>
+<li>As long as it is okay for a thread to pull the message off the queue before we call <code>pthread_cond_signal</code>, we can do this after releasing the mutex. Since we check the condition in a <code>while</code> loop, this doesn’t present a problem; a thread will wake up, find that the queue is still empty, and go back to waiting again. If the code couldn’t tolerate this race, we would need to hold the mutex when we signal the threads.</li>
+</ul>
+<h4 id="spin-locks">Spin Locks</h4>
+<p>A <strong>spin lock</strong> is like a mutex, except that instead of blocking a process by sleeping, the process is blocked by busy-waiting (spinning) until the lock can be acquired. <u>A spin lock could be used in situations where locks are held for short periods of times and threads don’t want to incur the cost of being descheduled.</u></p>
+<p>Spin locks are often used as low-level primitives to implement other types of locks. They can be implemented efficiently using <a href="https://en.wikipedia.org/wiki/Test-and-set">test-and-set</a> instructions. Although efficient, they can lead to wasting CPU resources: while a thread is spinning and waiting for a lock to become available, the CPU can’t do anything else. <u>This is why spin locks should be held only for short periods of time.</u></p>
+<ul>
+<li><strong>Kernel-space</strong>. Spin locks are useful when used in a nonpreemptive kernel. Besides providing a mutual exclusion mechanism, they block interrupts so an interrupt handler can’t deadlock the system by trying to acquire a spin lock that is already locked (think of interrupts as another type of preemption). In these types of kernels, interrupt handlers can’t sleep, so the only synchronization primitives they can use are spin locks.</li>
+<li><strong>User-space</strong>. Spin locks are not as useful unless you are running in a realtime scheduling class that doesn’t allow preemption. User-level threads running in a time-sharing scheduling class can be descheduled when their time quantum expires or when a thread with a higher scheduling priority becomes runnable. In these cases, if a thread is holding a spin lock, it will be put to sleep and other threads blocked on the lock will continue spinning longer than intended.</li>
+</ul>
+<p>Many mutex implementations are efficient: using mutex locks is equivalent to using spin locks in terms of an application's performance. Some mutex implementations will spin for a limited amount of time trying to acquire the mutex, and only sleep when the spin count threshold is reached. These factors, combined with faster context switch in modern processors, make spin locks useful only in limited circumstances. [p417]</p>
+<p>Similar to mutex (we can replace one with the other), we can initialize a spin lock with the <code>pthread_spin_init</code> function. To deinitialize a spin lock, we can call the <code>pthread_spin_destroy</code> function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_spin_init</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">,</span> <span class="kt">int</span> <span class="n">pshared</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_destroy</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>Only one attribute is specified for spin locks, which matters only if the platform supports the Thread Process-Shared Synchronization option.</li>
+<li>The <em>pshared</em> argument represents the process-shared attribute, which indicates how the spin lock will be acquired.<ul>
+<li>If it is set to <code>PTHREAD_PROCESS_SHARED</code>, then the spin lock can be acquired by threads that have access to the lock’s underlying memory, even if those threads are from different processes.</li>
+<li>Otherwise, the <em>pshared</em> argument is set to <code>PTHREAD_PROCESS_PRIVATE</code> and the spin lock can be accessed only from threads within the process that initialized it.</li>
+</ul>
+</li>
+</ul>
+<p>To lock the spin lock, we can call either of the following:
+<em> <code>pthread_spin_lock</code>, which will spin until the lock is acquired
+</em> pthread_spin_trylock, which will return the <code>EBUSY</code> error if the lock can’t be acquired immediately. <u>Note that <code>pthread_spin_trylock</code> doesn’t spin.</u></p>
+<p>Regardless of how it was locked, a spin lock can be unlocked by calling <code>pthread_spin_unlock</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_spin_lock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_trylock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_unlock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+
+<span class="cm">/* All return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>If a spin lock is currently unlocked, then the <code>pthread_spin_lock</code> function can lock it without spinning.</li>
+<li>If the thread already has it locked, the results are undefined. The call to <code>pthread_spin_lock</code> could fail with the <code>EDEADLK</code> error (or some other error), or the call could spin indefinitely. The behavior depends on the implementation.</li>
+<li>If we try to unlock a spin lock that is not locked, the results are also undefined.</li>
 </ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
