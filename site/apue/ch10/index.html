@@ -107,6 +107,10 @@
                             <a href="../ch11/">Chapter 11. Threads</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -1674,7 +1678,7 @@ from the table because the signal may have occurred while the <code>main</code> 
 <ul>
 <li>POSIX.1 defines signal number 0 as the null signal. If the <em>signo</em> argument is 0, then the normal error checking is performed by <code>kill</code>, but no signal is sent. This technique is often used to determine if a specific process still exists. If we send the process the null signal and it doesn’t exist, <code>kill</code> returns −1 and <code>errno</code> is set to <code>ESRCH</code>. Be aware, however, that UNIX systems recycle process IDs after some amount of time, so the existence of a process with a given process ID does not necessarily mean that it’s the process that you think it is.</li>
 <li>The test for process existence is not atomic. By the time that <code>kill</code> returns the answer to the caller, the process in question might have exited, so the answer is of limited value.</li>
-<li>If the call to <code>kill</code> causes the signal to be generated for the calling process and if the signal is not blocked, either <em>signo</em> or some other pending, unblocked signal is delivered to the process before <code>kill</code> returns. For additional conditions that occur with threads, see <a href="ch12.md#threads-and-signals">Section 12.8</a>.</li>
+<li>If the call to <code>kill</code> causes the signal to be generated for the calling process and if the signal is not blocked, either <em>signo</em> or some other pending, unblocked signal is delivered to the process before <code>kill</code> returns. For additional conditions that occur with threads, see <a href="../ch12/#threads-and-signals">Section 12.8</a>.</li>
 </ul>
 <h3 id="alarm-and-pause-functions"><code>alarm</code> and <code>pause</code> Functions</h3>
 <p>The <code>alarm</code> function sets a timer that will expire at a specified time in the future. When the timer expires, the <code>SIGALRM</code> signal is generated. If we ignore or don’t catch this signal, its default action is to terminate the process.</p>
@@ -2013,7 +2017,7 @@ from the table because the signal may have occurred while the <code>main</code> 
 </li>
 </ul>
 <p>After calling <code>sigprocmask</code>, if any unblocked signals are pending, at least one of these signals is delivered to the process before <code>sigprocmask</code> returns.</p>
-<p>Note that the <code>sigprocmask</code> function is defined only for single-threaded processes. A separate function, discussed in <a href="ch12.md#threads-and-signals">Section 12.8</a> is provided to manipulate a thread’s signal mask in a multithreaded process.</p>
+<p>Note that the <code>sigprocmask</code> function is defined only for single-threaded processes. A separate function, discussed in <a href="../ch12/#threads-and-signals">Section 12.8</a> is provided to manipulate a thread’s signal mask in a multithreaded process.</p>
 <p>The following example shows a function that prints the names of the signals in the signal mask of the calling process.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/prmask.c">lib/prmask.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
@@ -2725,7 +2729,7 @@ that we saved earlier (oldmask).</p>
 
 
 <p>In the example, two user-defined signals are used: <code>SIGUSR1</code> is sent by the parent to the child, and <code>SIGUSR2</code> is sent by the child to the parent.</p>
-<p>The <code>sigsuspend</code> function is fine if we want to go to sleep while we’re waiting for a signal to occur. If we want to call other system functions while we’re waiting, the only solution is to use multiple threads and dedicate a separate thread to handling signals (<a href="ch12.md#threads-and-signals">Section 12.8</a>).</p>
+<p>The <code>sigsuspend</code> function is fine if we want to go to sleep while we’re waiting for a signal to occur. If we want to call other system functions while we’re waiting, the only solution is to use multiple threads and dedicate a separate thread to handling signals (<a href="../ch12/#threads-and-signals">Section 12.8</a>).</p>
 <p>Without using threads, the best we can do is to set a global variable in the signal handler when the signal occurs. For example, if we catch both <code>SIGINT</code> and <code>SIGALRM</code> and install the signal handlers using the <a href="#example-signal_intr-function"><code>signal_intr</code> function</a>, the signals will interrupt any slow system call that is blocked. The signals are most likely to occur when we’re blocked in a call to the <code>read</code> function waiting for input from a slow device.  (This is especially true for <code>SIGALRM</code>, since we set the alarm clock to prevent us from waiting forever for input.) The code to handle this looks similar to the following:</p>
 <div class="codehilite"><pre>    <span class="k">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>      <span class="cm">/* flag set by our SIGINT handler */</span>
         <span class="n">handle_intr</span><span class="p">();</span>
