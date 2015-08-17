@@ -107,6 +107,10 @@
                             <a href="./">Chapter 11. Threads</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                    
                     </ul>
                 </li>
             
@@ -352,6 +356,11 @@
         
             <li><a href="#spin-locks">Spin Locks</a></li>
         
+            <li><a href="#barriers">Barriers</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -385,7 +394,7 @@
 <li>Scheduling priority and policy,</li>
 <li>Signal mask</li>
 <li>An errno variable (<a href="../ch1/#error-handling">Section 1.7</a>)</li>
-<li>Thread-specific data (<a href="ch12.md#thread-specific-data">Section 12.6</a>).</li>
+<li>Thread-specific data (<a href="../ch12/#thread-specific-data">Section 12.6</a>).</li>
 </ul>
 <p>Everything within a process is sharable among the threads in a process:</p>
 <ul>
@@ -431,7 +440,7 @@
 
 <ul>
 <li>The memory location pointed to by <em>tidp</em> is set to the thread ID of the newly created thread when <code>pthread_create</code> returns successfully.</li>
-<li>The <em>attr</em> argument is used to customize various thread attributes (detailed in <a href="ch12.md#thread-attributes">Section 12.3</a>). This chapter sets this to <code>NULL</code> to create a thread with the default attributes.</li>
+<li>The <em>attr</em> argument is used to customize various thread attributes (detailed in <a href="../ch12/#thread-attributes">Section 12.3</a>). This chapter sets this to <code>NULL</code> to create a thread with the default attributes.</li>
 <li>The newly created thread starts running at the address of the <em>start_rtn</em> function.</li>
 <li>The <em>arg</em> is a pointer to the single argument passed to the <em>start_rtn</em>. If you need to pass more than one argument to the <code>start_rtn</code> function, then you need to store them in a structure and pass the address of the structure in <em>arg</em>.</li>
 </ul>
@@ -808,7 +817,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </pre></div>
 
 
-<p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="ch12.md#synchronization-attributes">Section 12.4</a>).</p>
+<p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="../ch12/#synchronization-attributes">Section 12.4</a>).</p>
 <p>To lock a mutex, we call <code>pthread_mutex_lock</code>. If the mutex is already locked, the calling thread will block until the mutex is unlocked. To unlock a mutex, we call <code>pthread_mutex_unlock</code>.</p>
 <div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
 
@@ -1499,6 +1508,180 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <li>If the thread already has it locked, the results are undefined. The call to <code>pthread_spin_lock</code> could fail with the <code>EDEADLK</code> error (or some other error), or the call could spin indefinitely. The behavior depends on the implementation.</li>
 <li>If we try to unlock a spin lock that is not locked, the results are also undefined.</li>
 </ul>
+<p><u>If either <code>pthread_spin_lock</code> or <code>pthread_spin_trylock</code> returns 0, then the spin lock is locked. We need to be careful not to call any functions that might sleep while holding the spin lock. Otherwise, other threads trying to acquire it will spin, wasting CPU resources.</u></p>
+<h4 id="barriers">Barriers</h4>
+<p>Barriers are a synchronization mechanism to coordinate multiple threads working in parallel. A barrier allows each thread to wait until all cooperating
+threads have reached the same point, and then continue executing from there. The <code>pthread_join</code> function acts as a barrier to allow one thread to wait until another thread exits.</p>
+<p>Barrier objects are more general. They allow an arbitrary number of threads to wait until all of the threads have completed processing, but <u>the threads don’t have to exit. They can continue working after all threads have reached the barrier.</u></p>
+<p>The <code>pthread_barrier_init</code> function initializes a barrier, and <code>pthread_barrier_destroy</code> function deinitializes a barrier.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_barrier_init</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">barrier</span><span class="p">,</span>
+                         <span class="k">const</span> <span class="kt">pthread_barrierattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
+                         <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">count</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_barrier_destroy</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>
+<p>The <em>count</em> argument for <code>pthread_barrier_init</code> specifies the number of threads that must reach the barrier before all of the threads will be allowed to continue.</p>
+</li>
+<li>
+<p>The <em>attr</em> argument specifies the attributes of the barrier object (<code>NULL</code> for default attributes).</p>
+</li>
+</ul>
+<p>If the <code>pthread_barrier_init</code> function allocated any resources for the barrier, the resources will be freed when we deinitialize the barrier by calling the <code>pthread_barrier_destroy</code> function.</p>
+<p>The <code>pthread_barrier_wait</code> function indicates that a thread is done with its work and is ready to wait for all the other threads to catch up.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_barrier_wait</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 or PTHREAD_BARRIER_SERIAL_THREAD if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The thread calling <code>pthread_barrier_wait</code> is put to sleep if the barrier count (set in the call to <code>pthread_barrier_init</code>) is not yet satisfied. If the thread is the last one to call <code>pthread_barrier_wait</code>, thereby satisfying the barrier count, all of the threads are awakened.</p>
+<p>To one arbitrary thread, it will appear as if the <code>pthread_barrier_wait</code> function returned a value of <code>PTHREAD_BARRIER_SERIAL_THREAD</code>. The remaining threads see a return value of 0. This allows one thread to continue as the master to act on the results of the work done by all of the other threads.</p>
+<ul>
+<li>Once the barrier count is reached and the threads are unblocked, the barrier can be used again.</li>
+<li>The barrier count can’t be changed unless we call the <code>pthread_barrier_destroy</code> function followed by the <code>pthread_barrier_init</code> function with a different count.</li>
+</ul>
+<p>The following example shows how a barrier can be used to synchronize threads cooperating on a single task.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/barrier.c">threads/barrier.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+<span class="cp">#include &lt;limits.h&gt;</span>
+<span class="cp">#include &lt;sys/time.h&gt;</span>
+
+<span class="cp">#define NTHR   8                </span><span class="cm">/* number of threads */</span><span class="cp"></span>
+<span class="cp">#define NUMNUM 8000000L         </span><span class="cm">/* number of numbers to sort */</span><span class="cp"></span>
+<span class="cp">#define TNUM   (NUMNUM/NTHR)    </span><span class="cm">/* number to sort per thread */</span><span class="cp"></span>
+
+<span class="kt">long</span> <span class="n">nums</span><span class="p">[</span><span class="n">NUMNUM</span><span class="p">];</span>
+<span class="kt">long</span> <span class="n">snums</span><span class="p">[</span><span class="n">NUMNUM</span><span class="p">];</span>
+
+<span class="kt">pthread_barrier_t</span> <span class="n">b</span><span class="p">;</span>
+
+<span class="cp">#ifdef SOLARIS</span>
+<span class="cp">#define heapsort qsort</span>
+<span class="cp">#else</span>
+<span class="k">extern</span> <span class="kt">int</span> <span class="nf">heapsort</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span>
+                    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="p">));</span>
+<span class="cp">#endif</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Compare two long integers (helper function for heapsort)</span>
+<span class="cm"> */</span>
+<span class="kt">int</span>
+<span class="nf">complong</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg1</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg2</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">long</span> <span class="n">l1</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">long</span> <span class="o">*</span><span class="p">)</span><span class="n">arg1</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="n">l2</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">long</span> <span class="o">*</span><span class="p">)</span><span class="n">arg2</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">l1</span> <span class="o">==</span> <span class="n">l2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">l1</span> <span class="o">&lt;</span> <span class="n">l2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="k">else</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Worker thread to sort a portion of the set of numbers.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">long</span>    <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">arg</span><span class="p">;</span>
+
+    <span class="n">heapsort</span><span class="p">(</span><span class="o">&amp;</span><span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">TNUM</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">long</span><span class="p">),</span> <span class="n">complong</span><span class="p">);</span>
+    <span class="n">pthread_barrier_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Go off and perform more work ...</span>
+<span class="cm">     */</span>
+    <span class="k">return</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Merge the results of the individual sorted ranges.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span>
+<span class="nf">merge</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">long</span>    <span class="n">idx</span><span class="p">[</span><span class="n">NTHR</span><span class="p">];</span>
+    <span class="kt">long</span>    <span class="n">i</span><span class="p">,</span> <span class="n">minidx</span><span class="p">,</span> <span class="n">sidx</span><span class="p">,</span> <span class="n">num</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NTHR</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">TNUM</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">sidx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">sidx</span> <span class="o">&lt;</span> <span class="n">NUMNUM</span><span class="p">;</span> <span class="n">sidx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">LONG_MAX</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NTHR</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">TNUM</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="n">num</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">num</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]];</span>
+                <span class="n">minidx</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">snums</span><span class="p">[</span><span class="n">sidx</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">minidx</span><span class="p">]];</span>
+        <span class="n">idx</span><span class="p">[</span><span class="n">minidx</span><span class="p">]</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span>   <span class="n">i</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">timeval</span>  <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="kt">long</span>       <span class="n">startusec</span><span class="p">,</span> <span class="n">endusec</span><span class="p">;</span>
+    <span class="kt">double</span>          <span class="n">elapsed</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">err</span><span class="p">;</span>
+    <span class="kt">pthread_t</span>       <span class="n">tid</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Create the initial set of numbers to sort.</span>
+<span class="cm">     */</span>
+    <span class="n">srandom</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUMNUM</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">nums</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="p">();</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Create 8 threads to sort the numbers.</span>
+<span class="cm">     */</span>
+    <span class="n">gettimeofday</span><span class="p">(</span><span class="o">&amp;</span><span class="n">start</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">pthread_barrier_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">NTHR</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NTHR</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)(</span><span class="n">i</span> <span class="o">*</span> <span class="n">TNUM</span><span class="p">));</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">pthread_barrier_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">);</span>
+    <span class="n">merge</span><span class="p">();</span>
+    <span class="n">gettimeofday</span><span class="p">(</span><span class="o">&amp;</span><span class="n">end</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Print the sorted list.</span>
+<span class="cm">     */</span>
+    <span class="n">startusec</span> <span class="o">=</span> <span class="n">start</span><span class="p">.</span><span class="n">tv_sec</span> <span class="o">*</span> <span class="mi">1000000</span> <span class="o">+</span> <span class="n">start</span><span class="p">.</span><span class="n">tv_usec</span><span class="p">;</span>
+    <span class="n">endusec</span> <span class="o">=</span> <span class="n">end</span><span class="p">.</span><span class="n">tv_sec</span> <span class="o">*</span> <span class="mi">1000000</span> <span class="o">+</span> <span class="n">end</span><span class="p">.</span><span class="n">tv_usec</span><span class="p">;</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">endusec</span> <span class="o">-</span> <span class="n">startusec</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000000.0</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sort took %.4f seconds</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUMNUM</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">snums</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example:
+<em> We use eight threads to divide the job of sorting 8 million numbers.  Each thread sorts 1 million numbers using the heapsort algorithm. Then the main thread calls a function to merge the results.
+</em> We don’t need to use the <code>PTHREAD_BARRIER_SERIAL_THREAD</code> return value from <code>pthread_barrier_wait</code> to decide which thread merges the results, because we use the main thread for this task. That is why <u>we specify the barrier count as one more than the number of worker threads; the main thread counts as one waiter.</u></p>
+<p>This example shows the use of a barrier in a simplified situation where the threads perform only one task. In more realistic situations, the worker threads will continue with other activities after the call to <code>pthread_barrier_wait</code> returns.</p>
+<p>[p422]</p>
+<h3 id="summary">Summary</h3>
+<p>This chapter introduces the concept of threads and discussed the POSIX.1 primitives available to create and destroy them. We also introduced the problem of thread synchronization. We discussed five fundamental synchronization mechanisms: mutexes, reader–writer locks, condition variables, spin locks, and barriers; and we saw how to use them to protect shared resources.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p409-410 on Reader–Writer Locks</p>
@@ -1506,6 +1689,12 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <p>If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost.</p>
 </blockquote>
 <p>"any resources assigned to the lock will be lost" probably means a form of <a href="https://en.wikipedia.org/wiki/Resource_leak">resource leak</a>.</p>
+<p>p409 on <code>PTHREAD_BARRIER_SERIAL_THREAD.</code></p>
+<blockquote>
+<p>To one arbitrary thread, it will appear as if the <code>pthread_barrier_wait</code> function returned a value of <code>PTHREAD_BARRIER_SERIAL_THREAD</code>. The remaining threads see a return value of 0.</p>
+</blockquote>
+<p>"one arbitrary thread" means "one unspecified thread". As in <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_barrier_wait.html">pthread_barrier_wait</a>:</p>
+<p>Upon successful completion, the <code>pthread_barrier_wait()</code> function shall return <code>PTHREAD_BARRIER_SERIAL_THREAD</code> for a single (arbitrary) thread synchronized at the barrier and zero for each of the other threads.</p>
             </div>
         </div>
 
