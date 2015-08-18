@@ -338,6 +338,8 @@
     
         <li class="main "><a href="#network-address-translation-nat">Network Address Translation (NAT)</a></li>
         
+            <li><a href="#traditional-nat-basic-nat-and-napt">Traditional NAT: Basic NAT and NAPT</a></li>
+        
     
     </ul>
 </div></div>
@@ -345,6 +347,10 @@
               
 
 <h3 id="chapter-7-firewalls-and-network-address-translation-nat"><strong>Chapter 7. Firewalls and Network Address Translation (NAT)</strong></h3>
+<blockquote>
+<p>Perhaps ironically, the development and eventual widespread use of NAT has contributed to significantly slow the adoption of IPv6.
+<small><em>TCPv1</em></small></p>
+</blockquote>
 <p>Many security problems (attacks) were caused by bugs or unplanned protocol operations in the software implementations of Internet hosts. Fixing the problem would have required a way to control the Internet traffic to which the end hosts were exposed. Today, this is provided by a <strong>firewall</strong>, a type of router that restricts the types of traffic it forwards. [p299]</p>
 <p>As firewalls are being deployed, another problem was becoming important: the number of available IPv4 addresses was diminishing,
 with a threat of exhaustion. One of the most important mechanisms developed to deal with this, aside from IPv6, is called <strong>Network Address Translation</strong> (NAT). With NAT, Internet addresses need not be globally unique, but can be reused in different parts of the Internet, called <em>address realms</em>. This greatly eased the problem of address exhaustion.</p>
@@ -393,8 +399,47 @@ with a threat of exhaustion. One of the most important mechanisms developed to d
 <li>As with packet-filtering firewalls, a common configuration is to have an "outside" interface assigned a globally routable IP address and for its "inner" interface to be configured with a private IP address. Thus, proxy firewalls support the use of private address realms.</li>
 </ul>
 <p><a href="../figure_7-2.png" title="The proxy firewall acts as a multihomed Internet host, terminating TCP connections and UDP associations at the application layer. It does not act as a conventional IP router but rather as an ALG. Individual applications or proxies for each service supported must be enabled for communication to take place through the proxy firewall."><img alt="The proxy firewall acts as a multihomed Internet host, terminating TCP connections and UDP associations at the application layer. It does not act as a conventional IP router but rather as an ALG. Individual applications or proxies for each service supported must be enabled for communication to take place through the proxy firewall." src="../figure_7-2_600.png" /></a></p>
-<p>The two most common forms of proxy firewalls are <strong>HTTP proxy firewalls</strong> and <strong>SOCKS firewalls</strong>.</p>
+<p>This type of firewall can be quite secure at the cost of brittleness and lack of flexibility:</p>
+<ul>
+<li>Since this style of firewall must contain a proxy for each transport-layer service, any new services to be used must have a corresponding proxy installed and operated for connectivity to take place through the proxy.</li>
+<li>Each client must be configured to find the proxy, for example using the <a href="https://en.wikipedia.org/wiki/Web_Proxy_Autodiscovery_Protocol">Web Proxy Auto-Discovery Protocol</a> (WPAD), although there are some alternatives: capturing proxies that catch all traffic of a certain type regardless of destination address).</li>
+<li>Significant intervention is required from network operators to support additional services.</li>
+</ul>
+<p>The two most common forms of proxy firewalls are HTTP proxy firewalls and SOCKS firewalls.</p>
+<ul>
+<li><strong>HTTP proxy firewalls</strong>, also called <strong>Web proxies</strong>, work only for the HTTP and HTTPS (Web) protocols.<ul>
+<li>These proxies act as Web servers for internal clients and as Web clients when accessing external Web sites.</li>
+<li>Such proxies often also operate as <strong>Web caches</strong>. These caches save copies of Web pages so that subsequent accesses can be served directly from the cache instead of from the originating Internet Web server. Doing so can reduce latency to display Web pages and improve the experience of users accessing the Web.</li>
+<li>Some Web proxies are also used as <strong>content filters</strong>, which attempt to block access to certain Web sites based on a “blacklist” of prohibited sites. Conversely, <strong>tunneling proxy servers</strong> are available on the Internet. These servers (e.g., <a href="https://en.wikipedia.org/wiki/Psiphon">psiphon</a>, <a href="https://en.wikipedia.org/wiki/CGIProxy">CGIProxy</a>) essentially perform the opposite function: to allow users to avoid being blocked by content filters.</li>
+</ul>
+</li>
+<li><strong>SOCKS firewalls</strong> uses the <a href="https://en.wikipedia.org/wiki/SOCKS">SOCKS protocol</a>, which is more generic than HTTP for proxy access and is applicable to more services than just the Web. Two versions of SOCKS are currently in use: version 4 (SOCKS5) and version 5 (SOCKS5). Version 4 provides the basic support for proxy traversal, and version 5 adds strong authentication, UDP traversal, and IPv6 addressing.<ul>
+<li>To use a SOCKS proxy, an application must be written to use SOCKS (it must be "socksified") and configured to know the location and version of the SOCKS proxy. Then the client uses the SOCKS protocol to request the proxy to perform network connections and, optionally, DNS lookups.</li>
+</ul>
+</li>
+</ul>
 <h3 id="network-address-translation-nat">Network Address Translation (NAT)</h3>
+<p>NAT is a mechanism that allows the same sets of IP addresses to be reused in different parts of the Internet. With NAT as a common use, all incoming and outgoing traffic passes through a single NAT device that partitions the inside (private) address realm from the global Internet address realm, all the internal systems can be provided Internet connectivity as clients using locally assigned, private IP addresses. [p303]</p>
+<p>NAT was introduced to solve two problems: address depletion and concerns regarding the scalability of routing. NAT was initially suggested as a stopgap, temporary measure to be used until the deployment of some protocol with a larger number of addresses (IPv6) became widespread. Routing scalability was being tackled with the development of Classless Inter-Domain Routing (CIDR, <a href="../ch2/">Chapter 2</a>)</p>
+<p>NAT is popular because:</p>
+<ol>
+<li>It reduces the need for globally routable Internet addresses</li>
+<li>It offers some degree of natural firewall capability and requires little configuration.</li>
+</ol>
+<p>Perhaps ironically, the development and eventual widespread use of NAT has contributed to significantly slow the adoption of IPv6. Among its other benefits, IPv6 was intended to make NAT unnecessary.</p>
+<p>NAT has several drawbacks:</p>
+<ul>
+<li>Offering Internet-accessible services from the private side requires special configuration because privately addressed systems are not directly reachable from the Internet.</li>
+<li>Every packet in both directions of a connection or association must pass through the same NAT, because the NAT must actively rewrite the addressing information in each packet.<ul>
+<li>NATs require connection state on a <em>per-association</em> (or <em>per-connection</em>) basis and must operate across multiple protocol layers, unlike conventional routers. Modifying an address at the IP layer also requires modifying checksums at the transport layer (see <a href="../ch10/">Chapters 10</a> and <a href="ch13.md">Chatper 13</a> regarding the pseudoheader checksum)</li>
+</ul>
+</li>
+<li>Some applications protocols, especially those that send IP addressing information inside the application-layer payload, such as <a href="https://en.wikipedia.org/wiki/File_Transfer_Protocol">File Transfer Protocol</a> (FTP) and <a href="https://en.wikipedia.org/wiki/Session_Initiation_Protocol">Session Initiation Protocol</a> (SIP), require a special application-layer gateway function that rewrites the application content in order to work unmodified with NAT or other NAT traversal methods that allow the applications to determine how to work with the specific NAT they are using.</li>
+</ul>
+<p>Despite its shortcomings, NATs are very widely used, and most network routers support it; NAT supports the basic protocols (e.g., e-mail, Web browsing) that are needed by millions of client systems accessing the Internet every day.</p>
+<p>A NAT works by rewriting the identifying information in packets transiting through a router. Most commonly NAT involves rewriting the source IP address of packets as they are forwarded in one direction and the destination IP addresses of packets traveling in the reverse direction. This allows the source IP address in outgoing packets to become one of the NAT router’s Internet-facing interfaces instead of the originating host’s. Thus, <u>to a host on the Internet, packets coming from any of the hosts on the privately addressed side of the NAT appear to be coming from a globally routable IP address of the NAT router.</u></p>
+<p>Most NATs perform both <em>translation</em> and <em>packet filtering</em>, and the packet-filtering criteria depend on the dynamics of the NAT state. The choice of packet-filtering policy may have a different granularity. For example, the treatment of unsolicited packets (those not associated with packets originating from behind the NAT) received by the NAT may depend on source and destination IP address and/or source and destination port number. [p305]</p>
+<h4 id="traditional-nat-basic-nat-and-napt">Traditional NAT: Basic NAT and NAPT</h4>
             </div>
         </div>
 
