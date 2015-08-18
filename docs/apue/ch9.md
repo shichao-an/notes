@@ -223,7 +223,7 @@ We can send a signal to either a single process (identified by its process ID) o
 
 ### Sessions
 
-A session is a collection of one or more process groups.
+A **session** is a collection of one or more process groups.
 
 [![Figure 9.6 Arrangement of processes into process groups and sessions](figure_9.6_600.png)](figure_9.6.png "Figure 9.6 Arrangement of processes into process groups and sessions")
 
@@ -497,7 +497,7 @@ Note that it is misleading to associate a process with a terminal process group 
 * A process does not have a terminal process control group. A process belongs to a process group, and the process group belongs to a session.
 * The session may or may not have a controlling terminal.
     * If the session does have a controlling terminal, then the terminal device knows the process group ID of the foreground process. This value can be set in the terminal driver with the `tcsetpgrp` function ([Figure 9.9](figure_9.9.png)).
-* The foreground process group ID is an attribute of the terminal, not the process. This value from the terminal device driver is what ps prints as the TPGID. If it finds that the session doesn’t have a controlling terminal, ps prints either 0 or −1, depending on the platform.
+* The foreground process group ID is an attribute of the terminal, not the process. This value from the terminal device driver is what `ps` prints as the TPGID. If it finds that the session doesn’t have a controlling terminal, `ps` prints either 0 or −1, depending on the platform.
 
 If we execute the command in the background:
 

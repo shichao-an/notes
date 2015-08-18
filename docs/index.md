@@ -38,6 +38,11 @@ by W. Richard Stevens and Stephen A. Rago
 8. [Process Control](apue/ch8.md)
 9. [Process Relationships](apue/ch9.md)
 10. [Signals](apue/ch10.md)
+11. [Threads](apue/ch11.md)
+12. [Thread Control](apue/ch12.md)
+13. [Daemon Processes](apue/ch13.md)
+14. [Advanced I/O](apue/ch14.md)
+15. [Interprocess Communication](apue/ch15.md)
 
 #### Linux Kernel Development (3rd Edition)
 

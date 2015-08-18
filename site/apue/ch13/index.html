@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/apue/ch2/">
+        <link rel="canonical" href="https://notes.shichao.io/apue/ch13/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 2. UNIX Standardization and Implementations - Shichao's Notes</title>
+	<title>Chapter 13. Daemon Processes - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -68,8 +68,8 @@
                             <a href="../ch1/">Chapter 1. UNIX System Overview</a>
                         </li>
                     
-                        <li class="active">
-                            <a href="./">Chapter 2. UNIX Standardization and Implementations</a>
+                        <li >
+                            <a href="../ch2/">Chapter 2. UNIX Standardization and Implementations</a>
                         </li>
                     
                         <li >
@@ -112,8 +112,8 @@
                             <a href="../ch12/">Chapter 12. Thread Control</a>
                         </li>
                     
-                        <li >
-                            <a href="../ch13/">Chapter 13. Daemon Processes</a>
+                        <li class="active">
+                            <a href="./">Chapter 13. Daemon Processes</a>
                         </li>
                     
                         <li >
@@ -308,7 +308,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/apue/ch2.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/apue/ch13.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -326,13 +326,13 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-2-unix-standardization-and-implementations">Chapter 2. UNIX Standardization and Implementations</a></li>
+        <li class="main active"><a href="#chapter-13-daemon-processes">Chapter 13. Daemon Processes</a></li>
         
     
-        <li class="main "><a href="#unix-standardization">UNIX Standardization</a></li>
+        <li class="main "><a href="#introduction">Introduction</a></li>
         
     
-        <li class="main "><a href="#limits">Limits</a></li>
+        <li class="main "><a href="#daemon-characteristics">Daemon Characteristics</a></li>
         
     
     </ul>
@@ -340,18 +340,102 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-2-unix-standardization-and-implementations"><strong>Chapter 2. UNIX Standardization and Implementations</strong></h3>
-<p>This chapter discusses Unix standards, specifications and implementations.</p>
-<h3 id="unix-standardization">UNIX Standardization</h3>
+<h3 id="chapter-13-daemon-processes"><strong>Chapter 13. Daemon Processes</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>Daemons are processes that are often started when the system is bootstrapped and terminate only when the system is shut down. Because they don’t
+have a controlling terminal, they run in the background. UNIX systems have numerous daemons that perform day-to-day activities.</p>
+<p>This chapter details the process structure of daemons and explores how to write a daemon. Since a daemon does not have a controlling terminal, we need to see how a daemon can report error conditions when something goes wrong.</p>
+<h3 id="daemon-characteristics">Daemon Characteristics</h3>
+<p>This section describes some common system daemons with the concepts of process groups, controlling terminals, and sessions as described in <a href="../ch9/">Chapter 9</a>.</p>
+<div class="codehilite"><pre>ps -axj
+</pre></div>
+
+
 <ul>
-<li>ISO C</li>
-<li>IEEE POSIX</li>
-<li>Single UNIX Specification (SUS): superset of the POSIX.1 standard</li>
+<li>The <code>-a</code> option shows the status of processes owned by others.</li>
+<li>The <code>-x</code> option shows processes that don’t have a controlling terminal.</li>
+<li>The <code>-j</code> option displays the job-related information:<ul>
+<li>Session ID</li>
+<li>Process group ID</li>
+<li>Controlling terminal</li>
+<li><a href="../ch9/#terminal-process-group-id-tpgid-option-of-the-ps1-command">Terminal process group ID</a></li>
 </ul>
-<h3 id="limits">Limits</h3>
+</li>
+</ul>
+<p>The output from <code>ps</code> on Linux 3.2.0 looks like:</p>
+<div class="codehilite"><pre>UID PID PPID    PGID    SID TTY CMD
+root    1   0   1   1   ?   /sbin/init
+root    2   0   0   0   ?   [kthreadd]
+root    3   2   0   0   ?   [ksoftirqd/0]
+root    6   2   0   0   ?   [migration/0]
+root    7   2   0   0   ?   [watchdog/0]
+root    21  2   0   0   ?   [cpuset]
+root    22  2   0   0   ?   [khelper]
+root    26  2   0   0   ?   [sync_supers]
+root    27  2   0   0   ?   [bdi-default]
+root    29  2   0   0   ?   [kblockd]
+root    35  2   0   0   ?   [kswapd0]
+root    49  2   0   0   ?   [scsi_eh_0]
+root    256 2   0   0   ?   [jbd2/sda5-8]
+root    257 2   0   0   ?   [ext4-dio-unwrit]
+syslog  847 1   843 843 ?   rsyslogd -c5
+root    906 1   906 906 ?   /usr/sbin/cupsd -F
+root    1037    1   1037    1037    ?   /usr/sbin/inetd
+root    1067    1   1067    1067    ?   cron
+daemon  1068    1   1068    1068    ?   atd
+root    8196    1   8196    8196    ?   /usr/sbin/sshd -D
+root    13047   2   0   0   ?   [kworker/1:0]
+root    14596   2   0   0   ?   [flush-8:0]
+root    26464   1   26464   26464   ?   rpcbind -w
+statd   28490   1   28490   28490   ?   rpc.statd -L
+root    28553   2   0   0   ?   [rpciod]
+root    28554   2   0   0   ?   [nfsiod]
+root    28561   1   28561   28561   ?   rpc.idmapd
+root    28761   2   0   0   ?   [lockd]
+root    28764   2   0   0   ?   [nfsd]
+root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
+</pre></div>
+
+
+<p>The column headings, in order, are:</p>
 <ul>
-<li>Compile-time limits</li>
-<li>Runtime limits</li>
+<li>User ID</li>
+<li>Process ID</li>
+<li>Parent process ID</li>
+<li>Process group ID</li>
+<li>Session ID</li>
+<li>Terminal name</li>
+<li>Command string</li>
+</ul>
+<p>The system processes in this output depend on the operating system implementation. Anything with a parent process ID of 0 is usually a kernel process (started as part of the system bootstrap procedure), except <code>init</code>, which is a user-level command started by the kernel at boot time. Kernel processes are special and generally exist for the entire lifetime of the system. They run with superuser privileges and have no controlling terminal and no command line.</p>
+<p>In the (above) sample <code>ps</code> output, kernel daemons has their names in square brackets.</p>
+<ul>
+<li><code>kthreadd</code> is a special kernel process on Linux that creates other kernel process, and thus appears as the parent of other kernel daemons. A kernel component, which need to run in a process context but isn't invoked from the context of a user-level process, will usually have its own kernel daemon. For example:<ul>
+<li><code>kswapd</code>: pageout daemon. It supports the virtual memory subsystem by writing dirty pages to disk slowly over time, so the pages can be reclaimed.</li>
+<li><code>flush</code>.<ul>
+<li>This daemon flushes dirty pages to disk when available memory reaches a configured minimum threshold.</li>
+<li>It also flushes dirty pages back to disk at regular intervals to decrease data loss in the event of a system failure.</li>
+<li>Several flush daemons can exist with one for each backing device. The sample output <code>flush-8:0</code> means the backing device is identified by its major device number (8) and its minor device number (0).</li>
+</ul>
+</li>
+<li>The <code>sync_supers</code> daemon periodically flushes file system metadata to disk.</li>
+<li>The <code>jbd</code> daemon helps implement the journal in the <code>ext4</code> file system</li>
+</ul>
+</li>
+<li><code>init</code> (<code>launchd</code> on Mac OS X), usually Process 1, is a system daemon responsible for, among other things, starting system services specific to various run levels.</li>
+<li><code>rpcbind</code> provides the service of <a href="https://en.wikipedia.org/wiki/Portmap">mapping RPC</a> (Remote Procedure Call) program numbers to network port numbers.</li>
+<li>The <code>nfsd</code>, <code>nfsiod</code>, <code>lockd</code>, <code>rpciod</code>, <code>rpc.idmapd</code>, <code>rpc.statd</code>, and <code>rpc.mountd</code> daemons provide support for the <a href="https://en.wikipedia.org/wiki/Network_File_System">Network File System</a> (NFS). Note that the first four are kernel daemons, while the last three are user-level daemons.</li>
+<li><code>rsyslogd</code> can log system messages of any program. The messages may be printed on a console device and/or written to a file.</li>
+<li><code>cron</code> executes commands at regularly scheduled dates and times. Numerous system administration tasks are handled by cron running programs at regularly intervals.</li>
+<li><code>atd</code>, similar to <code>cron</code>, allows users to execute jobs at specified times, only once.</li>
+<li><code>cupsd</code> is a print spooler that handles print requests on the system.</li>
+<li><code>sshd</code> provides secure remote login and execution facilities.</li>
+</ul>
+<p>Some notes:</p>
+<ul>
+<li>Most of the daemons run with superuser (root) privileges.</li>
+<li>None of the daemons has a controlling terminal: the terminal name is set to a question mark. The kernel daemons are started without a controlling terminal. The lack of a controlling terminal in the user-level daemons is probably the result of the daemons having called <code>setsid</code>. Most of the user-level daemons are process group leaders and session leaders, and are the only processes in their process group and session. (The one exception is <code>rsyslogd</code>.)</li>
+<li>The parent of the user-level daemons is the <code>init</code> process.</li>
 </ul>
             </div>
         </div>
