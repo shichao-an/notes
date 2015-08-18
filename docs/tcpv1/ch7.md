@@ -104,3 +104,46 @@ A NAT works by rewriting the identifying information in packets transiting throu
 Most NATs perform both *translation* and *packet filtering*, and the packet-filtering criteria depend on the dynamics of the NAT state. The choice of packet-filtering policy may have a different granularity. For example, the treatment of unsolicited packets (those not associated with packets originating from behind the NAT) received by the NAT may depend on source and destination IP address and/or source and destination port number. [p305]
 
 #### Traditional NAT: Basic NAT and NAPT
+
+**Traditional NAT** includes both:
+
+* **Basic NAT**. It performs rewriting of IP addresses only: a private address is rewritten to be a public address, often from a pool or range of public addresses supplied. This type of NAT is not the most popular because it does not help to dramatically reduce the need for (globally routable) IP addresses.
+by an ISP.
+* **Network Address Port Translation** (NAPT), also known as **IP masquerading**. It uses transport-layer identifiers (i.e., ports for TCP and UDP, query identifiers for ICMP) to differentiate which host on the private side of the NAT is associated with a particular packet. This allows a large number of internal hosts to access the Internet simultaneously using a limited number of public addresses, often only a single one.
+
+See the following figure for the distinction between basic NAT and NAPT:
+
+[![A basic IPv4 NAT (left) rewrites IP addresses from a pool of addresses and leaves port numbers unchanged. NAPT (right), also known as IP masquerading, usually rewrites address to a single address. NAPT must sometimes rewrite port numbers in order to avoid collisions. In this case, the second instance of port number 23479 was rewritten to use port number 3000 so that returning traffic for 192.168.1.2 could be distinguished from the traffic returning to 192.168.1.35.](figure_7-4_600.png)](figure_7-4.png "A basic IPv4 NAT (left) rewrites IP addresses from a pool of addresses and leaves port numbers unchanged. NAPT (right), also known as IP masquerading, usually rewrites address to a single address. NAPT must sometimes rewrite port numbers in order to avoid collisions. In this case, the second instance of port number 23479 was rewritten to use port number 3000 so that returning traffic for 192.168.1.2 could be distinguished from the traffic returning to 192.168.1.35.")
+
+The addresses used in a private addressing realm "behind" (or "inside") a NAT are not enforced by anyone other than the local network administrator. It is possible and acceptable for a private realm to make use of global address space. However, <u>local systems in the private realm would most likely be unable to reach the public systems using the same addresses because the close proximity of the local systems would effectively "mask" the visibility of the farther-away systems using the same addresses.</u> To avoid this, three IPv4 address ranges are reserved for use with private addressing realms: 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16, which are often used as default values for address pools in embedded DHCP servers
+
+NAT provides some degree of security, similar to a firewall [p306]:
+
+* By default, systems on the private side (using private addresses) of the NAT cannot be reached from the Internet.
+* A common policy allows almost all outgoing and returning traffic (associated with outgoing traffic) to pass through the NAT but blocks almost all incoming new connection requests. This behavior inhibits "probing" attacks that attempt to ascertain which IP addresses have active hosts available to exploit.
+* A NAT (especially a NAPT) "hides" the number and configuration of internal addresses from the outside. NAT helps by providing **topology hiding**.
+
+The following subsections discusses how NAT behaves with each major transport protocol and how it may be used in mixed IPv4/IPv6 environments. [p306]
+
+##### **NAT and TCP**
+
+When a TCP connection starts, an "active opener" or client usually sends a synchronization (SYN) packet to a "passive opener" or server. The server responds with its own SYN packet, which also includes an acknowledgment (ACK) of the client’s SYN.  The client then responds with an ACK to the server. This “three-way handshake” establishes the connection. A similar exchange with finish (FIN) packets is used to gracefully close a connection. The connection can also be forcefully closed right away using a reset (RST) packet. The behavioral requirements for traditional NAT with TCP relate primarily to the TCP three-way handshake.
+
+Referring to the figure below, consider a TCP connection initiated by the wireless client at 10.0.0.126 destined for the Web server on the host www.isoc.org (IPv4 address 212.110.167.157). With the format "(source IP:source port; destination IP:destination port)", the packet initiating the connection on the private segment might be addressed as (10.0.0.126:9200; 212.110.167.157:80).
+
+[![A NAT isolates private addresses and the systems using them from the Internet. Packets with private addresses are not routed by the Internet directly but instead must be translated as they enter and leave the private network through the NAT router. Internet hosts see traffic as coming from a public IP address of the NAT.](figure_7-3_600.png)](figure_7-3.png "A NAT isolates private addresses and the systems using them from the Internet. Packets with private addresses are not routed by the Internet directly but instead must be translated as they enter and leave the private network through the NAT router. Internet hosts see traffic as coming from a public IP address of the NAT.")
+
+[p307]
+
+* The NAT receives the first incoming packet from the client and notices it is a new connection (SYN bit in the TCP header is turned on).
+    * It modifies the source IP address to the routable IP address of the NAT router’s external interface. Thus, when the NAT forwards this packet, the addressing is (63.204.134.177:9200; 212.110.167.157:80).
+    * It creates a **NAT session**, which is internal state to remember that a new connection is being handled by the NAT. This state includes an entry, called a **NAT mapping**, containing the source port number and IP address of the client.
+* The server replies to the endpoint (63.204.134.177:9200), the external NAT address, using the port number chosen initially by the client. This behavior is called **port preservation**. By matching the destination port number on the received datagram against the NAT mapping, the NAT ascertains the internal IP address of the client that made the initial request. The NAT rewrites the response packet from (212.110.167.157:80; 63.204.134.177:9200) to (212.110.167.157:80; 10.0.0.126:9200) and forwards it.
+* The client then receives a response to its request and is now connected to the server.
+
+
+##### **NAT and UDP**
+
+##### **NAT and Other Transport Protocols (DCCP, SCTP)**
+
+##### **NAT and ICMP**
