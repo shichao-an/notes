@@ -340,6 +340,26 @@
         
             <li><a href="#traditional-nat-basic-nat-and-napt">Traditional NAT: Basic NAT and NAPT</a></li>
         
+            <li><a href="#address-and-port-translation-behavior">Address and Port Translation Behavior</a></li>
+        
+            <li><a href="#filtering-behavior">Filtering Behavior</a></li>
+        
+            <li><a href="#servers-behind-nats">Servers behind NATs</a></li>
+        
+            <li><a href="#hairpinning-and-nat-loopback">Hairpinning and NAT Loopback</a></li>
+        
+            <li><a href="#nat-editors">NAT Editors</a></li>
+        
+            <li><a href="#service-provider-nat-spnat-and-service-provider-ipv6-transition">Service Provider NAT (SPNAT) and Service Provider IPv6 Transition</a></li>
+        
+    
+        <li class="main "><a href="#nat-traversal">NAT Traversal</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -470,9 +490,114 @@ by an ISP.</li>
 <li>The server replies to the endpoint (63.204.134.177:9200), the external NAT address, using the port number chosen initially by the client. This behavior is called <strong>port preservation</strong>. By matching the destination port number on the received datagram against the NAT mapping, the NAT ascertains the internal IP address of the client that made the initial request. The NAT rewrites the response packet from (212.110.167.157:80; 63.204.134.177:9200) to (212.110.167.157:80; 10.0.0.126:9200) and forwards it.</li>
 <li>The client then receives a response to its request and is now connected to the server.</li>
 </ul>
+<p>Session state is removed if FINs are exchanged. The NAT must also remove "dead" mappings (identified by lack of traffic or RST) that are left stale in the NAT's memory, such when a client host is simply turned off.</p>
+<p>Most NATs include a simplified TCP connection establishment procedures and can distinguish between connection success and failure:</p>
+<ul>
+<li>A <strong>connection timer</strong> is activated when an outgoing SYN segment is observed, and if no ACK is seen before the timer expires, the session state is cleared.</li>
+<li>A <strong>session timer</strong> is created, with a longer timeout (hours), after an ACK does arrives and the connection timer is canceled.<ul>
+<li>The NAT may send an additional packet to the internal endpoint to doublecheck if the session is indeed dead (called <em>probing</em>). If it receives an ACK, the NAT realizes that the connection is still active, resets the session timer, and does not delete the session. If it receives either no response (after a <strong>close timer</strong> has expired) or an RST segment, the connection has gone dead, and the state is cleared.</li>
+</ul>
+</li>
+</ul>
+<p>A TCP connection can be configured to send "keepalive" packets (<a href="ch17.md">Chapter 17</a>), and the default rate is one packet every 2 hours, if enabled. Otherwise, a TCP connection can remain established indefinitely. While a connection is being set up or cleared, however, the maximum idle time is 4 minutes. Consequently, [RFC5382] requires (REQ-5) that a NAT wait at least 2 hours and 4 minutes before concluding that an established connection is dead and at least 4 minutes before concluding that a partially opened or closed connection is dead.</p>
+<p>There are tricky problems for TCP NAT. [p308] See <a href="#doubts-and-solutions">Doubts and Solutions</a></p>
 <h5 id="nat-and-udp"><strong>NAT and UDP</strong></h5>
+<p>Besides issues when performing NAT on TCP, the NAT on UDP has other issues due to:</p>
+<ul>
+<li>UDP has no connection establishment and clearing procedures as in TCP.</li>
+<li>There are no indicators such as the SYN, FIN, and RST bits to indicate that a session is being created or destroyed.</li>
+<li>An association may not be completely clear: UDP does not use a 4-tuple to identify a connection like TCP; it can rely on only the two endpoint address/port number combinations.</li>
+</ul>
+<p>To handle these issues, UDP NATs use a <strong>mapping timer</strong> to clear NAT state if a binding has not been used "recently". The "recently" may mean different values. [RFC4787] requires the timer to be at least 2 minutes and recommends that it be 5 minutes. Timers can be refreshed when packets travel from the inside to the outside of the NAT (NAT outbound refresh behavior). [p309]</p>
+<p>With IP fragmentation, an IP fragment other than the first one does not contain the port number information needed by NAPT to operate properly. This also applies to TCP and ICMP. Thus, fragments cannot be handled properly by simple NATs or NAPTs. [p309]</p>
 <h5 id="nat-and-other-transport-protocols-dccp-sctp"><strong>NAT and Other Transport Protocols (DCCP, SCTP)</strong></h5>
+<ul>
+<li>The <a href="https://en.wikipedia.org/wiki/Datagram_Congestion_Control_Protocol">Datagram Congestion Control Protocol</a> (DCCP) [RFC4340] provides a congestion-controlled datagram service.</li>
+<li>The <a href="https://en.wikipedia.org/wiki/Stream_Control_Transmission_Protocol">Stream Control Transmission Protocol</a> (SCTP) [RFC4960] provides a reliable messaging service that can accommodate hosts with multiple addresses.</li>
+</ul>
 <h5 id="nat-and-icmp"><strong>NAT and ICMP</strong></h5>
+<p>The Internet Control Message Protocol (ICMP) provides status information about IP packets and can also be used for making certain measurements and gathering information about the state of the network.</p>
+<p>ICMP has two categories of messages: informational and error: [p310]</p>
+<ul>
+<li>Error messages contain a (partial or full) copy of the IP packet that induced the error condition. They are sent from the point where an error was detected, often in the middle of the network, to the original sender.<ul>
+<li>When an ICMP error message passes through a NAT, the IP addresses in the included "offending datagram" need to be rewritten by the NAT in order for them to make sense to the end client (called <strong>ICMP fix-up</strong>).</li>
+</ul>
+</li>
+<li>Informational messages include a <em>Query ID</em> field that is handled much like port numbers for TCP or UDP.<ul>
+<li>NAT handling these types of messages can recognize outgoing informational requests and set a timer in anticipation of a returning response.</li>
+</ul>
+</li>
+</ul>
+<h5 id="nat-and-tunneled-packets"><strong>NAT and Tunneled Packets</strong></h5>
+<p>When tunneled packets (<a href="ch3.md">Chapter 3</a>) are to be sent through a NATs, not only must a NAT rewrite the IP header, but it may also have to rewrite the headers or payloads of other packets that are encapsulated in them. One example of this is the <a href="https://en.wikipedia.org/wiki/Generic_Routing_Encapsulation">Generic Routing Encapsulation</a> (GRE) header used with the <a href="https://en.wikipedia.org/wiki/Point-to-Point_Tunneling_Protocol">Point-to-Point Tunneling Protocol</a> (PPTP). [p310]</p>
+<h5 id="nat-and-multicast"><strong>NAT and Multicast</strong></h5>
+<p>NATs can be configured to support multicast traffic (<a href="ch9.md">Chapter 9</a>), although this is rare. [p310]</p>
+<h5 id="nat-and-ipv6"><strong>NAT and IPv6</strong></h5>
+<p>There is staunch resistance to supporting the use of NAT with IPv6 based on the idea that saving address space is unnecessary with IPv6 and that other desirable NAT features (firewall-like functionality, topology hiding, and privacy) can be better achieved using Local Network Protection (LNP) [RFC4864]. LNP represents a collection of techniques with IPv6 that match or exceed the properties of NATs.</p>
+<p>Aside from its packet-filtering properties, NAT supports the coexistence of multiple address realms and thereby helps to avoid the problem of a site having to change its IP addresses when it switches ISPs. [p310-311]</p>
+<h4 id="address-and-port-translation-behavior">Address and Port Translation Behavior</h4>
+<p>One of the primary goals of the BEHAVE working group in IETF was to clarify the common behaviors and set guidelines. [p311]</p>
+<p>See the following figure as a generic NAT mapping example:</p>
+<p><a href="../figure_7-5.png" title=" A NAT’s address and port behavior is characterized by what its mappings depend on.  The inside host uses IP address:port X:x to contact Y1:y1 and then Y2:y2. The address and port used by the NAT for these associations are X1′:x1′ and X2′:x2′, respectively. If X1′:x1′ equals X2′:x2′ for any Y1:y1 or Y2:y2, the NAT has endpoint-independent mappings. If X1′:x1′ equals X2′:x2′ if and only if Y1 equals Y2, the NAT has address-dependent mappings.  If X1′:x1′ equals X2′:x2′ if and only if Y1:y1 equals Y2:y2, the NAT has addressand port-dependent mappings. A NAT with multiple external addresses (i.e., where X1′ may not equal X2′) has an address pooling behavior of arbitrary if the outside address is chosen without regard to inside or outside address. Alternatively, it may have a pooling behavior of paired, in which case the same X1 is used for any association with Y1."><img alt=" A NAT’s address and port behavior is characterized by what its mappings depend on.  The inside host uses IP address:port X:x to contact Y1:y1 and then Y2:y2. The address and port used by the NAT for these associations are X1′:x1′ and X2′:x2′, respectively. If X1′:x1′ equals X2′:x2′ for any Y1:y1 or Y2:y2, the NAT has endpoint-independent mappings. If X1′:x1′ equals X2′:x2′ if and only if Y1 equals Y2, the NAT has address-dependent mappings.  If X1′:x1′ equals X2′:x2′ if and only if Y1:y1 equals Y2:y2, the NAT has addressand port-dependent mappings. A NAT with multiple external addresses (i.e., where X1′ may not equal X2′) has an address pooling behavior of arbitrary if the outside address is chosen without regard to inside or outside address. Alternatively, it may have a pooling behavior of paired, in which case the same X1 is used for any association with Y1." src="../figure_7-5_600.png" /></a></p>
+<p>In this figure:</p>
+<ul>
+<li>The notation <em>X:x</em> indicates that a host in the private addressing realm (inside host) uses IP address <em>X</em> with port number <em>x</em> (for ICMP, the query ID is used instead of the port number). The IP address <em>X</em> is a private IPv4 address.</li>
+<li>To reach the remote address/port combination <em>Y:y</em>, the NAT establishes a mapping using an external (globally routable) address <em>X1′</em> and port number <em>x1′</em>. Assuming that the internal host contacts <em>Y1:y1</em> followed by <em>Y2:y2</em>, the NAT establishes mappings <em>X1′:x1′</em> and <em>X2′:x2′</em>, respectively.<ul>
+<li>In most cases, X1′ equals X2′ because most sites use only a single globally routable IP address.</li>
+<li>The mapping is said to be <em>reused</em> if <em>x1′</em> equals <em>x2′</em>. If <em>x1′</em> and <em>x2′</em> equal <em>x</em>, the NAT implements port preservation, as <a href="#nat-and-tcp">mentioned earlier</a>.</li>
+</ul>
+</li>
+</ul>
+<p>A NAT’s address and port behavior is characterized by what its mappings depend on.  The inside host uses IP address:port <em>X:x</em> to contact <em>Y1:y1</em> and then <em>Y2:y2</em>. The address and port used by the NAT for these associations are <em>X1′:x1′</em> and <em>X2′:x2′</em>, respectively.</p>
+<ul>
+<li>If <em>X1′:x1′</em> equals <em>X2′:x2′</em> for any <em>Y1:y1</em> or <em>Y2:y2</em>, the NAT has <strong>endpoint-independent</strong> mappings.</li>
+<li>If <em>X1′:x1′</em> equals <em>X2′:x2′</em> if and only if <em>Y1</em> equals <em>Y2</em>, the NAT has <strong>address-dependent</strong> mappings.</li>
+<li>If <em>X1′:x1′</em> equals <em>X2′:x2′</em> if and only if <em>Y1:y1</em> equals <em>Y2:y2</em>, the NAT has <strong>address and port-dependent</strong> mappings.</li>
+</ul>
+<p>A NAT with multiple external addresses (i.e., where <em>X1′</em> may not equal <em>X2′</em>) has an address pooling behavior of arbitrary if the outside address is chosen without regard to inside or outside address. Alternatively, it may have a pooling behavior of paired, in which case the same <em>X1</em> is used for any association with <em>Y1</em>.</p>
+<p>The figure above and the table below summarize the various NAT port and address behaviors based on definitions from [RFC4787]. The table also gives filtering behaviors that use similar terminology.</p>
+<p><u>For all common transports, including TCP and UDP, the required NAT address- and port-handling behavior is endpoint-independent.</u> The purpose of this requirement is to help applications that attempt to determine the external addresses used for their traffic to work more reliably. This is detailed in <a href="#nat-traversal">NAT traversal</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Behavior Name</th>
+<th>Translation Behavior</th>
+<th>Filtering Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Endpoint-independent</td>
+<td><em>X1′:x1′ = X2′:x2′</em> for all <em>Y2:y2</em> (required)</td>
+<td>Allows any packets for <em>X1:x1</em> as long as any <em>X1′:x1′</em> exists (recommended for greatest transparency)</td>
+</tr>
+<tr>
+<td>Address-dependent</td>
+<td><em>X1′:x1′ = X2′:x2′</em> iff <em>Y1 = Y2</em></td>
+<td>Allows packets for <em>X1:x1</em> from <em>Y1:y1</em> as long as <em>X1</em> has previously contacted <em>Y1</em> (recommended for more stringent filtering)</td>
+</tr>
+<tr>
+<td>Address-and port-dependent</td>
+<td><em>X1′:x1′ = X2′:x2′</em> iff <em>Y1:y1 = Y2:y2</em></td>
+<td>Allows packets for <em>X1:x1</em> from <em>Y1:y</em></td>
+</tr>
+</tbody>
+</table>
+<h4 id="filtering-behavior">Filtering Behavior</h4>
+<h4 id="servers-behind-nats">Servers behind NATs</h4>
+<h4 id="hairpinning-and-nat-loopback">Hairpinning and NAT Loopback</h4>
+<h4 id="nat-editors">NAT Editors</h4>
+<h4 id="service-provider-nat-spnat-and-service-provider-ipv6-transition">Service Provider NAT (SPNAT) and Service Provider IPv6 Transition</h4>
+<h3 id="nat-traversal">NAT Traversal</h3>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p308 on TCP NAT:</p>
+<p class="text-muted">One of the tricky problems for a TCP NAT is handling peer-to-peer applications operating on hosts residing on the private sides of multiple NATs [RFC5128].  Some of these applications use a simultaneous open whereby each end of the connection acts as a client and sends SYN packets more or less simultaneously. TCP is able to handle this case by responding with SYN + ACK packets that complete the connection faster than with the three-way handshake, but many existing NATs do not handle it properly. [RFC5382] addresses this by requiring (REQ-2) that a NAT handle all valid TCP packet exchanges, and simultaneous opens in particular.  Some peer-to-peer applications (e.g., network games) use this behavior. In addition, [RFC5382] specifies that an inbound SYN for a connection about which the NAT knows nothing should be silently discarded. This can occur when a simultaneous open is attempted but the external host’s SYN arrives at the NAT before the internal host’s SYN. Although this may seem unlikely, it can happen as a result of clock skew, for example. If the incoming external SYN is dropped, the internal SYN has time to establish a NAT mapping for the same connection represented by the external SYN. If no internal SYN is forthcoming in 6s, the NAT may signal an error to the external host.</p>
+
+<p>Some other NAT drawbacks:</p>
+<ul>
+<li><a href="https://www.excentis.com/blog/ugly-side-nat">The ugly side of NAT</a></li>
+</ul>
             </div>
         </div>
 
