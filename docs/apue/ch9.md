@@ -254,7 +254,7 @@ If the calling process is not a process group leader, this function creates a ne
 2. The process becomes the process group leader of a new process group. The new process group ID is the process ID of the calling process.
 3. The process has no controlling terminal. If the process had a controlling terminal before calling `setsid`, that association is broken.
 
-This function returns an error if the caller is already a process group leader.
+<u>This function returns an error if the caller is already a process group leader.</u>
 
 #### Ensuring the successful call of `setsid`
 
@@ -737,7 +737,7 @@ Analysis: [p307-309]
 *  Since the process group is orphaned when the parent terminates, and the process group contains a stopped process, POSIX.1 requires that every process in the newly orphaned process group be sent the hang-up signal (`SIGHUP`) followed by the continue signal (`SIGCONT`).
     * This causes the child to be continued, after processing the hang-up signal. The default action for the hang-up signal is to terminate the process, so we have to provide a signal handler to catch the signal. We therefore expect the `printf` in the `sig_hup` function to appear before the `printf` in the `pr_ids` function.
 * Note that the shell prompt appears with the output from the child, because two processes (login shell and the child) are writing to the terminal. The parent process ID of the child has become 1.
-* After calling `pr_ids` in the child, the program tries to read from standard input. POSIX.1 specifies that the `read` is to return an error with errno set to EIO (whose value is 5 on this system) in this situation. [p309]
+* After calling `pr_ids` in the child, the program tries to read from standard input. POSIX.1 specifies that the `read` is to return an error with `errno` set to `EIO` (whose value is 5 on this system) in this situation. [p309]
     * As discussed earlier in this chapter, when a process in a background process group tries to read from its controlling terminal, `SIGTTIN` is generated for the background process group. But for an orphaned process group, if the kernel were to stop it with this signal, the processes in the process group would probably never be continued.
 * Finally, our child was placed in a background process group when the parent terminated, since the parent was executed as a foreground job by the shell.
 

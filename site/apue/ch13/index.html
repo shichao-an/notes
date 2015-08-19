@@ -335,6 +335,12 @@
         <li class="main "><a href="#daemon-characteristics">Daemon Characteristics</a></li>
         
     
+        <li class="main "><a href="#coding-rules">Coding Rules</a></li>
+        
+    
+        <li class="main "><a href="#error-logging">Error Logging</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -437,6 +443,132 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <li>None of the daemons has a controlling terminal: the terminal name is set to a question mark. The kernel daemons are started without a controlling terminal. The lack of a controlling terminal in the user-level daemons is probably the result of the daemons having called <code>setsid</code>. Most of the user-level daemons are process group leaders and session leaders, and are the only processes in their process group and session. (The one exception is <code>rsyslogd</code>.)</li>
 <li>The parent of the user-level daemons is the <code>init</code> process.</li>
 </ul>
+<h3 id="coding-rules">Coding Rules</h3>
+<p>This section states basic rules to coding a daemon prevent unwanted interactions from happening, followed by a function <code>daemonize</code>, that implements these rules.</p>
+<ol>
+<li><strong>Call <code>umask</code> to set the file mode creation mask</strong> to a known value, usually 0.<ul>
+<li>If the daemon process creates files, it may want to set specific permissions.</li>
+<li>On the other hand, if the daemon calls library functions that result in files being created, then it might make sense to set the file mode create mask to a more restrictive value (such as 007), since the library functions might not allow the caller to specify the permissions through an explicit argument.</li>
+</ul>
+</li>
+<li><strong>Call <code>fork</code> and have the parent <code>exit</code></strong>. This does several things:<ul>
+<li>If the daemon was started as a simple shell command, having the parent terminate makes the shell think that the command is done</li>
+<li>The child inherits the process group ID of the parent but gets a new process ID, so we’re guaranteed that the child is not a process group leader. This is a prerequisite for the call to <code>setsid</code> that is done next. (See <a href="../ch9/#ensuring-the-successful-call-of-setsid">Ensuring the successful call of setsid</a> in Chapter 9)</li>
+</ul>
+</li>
+<li>
+<p><strong>Call <code>setsid</code> to create a new session</strong>. The three steps listed in <a href="../ch9/#sessions">Section 9.5</a> occur. The process:</p>
+<ul>
+<li>becomes the leader of a new session,</li>
+<li>becomes the leader of a new process group,</li>
+<li>and is disassociated from its controlling terminal.</li>
+</ul>
+<p>Under System V–based systems, some people recommend calling <code>fork</code> again at this point, terminating the parent, and continuing the daemon in the child. This guarantees that the daemon is not a session leader, which prevents it from acquiring a controlling terminal under the System V rules (<a href="../ch9/#controlling-terminal">Section 9.6</a>). Alternatively, to avoid acquiring a controlling terminal, be sure to specify <code>O_NOCTTY</code> whenever opening a terminal device.</p>
+</li>
+<li>
+<p><strong>Change the current working directory to the root directory.</strong> The current working directory inherited from the parent could be on a mounted file system.  Since daemons normally exist until the system is rebooted, if the daemon stays on a mounted file system, that file system cannot be unmounted.</p>
+<p>Alternatively, some daemons might change the current working directory to a specific location where they will do all their work. For example, a line printer spooling daemon might change its working directory to its spool directory.</p>
+</li>
+<li>
+<p><strong>Unneeded file descriptors should be closed.</strong> This prevents the daemon from holding open any descriptors that it may have inherited from its parent (which could be a shell or some other process). We can use our <code>open_max</code> function or the <code>getrlimit</code> function (<a href="../ch7/#getrlimit-and-setrlimit-functions">Section 7.11</a>) to determine the highest descriptor and close all descriptors up to that value.</p>
+</li>
+<li><strong>Some daemons open file descriptors 0, 1, and 2 to <code>/dev/null</code></strong> so that any library routines that try to read from standard input or write to standard output or standard error will have no effect. [p466-467]</li>
+</ol>
+<p>The code below shows the <code>daemonize</code> function that can be called from a program that wants to initialize itself as a daemon.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/init.c">daemons/init.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;syslog.h&gt;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+<span class="cp">#include &lt;sys/resource.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">daemonize</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">fd0</span><span class="p">,</span> <span class="n">fd1</span><span class="p">,</span> <span class="n">fd2</span><span class="p">;</span>
+    <span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">rlimit</span> <span class="n">rl</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sigaction</span> <span class="n">sa</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Clear file creation mask.</span>
+<span class="cm">     */</span>
+    <span class="n">umask</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Get maximum number of file descriptors.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">getrlimit</span><span class="p">(</span><span class="n">RLIMIT_NOFILE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rl</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t get file limit&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Become a session leader to lose controlling TTY.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t fork&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="cm">/* parent */</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">setsid</span><span class="p">();</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Ensure future opens won&#39;t allocate controlling TTYs.</span>
+<span class="cm">     */</span>
+    <span class="n">sa</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_IGN</span><span class="p">;</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sa</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">sa</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">SIGHUP</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sa</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t ignore SIGHUP&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t fork&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="cm">/* parent */</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Change the current working directory to the root so</span>
+<span class="cm">     * we won&#39;t prevent file systems from being unmounted.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">chdir</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t change directory to /&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Close all open file descriptors.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">rl</span><span class="p">.</span><span class="n">rlim_max</span> <span class="o">==</span> <span class="n">RLIM_INFINITY</span><span class="p">)</span>
+        <span class="n">rl</span><span class="p">.</span><span class="n">rlim_max</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">rl</span><span class="p">.</span><span class="n">rlim_max</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Attach file descriptors 0, 1, and 2 to /dev/null.</span>
+<span class="cm">     */</span>
+    <span class="n">fd0</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;/dev/null&quot;</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="n">fd1</span> <span class="o">=</span> <span class="n">dup</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">fd2</span> <span class="o">=</span> <span class="n">dup</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Initialize the log file.</span>
+<span class="cm">     */</span>
+    <span class="n">openlog</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">LOG_CONS</span><span class="p">,</span> <span class="n">LOG_DAEMON</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd0</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">fd1</span> <span class="o">!=</span> <span class="mi">1</span> <span class="o">||</span> <span class="n">fd2</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;unexpected file descriptors %d %d %d&quot;</span><span class="p">,</span>
+          <span class="n">fd0</span><span class="p">,</span> <span class="n">fd1</span><span class="p">,</span> <span class="n">fd2</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If the <code>daemonize</code> function is called from a <code>main</code> program that then goes to sleep, we can check the status of the daemon with the <code>ps</code> command:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">$ ps -efj</span>
+<span class="go">UID PID PPID PGID SID TTY CMD</span>
+<span class="go">sar 13800 1 13799 13799 ? ./a.out</span>
+<span class="go">$ ps -efj | grep 13799</span>
+<span class="go">sar 13800 1 13799 13799 ? ./a.out</span>
+</pre></div>
+
+
+<p>We can also use ps to verify that no active process exists with ID 13799. This means that our daemon is in an orphaned process group and is not a session leader and, therefore, has no chance of allocating a controlling terminal. This is a result of performing the second <code>fork</code> in the <code>daemonize</code> function. We can see that our daemon has been initialized correctly.</p>
+<h3 id="error-logging">Error Logging</h3>
             </div>
         </div>
 
