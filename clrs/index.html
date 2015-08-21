@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/vim/">
+        <link rel="canonical" href="https://notes.shichao.io/clrs/">
         <link rel="shortcut icon" href="../toki_32.png">
         
 
-	<title>Vim - Shichao's Notes</title>
+	<title>CLRS - Shichao's Notes</title>
 
         <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -274,8 +274,8 @@
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
-                        <li >
-                            <a href="../clrs/">CLRS</a>
+                        <li class="active">
+                            <a href="./">CLRS</a>
                         </li>
                     
                         <li >
@@ -306,8 +306,8 @@
                             <a href="../nginx/">Nginx</a>
                         </li>
                     
-                        <li class="active">
-                            <a href="./">Vim</a>
+                        <li >
+                            <a href="../vim/">Vim</a>
                         </li>
                     
                     </ul>
@@ -320,7 +320,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/vim/index.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/clrs/index.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -338,10 +338,15 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#vim">Vim</a></li>
+        <li class="main active"><a href="#chapter-22-elementary-graph-algorithms">Chapter 22. Elementary Graph Algorithms</a></li>
         
     
-        <li class="main "><a href="#references">References</a></li>
+        <li class="main "><a href="#221-representations-of-graphs">22.1 Representations of graphs</a></li>
+        
+            <li><a href="#representing-attributes">Representing attributes</a></li>
+        
+    
+        <li class="main "><a href="#222-breadth-first-search">22.2 Breadth-first search</a></li>
         
     
     </ul>
@@ -349,13 +354,40 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="vim"><strong>Vim</strong></h3>
-<hr />
-<h3 id="references">References</h3>
+<h3 id="chapter-22-elementary-graph-algorithms"><strong>Chapter 22. Elementary Graph Algorithms</strong></h3>
+<p>This chapter discusses:</p>
 <ul>
-<li>[LVVE]: Learning the vi and Vim Editors, 7th Edition</li>
-<li>[LVHW]: <a href="http://learnvimscriptthehardway.stevelosh.com/">Learn Vimscript the Hard Way</a></li>
+<li>Representing a graph</li>
+<li>Searching a graph</li>
 </ul>
+<h3 id="221-representations-of-graphs">22.1 Representations of graphs</h3>
+<p>There are two standard ways to represent a graph <em>G = (V, E)</em>:</p>
+<ul>
+<li>(A collection of) <strong>adjacency lists</strong></li>
+<li>An <strong>adjacency matrix</strong></li>
+</ul>
+<p>Choices:</p>
+<ul>
+<li>The adjacency-list representation provides a compact way to represent <strong>sparse</strong> graphs (where |<em>E</em>| is much less than |<em>V</em>|<sup>2</sup>); it is usually the method of choice. Most of the graph algorithms presented in this book assume that an input graph is represented in adjacency-list form.</li>
+<li>The adjacency-matrix representation is preferred when the graph is <strong>dense</strong> (|<em>E</em>| is close to |<em>V</em>|<sup>2</sup>).</li>
+</ul>
+<p>The following figure shows two representations of an undirected graph. (a) An undirected graph G with 5 vertices and 7 edges. (b) An adjacency-list representation of G. (c) The adjacency-matrix representation of G.</p>
+<p><a href="./figure_22.1.png" title="Figure 22.1 Two representations of an undirected graph. (a) An undirected graph G with 5 vertices and 7 edges. (b) An adjacency-list representation of G. (c) The adjacency-matrix representation of G."><img alt="Figure 22.1 Two representations of an undirected graph. (a) An undirected graph G with 5 vertices and 7 edges. (b) An adjacency-list representation of G. (c) The adjacency-matrix representation of G." src="./figure_22.1.png" /></a></p>
+<p>The following figure shows two representations of a directed graph. (a) A directed graph G with 6 vertices and 8 edges. (b) An adjacency-list representation of G. (c) The adjacency-matrix representation of G.</p>
+<p><a href="./figure_22.2.png" title="Figure 22.2 Two representations of a directed graph. (a) A directed graph G with 6 vertices and 8 edges. (b) An adjacency-list representation of G. (c) The adjacency-matrix representation of G."><img alt="Figure 22.2 Two representations of a directed graph. (a) A directed graph G with 6 vertices and 8 edges. (b) An adjacency-list representation of G. (c) The adjacency-matrix representation of G." src="./figure_22.2.png" /></a></p>
+<p>The adjacency-list representation of a graph <em>G = (V, E)</em> consists of an array <em>Adj</em> of |V| lists, one for each vertex in <em>V</em> . For each <em>u ∈ V</em> , the adjacency list <em>Adj[u]</em>" contains all the vertices <em>v</em> such that there is an edge <em>(u, v) ∈ E</em>. That is, <em>Adj[u]</em>" consists of all the vertices adjacent to <em>u</em> in <em>G</em>.</p>
+<ul>
+<li>If <em>G</em> is a directed graph, the sum of the lengths of all the adjacency lists is |<em>E</em>|, since an edge of the form <em>(u, v)</em> is represented by having <em>v</em> appear in <em>Adj[u]</em>.</li>
+<li>If <em>G</em> is an undirected graph, the sum of the lengths of all the adjacency lists is 2|<em>E</em>|, , since if <em>(u, v)</em> is an undirected edge, then <em>u</em> appears in v's adjacency list and vice versa.</li>
+</ul>
+<p>[p591]</p>
+<p>A potential disadvantage of the adjacency-list representation is that it provides no quicker way to determine whether a given edge <em>(u, v)</em> is present in the graph than to search for <em>v</em> in the adjacency list <em>Adj[u]</em>. An adjacency-matrix representation of the graph remedies this disadvantage, but at the cost of using asymptotically more memory.</p>
+<p>We can readily adapt adjacency lists to represent <strong>weighted graphs</strong> (graphs for which each edge has an associated weight), typically given by a weight function <em>w</em>. We simply store the weight <em>w(u, v)</em> of the edge <em>(u, v)</em> with vertex <em>v</em> in <em>u</em>’s adjacency list.</p>
+<p>[p591-592]</p>
+<h4 id="representing-attributes">Representing attributes</h4>
+<p>[p592]</p>
+<p>For example, in an object-oriented programming language, vertex attributes might be represented as instance variables within a subclass of a <em>Vertex</em> class</p>
+<h3 id="222-breadth-first-search">22.2 Breadth-first search</h3>
             </div>
         </div>
 
