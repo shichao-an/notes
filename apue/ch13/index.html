@@ -220,6 +220,14 @@
                         </li>
                     
                         <li >
+                            <a href="../../tcpv1/ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../tcpv1/ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                    
+                        <li >
                             <a href="../../tcpv1/headers/">Headers</a>
                         </li>
                     
@@ -339,6 +347,19 @@
         
     
         <li class="main "><a href="#error-logging">Error Logging</a></li>
+        
+            <li><a href="#example-of-syslog">Example of syslog</a></li>
+        
+    
+        <li class="main "><a href="#single-instance-daemons">Single-Instance Daemons</a></li>
+        
+            <li><a href="#example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon</a></li>
+        
+    
+        <li class="main "><a href="#daemon-conventions">Daemon Conventions</a></li>
+        
+    
+        <li class="main "><a href="#clientserver-model">Client–Server Model</a></li>
         
     
     </ul>
@@ -569,6 +590,309 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 
 <p>We can also use ps to verify that no active process exists with ID 13799. This means that our daemon is in an orphaned process group and is not a session leader and, therefore, has no chance of allocating a controlling terminal. This is a result of performing the second <code>fork</code> in the <code>daemonize</code> function. We can see that our daemon has been initialized correctly.</p>
 <h3 id="error-logging">Error Logging</h3>
+<p>One problem a daemon has is how to handle error messages. It cannot (simply) write to:</p>
+<ul>
+<li>Standard error: it shouldn't have a controlling terminal.</li>
+<li>Console device: on many workstations the console device runs a windowing system.</li>
+<li>Separate files: it's a headache to keep up which daemon writes to which log file and to check these files on a regular basis.</li>
+</ul>
+<p>A central daemon error-logging facility is required. The BSD <code>syslog</code> facility has been widely used since 4.2BSD. Most daemons use this facility. The following figure illustrates its structure:</p>
+<p><a href="../figure_13.2.png" title="Figure 13.2 The BSD syslog facility"><img alt="&quot;Figure 13.2 The BSD syslog facility&quot;" src="../figure_13.2.png" /></a></p>
+<p>There are three ways to generate log messages:</p>
+<ol>
+<li>Kernel routines can call the <code>log</code> function. These messages can be read by any user process that <code>open</code>s and <code>read</code>s the <code>/dev/klog</code> device.</li>
+<li>Most user processes (daemons) call the <code>syslog(3)</code> function to generate log messages. This causes the message to be sent to the UNIX domain datagram socket <code>/dev/log</code>.</li>
+<li>A user process on this host or some other host that is connected to this host by a TCP/IP network, can send log messages to UDP port 514. Note that the <code>syslog</code> function never generates these UDP datagrams: they require explicit network programming by the process generating the log message.</li>
+</ol>
+<p>The <code>syslogd</code> daemon reads all three forms of log messages. On start-up, this daemon reads a configuration file, usually <code>/etc/syslog.conf</code>, which determines where different classes of messages are to be sent. For example, urgent messages can be sent to the system administrator (if logged in) and printed on the console, whereas warnings may be logged to a file.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;syslog.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">openlog</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">ident</span><span class="p">,</span> <span class="kt">int</span> <span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">facility</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">syslog</span><span class="p">(</span><span class="kt">int</span> <span class="n">priority</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span> <span class="p">...);</span>
+<span class="kt">void</span> <span class="nf">closelog</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setlogmask</span><span class="p">(</span><span class="kt">int</span> <span class="n">maskpri</span><span class="p">);</span>
+
+<span class="cm">/* Returns: previous log priority mask value */</span>
+</pre></div>
+
+
+<ul>
+<li>Calling <code>openlog</code> is optional. If it’s not called, the first time syslog is called, openlog is called automatically.</li>
+<li>
+<p>Calling <code>closelog</code> is also optional. It closes the descriptor being used to communicate with the syslogd daemon.</p>
+</li>
+<li>
+<p>The <code>openlog</code> function:</p>
+<ul>
+<li><em>indent</em> argument is the name of the program.</li>
+<li><em>option</em> argument is a bitmask specifying various options. (see the table below)</li>
+<li><em>facility</em> argument lets the configuration file specify that messages from different facilities are to be handled differently. If we don’t call <code>openlog</code>, or if we call it with a facility of 0, we can still specify the facility as part of the priority argument to syslog.  (see the table below)</li>
+</ul>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><em>option</em></th>
+<th>XSI</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOG_CONS</code></td>
+<td>x</td>
+<td>If the log message can’t be sent to <code>syslogd</code> via the UNIX domain datagram, the message is written to the console instead.</td>
+</tr>
+<tr>
+<td><code>LOG_NDELAY</code></td>
+<td>x</td>
+<td>Open the UNIX domain datagram socket to the <code>syslogd</code> daemon immediately; don’t wait until the first message is logged. Normally, the socket is not opened until the first message is logged.</td>
+</tr>
+<tr>
+<td><code>LOG_NOWAIT</code></td>
+<td>x</td>
+<td>Do not wait for child processes that might have been created in the process of logging the message. This prevents conflicts with applications that catch <code>SIGCHLD</code>, since the application might have retrieved the child’s status by the time that syslog calls wait.</td>
+</tr>
+<tr>
+<td><code>LOG_ODELAY</code></td>
+<td>x</td>
+<td>Delay the opening of the connection to the <code>syslogd</code> daemon until the first message is logged.</td>
+</tr>
+<tr>
+<td><code>LOG_PERROR</code></td>
+<td></td>
+<td>Write the log message to standard error in addition to sending it to <code>syslogd</code>.  (Unavailable on Solaris.)</td>
+</tr>
+<tr>
+<td><code>LOG_PID</code></td>
+<td>x</td>
+<td>Log the process ID with each message. This is intended for daemons that fork a child process to handle different requests (as compared to daemons, such as <code>syslogd</code>, that never call <code>fork</code>).</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><em>facility</em></th>
+<th>XSI</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOG_AUDIT</code></td>
+<td></td>
+<td>the audit facility</td>
+</tr>
+<tr>
+<td><code>LOG_AUTH</code></td>
+<td></td>
+<td>authorization programs: <code>login</code>, <code>su</code>, <code>getty</code>, ...</td>
+</tr>
+<tr>
+<td><code>LOG_AUTHPRIV</code></td>
+<td></td>
+<td>same as <code>LOG_AUTH</code>, but logged to file with restricted permissions</td>
+</tr>
+<tr>
+<td><code>LOG_CONSOLE</code></td>
+<td></td>
+<td>messages written to <code>/dev/console</code></td>
+</tr>
+<tr>
+<td><code>LOG_CRON</code></td>
+<td></td>
+<td>cron and at</td>
+</tr>
+<tr>
+<td><code>LOG_DAEMON</code></td>
+<td></td>
+<td>system daemons: <code>inetd</code>, <code>routed</code>, ...</td>
+</tr>
+<tr>
+<td><code>LOG_FTP</code></td>
+<td></td>
+<td>the FTP daemon (<code>ftpd</code>)</td>
+</tr>
+<tr>
+<td><code>LOG_KERN</code></td>
+<td></td>
+<td>messages generated by the kernel</td>
+</tr>
+<tr>
+<td><code>LOG_LOCAL0</code> ~ <code>LOG_LOCAL7</code></td>
+<td>x</td>
+<td>reserved for local use</td>
+</tr>
+<tr>
+<td><code>LOG_LPR</code></td>
+<td></td>
+<td>line printer system: <code>lpd</code>, <code>lpc</code>, ...</td>
+</tr>
+<tr>
+<td><code>LOG_MAIL</code></td>
+<td></td>
+<td>the mail system</td>
+</tr>
+<tr>
+<td><code>LOG_NEWS</code></td>
+<td></td>
+<td>the Usenet network news system</td>
+</tr>
+<tr>
+<td><code>LOG_NTP</code></td>
+<td></td>
+<td>the network time protocol system</td>
+</tr>
+<tr>
+<td><code>LOG_SECURITY</code></td>
+<td></td>
+<td>the security subsystem</td>
+</tr>
+<tr>
+<td><code>LOG_SYSLOG</code></td>
+<td></td>
+<td>the syslogd daemon itself</td>
+</tr>
+<tr>
+<td><code>LOG_USER</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>LOG_UUCP</code></td>
+<td></td>
+<td>the UUCP system</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>syslog</code> function:<ul>
+<li>The <em>priority</em> argument is a combination of the <em>facility</em> and a <em>level</em> (shown in the table below). These <em>level</em>s are ordered by priority, from highest to lowest.</li>
+<li>The <em>format</em> argument and any remaining arguments are passed to the <code>vsprintf</code> function for formatting. Any occurrences of the characters <code>%m</code> are first replaced with the error message string (<code>strerror</code>) corresponding to the value of <code>errno</code>.</li>
+</ul>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><em>level</em></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOG_EMERG</code></td>
+<td>emergency (system is unusable) (highest priority)</td>
+</tr>
+<tr>
+<td><code>LOG_ALERT</code></td>
+<td>condition that must be fixed immediately</td>
+</tr>
+<tr>
+<td><code>LOG_CRIT</code></td>
+<td>critical condition (e.g., hard device error)</td>
+</tr>
+<tr>
+<td><code>LOG_ERR</code></td>
+<td>error condition</td>
+</tr>
+<tr>
+<td><code>LOG_WARNING</code></td>
+<td>warning condition</td>
+</tr>
+<tr>
+<td><code>LOG_NOTICE</code></td>
+<td>normal, but significant condition</td>
+</tr>
+<tr>
+<td><code>LOG_INFO</code></td>
+<td>informational message</td>
+</tr>
+<tr>
+<td><code>LOG_DEBUG</code></td>
+<td>debug message (lowest priority)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>setlogmask</code> function sets the log priority mask ("logmask") for the process and returns the previous mask. When the log priority mask is set, messages are not logged unless their priority is set in the log priority mask.</li>
+</ul>
+<p>The <code>logger(1)</code> program is also provided by many systems as a way to send log messages to the <code>syslog</code> facility. The <code>logger</code> command is intended for a shell script running noninteractively that needs to generate log messages.</p>
+<p>In addition to <code>syslog</code>, many platforms provide a variant that handles variable argument lists.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;syslog.h&gt;</span>
+<span class="cp">#include &lt;stdarg.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">vsyslog</span><span class="p">(</span><span class="kt">int</span> <span class="n">priority</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span> <span class="kt">va_list</span> <span class="n">arg</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Most <code>syslogd</code> implementations will queue messages for a short time. If a duplicate message arrives during this period, the syslog daemon will not write it to the log. Instead, the daemon prints a message similar to "last message repeated N times".</p>
+<h4 id="example-of-syslog">Example of <code>syslog</code></h4>
+<p>In a line printer spooler daemon, you might encounter the sequence:</p>
+<div class="codehilite"><pre><span class="n">openlog</span><span class="p">(</span><span class="s">&quot;lpd&quot;</span><span class="p">,</span> <span class="n">LOG_PID</span><span class="p">,</span> <span class="n">LOG_LPR</span><span class="p">);</span>
+<span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;open error for %s: %m&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The first call to <code>openlog</code> sets the <em>ident</em> string to the program name, specifies that the process ID should always be printed, and sets the default facility to the line printer system. The call to <code>syslog</code> specifies an error condition and a message string. If we had not called <code>openlog</code>, the second call could have been:</p>
+<div class="codehilite"><pre><span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span> <span class="o">|</span> <span class="n">LOG_LPR</span><span class="p">,</span> <span class="s">&quot;open error for %s: %m&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Here, we specify the <em>priority</em> argument as a combination of a <em>level</em> and a <em>facility</em>.</p>
+<h3 id="single-instance-daemons">Single-Instance Daemons</h3>
+<p>Some daemons are implemented so that only a single copy of the daemon should be running at a time for proper operation. This kind of daemon might need exclusive access to a device. For example of the <code>cron</code> daemon, if multiple instances were running, each copy might try to start a single scheduled operation, resulting in duplicate operations and probably an error.</p>
+<p>The file- and record-locking mechanism (<a href="../ch14/#record-locking">Section 14.3</a>) is a way to ensure that only one copy of a daemon is running. If each daemon creates a file with a fixed name and places a write lock on the entire file, only one such write lock will be allowed to be created. Successive attempts to create write locks will fail, serving as an indication to successive copies of the daemon that another instance is already running.</p>
+<p>[p473]</p>
+<h4 id="example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon</h4>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/single.c">daemons/single.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+<span class="cp">#include &lt;syslog.h&gt;</span>
+<span class="cp">#include &lt;string.h&gt;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;sys/stat.h&gt;</span>
+
+<span class="cp">#define LOCKFILE &quot;/var/run/daemon.pid&quot;</span>
+<span class="cp">#define LOCKMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)</span>
+
+<span class="k">extern</span> <span class="kt">int</span> <span class="nf">lockfile</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="kt">int</span>
+<span class="nf">already_running</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">fd</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">buf</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>
+
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">LOCKFILE</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="o">|</span><span class="n">O_CREAT</span><span class="p">,</span> <span class="n">LOCKMODE</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;can&#39;t open %s: %s&quot;</span><span class="p">,</span> <span class="n">LOCKFILE</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">lockfile</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EACCES</span> <span class="o">||</span> <span class="n">errno</span> <span class="o">==</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;can&#39;t lock %s: %s&quot;</span><span class="p">,</span> <span class="n">LOCKFILE</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">ftruncate</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">&quot;%ld&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpid</span><span class="p">());</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each copy of the daemon will try to create a file and write its process ID in the file.  This will allow administrators to identify the process easily. If the file is already locked, the lockfile function will fail with <code>errno</code> set to <code>EACCES</code> or <code>EAGAIN</code>, so we return 1, indicating that the daemon is already running. Otherwise, we truncate the file, write our process ID to it, and return 0.</p>
+<p>[p474]</p>
+<h3 id="daemon-conventions">Daemon Conventions</h3>
+<h3 id="clientserver-model">Client–Server Model</h3>
             </div>
         </div>
 
