@@ -358,6 +358,10 @@
     
         <li class="main "><a href="#ethernet-and-the-ieee-802-lanman-standards">Ethernet and the IEEE 802 LAN/MAN Standards</a></li>
         
+            <li><a href="#the-ieee-802-lanman-standards">The IEEE 802 LAN/MAN Standards</a></li>
+        
+            <li><a href="#the-ethernet-frame-format">The Ethernet Frame Format</a></li>
+        
     
         <li class="main "><a href="#full-duplex-power-save-autonegotiation-and-8021x-flow-control">Full Duplex, Power Save, Autonegotiation, and 802.1X Flow Control</a></li>
         
@@ -374,6 +378,14 @@
         <li class="main "><a href="#loopback">Loopback</a></li>
         
     
+        <li class="main "><a href="#mtu-and-path-mtu">MTU and Path MTU</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -385,6 +397,36 @@
 <p>When referring to link-layer protocol data units (PDUs), we usually use the term <strong>frame</strong>, so as to distinguish the PDU format from those at higher layers such as packets or segments, terms used to describe network- and transport-layer PDUs, respectively.</p>
 <p>Frame formats usually support a variable-length frame size, the upper bound of which is called the <a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit"><strong>maximum transmission unit</strong></a> (MTU). Some network technologies, such as modems and serial lines, do not impose their own maximum frame size, so they can be configured by the user.</p>
 <h3 id="ethernet-and-the-ieee-802-lanman-standards">Ethernet and the IEEE 802 LAN/MAN Standards</h3>
+<p>[p80]</p>
+<h4 id="the-ieee-802-lanman-standards">The IEEE 802 LAN/MAN Standards</h4>
+<p>[p82]</p>
+<h4 id="the-ethernet-frame-format">The Ethernet Frame Format</h4>
+<p>The figure below shows the current layout of an Ethernet frame and how it relates to a relatively new term introduced by IEEE, the <strong>IEEE packet</strong>.</p>
+<p><a href="../figure_3-3.png" title="The Ethernet (IEEE 802.3) frame format contains source and destination addresses, an overloaded Length/Type field, a field for data, and a frame check sequence (a CRC32). Additions to the basic frame format provide for a tag containing a VLAN ID and priority information (802.1p/q) and more recently for an extensible number of tags. The preamble and SFD are used for synchronizing receivers. When half-duplex operation is used with Ethernet running at 100Mb/s or more, additional bits may be appended to short frames as a carrier extension to ensure that the collision detection circuitry operates properly. "><img alt="The Ethernet (IEEE 802.3) frame format contains source and destination addresses, an overloaded Length/Type field, a field for data, and a frame check sequence (a CRC32). Additions to the basic frame format provide for a tag containing a VLAN ID and priority information (802.1p/q) and more recently for an extensible number of tags. The preamble and SFD are used for synchronizing receivers. When half-duplex operation is used with Ethernet running at 100Mb/s or more, additional bits may be appended to short frames as a carrier extension to ensure that the collision detection circuitry operates properly. " src="../figure_3-3_600.png" /></a></p>
+<ul>
+<li>The Ethernet frame begins with a <strong>Preamble</strong> area used by the receiving interface’s circuitry to determine when a frame is arriving and to determine the amount of time between encoded bits (called <strong>clock recovery</strong>). Because Ethernet is an asynchronous LAN, the space between encoded bits may differ from one interface card from another.</li>
+<li>
+<p>This basic frame format includes 48-bit (6-byte) <strong>Destination</strong> (DST) and <strong>Source</strong> (SRC) Address fields. These addresses are sometimes known by other names such as:</p>
+<ul>
+<li>MAC address</li>
+<li>Link-layer address</li>
+<li>802 address</li>
+<li>Hardware address</li>
+<li>Physical address</li>
+</ul>
+<p>The destination address in an Ethernet frame is also allowed to address more than one station ("broadcast" or "multicast"; see <a href="ch9.md">Chapter 9</a>). The broadcast capability is used by the ARP protocol (<a href="ch4.md">Chapter 4</a>) and multicast capability is used by the ICMPv6 protocol (<a href="ch8.md">Chapter 8</a>) to convert between network-layer and link-layer addresses.</p>
+</li>
+<li>
+<p><strong>Type</strong> field that doubles as a <strong>Length</strong> field. It identifies the type of data that follows the header. Popular values used with TCP/IP networks include:</p>
+<ul>
+<li>IPv4 (0x0800)</li>
+<li>IPv6 (0x86DD)</li>
+<li>ARP (0x0806).</li>
+</ul>
+<p>The value 0x8100 indicates a Q-tagged frame (i.e., one that can carry a "virtual LAN" or VLAN ID according to the 802.1q standard).</p>
+<p><u>The size of a basic Ethernet frame is 1518 bytes</u>, but the more recent standard extended this size to 2000 bytes.</p>
+</li>
+</ul>
 <h3 id="full-duplex-power-save-autonegotiation-and-8021x-flow-control">Full Duplex, Power Save, Autonegotiation, and 802.1X Flow Control</h3>
 <h3 id="bridges-and-switches">Bridges and Switches</h3>
 <h3 id="wireless-lansieee-80211wi-fi">Wireless LANs—IEEE 802.11(Wi-Fi)</h3>
@@ -392,6 +434,39 @@
 <h3 id="loopback">Loopback</h3>
 <p>In many cases clients want to communicate with servers on the same computer using Internet protocols such as TCP/IP. To enable this, most implementations support a network-layer <a href="https://en.wikipedia.org/wiki/Loopback"><strong>loopback</strong></a> capability that typically takes the form of a <a href="https://en.wikipedia.org/wiki/Localhost">virtual loopback network interface</a>. <u>It acts like a real network interface but is really a special piece of software provided by the operating system to enable TCP/IP and other communications on the same host computer.</u></p>
 <p>IPv4 addresses starting with 127 are reserved for this, as is the IPv6 address ::1 (<a href="../ch2/">Chapter 2</a>). Traditionally, UNIX-like systems including Linux assign the IPv4 address of 127.0.0.1 (::1 for IPv6) to the loopback interface and assign it the name localhost.</p>
+<p><u>An IP datagram sent to the loopback interface must not appear on any network.</u> Although we could imagine the transport layer detecting that the other end is a loopback address and shortcircuiting some of the transport-layer logic and all of the network-layer logic, most implementations perform complete processing of the data in the transport layer and network layer and loop the IP datagram back up in the network stack only when the datagram leaves the bottom of the network layer. This can be useful for performance measurement, for example, because the amount of time required to execute the stack software can be measured without any hardware overheads. In Linux, the loopback interface is called <code>lo</code>.</p>
+<div class="codehilite"><pre>Linux% ifconfig lo
+lo Link encap:Local Loopback
+ inet addr:127.0.0.1 Mask:255.0.0.0
+ inet6 addr: ::1/128 Scope:Host
+ UP LOOPBACK RUNNING MTU:16436 Metric:1
+ RX packets:458511 errors:0 dropped:0 overruns:0 frame:0
+ TX packets:458511 errors:0 dropped:0 overruns:0 carrier:0
+ collisions:0 txqueuelen:0
+ RX bytes:266049199 (253.7 MiB)
+ TX bytes:266049199 (253.7 MiB)
+</pre></div>
+
+
+<p>This local loopback interface:</p>
+<ul>
+<li>The IPv4 address is 127.0.0.1 and has a subnet mask of 255.0.0.0 (corresponding to class A network number 127 in classful addressing).</li>
+<li>The IPv6 address ::1 has a 128-bit-long prefix, so it represents only a single address. The interface has an MTU of 16KB (this can be configured to a much larger size, up to 2GB).</li>
+</ul>
+<p>We would not expect to see errors on the local loopback device, given that it never really sends packets on any network</p>
+<h3 id="mtu-and-path-mtu">MTU and Path MTU</h3>
+<p>From <a href="../figure_3-3.png">Figure 3-3</a>, there is a limit on the frame's size available for carrying the PDUs of higher-layer protocols in link-layer networks. This usually limits the number of payload bytes to about 1500 for Ethernet and often the same amount for PPP in order to maintain compatibility with Ethernet.</p>
+<p>This characteristic (the limit of frame's size to carry higher-layer PDUs) of the link layer is called the <strong>maximum transmission unit</strong> (MTU). Most packet networks (like Ethernet) have a fixed upper limit:</p>
+<ul>
+<li>Most stream-type networks (serial links) have a configurable limit that is then used by framing protocols such as PPP.</li>
+<li>If IP has a datagram to send, and the datagram is larger than the link layer’s MTU, IP performs <em>fragmentation</em>, breaking the datagram up into smaller pieces (fragments), so that each fragment is smaller than the MTU.</li>
+</ul>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p146 on loopback</p>
+<blockquote>
+<p>An IP datagram sent to the loopback interface must not appear on any network. Although we could imagine the transport layer detecting that the other end is a loopback address and shortcircuiting some of the transport-layer logic and all of the network-layer logic, most implementations perform complete processing of the data in the transport layer and network layer and loop the IP datagram back up in the network stack only when the datagram leaves the bottom of the network layer.</p>
+</blockquote>
             </div>
         </div>
 
