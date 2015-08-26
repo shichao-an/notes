@@ -379,6 +379,19 @@
     
         <li class="main "><a href="#listen-function">listen Function</a></li>
         
+            <li><a href="#connection-queues">Connection queues *</a></li>
+        
+            <li><a href="#packet-exchanges-during-conenction-establishment">Packet exchanges during conenction establishment *</a></li>
+        
+            <li><a href="#the-backlog-argument">The backlog argument *</a></li>
+        
+            <li><a href="#syn-flooding">SYN Flooding *</a></li>
+        
+    
+        <li class="main "><a href="#accept-function">accept Function</a></li>
+        
+            <li><a href="#example-value-result-arguments">Example: Value-Result Arguments</a></li>
+        
     
     </ul>
 </div></div>
@@ -726,6 +739,7 @@
 <li>The second argument <em>backlog</em> to this function specifies the maximum number of connections the kernel should queue for this socket.</li>
 </ol>
 <p>This function is normally called after both the <code>socket</code> and <code>bind</code> functions and must be called before calling the <code>accept</code> function.</p>
+<h4 id="connection-queues">Connection queues *</h4>
 <p>To understand the <em>backlog</em> argument, we must realize that for a given listening socket, the kernel maintains two queues:</p>
 <ol>
 <li>An <strong>incomplete connection queue</strong>, which contains an entry for each SYN that has arrived from a client for which the server is awaiting completion of the TCP three-way handshake. These sockets are in the <code>SYN_RCVD</code> state (<a href="../figure_2.4.png">Figure 2.4</a>).</li>
@@ -733,6 +747,182 @@
 </ol>
 <p>These two queues are depicted in the figure below:</p>
 <p><a href="../figure_4.7.png" title="Figure 4.7. The two queues maintained by TCP for a listening socket."><img alt="Figure 4.7. The two queues maintained by TCP for a listening socket." src="../figure_4.7.png" /></a></p>
+<p>When an entry is created on the incomplete queue, the parameters from the listen socket are copied over to the newly created connection. <u>The connection creation mechanism is completely automatic; the server process is not involved.</u></p>
+<h4 id="packet-exchanges-during-conenction-establishment">Packet exchanges during conenction establishment *</h4>
+<p>The following figure depicts the packets exchanged during the connection establishment with these two queues:</p>
+<p><a href="../figure_4.8.png" title="Figure 4.8. TCP three-way handshake and the two queues for a listening socket."><img alt="Figure 4.8. TCP three-way handshake and the two queues for a listening socket." src="../figure_4.8.png" /></a></p>
+<ul>
+<li>When a SYN arrives from a client, TCP creates a new entry on the incomplete queue and then responds with the second segment of the three-way handshake: the server's SYN with an ACK of the client's SYN (<a href="../ch2/#tcp-connection-establishment-and-termination">Section 2.6</a>).</li>
+<li>This entry will remain on the incomplete queue, until:<ul>
+<li>The third segment of the three-way handshake arrives (the client's ACK of the server's SYN), or</li>
+<li>The entry times out. (Berkeley-derived implementations have a timeout of 75 seconds for these incomplete entries.)</li>
+</ul>
+</li>
+<li>If the three-way handshake completes normally, the entry moves from the incomplete queue to the end of the completed queue.</li>
+<li>When the process calls <code>accept</code>:<ul>
+<li>The first entry on the completed queue is returned to the process, or</li>
+<li>If the queue is empty, the process is put to sleep until an entry is placed onto the completed queue.</li>
+</ul>
+</li>
+</ul>
+<h4 id="the-backlog-argument">The <em>backlog</em> argument *</h4>
+<p>Several points to consider when handling the two queues:</p>
+<ul>
+<li><strong>Sum of both queues</strong>. The <em>backlog</em> argument to the <code>listen</code> function has historically specified the maximum value for the sum of both queues.</li>
+<li><strong>Multiplied by 1.5</strong>. Berkeley-derived implementations add a fudge factor to the <em>backlog</em>: It is multiplied by 1.5.<ul>
+<li>If the <em>backlog</em> specifies the maximum number of completed connections the kernel will queue for a socket, then the reason for the fudge factor is to take into account incomplete connections on the queue.</li>
+</ul>
+</li>
+<li><strong>Do not specify value of 0</strong> for <em>backlog</em>, as different implementations interpret this differently (<a href="../figure_4.10.png">Figure 4.10</a>). If you do not want any clients connecting to your listening socket, close the listening socket.</li>
+<li><strong>One RTT</strong>. If the three-way handshake completes normally (no lost segments and no retransmissions), an entry remains on the incomplete connection queue for one RTT.</li>
+<li><strong>Configurable maximum value</strong>. Many current systems allow the administrator to modify the maximum value for the <em>backlog</em>. Historically, sample code always shows a <em>backlog</em> of 5 (which is adequate today).</li>
+<li><strong>What value should the application specify for the <em>backlog</em> </strong> (5 is often inadequate)? There is no easy answer to this.<ul>
+<li>HTTP servers now specify a larger value, but if the value specified is a constant in the source code, to increase the constant requires recompiling the server.</li>
+<li>Another method is to allow a command-line option or an environment variable to override the default. It is always acceptable to specify a value that is larger than supported by the kernel, as the kernel should silently truncate the value to the maximum value that it supports, without returning an error. The following example is the wrapper function for <code>listen</code> which allows the environment variable <code>LISTENQ</code> to override the value specified by the caller:</li>
+</ul>
+</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/wrapsock.c#L166">lib/wrapsock.c#L166</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span>
+<span class="nf">Listen</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">backlog</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+
+        <span class="cm">/* can override 2nd argument with environment variable */</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">ptr</span> <span class="o">=</span> <span class="n">getenv</span><span class="p">(</span><span class="s">&quot;LISTENQ&quot;</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">backlog</span> <span class="o">=</span> <span class="n">atoi</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">listen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">backlog</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;listen error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="cm">/* end Listen */</span>
+</pre></div>
+
+
+<ul>
+<li><strong>Fixed number of connections</strong>. Historically the reason for queuing a fixed number of connections is to handle the case of the server process being busy between successive calls to <code>accept</code>. This implies that of the two queues, the completed queue should normally have more entries than the incomplete queue. Again, busy Web servers have shown that this is false. The reason for specifying a large <em>backlog</em> is because the incomplete connection queue can grow as client SYNs arrive, waiting for completion of the three-way handshake.</li>
+<li><strong>No RST sent if queues are full</strong>. If the queues are full when a client SYN arrives, TCP ignores the arriving SYN; it does not send an RST. This is because the condition is considered temporary, and the client TCP will retransmit its SYN, hopefully finding room on the queue in the near future. If the server TCP immediately responded with an RST, the client's <code>connect</code> would return an error, forcing the application to handle this condition instead of letting TCP's normal retransmission take over. Also, the client could not differentiate between an RST in response to a SYN meaning "there is no server at this port" versus "there is a server at this port but its queues are full."</li>
+<li><strong>Data queued in the socket's receive buffer</strong>. Data that arrives after the three-way handshake completes, but before the server calls <code>accept</code>, should be queued by the server TCP, up to the size of the connected socket's receive buffer.</li>
+</ul>
+<p>The following figure shows actual number of queued connections for values of <em>backlog</em>:</p>
+<p><a href="../figure_4.10.png" title="Figure 4.10. Actual number of queued connections for values of backlog."><img alt="Figure 4.10. Actual number of queued connections for values of backlog." src="../figure_4.10.png" /></a></p>
+<h4 id="syn-flooding">SYN Flooding *</h4>
+<p><a href="https://en.wikipedia.org/wiki/SYN_flood"><strong>SYN flooding</strong></a> is a type of attack (the attacker writes a program to send SYNs at a high rate to the victim) that attempts to fill the incomplete connection queue for one or more TCP ports. Additionally, the source IP address of each SYN is set to a random number (called <a href="https://en.wikipedia.org/wiki/IP_address_spoofing"><strong>IP spoofing</strong></a>) so that the server's SYN/ACK goes nowhere.This also prevents the server from knowing the real IP address of the attacker. By filling the incomplete queue with bogus SYNs, legitimate SYNs are not queued, providing a <a href="https://en.wikipedia.org/wiki/Denial-of-service_attack">denial of service</a> to legitimate clients.</p>
+<p>The <code>listen</code>'s <em>backlog</em> argument should specify the maximum number of completed connections for a given socket that the kernel will queue. The purpose ofto limit completed connections is to stop the kernel from accepting new connection requests for a given socket when the application is not accepting them. If a system implements this interpretation, then the application need not specify huge <em>backlog</em> values just because the server handles lots of client requests or to provide protection against SYN flooding. The kernel handles lots of incomplete connections, regardless of whether they are legitimate or from a hacker. But even with this interpretation, scenarios do occur where the traditional value of 5 is inadequate.</p>
+<h3 id="accept-function"><code>accept</code> Function</h3>
+<p><code>accept</code> is called by a TCP server to return the next completed connection from the front of the completed connection queue (<a href="../figure_4.7.png">Figure 4.7</a>). If the completed connection queue is empty, the process is put to sleep (assuming the default of a blocking socket).</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/socket.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">accept</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">cliaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="o">*</span><span class="n">addrlen</span><span class="p">);</span>
+
+<span class="cm">/* Returns: non-negative descriptor if OK, -1 on error */</span>
+</pre></div>
+
+
+<p>The <em>cliaddr</em> and <em>addrlen</em> arguments are used to return the protocol address of the connected peer process (the client). <em>addrlen</em> is a value-result argument (<a href="../ch3/#value-result-arguments">Section 3.3</a>):</p>
+<ul>
+<li>Before the call, we set the integer value referenced by *<em>addrlen</em> to the size of the socket address structure pointed to by <em>cliaddr</em>;</li>
+<li>On return, this integer value contains the actual number of bytes stored by the kernel in the socket address structure.</li>
+</ul>
+<p>If successful, <code>accept</code> returns a new descriptor automatically created by the kernel. This new descriptor refers to the TCP connection with the client.</p>
+<ul>
+<li>The <strong>listening socket</strong> is the first argument (<em>sockfd</em>) to <code>accept</code> (the descriptor created by <code>socket</code> and used as the first argument to both <code>bind</code> and <code>listen</code>).</li>
+<li>The <strong>connected socket</strong> is the return value from <code>accept</code> the connected socket.</li>
+</ul>
+<p>It is important to differentiate between these two sockets:</p>
+<ul>
+<li>A given server normally creates only one listening socket, which then exists for the lifetime of the server.</li>
+<li>The kernel creates one connected socket for each client connection that is accepted (for which the TCP three-way handshake completes).</li>
+<li>When the server is finished serving a given client, the connected socket is closed.</li>
+</ul>
+<p>This function returns up to three values:</p>
+<ul>
+<li>An integer return code that is either a new socket descriptor or an error indication,</li>
+<li>The protocol address of the client process (through the <em>cliaddr</em> pointer),</li>
+<li>The size of this address (through the <em>addrlen</em> pointer).</li>
+</ul>
+<p>If we are not interested in having the protocol address of the client returned, we set both <em>cliaddr</em> and <em>addrlen</em> to null pointers. See <a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c">intro/daytimetcpsrv.c</a>.</p>
+<h4 id="example-value-result-arguments">Example: Value-Result Arguments</h4>
+<p>The following code shows how to handle the value-result argument to <code>accept</code> by modifying the code from <a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c">intro/daytimetcpsrv.c</a> to print the IP address and port of the client:</p>
+<div class="codehilite"><pre><span class="cp">#include    &quot;unp.h&quot;</span>
+<span class="cp">#include    &lt;time.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>                 <span class="n">listenfd</span><span class="p">,</span> <span class="n">connfd</span><span class="p">;</span>
+    <span class="kt">socklen_t</span>           <span class="n">len</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="n">servaddr</span><span class="p">,</span> <span class="n">cliaddr</span><span class="p">;</span>
+    <span class="kt">char</span>                <span class="n">buff</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">time_t</span>              <span class="n">ticks</span><span class="p">;</span>
+
+    <span class="n">listenfd</span> <span class="o">=</span> <span class="n">Socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">bzero</span><span class="p">(</span><span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_family</span>      <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">htonl</span><span class="p">(</span><span class="n">INADDR_ANY</span><span class="p">);</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_port</span>        <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="mi">13</span><span class="p">);</span>   <span class="cm">/* daytime server */</span>
+
+    <span class="n">Bind</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+
+    <span class="n">Listen</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="n">LISTENQ</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cliaddr</span><span class="p">);</span>
+        <span class="n">connfd</span> <span class="o">=</span> <span class="n">Accept</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">len</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;connection from %s, port %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+               <span class="n">Inet_ntop</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">,</span> <span class="n">buff</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buff</span><span class="p">)),</span>
+               <span class="n">ntohs</span><span class="p">(</span><span class="n">cliaddr</span><span class="p">.</span><span class="n">sin_port</span><span class="p">));</span>
+
+        <span class="n">ticks</span> <span class="o">=</span> <span class="n">time</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="n">snprintf</span><span class="p">(</span><span class="n">buff</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buff</span><span class="p">),</span> <span class="s">&quot;%.24s</span><span class="se">\r\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ctime</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ticks</span><span class="p">));</span>
+        <span class="n">Write</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">buff</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">buff</span><span class="p">));</span>
+
+        <span class="n">Close</span><span class="p">(</span><span class="n">connfd</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program does the following:</p>
+<ul>
+<li><strong>New declarations</strong>. Two new variables are defined:<ul>
+<li><code>len</code> will be a value-result variable.</li>
+<li><code>cliaddr</code> will contain the client's protocol address.</li>
+</ul>
+</li>
+<li><strong>Accept connection and print client's address</strong>.<ul>
+<li>Initialize <code>len</code> to the size of the socket address structure</li>
+<li>Pass a pointer to the <code>cliaddr</code> structure and a pointer to <code>len</code> as the second and third arguments to accept.</li>
+<li>Call <code>inet_ntop</code> (<a href="../ch3/#inet_pton-and-inet_ntop-functions">Section 3.7</a>) to convert the 32-bit IP address in the socket address structure to a dotted-decimal ASCII string and call <code>ntohs</code> (<a href="../ch3/#byte-ordering-functions">Section 3.4</a>) to convert the 16-bit port number from network byte order to host byte order.</li>
+</ul>
+</li>
+</ul>
+<p>Run this new server and then run our client on the same host, connecting to our server twice in a row:</p>
+<div class="codehilite"><pre>solaris % daytimetcpcli 127.0.0.1
+Thu Sep 11 12:44:00 2003
+solaris % daytimetcpcli 192.168.1.20
+Thu Sep 11 12:44:09 2003
+</pre></div>
+
+
+<p>We first specify the server's IP address as the loopback address (127.0.0.1) and then as its own IP address (192.168.1.20). Here is the corresponding server output:</p>
+<div class="codehilite"><pre>solaris # daytimetcpsrv1
+connection from 127.0.0.1, port 43388
+connection from 192.168.1.20, port 43389
+</pre></div>
+
+
+<p>Since our daytime client (<a href="../ch1/#a-simple-daytime-client">Figure 1.5</a>) does not call <code>bind</code>, the kernel chooses the source IP address based on the outgoing interface that is used (<a href="./#bind-function">Section 4.4</a>).</p>
+<ul>
+<li>In the first case, the kernel sets the source IP address to the loopback address;</li>
+<li>In the second case, it sets the address to the IP address of the Ethernet interface.</li>
+</ul>
+<p>We can also see in this example that the ephemeral port chosen by the Solaris kernel is 43388, and then 43389</p>
+<p>The pound sign (#) as the shell prompt indicates that our server must run with superuser privileges to bind the reserved port of 13. If we do not have superuser privileges, the call to <code>bind</code> will fail:</p>
+<div class="codehilite"><pre>solaris % daytimetcpsrv1
+bind error: Permission denied
+</pre></div>
             </div>
         </div>
 
