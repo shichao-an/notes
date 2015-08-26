@@ -235,6 +235,8 @@ The `listen` function is called only by a TCP server and it performs two actions
 
 This function is normally called after both the `socket` and `bind` functions and must be called before calling the `accept` function.
 
+#### Connection queues *
+
 To understand the *backlog* argument, we must realize that for a given listening socket, the kernel maintains two queues:
 
 1. An **incomplete connection queue**, which contains an entry for each SYN that has arrived from a client for which the server is awaiting completion of the TCP three-way handshake. These sockets are in the `SYN_RCVD` state ([Figure 2.4](figure_2.4.png)).
@@ -243,3 +245,187 @@ To understand the *backlog* argument, we must realize that for a given listening
 These two queues are depicted in the figure below:
 
 [![Figure 4.7. The two queues maintained by TCP for a listening socket.](figure_4.7.png)](figure_4.7.png "Figure 4.7. The two queues maintained by TCP for a listening socket.")
+
+When an entry is created on the incomplete queue, the parameters from the listen socket are copied over to the newly created connection. <u>The connection creation mechanism is completely automatic; the server process is not involved.</u>
+
+#### Packet exchanges during conenction establishment *
+
+The following figure depicts the packets exchanged during the connection establishment with these two queues:
+
+[![Figure 4.8. TCP three-way handshake and the two queues for a listening socket.](figure_4.8.png)](figure_4.8.png "Figure 4.8. TCP three-way handshake and the two queues for a listening socket.")
+
+* When a SYN arrives from a client, TCP creates a new entry on the incomplete queue and then responds with the second segment of the three-way handshake: the server's SYN with an ACK of the client's SYN ([Section 2.6](ch2.md#tcp-connection-establishment-and-termination)).
+* This entry will remain on the incomplete queue, until:
+    * The third segment of the three-way handshake arrives (the client's ACK of the server's SYN), or
+    * The entry times out. (Berkeley-derived implementations have a timeout of 75 seconds for these incomplete entries.)
+* If the three-way handshake completes normally, the entry moves from the incomplete queue to the end of the completed queue.
+* When the process calls `accept`:
+    * The first entry on the completed queue is returned to the process, or
+    * If the queue is empty, the process is put to sleep until an entry is placed onto the completed queue.
+
+#### The *backlog* argument *
+
+Several points to consider when handling the two queues:
+
+* **Sum of both queues**. The *backlog* argument to the `listen` function has historically specified the maximum value for the sum of both queues.
+* **Multiplied by 1.5**. Berkeley-derived implementations add a fudge factor to the *backlog*: It is multiplied by 1.5.
+    * If the *backlog* specifies the maximum number of completed connections the kernel will queue for a socket, then the reason for the fudge factor is to take into account incomplete connections on the queue.
+* **Do not specify value of 0** for *backlog*, as different implementations interpret this differently ([Figure 4.10](figure_4.10.png)). If you do not want any clients connecting to your listening socket, close the listening socket.
+* **One RTT**. If the three-way handshake completes normally (no lost segments and no retransmissions), an entry remains on the incomplete connection queue for one RTT.
+* **Configurable maximum value**. Many current systems allow the administrator to modify the maximum value for the *backlog*. Historically, sample code always shows a *backlog* of 5 (which is adequate today).
+* **What value should the application specify for the *backlog* ** (5 is often inadequate)? There is no easy answer to this.
+    * HTTP servers now specify a larger value, but if the value specified is a constant in the source code, to increase the constant requires recompiling the server.
+    * Another method is to allow a command-line option or an environment variable to override the default. It is always acceptable to specify a value that is larger than supported by the kernel, as the kernel should silently truncate the value to the maximum value that it supports, without returning an error. The following example is the wrapper function for `listen` which allows the environment variable `LISTENQ` to override the value specified by the caller:
+
+<small>[lib/wrapsock.c#L166](https://github.com/shichao-an/unpv13e/blob/master/lib/wrapsock.c#L166)</small>
+
+```c
+void
+Listen(int fd, int backlog)
+{
+	char	*ptr;
+
+		/* can override 2nd argument with environment variable */
+	if ( (ptr = getenv("LISTENQ")) != NULL)
+		backlog = atoi(ptr);
+
+	if (listen(fd, backlog) < 0)
+		err_sys("listen error");
+}
+/* end Listen */
+```
+
+* **Fixed number of connections**. Historically the reason for queuing a fixed number of connections is to handle the case of the server process being busy between successive calls to `accept`. This implies that of the two queues, the completed queue should normally have more entries than the incomplete queue. Again, busy Web servers have shown that this is false. The reason for specifying a large *backlog* is because the incomplete connection queue can grow as client SYNs arrive, waiting for completion of the three-way handshake.
+* **No RST sent if queues are full**. If the queues are full when a client SYN arrives, TCP ignores the arriving SYN; it does not send an RST. This is because the condition is considered temporary, and the client TCP will retransmit its SYN, hopefully finding room on the queue in the near future. If the server TCP immediately responded with an RST, the client's `connect` would return an error, forcing the application to handle this condition instead of letting TCP's normal retransmission take over. Also, the client could not differentiate between an RST in response to a SYN meaning "there is no server at this port" versus "there is a server at this port but its queues are full."
+* **Data queued in the socket's receive buffer**. Data that arrives after the three-way handshake completes, but before the server calls `accept`, should be queued by the server TCP, up to the size of the connected socket's receive buffer.
+
+The following figure shows actual number of queued connections for values of *backlog*:
+
+[![Figure 4.10. Actual number of queued connections for values of backlog.](figure_4.10.png)](figure_4.10.png "Figure 4.10. Actual number of queued connections for values of backlog.")
+
+#### SYN Flooding *
+
+[**SYN flooding**](https://en.wikipedia.org/wiki/SYN_flood) is a type of attack (the attacker writes a program to send SYNs at a high rate to the victim) that attempts to fill the incomplete connection queue for one or more TCP ports. Additionally, the source IP address of each SYN is set to a random number (called [**IP spoofing**](https://en.wikipedia.org/wiki/IP_address_spoofing)) so that the server's SYN/ACK goes nowhere.This also prevents the server from knowing the real IP address of the attacker. By filling the incomplete queue with bogus SYNs, legitimate SYNs are not queued, providing a [denial of service](https://en.wikipedia.org/wiki/Denial-of-service_attack) to legitimate clients.
+
+The `listen`'s *backlog* argument should specify the maximum number of completed connections for a given socket that the kernel will queue. The purpose ofto limit completed connections is to stop the kernel from accepting new connection requests for a given socket when the application is not accepting them. If a system implements this interpretation, then the application need not specify huge *backlog* values just because the server handles lots of client requests or to provide protection against SYN flooding. The kernel handles lots of incomplete connections, regardless of whether they are legitimate or from a hacker. But even with this interpretation, scenarios do occur where the traditional value of 5 is inadequate.
+
+### `accept` Function
+
+`accept` is called by a TCP server to return the next completed connection from the front of the completed connection queue ([Figure 4.7](figure_4.7.png)). If the completed connection queue is empty, the process is put to sleep (assuming the default of a blocking socket).
+
+```c
+#include <sys/socket.h>
+
+int accept (int sockfd, struct sockaddr *cliaddr, socklen_t *addrlen);
+
+/* Returns: non-negative descriptor if OK, -1 on error */
+```
+
+The *cliaddr* and *addrlen* arguments are used to return the protocol address of the connected peer process (the client). *addrlen* is a value-result argument ([Section 3.3](ch3.md#value-result-arguments)):
+
+* Before the call, we set the integer value referenced by \**addrlen* to the size of the socket address structure pointed to by *cliaddr*;
+* On return, this integer value contains the actual number of bytes stored by the kernel in the socket address structure.
+
+If successful, `accept` returns a new descriptor automatically created by the kernel. This new descriptor refers to the TCP connection with the client.
+
+* The **listening socket** is the first argument (*sockfd*) to `accept` (the descriptor created by `socket` and used as the first argument to both `bind` and `listen`).
+* The **connected socket** is the return value from `accept` the connected socket.
+
+It is important to differentiate between these two sockets:
+
+* A given server normally creates only one listening socket, which then exists for the lifetime of the server.
+* The kernel creates one connected socket for each client connection that is accepted (for which the TCP three-way handshake completes).
+* When the server is finished serving a given client, the connected socket is closed.
+
+This function returns up to three values:
+
+* An integer return code that is either a new socket descriptor or an error indication,
+* The protocol address of the client process (through the *cliaddr* pointer),
+* The size of this address (through the *addrlen* pointer).
+
+If we are not interested in having the protocol address of the client returned, we set both *cliaddr* and *addrlen* to null pointers. See [intro/daytimetcpsrv.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c).
+
+#### Example: Value-Result Arguments
+
+The following code shows how to handle the value-result argument to `accept` by modifying the code from [intro/daytimetcpsrv.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c) to print the IP address and port of the client:
+
+```c
+#include	"unp.h"
+#include	<time.h>
+
+int
+main(int argc, char **argv)
+{
+	int					listenfd, connfd;
+	socklen_t			len;
+	struct sockaddr_in	servaddr, cliaddr;
+	char				buff[MAXLINE];
+	time_t				ticks;
+
+	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port        = htons(13);	/* daytime server */
+
+	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
+
+	Listen(listenfd, LISTENQ);
+
+	for ( ; ; ) {
+		len = sizeof(cliaddr);
+		connfd = Accept(listenfd, (SA *) &cliaddr, &len);
+		printf("connection from %s, port %d\n",
+			   Inet_ntop(AF_INET, &cliaddr.sin_addr, buff, sizeof(buff)),
+			   ntohs(cliaddr.sin_port));
+
+        ticks = time(NULL);
+        snprintf(buff, sizeof(buff), "%.24s\r\n", ctime(&ticks));
+        Write(connfd, buff, strlen(buff));
+
+		Close(connfd);
+	}
+}
+```
+
+This program does the following:
+
+* **New declarations**. Two new variables are defined:
+    * `len` will be a value-result variable.
+    * `cliaddr` will contain the client's protocol address.
+* **Accept connection and print client's address**.
+    * Initialize `len` to the size of the socket address structure
+    * Pass a pointer to the `cliaddr` structure and a pointer to `len` as the second and third arguments to accept.
+    * Call `inet_ntop` ([Section 3.7](ch3.md#inet_pton-and-inet_ntop-functions)) to convert the 32-bit IP address in the socket address structure to a dotted-decimal ASCII string and call `ntohs` ([Section 3.4](ch3.md#byte-ordering-functions)) to convert the 16-bit port number from network byte order to host byte order.
+
+Run this new server and then run our client on the same host, connecting to our server twice in a row:
+
+```text
+solaris % daytimetcpcli 127.0.0.1
+Thu Sep 11 12:44:00 2003
+solaris % daytimetcpcli 192.168.1.20
+Thu Sep 11 12:44:09 2003
+```
+
+We first specify the server's IP address as the loopback address (127.0.0.1) and then as its own IP address (192.168.1.20). Here is the corresponding server output:
+
+```text
+solaris # daytimetcpsrv1
+connection from 127.0.0.1, port 43388
+connection from 192.168.1.20, port 43389
+```
+
+Since our daytime client ([Figure 1.5](ch1.md#a-simple-daytime-client)) does not call `bind`, the kernel chooses the source IP address based on the outgoing interface that is used ([Section 4.4](ch4.md#bind-function)).
+
+* In the first case, the kernel sets the source IP address to the loopback address;
+* In the second case, it sets the address to the IP address of the Ethernet interface.
+
+We can also see in this example that the ephemeral port chosen by the Solaris kernel is 43388, and then 43389
+
+The pound sign (#) as the shell prompt indicates that our server must run with superuser privileges to bind the reserved port of 13. If we do not have superuser privileges, the call to `bind` will fail:
+
+```text
+solaris % daytimetcpsrv1
+bind error: Permission denied
+```
