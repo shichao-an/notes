@@ -500,6 +500,34 @@
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/filedir/filetype.c">filetype.c</a></li>
 </ul>
 <h3 id="set-user-id-and-set-group-id">Set-User-ID and Set-Group-ID</h3>
+<p>Every process has six or more IDs associated with it:</p>
+<ul>
+<li>The <strong>real user ID</strong> and <strong>real group ID</strong>: who we really are.<ul>
+<li>These two fields are taken from our entry in the password file when we log in.</li>
+<li>Normally, these values don’t change during a login session, although there are ways for a superuser process to change them. (<a href="../ch8/#changing-user-ids-and-group-ids">Section 8.11</a>)</li>
+</ul>
+</li>
+<li>The <strong>effective user ID</strong>, <strong>effective group ID</strong> and <strong>supplementary group IDs</strong>: used for file access permission checks.</li>
+<li>The <strong>saved set-user-ID</strong> and <strong>saved set-group-ID</strong>: saved by <code>exec</code> functions. They contain copies of the effective user ID and the effective group ID, when a program is executed. (<a href="../ch8/#changing-user-ids-and-group-ids">Section 8.11</a>)</li>
+</ul>
+<p>Every file has an owner and a group owner:</p>
+<ul>
+<li>The owner is specified by the <code>st_uid</code> member of the <code>stat</code> structure;</li>
+<li>The group owner is specified by the <code>st_gid</code> member of the <code>stat</code> structure.</li>
+</ul>
+<p>When we execute a program file, the effective user ID of the process is usually the real user ID, and the effective group ID is usually the real group ID. However, we can also set special flags in the file’s mode word (<code>st_mode</code>) that says:</p>
+<ul>
+<li>When this file is executed, set the effective user ID of the process to be the owner of the file (<code>st_uid</code>).</li>
+<li>When this file is executed, set the effective group ID of the process to be the group owner of the file (<code>st_gid</code>).</li>
+</ul>
+<p>These two bits in the file’s mode word are called the <strong>set-user-ID</strong> (setuid) bit and the <strong>set-group-ID</strong> (setgid) bit.</p>
+<p>For example:</p>
+<ul>
+<li>If the owner of the file is the superuser and if the file’s set-user-ID bit is set, then while that program file is running as a process, it has superuser privileges, regardless of the real user ID of the process that executes the file.</li>
+<li><code>passwd(1)</code> is a set-user-ID program, so that the program can write the new password to the password file, typically either <code>/etc/passwd</code> or <code>/etc/shadow</code>, files that should be writable only by the superuser.</li>
+</ul>
+<p>Because a process that is running set-user-ID to some other user usually assumes extra permissions, it must be written carefully.</p>
+<p>[p99]</p>
 <h3 id="file-access-permissions">File Access Permissions</h3>
 <ol>
 <li>Whenever we want to open any type of file by name, we must have execute permission in each directory mentioned in the name, including the current directory, if it is implied. Read permission for a directory and execute permission for a directory mean different things. Read permission lets us read the directory, obtaining a list of all the filenames in the directory. Execute permission lets us pass through the directory when it is a component of a pathname that we are trying to access. [p100]</li>
