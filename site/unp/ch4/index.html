@@ -393,6 +393,14 @@
             <li><a href="#example-value-result-arguments">Example: Value-Result Arguments</a></li>
         
     
+        <li class="main "><a href="#fork-and-exec-functions">fork and exec Functions</a></li>
+        
+    
+        <li class="main "><a href="#concurrent-servers">Concurrent Servers</a></li>
+        
+            <li><a href="#reference-count-of-sockets">Reference count of sockets *</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -923,6 +931,48 @@ connection from 192.168.1.20, port 43389
 <div class="codehilite"><pre>solaris % daytimetcpsrv1
 bind error: Permission denied
 </pre></div>
+
+
+<h3 id="fork-and-exec-functions"><code>fork</code> and <code>exec</code> Functions</h3>
+<h3 id="concurrent-servers">Concurrent Servers</h3>
+<p>The server described in <a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv1.c">intro/daytimetcpsrv1.c</a> is an <strong>iterative server</strong>. But when a client request can take longer to service, we do not want to tie up a single server with one client; we want to handle multiple clients at the same time. The simplest way to write a concurrent server under Unix is to <code>fork</code> a child process to handle each client.</p>
+<p>The following code shows the outline for a typical concurrent server:</p>
+<div class="codehilite"><pre><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
+<span class="kt">int</span>   <span class="n">listenfd</span><span class="p">,</span>  <span class="n">connfd</span><span class="p">;</span>
+
+<span class="n">listenfd</span> <span class="o">=</span> <span class="n">Socket</span><span class="p">(</span> <span class="p">...</span> <span class="p">);</span>
+
+    <span class="cm">/* fill in sockaddr_in{} with server&#39;s well-known port */</span>
+<span class="n">Bind</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">...</span> <span class="p">);</span>
+<span class="n">Listen</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="n">LISTENQ</span><span class="p">);</span>
+
+<span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+    <span class="n">connfd</span> <span class="o">=</span> <span class="n">Accept</span> <span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">...</span> <span class="p">);</span>    <span class="cm">/* probably blocks */</span>
+
+    <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span class="n">pid</span> <span class="o">=</span> <span class="n">Fork</span><span class="p">())</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+       <span class="n">Close</span><span class="p">(</span><span class="n">listenfd</span><span class="p">);</span>    <span class="cm">/* child closes listening socket */</span>
+       <span class="n">doit</span><span class="p">(</span><span class="n">connfd</span><span class="p">);</span>       <span class="cm">/* process the request */</span>
+       <span class="n">Close</span><span class="p">(</span><span class="n">connfd</span><span class="p">);</span>      <span class="cm">/* done with this client */</span>
+       <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>            <span class="cm">/* child terminates */</span>
+    <span class="p">}</span>
+
+    <span class="n">Close</span><span class="p">(</span><span class="n">connfd</span><span class="p">);</span>         <span class="cm">/* parent closes connected socket */</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>When a connection is established, <code>accept</code> returns, the server calls fork, and the child process services the client (on <code>connfd</code>, the connected socket) and the parent process waits for another connection (on <code>listenfd</code>, the listening socket). The parent closes the connected socket since the child handles the new client.</li>
+<li>We assume that the function <code>doit</code> does whatever is required to service the client. When this function returns, we explicitly <code>close</code> the connected socket in the child. This is not required since the next statement calls <code>exit</code>, and part of process termination is to close all open descriptors by the kernel. Whether to include this explicit call to <code>close</code> or not is a matter of personal programming taste.</li>
+</ul>
+<h4 id="reference-count-of-sockets">Reference count of sockets *</h4>
+<p>Calling <code>close</code> on a TCP socket causes a FIN to be sent, followed by the normal TCP connection termination sequence. Why doesn't the <code>close</code> of <code>connfd</code> by the parent terminate its connection with the client? To understand what's happening, we must understand that every file or socket has a <strong>reference count</strong>. The reference count is maintained in the file table entry. This is a count of the number of descriptors that are currently open that refer to this file or socket. In the above code:</p>
+<ul>
+<li>After <code>socket</code> returns, the file table entry associated with <code>listenfd</code> has a reference count of 1.</li>
+<li>After <code>accept</code> returns, the file table entry associated with <code>connfd</code> has a reference count of 1.</li>
+<li>But, after <code>fork</code> returns, both descriptors are shared (duplicated) between the parent and child, so the file table entries associated with both sockets now have a reference count of 2. Therefore, when the parent closes <code>connfd</code>, it just decrements the reference count from 2 to 1 and that is all.</li>
+<li>The actual cleanup and de-allocation of the socket does not happen until the reference count reaches 0. This will occur at some time later when the child closes <code>connfd</code>.</li>
+</ul>
             </div>
         </div>
 

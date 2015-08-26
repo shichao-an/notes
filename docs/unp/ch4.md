@@ -429,3 +429,47 @@ The pound sign (#) as the shell prompt indicates that our server must run with s
 solaris % daytimetcpsrv1
 bind error: Permission denied
 ```
+
+### `fork` and `exec` Functions
+
+### Concurrent Servers
+
+The server described in [intro/daytimetcpsrv1.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv1.c) is an **iterative server**. But when a client request can take longer to service, we do not want to tie up a single server with one client; we want to handle multiple clients at the same time. The simplest way to write a concurrent server under Unix is to `fork` a child process to handle each client.
+
+The following code shows the outline for a typical concurrent server:
+
+```c
+pid_t pid;
+int   listenfd,  connfd;
+
+listenfd = Socket( ... );
+
+    /* fill in sockaddr_in{} with server's well-known port */
+Bind(listenfd, ... );
+Listen(listenfd, LISTENQ);
+
+for ( ; ; ) {
+    connfd = Accept (listenfd, ... );    /* probably blocks */
+
+    if( (pid = Fork()) == 0) {
+       Close(listenfd);    /* child closes listening socket */
+       doit(connfd);       /* process the request */
+       Close(connfd);      /* done with this client */
+       exit(0);            /* child terminates */
+    }
+
+    Close(connfd);         /* parent closes connected socket */
+}
+```
+
+* When a connection is established, `accept` returns, the server calls fork, and the child process services the client (on `connfd`, the connected socket) and the parent process waits for another connection (on `listenfd`, the listening socket). The parent closes the connected socket since the child handles the new client.
+* We assume that the function `doit` does whatever is required to service the client. When this function returns, we explicitly `close` the connected socket in the child. This is not required since the next statement calls `exit`, and part of process termination is to close all open descriptors by the kernel. Whether to include this explicit call to `close` or not is a matter of personal programming taste.
+
+#### Reference count of sockets *
+
+Calling `close` on a TCP socket causes a FIN to be sent, followed by the normal TCP connection termination sequence. Why doesn't the `close` of `connfd` by the parent terminate its connection with the client? To understand what's happening, we must understand that every file or socket has a **reference count**. The reference count is maintained in the file table entry. This is a count of the number of descriptors that are currently open that refer to this file or socket. In the above code:
+
+* After `socket` returns, the file table entry associated with `listenfd` has a reference count of 1.
+* After `accept` returns, the file table entry associated with `connfd` has a reference count of 1.
+* But, after `fork` returns, both descriptors are shared (duplicated) between the parent and child, so the file table entries associated with both sockets now have a reference count of 2. Therefore, when the parent closes `connfd`, it just decrements the reference count from 2 to 1 and that is all.
+* The actual cleanup and de-allocation of the socket does not happen until the reference count reaches 0. This will occur at some time later when the child closes `connfd`.
