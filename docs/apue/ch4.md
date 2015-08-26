@@ -71,6 +71,35 @@ This program prints the type of file for each command-line argument.
 
 ### Set-User-ID and Set-Group-ID
 
+Every process has six or more IDs associated with it:
+
+* The **real user ID** and **real group ID**: who we really are.
+    * These two fields are taken from our entry in the password file when we log in.
+    * Normally, these values don’t change during a login session, although there are ways for a superuser process to change them. ([Section 8.11](ch8.md#changing-user-ids-and-group-ids))
+* The **effective user ID**, **effective group ID** and **supplementary group IDs**: used for file access permission checks.
+* The **saved set-user-ID** and **saved set-group-ID**: saved by `exec` functions. They contain copies of the effective user ID and the effective group ID, when a program is executed. ([Section 8.11](ch8.md#changing-user-ids-and-group-ids))
+
+Every file has an owner and a group owner:
+
+* The owner is specified by the `st_uid` member of the `stat` structure;
+* The group owner is specified by the `st_gid` member of the `stat` structure.
+
+When we execute a program file, the effective user ID of the process is usually the real user ID, and the effective group ID is usually the real group ID. However, we can also set special flags in the file’s mode word (`st_mode`) that says:
+
+* When this file is executed, set the effective user ID of the process to be the owner of the file (`st_uid`).
+* When this file is executed, set the effective group ID of the process to be the group owner of the file (`st_gid`).
+
+These two bits in the file’s mode word are called the **set-user-ID** (setuid) bit and the **set-group-ID** (setgid) bit.
+
+For example:
+
+* If the owner of the file is the superuser and if the file’s set-user-ID bit is set, then while that program file is running as a process, it has superuser privileges, regardless of the real user ID of the process that executes the file.
+* `passwd(1)` is a set-user-ID program, so that the program can write the new password to the password file, typically either `/etc/passwd` or `/etc/shadow`, files that should be writable only by the superuser.
+
+Because a process that is running set-user-ID to some other user usually assumes extra permissions, it must be written carefully.
+
+[p99]
+
 ### File Access Permissions
 
 1. Whenever we want to open any type of file by name, we must have execute permission in each directory mentioned in the name, including the current directory, if it is implied. Read permission for a directory and execute permission for a directory mean different things. Read permission lets us read the directory, obtaining a list of all the filenames in the directory. Execute permission lets us pass through the directory when it is a component of a pathname that we are trying to access. [p100]
