@@ -410,6 +410,8 @@
     
         <li class="main "><a href="#getsockname-and-getpeername-functions">getsockname and getpeername Functions</a></li>
         
+            <li><a href="#example-obtaining-the-address-family-of-a-socket">Example: Obtaining the Address Family of a Socket</a></li>
+        
     
     </ul>
 </div></div>
@@ -1026,6 +1028,52 @@ bind error: Permission denied
 
 <span class="cm">/* Both return: 0 if OK, -1 on error */</span>
 </pre></div>
+
+
+<p>The <em>addrlen</em> argument for both functions is value-result argument: both functions fill in the socket address structure pointed to by localaddr or peeraddr.</p>
+<p>The term "name" in the function name is misleading. <u>These two functions return the protocol address associated with one of the two ends of a network connection, which for IPV4 and IPV6 is the combination of an IP address and port number. These functions have nothing to do with domain names.</u></p>
+<p>These two functions are required for the following reasons:</p>
+<ul>
+<li>After <code>connect</code> successfully returns in a TCP client that does not call <code>bind</code>, <code>getsockname</code> returns the local IP address and local port number assigned to the connection by the kernel.</li>
+<li>After calling <code>bind</code> with a port number of 0 (telling the kernel to choose the local port number), <code>getsockname</code> returns the local port number that was assigned.</li>
+<li><code>getsockname</code> can be called to obtain the address family of a socket.</li>
+<li>In a TCP server that <code>bind</code>s the wildcard IP address (<a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c">intro/daytimetcpsrv.c</a>), once a connection is established with a client (<code>accept</code> returns successfully), the server can call <code>getsockname</code> to obtain the local IP address assigned to the connection. <u>The socket descriptor argument to <code>getsockname</code> must be that of the connected socket, and not the listening socket.</u></li>
+<li>When a server is <code>exec</code>ed by the process that calls <code>accept</code>, the only way the server can obtain the identity of the client is to call <code>getpeername</code>. For example, <code>inetd</code> <code>fork</code>s and <code>exec</code>s a TCP server (follwing figure):<ul>
+<li><code>inetd</code> calls <code>accept</code>, which return two values: the connected socket descriptor (<code>connfd</code>, return value of the function) and the "peer's address" (an Internet socket address structure) that contains the IP address and port number of the client.</li>
+<li><code>fork</code> is called and a child of <code>inetd</code> is created, with a copy of the parent's memory image, so the socket address structure is available to the child, as is the connected socket descriptor (since the descriptors are shared between the parent and child).</li>
+<li>When the child <code>exec</code>s the real server (e.g. Telnet server that we show), the memory image of the child is replaced with the new program file for the Telnet server (the socket address structure containing the peer's address is lost), and the connected socket descriptor remains open across the <code>exec</code>. One of the first function calls performed by the Telnet server is <code>getpeername</code> to obtain the IP address and port number of the client.</li>
+</ul>
+</li>
+</ul>
+<p><a href="../figure_4.18.png" title="Figure 4.18. Example of inetd spawning a server."><img alt="Figure 4.18. Example of inetd spawning a server." src="../figure_4.18.png" /></a></p>
+<p>In this example, the Telnet server must know the value of <code>connfd</code> when it starts. There are two common ways to do this.</p>
+<ol>
+<li>The process calling <code>exec</code> pass it as a command-line argument to the newly <code>exec</code>ed program.</li>
+<li>A convention can be established that a certain descriptor is always set to the connected socket before calling <code>exec</code>.</li>
+</ol>
+<p>The second one is what <code>inetd</code> does, always setting descriptors 0, 1, and 2 to be the connected socket.</p>
+<h4 id="example-obtaining-the-address-family-of-a-socket">Example: Obtaining the Address Family of a Socket</h4>
+<p>The <code>sockfd_to_family</code> function shown in the code below returns the address family of a socket.</p>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/sockfd_to_family.c">lib/sockfd_to_family.c</a></small></p>
+<div class="codehilite"><pre><span class="kt">int</span>
+<span class="nf">sockfd_to_family</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sockaddr_storage</span> <span class="n">ss</span><span class="p">;</span>
+    <span class="kt">socklen_t</span>   <span class="n">len</span><span class="p">;</span>
+
+    <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ss</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">getsockname</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">ss</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">len</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">ss</span><span class="p">.</span><span class="n">ss_family</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program does the following:</p>
+<ul>
+<li><strong>Allocate room for largest socket address structure</strong>. Since we do not know what type of socket address structure to allocate, we use a sockaddr_storage value, since it can hold any socket address structure supported by the system.</li>
+<li><strong>Call <code>getsockname</code>.</strong> We call <code>getsockname</code> and return the address family. The POSIX specification allows a call to <code>getsockname</code> on an unbound socket.</li>
+</ul>
             </div>
         </div>
 

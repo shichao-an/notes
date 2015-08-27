@@ -536,3 +536,54 @@ int getpeername(int sockfd, struct sockaddr *peeraddr, socklen_t *addrlen);
 
 /* Both return: 0 if OK, -1 on error */
 ```
+
+The *addrlen* argument for both functions is value-result argument: both functions fill in the socket address structure pointed to by localaddr or peeraddr.
+
+The term "name" in the function name is misleading. <u>These two functions return the protocol address associated with one of the two ends of a network connection, which for IPV4 and IPV6 is the combination of an IP address and port number. These functions have nothing to do with domain names.</u>
+
+These two functions are required for the following reasons:
+
+* After `connect` successfully returns in a TCP client that does not call `bind`, `getsockname` returns the local IP address and local port number assigned to the connection by the kernel.
+* After calling `bind` with a port number of 0 (telling the kernel to choose the local port number), `getsockname` returns the local port number that was assigned.
+* `getsockname` can be called to obtain the address family of a socket.
+* In a TCP server that `bind`s the wildcard IP address ([intro/daytimetcpsrv.c](https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c)), once a connection is established with a client (`accept` returns successfully), the server can call `getsockname` to obtain the local IP address assigned to the connection. <u>The socket descriptor argument to `getsockname` must be that of the connected socket, and not the listening socket.</u>
+* When a server is `exec`ed by the process that calls `accept`, the only way the server can obtain the identity of the client is to call `getpeername`. For example, `inetd` `fork`s and `exec`s a TCP server (follwing figure):
+    * `inetd` calls `accept`, which return two values: the connected socket descriptor (`connfd`, return value of the function) and the "peer's address" (an Internet socket address structure) that contains the IP address and port number of the client.
+    * `fork` is called and a child of `inetd` is created, with a copy of the parent's memory image, so the socket address structure is available to the child, as is the connected socket descriptor (since the descriptors are shared between the parent and child).
+    * When the child `exec`s the real server (e.g. Telnet server that we show), the memory image of the child is replaced with the new program file for the Telnet server (the socket address structure containing the peer's address is lost), and the connected socket descriptor remains open across the `exec`. One of the first function calls performed by the Telnet server is `getpeername` to obtain the IP address and port number of the client.
+
+[![Figure 4.18. Example of inetd spawning a server.](figure_4.18.png)](figure_4.18.png "Figure 4.18. Example of inetd spawning a server.")
+
+In this example, the Telnet server must know the value of `connfd` when it starts. There are two common ways to do this.
+
+1. The process calling `exec` pass it as a command-line argument to the newly `exec`ed program.
+2. A convention can be established that a certain descriptor is always set to the connected socket before calling `exec`.
+
+The second one is what `inetd` does, always setting descriptors 0, 1, and 2 to be the connected socket.
+
+#### Example: Obtaining the Address Family of a Socket
+
+The `sockfd_to_family` function shown in the code below returns the address family of a socket.
+
+<small>[lib/sockfd_to_family.c](https://github.com/shichao-an/unpv13e/blob/master/lib/sockfd_to_family.c)</small>
+
+```c
+int
+sockfd_to_family(int sockfd)
+{
+	struct sockaddr_storage ss;
+	socklen_t	len;
+
+	len = sizeof(ss);
+	if (getsockname(sockfd, (SA *) &ss, &len) < 0)
+		return(-1);
+	return(ss.ss_family);
+}
+```
+
+This program does the following:
+
+* **Allocate room for largest socket address structure**. Since we do not know what type of socket address structure to allocate, we use a sockaddr_storage value, since it can hold any socket address structure supported by the system.
+* **Call `getsockname`.** We call `getsockname` and return the address family. The POSIX specification allows a call to `getsockname` on an unbound socket.
+
+
