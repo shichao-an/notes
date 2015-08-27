@@ -473,3 +473,66 @@ Calling `close` on a TCP socket causes a FIN to be sent, followed by the normal 
 * After `accept` returns, the file table entry associated with `connfd` has a reference count of 1.
 * But, after `fork` returns, both descriptors are shared (duplicated) between the parent and child, so the file table entries associated with both sockets now have a reference count of 2. Therefore, when the parent closes `connfd`, it just decrements the reference count from 2 to 1 and that is all.
 * The actual cleanup and de-allocation of the socket does not happen until the reference count reaches 0. This will occur at some time later when the child closes `connfd`.
+
+#### Visualizing the sockets and connection *
+
+The following figures visualize the sockets and connection in the code above:
+
+Before call to `accept` returns, the server is blocked in the call to `accept` and the connection request arrives from the client:
+
+[![Figure 4.14. Status of client/server before call to accept returns.](figure_4.14.png)](figure_4.14.png "Figure 4.14. Status of client/server before call to accept returns.")
+
+Ater return from `accept`, the connection is accepted by the kernel and a new socket `connfd` is created (this is a connected socket and data can now be read and written across the connection):
+
+[![Figure 4.15. Status of client/server after return from accept.](figure_4.15.png)](figure_4.15.png "Figure 4.15. Status of client/server after return from accept.")
+
+After `fork` returns, both descriptors, `listenfd` and `connfd`, are shared (duplicated) between the parent and child:
+
+[![Figure 4.16. Status of client/server after fork returns.](figure_4.16.png)](figure_4.16.png "Figure 4.16. Status of client/server after fork returns.")
+
+After the parent closes the connected socket and the child closes the listening socket:
+
+[![Figure 4.17. Status of client/server after parent and child close appropriate sockets.](figure_4.17.png)](figure_4.17.png "Figure 4.17. Status of client/server after parent and child close appropriate sockets.")
+
+This is the desired final state of the sockets. The child is handling the connection with the client and the parent can call `accept` again on the listening socket, to handle the next client connection.
+
+### `close` Function
+
+The normal Unix `close` function is also used to close a socket and terminate a TCP connection.
+
+```c
+#include <unistd.h>
+
+int close (int sockfd);
+
+/* Returns: 0 if OK, -1 on error */
+```
+
+The default action of `close` with a TCP socket is to mark the socket as closed and return to the process immediately. The socket descriptor is no longer usable by the process: It cannot be used as an argument to `read` or `write`. But, <u>TCP will try to send any data that is already queued to be sent to the other end, and after this occurs, the normal TCP connection termination sequence takes place.</u>
+
+`SO_LINGER` socket option (detailed in [Section 7.5](ch7.md#generic-socket-options)) lets us change this default action with a TCP socket.
+
+#### Descriptor Reference Counts
+
+As mentioned in [end of Section 4.8](#reference-count-of-sockets), when the parent process in our concurrent server `closes` the connected socket, this just decrements the reference count for the descriptor. Since the reference count was still greater than 0, this call to close did not initiate TCP's four-packet connection termination sequence. This is the behavior we want with our concurrent server with the connected socket that is shared between the parent and child.
+
+If we really want to send a FIN on a TCP connection, the `shutdown` function can be used ([Section 6.6](ch6.md#shutdown-function)) instead of `close`.
+
+Be aware if the parent does not call `close` for each connected socket returned by `accept`:
+
+1. **The parent will eventually run out of descriptors** (there is usually a limit to the number of descriptors that any process can have open at any time)
+2. **None of the client connections will be terminated.** When the child closes the connected socket, its reference count will go from 2 to 1 and it will remain at 1 since the parent never `close`s the connected socket. This will prevent TCP's connection termination sequence from occurring, and the connection will remain open.
+
+### `getsockname` and `getpeername` Functions
+
+* `getsockname` returns the local protocol address associated with a socket.
+* `getpeername` returns the foreign protocol address associated with a socket.
+
+```c
+#include <sys/socket.h>
+
+int getsockname(int sockfd, struct sockaddr *localaddr, socklen_t *addrlen);
+int getpeername(int sockfd, struct sockaddr *peeraddr, socklen_t *addrlen);
+
+/* Both return: 0 if OK, -1 on error */
+```
