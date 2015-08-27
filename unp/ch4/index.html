@@ -400,6 +400,16 @@
         
             <li><a href="#reference-count-of-sockets">Reference count of sockets *</a></li>
         
+            <li><a href="#visualizing-the-sockets-and-connection">Visualizing the sockets and connection *</a></li>
+        
+    
+        <li class="main "><a href="#close-function">close Function</a></li>
+        
+            <li><a href="#descriptor-reference-counts">Descriptor Reference Counts</a></li>
+        
+    
+        <li class="main "><a href="#getsockname-and-getpeername-functions">getsockname and getpeername Functions</a></li>
+        
     
     </ul>
 </div></div>
@@ -973,6 +983,49 @@ bind error: Permission denied
 <li>But, after <code>fork</code> returns, both descriptors are shared (duplicated) between the parent and child, so the file table entries associated with both sockets now have a reference count of 2. Therefore, when the parent closes <code>connfd</code>, it just decrements the reference count from 2 to 1 and that is all.</li>
 <li>The actual cleanup and de-allocation of the socket does not happen until the reference count reaches 0. This will occur at some time later when the child closes <code>connfd</code>.</li>
 </ul>
+<h4 id="visualizing-the-sockets-and-connection">Visualizing the sockets and connection *</h4>
+<p>The following figures visualize the sockets and connection in the code above:</p>
+<p>Before call to <code>accept</code> returns, the server is blocked in the call to <code>accept</code> and the connection request arrives from the client:</p>
+<p><a href="../figure_4.14.png" title="Figure 4.14. Status of client/server before call to accept returns."><img alt="Figure 4.14. Status of client/server before call to accept returns." src="../figure_4.14.png" /></a></p>
+<p>Ater return from <code>accept</code>, the connection is accepted by the kernel and a new socket <code>connfd</code> is created (this is a connected socket and data can now be read and written across the connection):</p>
+<p><a href="../figure_4.15.png" title="Figure 4.15. Status of client/server after return from accept."><img alt="Figure 4.15. Status of client/server after return from accept." src="../figure_4.15.png" /></a></p>
+<p>After <code>fork</code> returns, both descriptors, <code>listenfd</code> and <code>connfd</code>, are shared (duplicated) between the parent and child:</p>
+<p><a href="../figure_4.16.png" title="Figure 4.16. Status of client/server after fork returns."><img alt="Figure 4.16. Status of client/server after fork returns." src="../figure_4.16.png" /></a></p>
+<p>After the parent closes the connected socket and the child closes the listening socket:</p>
+<p><a href="../figure_4.17.png" title="Figure 4.17. Status of client/server after parent and child close appropriate sockets."><img alt="Figure 4.17. Status of client/server after parent and child close appropriate sockets." src="../figure_4.17.png" /></a></p>
+<p>This is the desired final state of the sockets. The child is handling the connection with the client and the parent can call <code>accept</code> again on the listening socket, to handle the next client connection.</p>
+<h3 id="close-function"><code>close</code> Function</h3>
+<p>The normal Unix <code>close</code> function is also used to close a socket and terminate a TCP connection.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">close</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, -1 on error */</span>
+</pre></div>
+
+
+<p>The default action of <code>close</code> with a TCP socket is to mark the socket as closed and return to the process immediately. The socket descriptor is no longer usable by the process: It cannot be used as an argument to <code>read</code> or <code>write</code>. But, <u>TCP will try to send any data that is already queued to be sent to the other end, and after this occurs, the normal TCP connection termination sequence takes place.</u></p>
+<p><code>SO_LINGER</code> socket option (detailed in <a href="ch7.md#generic-socket-options">Section 7.5</a>) lets us change this default action with a TCP socket.</p>
+<h4 id="descriptor-reference-counts">Descriptor Reference Counts</h4>
+<p>As mentioned in <a href="#reference-count-of-sockets">end of Section 4.8</a>, when the parent process in our concurrent server <code>closes</code> the connected socket, this just decrements the reference count for the descriptor. Since the reference count was still greater than 0, this call to close did not initiate TCP's four-packet connection termination sequence. This is the behavior we want with our concurrent server with the connected socket that is shared between the parent and child.</p>
+<p>If we really want to send a FIN on a TCP connection, the <code>shutdown</code> function can be used (<a href="../ch6/#shutdown-function">Section 6.6</a>) instead of <code>close</code>.</p>
+<p>Be aware if the parent does not call <code>close</code> for each connected socket returned by <code>accept</code>:</p>
+<ol>
+<li><strong>The parent will eventually run out of descriptors</strong> (there is usually a limit to the number of descriptors that any process can have open at any time)</li>
+<li><strong>None of the client connections will be terminated.</strong> When the child closes the connected socket, its reference count will go from 2 to 1 and it will remain at 1 since the parent never <code>close</code>s the connected socket. This will prevent TCP's connection termination sequence from occurring, and the connection will remain open.</li>
+</ol>
+<h3 id="getsockname-and-getpeername-functions"><code>getsockname</code> and <code>getpeername</code> Functions</h3>
+<ul>
+<li><code>getsockname</code> returns the local protocol address associated with a socket.</li>
+<li><code>getpeername</code> returns the foreign protocol address associated with a socket.</li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/socket.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">getsockname</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">localaddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="o">*</span><span class="n">addrlen</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">getpeername</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">peeraddr</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="o">*</span><span class="n">addrlen</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, -1 on error */</span>
+</pre></div>
             </div>
         </div>
 
