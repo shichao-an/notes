@@ -88,6 +88,18 @@ This characteristic (the limit of frame's size to carry higher-layer PDUs) of th
 * Most stream-type networks (serial links) have a configurable limit that is then used by framing protocols such as PPP.
 * If IP has a datagram to send, and the datagram is larger than the link layer’s MTU, IP performs *fragmentation*, breaking the datagram up into smaller pieces (fragments), so that each fragment is smaller than the MTU.
 
+MTU on networks:
+
+* When two hosts on the same network are communicating with each other, it is the MTU of the local link interconnecting them that has a direct effect on the size of datagrams.
+* When two hosts communicate across multiple networks, each link can have a different MTU. The minimum MTU across the network path comprising all of the links is called the **path MTU**.
+
+The path MTU between any two hosts need not be constant over time:
+
+* It depends on the path being used at any time, which can change if the routers or links in the network fail;
+* Paths are often not *symmetric* (the path from host A to B may not be the reverse of the path from B to A); hence the path MTU need not be the same in the two directions.
+
+[**Path MTU discovery**](https://en.wikipedia.org/wiki/Path_MTU_Discovery) (PMTUD) is used to determine the path MTU at a point in time (and is required of IPv6 implementations).
+
 ### Doubts and Solutions
 
 #### Verbatim
