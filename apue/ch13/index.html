@@ -908,7 +908,30 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <p>Each copy of the daemon will try to create a file and write its process ID in the file.  This will allow administrators to identify the process easily. If the file is already locked, the lockfile function will fail with <code>errno</code> set to <code>EACCES</code> or <code>EAGAIN</code>, so we return 1, indicating that the daemon is already running. Otherwise, we truncate the file, write our process ID to it, and return 0.</p>
 <p>[p474]</p>
 <h3 id="daemon-conventions">Daemon Conventions</h3>
+<p>Common conventions are followed by daemons in the UNIX System.</p>
+<ul>
+<li>The lock file is usually stored in <code>/var/run</code>.<ul>
+<li>Creating a file in this directory requires superuser permissions;</li>
+<li>The name of the file is usually <em>name</em><code>.pid</code>, where name is the name of the daemon or the service. For example, the name of the Linux <code>cron</code> daemon’s lock file is <code>/var/run/crond.pid</code>.</li>
+</ul>
+</li>
+<li>The configuration options are usually stored in <code>/etc</code>.<ul>
+<li>The configuration file is named <em>name</em><code>.conf</code>, where name is the name of the daemon or the service. For example, the configuration for the <code>syslogd</code> daemon is usually <code>/etc/syslog.conf</code>.</li>
+</ul>
+</li>
+<li>Daemons can be started from the command line, but they are usually started from one of the system initialization scripts (<code>/etc/rc*</code> or <code>/etc/init.d/*</code>).<ul>
+<li>If the daemon should be restarted automatically when it exits, we can arrange for init to restart it if we include a respawn entry for it in<code>/etc/inittab</code> (assuming the system uses a System V style <code>init</code> command).</li>
+</ul>
+</li>
+<li>If a daemon has a configuration file, the daemon reads the file when it starts and won’t look at it again. If an administrator changes the configuration, the daemon would need to be stopped and restarted to account for the configuration changes. <u>To avoid this, some daemons will catch <code>SIGHUP</code> and reread their configuration files when they receive the signal.</u> Since they aren’t associated with terminals and are either session leaders without controlling terminals or members of orphaned process groups, daemons have no reason to expect to receive <code>SIGHUP</code>. Thus they can safely reuse it.</li>
+</ul>
+<p>Examples:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread.c">daemons/reread.c</a></small>
+<small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread2.c">daemons/reread2.c</a></small></p>
 <h3 id="clientserver-model">Client–Server Model</h3>
+<p>A common use for a daemon process is as a server process. syslogd process (<a href="../figure_13.2.png">Figure 13.2</a>) is a server that has messages sent to it by user processes (clients) using a UNIX domain datagram socket.</p>
+<p>A <strong>server</strong> is a process that waits for a <strong>client</strong> to contact it, requesting some type of service. The service provided by the <code>syslogd</code> server is the
+logging of an error message.</p>
             </div>
         </div>
 
