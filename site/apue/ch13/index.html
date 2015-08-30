@@ -926,12 +926,32 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <li>If a daemon has a configuration file, the daemon reads the file when it starts and won’t look at it again. If an administrator changes the configuration, the daemon would need to be stopped and restarted to account for the configuration changes. <u>To avoid this, some daemons will catch <code>SIGHUP</code> and reread their configuration files when they receive the signal.</u> Since they aren’t associated with terminals and are either session leaders without controlling terminals or members of orphaned process groups, daemons have no reason to expect to receive <code>SIGHUP</code>. Thus they can safely reuse it.</li>
 </ul>
 <p>Examples:</p>
-<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread.c">daemons/reread.c</a></small>
-<small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread2.c">daemons/reread2.c</a></small></p>
+<ul>
+<li><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread.c">daemons/reread.c</a></small></li>
+<li><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread2.c">daemons/reread2.c</a></small></li>
+</ul>
 <h3 id="clientserver-model">Client–Server Model</h3>
 <p>A common use for a daemon process is as a server process. syslogd process (<a href="../figure_13.2.png">Figure 13.2</a>) is a server that has messages sent to it by user processes (clients) using a UNIX domain datagram socket.</p>
-<p>A <strong>server</strong> is a process that waits for a <strong>client</strong> to contact it, requesting some type of service. The service provided by the <code>syslogd</code> server is the
-logging of an error message.</p>
+<p>A <strong>server</strong> is a process that waits for a <strong>client</strong> to contact it, requesting some type of service. The service provided by the <code>syslogd</code> server is the logging of an error message.</p>
+<p>Servers usually <code>fork</code> and <code>exec</code> another program to provide service to a client. These servers often manage multiple file descriptors (e.g. communication endpoints, configuration files, log files). It would be careless to leave these file descriptors open in the child process, because they probably won’t be used in the program executed by the child, especially if the program is unrelated to the server. At worst, leaving them open could pose a security problem: the program executed could do something malicious, such as change the server’s configuration file or trick the client into thinking it is communicating with the server, thereby gaining access to unauthorized information.</p>
+<p>An easy solution to this problem is to set the close-on-exec flag for all file descriptors that the executed program won’t need. The following function does that:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/setfd.c">lib/setfd.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">set_cloexec</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">val</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">val</span> <span class="o">=</span> <span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">F_GETFD</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="n">val</span> <span class="o">|=</span> <span class="n">FD_CLOEXEC</span><span class="p">;</span>      <span class="cm">/* enable close-on-exec */</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">F_SETFD</span><span class="p">,</span> <span class="n">val</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
             </div>
         </div>
 
