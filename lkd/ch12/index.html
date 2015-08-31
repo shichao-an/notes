@@ -356,6 +356,21 @@
         <li class="main "><a href="#page">Page</a></li>
         
     
+        <li class="main "><a href="#zones">Zones</a></li>
+        
+    
+        <li class="main "><a href="#getting-pages">Getting Pages</a></li>
+        
+            <li><a href="#getting-zeroed-pages">Getting Zeroed Pages</a></li>
+        
+            <li><a href="#freeing-pages">Freeing Pages</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -408,6 +423,139 @@
 <li>Page cache.</li>
 </ul>
 <p>Since an instance of this structure is allocated for each physical page in the system. How bad (or good) the space consumption is from all these pages?  Assume <code>struct page</code> consumes 40 bytes of memory, the system has 8KB physical pages, and the system has 4GB of physical memory. In that case, there are about 524,288 pages and page structures on the system. The page structures consume 20MB: perhaps a surprisingly large number in absolute terms, but only a small fraction of a percent relative to the system’s 4GB. This is not too high a cost for managing all the system’s physical pages.</p>
+<h3 id="zones">Zones</h3>
+<p>The kernel cannot treat all pages as identical due to hardware limitations. Some pages, because of their physical address in memory, cannot be used for certain tasks. Thus, the kernel divides pages into different <em>zones</em>. The kernel uses the zones to group pages of similar properties.</p>
+<p>Linux has to deal with two shortcomings of hardware with respect to memory addressing:</p>
+<ul>
+<li>Some hardware devices can perform <a href="https://en.wikipedia.org/wiki/Direct_memory_access">DMA</a> (direct memory access) to only certain memory addresses.</li>
+<li>Some architectures can physically addressing larger amounts of memory than they can virtually address. Consequently, some memory is not permanently mapped into the kernel address space.</li>
+</ul>
+<p>Due to these contraints, Linux has four primary memory zones:</p>
+<ul>
+<li><code>ZONE_DMA</code>. This zone contains pages that can undergo DMA.</li>
+<li><code>ZONE_DMA32</code>. Like ZOME_DMA, this zone contains pages that can undergo DMA. Unlike <code>ZONE_DMA</code>, these pages are accessible only by 32-bit devices. On some architectures, this zone is a larger subset of memory.</li>
+<li><code>ZONE_NORMAL</code>. This zone contains normal, regularly mapped, pages.</li>
+<li><code>ZONE_HIGHMEM</code>. This zone contains "high memory", which are pages not permanently mapped into the kernel’s address space.</li>
+</ul>
+<p>These zones are defined in <code>&lt;linux/mmzone.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mmzone.h">include/linux/mmzone.h</a>)</p>
+<p>The layout of the memory zones is architecture-dependent. For example:</p>
+<ul>
+<li>Some architectures can perform DMA into any memory address. In those architectures, <code>ZONE_DMA</code> is empty and <code>ZONE_NORMAL</code> is used for allocations regardless of their use.</li>
+<li>On the x86 architecture, <a href="https://en.wikipedia.org/wiki/Industry_Standard_Architecture">ISA</a> devices cannot perform DMA into the full 32-bit address space1 because ISA devices can access only the first 16MB of physical memory. Consequently, <code>ZONE_DMA</code> on x86 consists of all memory in the range 0MB–16MB.</li>
+</ul>
+<p><code>ZONE_HIGHMEM</code> works similarly. On 32-bit x86 systems, <code>ZONE_HIGHMEM</code> is all memory above the physical 896MB mark. On other architectures, <code>ZONE_HIGHMEM</code> is empty because all memory is directly mapped. The memory contained in <code>ZONE_HIGHMEM</code> is called <strong>high memory</strong>. The rest of the system’s memory is called <strong>low memory</strong>.</p>
+<p><code>ZONE_NORMAL</code> is the remainder after the previous two zones claim their requisite shares. On x86, <code>ZONE_NORMAL</code> is all physical memory from 16MB to 896MB. On other architectures, <code>ZONE_NORMAL</code> is all available memory.</p>
+<p>The following table is a listing of each zone and its consumed pages on x86-32.</p>
+<table>
+<thead>
+<tr>
+<th>Zone</th>
+<th>Description</th>
+<th>Physical Memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ZONE_DMA</code></td>
+<td>DMA-able pages</td>
+<td>&lt; 16MB</td>
+</tr>
+<tr>
+<td><code>ZONE_NORMAL</code></td>
+<td>Normally addressable pages</td>
+<td>16–896MB</td>
+</tr>
+<tr>
+<td><code>ZONE_HIGHMEM</code></td>
+<td>Dynamically mapped pages</td>
+<td>&gt; 896MB</td>
+</tr>
+</tbody>
+</table>
+<p>Linux partitions pages into zones to have a pooling in place to satisfy allocations as needed. For example, with a <code>ZONE_DMA</code> pool, the kernel has the capability to satisfy memory allocations needed for DMA. If such memory is needed, the kernel can simply pull the required number of pages from <code>ZONE_DMA</code>. The zones do not have any physical relevance but are simply logical groupings used by the kernel to keep track of pages.</p>
+<p>Although some allocations may require pages from a particular zone, other allocations may pull from multiple zones. For example:</p>
+<ul>
+<li>An allocation for DMA-able memory must originate from <code>ZONE_DMA</code></li>
+<li>A normal allocation can come from <code>ZONE_DMA</code> or <code>ZONE_NORMAL</code> but not both; allocations cannot cross zone boundaries. The kernel prefers to satisfy normal allocations from the normal zone to save the pages in <code>ZONE_DMA</code> for allocations that need it. [p234]</li>
+</ul>
+<p>Not all architectures define all zones. For example, a 64-bit architecture such as Intel’s x86-64 can fully map and handle 64-bits of memory.Thus, x86-64 has no <code>ZONE_HIGHMEM</code> and all physical memory is contained within <code>ZONE_DMA</code> and <code>ZONE_NORMAL</code>.</p>
+<p>Each zone is represented by struct zone, which is defined in <code>&lt;linux/mmzone.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mmzone.h#L280">include/linux/mmzone.h#L280</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">zone</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">watermark</span><span class="p">[</span><span class="n">NR_WMARK</span><span class="p">];</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">lowmem_reserve</span><span class="p">[</span><span class="n">MAX_NR_ZONES</span><span class="p">];</span>
+    <span class="k">struct</span> <span class="n">per_cpu_pageset</span> <span class="n">pageset</span><span class="p">[</span><span class="n">NR_CPUS</span><span class="p">];</span>
+    <span class="kt">spinlock_t</span> <span class="n">lock</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">free_area</span> <span class="n">free_area</span><span class="p">[</span><span class="n">MAX_ORDER</span><span class="p">]</span>
+    <span class="kt">spinlock_t</span> <span class="n">lru_lock</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">zone_lru</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span>
+        <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">nr_saved_scan</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">lru</span><span class="p">[</span><span class="n">NR_LRU_LISTS</span><span class="p">];</span>
+    <span class="k">struct</span> <span class="n">zone_reclaim_stat</span> <span class="n">reclaim_stat</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">pages_scanned</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">;</span>
+    <span class="kt">atomic_long_t</span> <span class="n">vm_stat</span><span class="p">[</span><span class="n">NR_VM_ZONE_STAT_ITEMS</span><span class="p">];</span>
+    <span class="kt">int</span> <span class="n">prev_priority</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">inactive_ratio</span><span class="p">;</span>
+    <span class="kt">wait_queue_head_t</span> <span class="o">*</span><span class="n">wait_table</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">wait_table_hash_nr_entries</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">wait_table_bits</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">pglist_data</span> <span class="o">*</span><span class="n">zone_pgdat</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">zone_start_pfn</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">spanned_pages</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">present_pages</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>lock</code> field is a spin lock that protects the structure from concurrent access. It protects just the structure and not all the pages that reside in the zone. A specific lock does not protect individual pages, although parts of the kernel may lock the data that happens to reside in said pages.</li>
+<li>The <code>watermark</code> array holds the minimum, low, and high watermarks for this zone. The kernel uses watermarks to set benchmarks for suitable per-zone memory consumption. [p235]</li>
+<li>The <code>name</code> field is a NULL-terminated string representing the name of this zone. The kernel initializes this value during boot in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/page_alloc.c">mm/page_alloc.c</a>, and the three zones are given the names DMA, Normal, and HighMem.</li>
+</ul>
+<h3 id="getting-pages">Getting Pages</h3>
+<p>This section discusses the interfaces the kernel implements to enable you to allocate and free memory within the kernel.</p>
+<p>The kernel provides one low-level mechanism for requesting memory, along with several interfaces to access it. All these interfaces allocate memory with page-sized granularity and are declared in <code>&lt;linux/gfp.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/gfp.h">include/linux/gfp.h</a>). The core function is:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span> <span class="n">alloc_pages</span><span class="p">(</span><span class="kt">gfp_t</span> <span class="n">gfp_mask</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This allocates 2<sup>order</sup> (<code>1 &lt;&lt; order</code>) contiguous physical pages and returns a pointer to the first page’s <code>page</code> structure; on error it returns <code>NULL</code>.</p>
+<p>You can convert a given page to its logical address with the function:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span> <span class="n">page_address</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This returns a pointer to the logical address where the given physical page currently resides.</p>
+<p>If you have no need for the actual <code>struct page</code>, you can call:</p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">__get_free_pages</span><span class="p">(</span><span class="kt">gfp_t</span> <span class="n">gfp_mask</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function works the same as <code>alloc_pages()</code>, except that it directly returns the logical address of the first requested page. Because the pages are contiguous, the other pages simply follow from the first.</p>
+<p>If you need only one page, two functions are implemented as wrappers to save you a bit of typing:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span> <span class="n">alloc_page</span><span class="p">(</span><span class="kt">gfp_t</span> <span class="n">gfp_mask</span><span class="p">)</span>
+<span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">__get_free_page</span><span class="p">(</span><span class="kt">gfp_t</span> <span class="n">gfp_mask</span><span class="p">)</span>
+</pre></div>
+
+
+<p>These functions work the same but pass zero for the order (2<sup>0</sup> = one page).</p>
+<h4 id="getting-zeroed-pages">Getting Zeroed Pages</h4>
+<p>If you need the returned page filled with zeros, use the function:</p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">get_zeroed_page</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">gfp_mask</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function works the same as <code>__get_free_page()</code>, except that the allocated page is then zero-filled (every bit of every byte is unset). This is useful for pages given to userspace because the random garbage in an allocated page is not so random; it might contain sensitive data. All data must be zeroed or otherwise cleaned before it is returned to userspace to ensure system security is not compromised.</p>
+<h4 id="freeing-pages">Freeing Pages</h4>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p235 on zones:</p>
+<blockquote>
+<p>A specific lock does not protect individual pages, although parts of the kernel may lock the data that happens to reside in said pages.</p>
+</blockquote>
             </div>
         </div>
 
