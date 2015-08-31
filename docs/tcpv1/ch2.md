@@ -41,3 +41,53 @@ IPv4 has 2<sup>32</sup> possible addresses and IPv6 has 2<sup>128</sup>.
 * Most of the IPv6 address space is not currently being used.
 
 #### Classful Addressing
+
+#### Subnet Addressing
+
+#### Subnet Masks
+
+#### Variable-Length Subnet Masks (VLSM)
+
+#### Broadcast Addresses
+
+#### IPv6 Addresses and Interface Identifiers
+
+### CIDR and Aggregation
+
+#### Prefixes
+
+#### Aggregation
+
+### Special-Use Addresses
+
+#### Addressing IPv4/IPv6 Translators
+
+#### Multicast Addresses
+
+#### IPv4 Multicast Addresses
+
+#### IPv6 Multicast Addresses
+
+#### Anycast Addresses
+
+An [**anycast**](https://en.wikipedia.org/wiki/Anycast) address is a unicast IPv4 or IPv6 address that identifies a different host depending on where in the network it is used. This is accomplished by configuring Internet routers to advertise the same unicast routes from multiple locations in the Internet. Thus, <u>an anycast address refers not to a single host in the Internet, but to the "most appropriate" or "closest" single host that is responding to the anycast address.</u>
+
+Anycast addressing is used most frequently for finding a computer that provides a common service. For example, a datagram sent to an anycast address could be used to find a DNS server ([Chapter 11](ch11.md)), a 6to4 gateway that encapsulates IPv6 traffic in IPv4 tunnels, or RPs for multicast routing.
+
+### Allocation
+
+#### Unicast
+
+#### Multicast
+
+### Unicast Address Assignment
+
+#### Single Provider/No Network/Single Address
+
+#### Single Provider/Single Network/Single Address
+
+#### Single Provider/Multiple Networks/Multiple Addresses
+
+#### Multiple Providers/Multiple Networks/Multiple Addresses (Multihoming)
+
+### Attacks Involving IP Addresses

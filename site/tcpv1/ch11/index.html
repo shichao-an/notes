@@ -356,6 +356,24 @@
         <li class="main "><a href="#the-dns-name-space">The DNS Name Space</a></li>
         
     
+        <li class="main "><a href="#dns-naming-syntax">DNS Naming Syntax</a></li>
+        
+            <li><a href="#fully-qualified-domain-name-fqdn">Fully qualified domain name (FQDN) *</a></li>
+        
+            <li><a href="#unqualified-domain-name">Unqualified domain name *</a></li>
+        
+    
+        <li class="main "><a href="#name-servers-and-zones">Name Servers and Zones</a></li>
+        
+    
+        <li class="main "><a href="#caching">Caching</a></li>
+        
+            <li><a href="#nscd8-and-nsswitchconf5">nscd(8) and nsswitch.conf(5) *</a></li>
+        
+    
+        <li class="main "><a href="#the-dns-protocol">The DNS Protocol</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -363,7 +381,89 @@
 
 <h3 id="chapter-11-name-resolution-and-the-domain-name-system-dns"><strong>Chapter 11. Name Resolution and the Domain Name System (DNS)</strong></h3>
 <p>To identify hosts, IP addresses (especially IPv6 addresses) are cumbersome for humans to use and remember. The Internet supports the use of <strong>host names</strong> to identify hosts, both clients and servers. In order to be used by protocols such as TCP and IP, host names are converted into IP addresses using a process known as name resolution. There are different forms of name resolution in the Internet, but the most prevalent and important one uses a distributed database system known as the <strong>Domain Name System</strong> (DNS). DNS runs as an application on the Internet, using IPv4 or IPv6 (or both). For scalability, DNS names are hierarchical, as are the servers that support name resolution.</p>
+<p>DNS is a distributed client/server networked database used by TCP/IP applications to map between host names and IP addresses (and vice versa), to provide capabilities like electronic mail routing information and service naming. The DNS provides the protocol that allows clients and servers to communicate
+with each other and also a protocol for allowing servers to exchange information. [p511]</p>
+<p>From an application’s point of view, access to the DNS is through an application library called a <strong>resolver</strong>. <u>An application must convert a host name to an IPv4 and/or IPv6 address before it can ask TCP to open a connection or send a unicast datagram using UDP.</u> The TCP and IP protocol implementations know nothing about the DNS; they operate only with the addresses.</p>
+<p>This chapter covers:</p>
+<ul>
+<li>How the names in DNS are set up</li>
+<li>How resolvers and servers communicate using the Internet protocols (mainly UDP)</li>
+<li>Some other resolution mechanisms used in Internet environments.</li>
+</ul>
 <h3 id="the-dns-name-space">The DNS Name Space</h3>
+<p>The DNS <strong>name space</strong> is the set of all names used with DNS. This space is partitioned hierarchically and is case insensitive.</p>
+<p>The current DNS name space is a tree of domains with an unnamed root at the top. The top echelons of the tree are the so-called
+top-level domains (TLDs), which include:</p>
+<ul>
+<li>Generic TLDs (gTLDs)</li>
+<li>Country-code TLDs (ccTLDs)</li>
+<li>Internationalized country-code TLDs (IDN ccTLDs)</li>
+<li>A special infrastructure TLD called, for historical reasons, ARPA [RFC3172].</li>
+</ul>
+<p>These form the top levels of a naming tree with the form shown below.</p>
+<p><a href="../figure_11-1.png" title="The DNS name space forms a hierarchy with an unnamed root at the top. The top-level domains (TLDs) include generic TLDs (gTLDs), countrycode TLDs (ccTLDs), internationalized TLDs (IDN ccTLDs), and a special infrastructure TLD called ARPA."><img alt="The DNS name space forms a hierarchy with an unnamed root at the top. The top-level domains (TLDs) include generic TLDs (gTLDs), countrycode TLDs (ccTLDs), internationalized TLDs (IDN ccTLDs), and a special infrastructure TLD called ARPA." src="../figure_11-1_600.png" /></a></p>
+<p>There are five commonly used groups of TLDs, and one group of specialized domains being used for <strong>internationalized domain names</strong> (IDNs). [p512]</p>
+<p>The gTLDs are grouped into categories:</p>
+<ul>
+<li>Generic</li>
+<li>Generic-restricted</li>
+<li>Sponsored</li>
+</ul>
+<p>The generic gTLDs (<em>generic</em> appears twice) are open for unrestricted use. The others (generic-restricted and sponsored) are limited to various sorts of uses or are constrained as to what entity may assign names from the domain.</p>
+<p>There is a "new gTLD" program in the works that may significantly expand the current set, possibly to several hundred or even thousand. This program and policies relating to TLD management in general are maintained by the <a href="https://en.wikipedia.org/wiki/ICANN">Internet Corporation for Assigned Names and Numbers</a> (ICANN).</p>
+<p>Because some of these two-letter country codes of ccTLDs are suggestive of other uses and meanings, various countries have been able to find commercial windfalls from selling names within their ccTLDs. For example, the domain name <code>cnn.tv</code> is really a registration in the Pacific island of Tuvalu, which has been selling domain names associated with the television entertainment industry. This is called a <a href="https://en.wikipedia.org/wiki/Domain_hack"><strong>domain hack</strong></a>.</p>
+<h3 id="dns-naming-syntax">DNS Naming Syntax</h3>
+<p>The names below a TLD in the DNS name tree are further partitioned into <strong>subdomains</strong>, which is very common practice, especially for the ccTLDs.</p>
+<h4 id="fully-qualified-domain-name-fqdn">Fully qualified domain name (FQDN) *</h4>
+<p>The example names we have seen so far are known as <a href="https://en.wikipedia.org/wiki/Fully_qualified_domain_name"><strong>fully qualified domain names</strong></a> (FQDNs). They are sometimes written more formally with a trailing period (e.g., <code>mit.edu.</code>). This trailing period indicates that the name is complete; no additional information should be added to the name when performing a name resolution.</p>
+<h4 id="unqualified-domain-name">Unqualified domain name *</h4>
+<p>An <strong>unqualified domain name</strong>, which is used in combination with a default domain or domain search list set during system configuration, has one or more strings appended to the end. During configuration, system is typically assigned a default domain extension and search list using DHCP. For example, the default domain <code>cs.berkeley.edu</code> might be configured in systems at the computer science department at UC Berkeley. If a user on one of these machines types in the name <code>vangogh</code>, the local resolver software converts this name to the FQDN <code>vangogh.cs.berkeley.edu</code>. before invoking a resolver to determine <code>vangogh</code>’s IP address.</p>
+<p>A domain name consists of a sequence of <em>labels</em> separated by periods. The name represents a location in the name hierarchy, where the period is the hierarchy delimiter and descending down the tree takes place from right to left in the name.</p>
+<p><u>The hierarchical structure of the DNS name space allows different administrative authorities to manage different parts of the name space.</u> For example, creating a new DNS name <code>elevator.cs.berkeley.edu</code> wouldrequire dealing with the owner of the <code>cs.berkeley.edu</code> subdomain only. The <code>berkeley.edu</code> and <code>edu</code> portions of the name space would not require alteration, so the owners of those would not need to be bothered. <u>This feature of DNS is one key aspect of its <em>scalability</em>. No single entity is required to administer all the changes for the entire DNS name space.</u> [p516]</p>
+<h3 id="name-servers-and-zones">Name Servers and Zones</h3>
+<p>A person responsible for managing part of the active DNS name space is supposed to arrange for at least two <strong>name servers</strong> or <strong>DNS servers</strong> to hold information about the name space so that Internet users can perform queries on the names.</p>
+<p>The DNS (formed by servers) is a distributed system whose primary job is to provide name-to-address mappings; however, it can also provide a wide array of additional information.</p>
+<p>A <em>zone</em>, as the unit of administrative delegation, is a subtree of the DNS name space that can be administered separately from other zones. Every domain name exists within some zone (even the TLDs that exist in the root zone). Whenever a new record is added to a zone, the DNS administrator for the zone allocates a name and additional information (usually an IP address) for the new entry into the name server’s database. For example:</p>
+<ul>
+<li>At a small campus, one person could do this each time a new server is added to the network;</li>
+<li>In a large enterprise the responsibility would have to be delegated (probably by departments or other organizational units), as one person likely could not keep up with the work.</li>
+</ul>
+<p>A DNS server can contain information for more than one zone. At any hierarchical change point in a domain name (i.e., wherever a period appears), a different zone and containing server may be accessed to provide information for the name. This is called a <em>delegation</em>. A common delegation approach uses a zone for implementing a second-level domain name, such as <code>berkeley.edu</code>. In this domain, there may be individual hosts (e.g., <code>www.berkeley.edu</code>) or other domains (e.g., <code>cs.berkeley.edu</code>). <u>Each zone has a designated owner or responsible party who is given authority to manage the names, addresses, and subordinate zones within the zone. Often this person manages not only the contents of the zone but also the name servers that contain the zone’s database(s).</u></p>
+<p>For redundancy, zone information is supposed to exist in at least two places: there should be at least two servers containing information for each zone. All of these servers contain identical information about a zone. Among the servers, a primary server contains the zone database in a disk file, and one or more secondary servers obtain copies from the primary using a process called a <a href="../zone transfer"><strong>zone transfer</strong></a>. DNS has a special protocol for performing zone transfers, but copies of a zone’s contents can also be obtained using other means (e.g., the <code>rsync</code> utility).</p>
+<h3 id="caching">Caching</h3>
+<p>Name servers contain information (e.g. name-to-IP-address mappings) that
+may be obtained from three sources:</p>
+<ol>
+<li>Directly from the zone database,</li>
+<li>As the result of a zone transfer (e.g., for a slave server),</li>
+<li>From another server in the course of processing a resolution.</li>
+</ol>
+<p>In the first case, the server is said to contain authoritative information about the zone and may be called an <strong>authoritative server</strong> for the zone. Such servers are identified by name within the zone information.</p>
+<p>Most name servers (except some root and TLD servers) also <em>cache</em> zone information they learn, up to a time limit called the <em>time to live</em> (TTL). They use this cached information to answer queries. This greatly decreases the amount of DNS message traffic on the Internet. When answering a query, a server indicates whether the information it is returning has been derived from its cache or from its authoritative copy of the zone. When cached information is returned, it is common for a server to also include the domain names of the name servers that can be contacted to retrieve authoritative information about the corresponding zone.</p>
+<p>Each DNS record has its own TTL, which are set and altered by the zone administrator when necessary. If a zone changes, there still may exist cached data within the network, leading to incorrect DNS resolution behavior until expiry of the TTL. For this reason, some zone administrators, anticipating a change to the zone contents, first reduce the TTL before implementing the change. This reduces the window for incorrect cached data to be present in the network.</p>
+<p>Caching is applied both for successful and unsuccessful resolutions (called <a href="https://en.wikipedia.org/wiki/Negative_cache"><strong>negative caching</strong></a>). <u>If a request for a particular domain name fails to return a record, this fact is also cached. This reduces Internet traffic when errant applications repeatedly make requests for names that do not exist.</u></p>
+<p>In some network configurations, the cache is maintained in a nearby name server, not in the resolvers resident in the clients. Placing the cache in the server allows any hosts on the LAN that use the nearby server to benefit from the server’s cache but implies a small delay in accessing the cache over the local network. In Windows and more recent systems, the client can maintain a cache, and it is made available to all applications running on the same system. In Windows, this happens by default, and in Linux, it is a service that can be enabled or disabled.</p>
+<h4 id="nscd8-and-nsswitchconf5"><code>nscd(8)</code> and <code>nsswitch.conf(5)</code> *</h4>
+<p>In Linux , the <strong>Name Service Caching Daemon</strong> (NSCD) provides a client-side caching capability. It is controlled by the <code>/etc/nscd.conf</code> file that can indicate which types of resolutions (for DNS and some other services) are cached, along with some cache parameters such as TTL settings. T</p>
+<p>The file <code>/etc/nsswitch.conf</code> controls how name resolution for applications takes place. It also controls whether local files, the DNS protocol, and/or NSCD is employed for mappings.</p>
+<h3 id="the-dns-protocol">The DNS Protocol</h3>
+<p>The DNS protocol consists of two main parts:</p>
+<ul>
+<li>Query/response protocol used for performing queries against the DNS for particular names</li>
+<li>Protocol for name servers to exchange database records (zone transfers)</li>
+</ul>
+<p>It has other functionalities:</p>
+<ul>
+<li>Notifying secondary servers that the zone database has evolved and a zone transfer is necessary (DNS Notify)</li>
+<li>Dynamically updating the zone (dynamic updates).</li>
+</ul>
+<p>DNS name resolution is the process of mapping a domain name to an IPv4 address, although IPv6 addresses mappings work in essentially the same way. DNS query/response operations are supported over the distributed DNS infrastructure consisting of servers deployed locally at each site or ISP, and a special set of <a href="https://en.wikipedia.org/wiki/Root_name_server"><strong>root servers</strong></a>. There is also a special set of <strong>generic top-level domain servers</strong> used for scaling some of the larger gTLDs, including COM and NET.</p>
+<p>As of mid-2011, there are:</p>
+<ul>
+<li>13 root servers named by the letters <em>A</em> through <em>M</em>; 9 of them have IPv6 addresses.</li>
+<li>13 gTLD servers named by <em>A</em> through <em>M</em>; 2 of them have IPv6 addresses.</li>
+</ul>
+<p>Some of them are not a single physical server but a group of servers (over 50 for the J root server) that use the same IP address (i.e., using IP anycast addressing; <a href="../ch2/#anycast-addresses">Chapter 2</a>).</p>
             </div>
         </div>
 

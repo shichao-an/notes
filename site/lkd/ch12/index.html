@@ -353,6 +353,9 @@
         <li class="main active"><a href="#chapter-12-memory-management">Chapter 12. Memory Management</a></li>
         
     
+        <li class="main "><a href="#page">Page</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -360,6 +363,51 @@
 
 <h3 id="chapter-12-memory-management"><strong>Chapter 12. Memory Management</strong></h3>
 <p>Unlike user-space, the kernel is not always afforded the capability to easily allocate memory. This chapter discusses how the kernel handles memory and the methods used to obtain memory inside the kernel.</p>
+<h3 id="page">Page</h3>
+<p>To kernel, physical pages are the basic unit of memory management. Although the processor’s smallest addressable unit is a byte or a word, the <a href="https://en.wikipedia.org/wiki/Memory_management_unit">memory management unit</a> (MMU, the hardware that manages memory and performs virtual to physical address translations) typically deals in pages. Therefore, the MMU maintains the system’s page tables with page-sized granularity. In terms of virtual memory, pages are the smallest unit.</p>
+<p>Each architecture defines its own page size. Many architectures even support multiple page sizes.</p>
+<ul>
+<li>Most 32-bit architectures have 4KB pages;</li>
+<li>Most 64-bit architectures have 8KB pages.</li>
+</ul>
+<p>This implies that on a machine with 4KB pages and 1GB of memory, physical memory is divided into 262,144 distinct pages.</p>
+<p>The kernel represents every physical page on the system with a <code>struct page</code> structure.  This structure is defined in <code>&lt;linux/mm_types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h">include/linux/mm_types.h</a>). The following is a simplified the definition (two confusing unions are removed):</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h#L34">include/linux/mm_types.h#L34</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">page</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">;</span>
+    <span class="kt">atomic_t</span> <span class="n">_count</span><span class="p">;</span>
+    <span class="kt">atomic_t</span> <span class="n">_mapcount</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">private</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">address_space</span> <span class="o">*</span><span class="n">mapping</span><span class="p">;</span>
+    <span class="kt">pgoff_t</span> <span class="n">index</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">lru</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">virtual</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>flags</code> field stores the status of the page, such as whether the page is dirty or whether it is locked in memory. Bit flags represent the various values, so at least 32 different flags are simultaneously available. The flag values are defined in <code>&lt;linux/page-flags.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/page-flags.h">include/linux/page-flags.h</a>).</li>
+<li>The <code>_count</code> field stores the usage count of the page: how many references there are to this page.<ul>
+<li>If <code>_count</code>'s value is negative one (-1) indicates that no one is using the page, and it becomes available for use in a new allocation.</li>
+<li>Kernel code should not check this field directly but instead use the function <code>page_count()</code>, which takes a page structure as its sole parameter. <code>page_count()</code> returns zero to indicate free and a positive nonzero integer when the page is in use.</li>
+<li>A page may be used by the page cache (in which case the <code>mapping</code> field points to the <code>address_space</code> object associated with this page), as private data (pointed at by <code>private</code>), or as a mapping in a process’s page table.</li>
+</ul>
+</li>
+<li>The <code>virtual</code> field is the page’s virtual address. Normally, this is simply the address of the page in virtual memory.<ul>
+<li>Some memory (called high memory) is not permanently mapped in the kernel’s address space. In that case, this field is <code>NULL</code>, and the page must be dynamically mapped if needed.</li>
+</ul>
+</li>
+</ul>
+<p>The <code>page</code> structure is associated with physical pages, not virtual pages; what the structure describes is transient at best. Even if the data contained in the page continues to exist, it might not always be associated with the same <code>page</code> structure because of swapping and so on. <u>The kernel uses this data structure to describe the associated physical page. The data structure’s goal is to describe physical memory, not the data contained therein.</u></p>
+<p>The kernel uses this structure to keep track of all the pages in the system, because the kernel needs to know whether a page is free (whether the page is not allocated). If a page is not free, the kernel needs to know who owns the page. Possible owners include (but not limited to):</p>
+<ul>
+<li>User-space processes,</li>
+<li>Dynamically allocated kernel data,</li>
+<li>Static kernel code,</li>
+<li>Page cache.</li>
+</ul>
+<p>Since an instance of this structure is allocated for each physical page in the system. How bad (or good) the space consumption is from all these pages?  Assume <code>struct page</code> consumes 40 bytes of memory, the system has 8KB physical pages, and the system has 4GB of physical memory. In that case, there are about 524,288 pages and page structures on the system. The page structures consume 20MB: perhaps a surprisingly large number in absolute terms, but only a small fraction of a percent relative to the system’s 4GB. This is not too high a cost for managing all the system’s physical pages.</p>
             </div>
         </div>
 
