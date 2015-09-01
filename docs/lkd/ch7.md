@@ -67,12 +67,40 @@ Linux provides various mechanisms for implementing bottom halves (discussed in [
 
 For example using the network card:
 
-1. When network cards receive packets from the network, the network cards immediately issue an interrupt. This optimize snetwork throughput and latency and avoid timeouts. [p115]
+1. When network cards receive packets from the network, the network cards immediately issue an interrupt. This optimizes network throughput and latency and avoids timeouts. [p115]
 2. The kernel responds by executing the network card’s registered interrupt.
 3. The interrupt runs, acknowledges the hardware, copies the new networking packets into main memory, and readies the network card for more packets. These jobs are the important, time-critical, and hardware-specific work.
     * The kernel generally needs to quickly copy the networking packet into main memory because the network data buffer on the networking card is fixed and miniscule in size, particularly compared to main memory. Delays in copying the packets can result in a buffer overrun, with incoming packets overwhelming the networking card’s buffer and thus packets being dropped.
     * After the networking data is safely in the main memory, the interrupt’s job is done, and it can return control of the system to whatever code was interrupted when the interrupt was generated.
 4. The rest of the processing and handling of the packets occurs later, in the bottom half.
 
-
 This chapter discusses the top half. The next chapter covers the bottom.
+
+### Registering an Interrupt Handler
+
+Each device has one associated driver. If that device uses interrupts (and most do),that driver must register one interrupt handler.
+
+Drivers can register an interrupt handler and enable a given interrupt line for handling with the function `request_irq()`, which is declared in `<linux/interrupt.h>`:
+
+<small>[include/linux/interrupt.h#L117](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L117)</small>
+
+```c
+/* request_irq: allocate a given interrupt line */
+int request_irq(unsigned int irq,
+                irq_handler_t handler,
+                unsigned long flags,
+                const char *name,
+                void *dev)
+```
+
+* The first parameter, `irq`, specifies the interrupt number to allocate
+    * For some devices (e.g. legacy PC devices such as the system timer or keyboard), this value is typically hard-coded.
+    * For most other devices, it is probed or otherwise determined programmatically and dynamically.
+* The second parameter, `handler`, is a function pointer to the actual interrupt handler that services this interrupt. This function is invoked whenever the operating system receives the interrupt.
+
+<small>[include/linux/interrupt.h#L80](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L80)</small>
+```c
+typedef irqreturn_t (*irq_handler_t)(int, void *);
+```
+
+Note the specific prototype of the handler function: It takes two parameters and has a return value of `irqreturn_t`.

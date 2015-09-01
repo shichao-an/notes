@@ -368,6 +368,9 @@
         <li class="main "><a href="#top-halves-versus-bottom-halves">Top Halves Versus Bottom Halves</a></li>
         
     
+        <li class="main "><a href="#registering-an-interrupt-handler">Registering an Interrupt Handler</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -432,7 +435,7 @@
 <p>Linux provides various mechanisms for implementing bottom halves (discussed in <a href="ch8.md">Chapter 8</a>).</p>
 <p>For example using the network card:</p>
 <ol>
-<li>When network cards receive packets from the network, the network cards immediately issue an interrupt. This optimize snetwork throughput and latency and avoid timeouts. [p115]</li>
+<li>When network cards receive packets from the network, the network cards immediately issue an interrupt. This optimizes network throughput and latency and avoids timeouts. [p115]</li>
 <li>The kernel responds by executing the network card’s registered interrupt.</li>
 <li>The interrupt runs, acknowledges the hardware, copies the new networking packets into main memory, and readies the network card for more packets. These jobs are the important, time-critical, and hardware-specific work.<ul>
 <li>The kernel generally needs to quickly copy the networking packet into main memory because the network data buffer on the networking card is fixed and miniscule in size, particularly compared to main memory. Delays in copying the packets can result in a buffer overrun, with incoming packets overwhelming the networking card’s buffer and thus packets being dropped.</li>
@@ -442,6 +445,33 @@
 <li>The rest of the processing and handling of the packets occurs later, in the bottom half.</li>
 </ol>
 <p>This chapter discusses the top half. The next chapter covers the bottom.</p>
+<h3 id="registering-an-interrupt-handler">Registering an Interrupt Handler</h3>
+<p>Each device has one associated driver. If that device uses interrupts (and most do),that driver must register one interrupt handler.</p>
+<p>Drivers can register an interrupt handler and enable a given interrupt line for handling with the function <code>request_irq()</code>, which is declared in <code>&lt;linux/interrupt.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L117">include/linux/interrupt.h#L117</a></small></p>
+<div class="codehilite"><pre><span class="cm">/* request_irq: allocate a given interrupt line */</span>
+<span class="kt">int</span> <span class="n">request_irq</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">,</span>
+                <span class="kt">irq_handler_t</span> <span class="n">handler</span><span class="p">,</span>
+                <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">,</span>
+                <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
+                <span class="kt">void</span> <span class="o">*</span><span class="n">dev</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>The first parameter, <code>irq</code>, specifies the interrupt number to allocate<ul>
+<li>For some devices (e.g. legacy PC devices such as the system timer or keyboard), this value is typically hard-coded.</li>
+<li>For most other devices, it is probed or otherwise determined programmatically and dynamically.</li>
+</ul>
+</li>
+<li>The second parameter, <code>handler</code>, is a function pointer to the actual interrupt handler that services this interrupt. This function is invoked whenever the operating system receives the interrupt.</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L80">include/linux/interrupt.h#L80</a></small></p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="nf">irqreturn_t</span> <span class="p">(</span><span class="o">*</span><span class="kt">irq_handler_t</span><span class="p">)(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Note the specific prototype of the handler function: It takes two parameters and has a return value of <code>irqreturn_t</code>.</p>
             </div>
         </div>
 
