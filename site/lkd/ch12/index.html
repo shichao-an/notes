@@ -157,6 +157,10 @@
                             <a href="../ch6/">Chapter 6. Kernel Data Structures</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                    
                         <li class="active">
                             <a href="./">Chapter 12. Memory Management</a>
                         </li>
@@ -366,6 +370,11 @@
             <li><a href="#freeing-pages">Freeing Pages</a></li>
         
     
+        <li class="main "><a href="#kmalloc">kmalloc()</a></li>
+        
+            <li><a href="#gfp_mask-flags">gfp_mask Flags</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -549,7 +558,93 @@
 
 
 <p>This function works the same as <code>__get_free_page()</code>, except that the allocated page is then zero-filled (every bit of every byte is unset). This is useful for pages given to userspace because the random garbage in an allocated page is not so random; it might contain sensitive data. All data must be zeroed or otherwise cleaned before it is returned to userspace to ensure system security is not compromised.</p>
+<p>The following table is a listing of all the low-level page allocation methods.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>alloc_page(gfp_mask)</code></td>
+<td>Allocates a single page and returns a pointer to its first page’s <code>page</code> structure</td>
+</tr>
+<tr>
+<td><code>alloc_pages(gfp_mask, order)</code></td>
+<td>Allocates 2<sup>order</sup> pages and returns a pointer to the first page’s <code>page</code> structure</td>
+</tr>
+<tr>
+<td><code>__get_free_page(gfp_mask)</code></td>
+<td>Allocates a single page and returns a pointer to its logical address</td>
+</tr>
+<tr>
+<td><code>__get_free_pages(gfp_mask, order)</code></td>
+<td>Allocates 2<sup>order</sup> pages and returns a pointer to the first page’s logical address</td>
+</tr>
+<tr>
+<td><code>get_zeroed_page(gfp_mask)</code></td>
+<td>Allocates a single page, zero its contents and returns a pointer to its logical address</td>
+</tr>
+</tbody>
+</table>
 <h4 id="freeing-pages">Freeing Pages</h4>
+<p>A family of functions enables you to free allocated pages when you no longer need them:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">__free_pages</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
+<span class="kt">void</span> <span class="n">free_pages</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
+<span class="kt">void</span> <span class="n">free_page</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Be careful to free only pages you allocate. Passing the wrong <code>struct page</code> or address, or the incorrect order, can result in corruption. [p237]</p>
+<p>For example, we want to allocate eight pages:</p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">page</span><span class="p">;</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">__get_free_pages</span><span class="p">(</span><span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">page</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* insufficient memory: you must handle this error! */</span>
+    <span class="k">return</span> <span class="err">–</span><span class="n">ENOMEM</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="cm">/* &#39;page&#39; is now the address of the first of eight contiguous pages ... */</span>
+</pre></div>
+
+
+<p>Free the eight pages, after we are done using them:</p>
+<div class="codehilite"><pre><span class="n">free_pages</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+<span class="cm">/*</span>
+<span class="cm">* our pages are now freed and we should no</span>
+<span class="cm">* longer access the address stored in &#39;page&#39;</span>
+<span class="cm">*/</span>
+</pre></div>
+
+
+<p>The <code>GFP_KERNEL</code> parameter is an example of a <code>gfp_mask</code> flag (discussed shortly).</p>
+<p>A kernel allocation can fail, and your code must check for and handle such errors after the call to <code>__get_free_pages()</code>. <u>It therefore often makes sense to allocate your memory at the start of the routine to make handling the error easier.</u> [p237]</p>
+<p>These low-level page functions are useful when you need page-sized chunks of physically contiguous pages, especially if you need exactly a single page or two. For more general byte-sized allocations, the kernel provides <code>kmalloc()</code>.</p>
+<h3 id="kmalloc"><code>kmalloc()</code></h3>
+<p>The <code>kmalloc()</code> function is similar to user-space’s <code>malloc()</code>, with the exception of the additional flags parameter. The <code>kmalloc()</code> function is a simple interface for obtaining kernel memory in byte-sized chunks. If you need whole pages, the previously discussed interfaces might be a better choice. For most kernel allocations, <code>kmalloc()</code> is the preferred interface.</p>
+<p>The function is declared in <code>&lt;linux/slab.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab.h">include/linux/slab.h</a>):</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab_def.h#L128">include/linux/slab_def.h#L128</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span> <span class="n">kmalloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">gfp_t</span> <span class="n">flags</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>kmalloc()</code> function returns a pointer to a region of memory that is at least <code>size</code> bytes in length. It may allocate more than you asked, although you have no way of knowing how much more. Because the kernel allocator is page-based, some allocations may be rounded up to fit within the available memory. The kernel never returns less memory than requested. If the kernel is unable to find at least the requested amount, the allocation fails and the function returns <code>NULL</code>. The region of memory allocated is physically contiguous. Kernel allocations always succeed, unless an insufficient amount of memory is available. Thus, you must check for <code>NULL</code> after all calls to <code>kmalloc()</code> and handle the error appropriately.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">dog</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">kmalloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">dog</span><span class="p">),</span> <span class="n">GFP_KERNEL</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">p</span><span class="p">)</span>
+    <span class="cm">/* handle error ... */</span>
+</pre></div>
+
+
+<p>If the <code>kmalloc()</code> call succeeds, <code>p</code> now points to a block of memory that is at least the requested size.The <code>GFP_KERNEL</code> flag specifies the behavior of the memory allocator while trying to obtain the memory to return to the caller of <code>kmalloc()</code>.</p>
+<h4 id="gfp_mask-flags"><code>gfp_mask</code> Flags</h4>
+<p>Flags are represented by the <code>gfp_t</code> type, which is defined in <code>&lt;linux/types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/types.h#L179">include/linux/types.h#L179</a>) as an <code>unsigned int</code>. <em>gfp</em> stands for <code>__get_free_pages()</code> (discussed earlier).</p>
+<p>The flags are broken up into three categories:</p>
+<ul>
+<li><strong>Action modifiers</strong> specify how the kernel is supposed to allocate the requested memory. In certain situations, only certain methods can be employed to allocate memory. For example, interrupt handlers must instruct the kernel not to sleep (because interrupt handlers cannot reschedule) in the course of allocating memory.</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on zones:</p>
