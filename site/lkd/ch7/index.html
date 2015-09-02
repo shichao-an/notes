@@ -162,6 +162,22 @@
                         </li>
                     
                         <li >
+                            <a href="../ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                    
+                        <li >
                             <a href="../ch12/">Chapter 12. Memory Management</a>
                         </li>
                     
@@ -359,7 +375,7 @@
     
         <li class="main "><a href="#interrupts">Interrupts</a></li>
         
-            <li><a href="#exceptions-and-interrupts">Exceptions and Interrupts*</a></li>
+            <li><a href="#exceptions-and-interrupts">Exceptions and Interrupts *</a></li>
         
     
         <li class="main "><a href="#interrupt-handlers">Interrupt Handlers</a></li>
@@ -369,6 +385,15 @@
         
     
         <li class="main "><a href="#registering-an-interrupt-handler">Registering an Interrupt Handler</a></li>
+        
+            <li><a href="#interrupt-handler-flags">Interrupt Handler Flags</a></li>
+        
+            <li><a href="#an-interrupt-example">An Interrupt Example</a></li>
+        
+            <li><a href="#freeing-an-interrupt-handler">Freeing an Interrupt Handler</a></li>
+        
+    
+        <li class="main "><a href="#writing-an-interrupt-handler">Writing an Interrupt Handler</a></li>
         
     
     </ul>
@@ -400,7 +425,7 @@
 <li>Some interrupts are dynamically assigned, such as interrupts associated with devices on the PCI bus. Other non-PC architectures have similar dynamic assignments for interrupt values.</li>
 <li>The kernel knows that a specific interrupt is associated with a specific device, and the kernel knows this. The hardware then issues interrupts to get the kernel’s attention.</li>
 </ul>
-<h4 id="exceptions-and-interrupts">Exceptions and Interrupts*</h4>
+<h4 id="exceptions-and-interrupts">Exceptions and Interrupts *</h4>
 <p><strong>Exceptions</strong> are often discussed at the same time as interrupts. Unlike interrupts, exceptions occur synchronously with respect to the processor clock; they are often called <strong>synchronous interrupts</strong>. Exceptions are produced by the processor while executing instructions either in response to a programming error (e.g. divide by zero) or abnormal conditions that must be handled by the kernel (e.g. a page fault). Because many processor architectures handle exceptions in a similar manner to interrupts, the kernel infrastructure for handling the two is similar.</p>
 <p>Simple definitions of the two:</p>
 <ul>
@@ -432,7 +457,7 @@
 <li><strong>Top half.</strong> The interrupt handler is the top half.  The top half is run immediately upon receipt of the interrupt and performs only the work that is time-critical, such as acknowledging receipt of the interrupt or resetting the hardware.</li>
 <li><strong>Bottom half.</strong> Work that can be performed later is deferred until the bottom half. The bottom half runs in the future, at a more convenient time, with all interrupts enabled.</li>
 </ul>
-<p>Linux provides various mechanisms for implementing bottom halves (discussed in <a href="ch8.md">Chapter 8</a>).</p>
+<p>Linux provides various mechanisms for implementing bottom halves (discussed in <a href="../ch8/">Chapter 8</a>).</p>
 <p>For example using the network card:</p>
 <ol>
 <li>When network cards receive packets from the network, the network cards immediately issue an interrupt. This optimizes network throughput and latency and avoids timeouts. [p115]</li>
@@ -472,6 +497,78 @@
 
 
 <p>Note the specific prototype of the handler function: It takes two parameters and has a return value of <code>irqreturn_t</code>.</p>
+<h4 id="interrupt-handler-flags">Interrupt Handler Flags</h4>
+<p>The third parameter, <code>flags</code>, can be either zero or a bit mask of one or more of the flags defined in <code>&lt;linux/interrupt.h&gt;</code>. The most important of these flags are:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L56">include/linux/interrupt.h#L56</a></small></p>
+<ul>
+<li>
+<p><code>IRQF_DISABLED</code>.</p>
+<ul>
+<li>When set, this flag instructs the kernel to disable all interrupts when executing this interrupt handler.</li>
+<li>When unset, interrupt handlers run with all interrupts except their own enabled.</li>
+</ul>
+<p>Most interrupt handlers do not set this flag, as disabling all interrupts is bad form. Its use is reserved for performance-sensitive interrupts that execute quickly. This flag is the current manifestation of the <code>SA_INTERRUPT</code> flag, which in the past distinguished between "fast" and "slow" interrupts.</p>
+</li>
+<li>
+<p><code>IRQF_SAMPLE_RANDOM</code>. This flag specifies that interrupts generated by this device should contribute to the kernel <a href="https://en.wikipedia.org/wiki/Hardware_random_number_generator#Estimating_entropy">entropy pool</a>. The kernel entropy pool provides truly random numbers derived from various random events. If this flag is specified, the timing of interrupts from this device are fed to the pool as entropy. Do not set this if your device issues interrupts at a predictable rate (e.g. the system timer) or can be influenced by external attackers (e.g. a networking device). On the other hand, most other hardware generates interrupts at nondeterministic times and is therefore a good source of entropy.</p>
+</li>
+<li><code>IRQF_TIMER</code>. This flag specifies that this handler processes interrupts for the system timer.</li>
+<li><code>IRQF_SHARED</code>. This flag specifies that the interrupt line can be shared among multiple interrupt handlers. Each handler registered on a given line must specify this flag; otherwise, only one handler can exist per line.</li>
+</ul>
+<p>The fourth parameter, <code>name</code>, is name of the device associated with the interrupt. For example, this value for the keyboard interrupt on a PC is "keyboard". These text names are used by <code>/proc/irq</code> and <code>/proc/interrupts</code>.</p>
+<p>The fifth parameter, <code>dev</code>, is used for shared interrupt lines. When an interrupt handler is freed, <code>dev</code> provides a unique cookie to enable the removal of only the desired interrupt handler from the interrupt line. Without this parameter, it would be impossible for the kernel to know which handler to remove on a given interrupt line. You can pass <code>NULL</code> here if the line is not shared, but you must pass a unique cookie if your interrupt line is shared. This pointer is also passed into the interrupt handler on each invocation. A common practice is to pass the driver’s device structure:This pointer is unique and might be useful to have within the handlers.</p>
+<p><code>request_irq()</code> returns zero on success and nonzero value indicates an error, in which case the specified interrupt handler was not registered. A common error is <code>-EBUSY</code>, which denotes that the given interrupt line is already in use (and either the current user or you did not specify <code>IRQF_SHARED</code>).</p>
+<p><code>request_irq()</code> cannot be called from interrupt context (other situations where code cannot block), because it can block.  It is a common mistake to call <code>request_irq()</code> when it is unsafe to sleep. On registration, an entry corresponding to the interrupt is created in <code>/proc/irq</code>. The function <code>proc_mkdir()</code> creates new procfs entries. This function calls <code>proc_create()</code> to set up the new procfs entries, which in turn calls <code>kmalloc()</code> to allocate memory. <code>kmalloc()</code> can sleep (<a href="../ch12/#kmalloc">Chapter 12</a>).</p>
+<h4 id="an-interrupt-example">An Interrupt Example</h4>
+<p>In a driver, requesting an interrupt line and installing a handler is done via <code>request_irq()</code>:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="p">(</span><span class="n">request_irq</span><span class="p">(</span><span class="n">irqn</span><span class="p">,</span> <span class="n">my_interrupt</span><span class="p">,</span> <span class="n">IRQF_SHARED</span><span class="p">,</span> <span class="s">&quot;my_device&quot;</span><span class="p">,</span> <span class="n">my_dev</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">printk</span><span class="p">(</span><span class="n">KERN_ERR</span> <span class="s">&quot;my_device: cannot register IRQ %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">irqn</span><span class="p">);</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">EIO</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example:</p>
+<ul>
+<li><code>irqn</code> is the requested interrupt line</li>
+<li><code>my_interrupt</code> is the handler;</li>
+<li><code>IRQF_SHARED</code> specifies that the line can be shared;</li>
+<li>The device is named <code>my_device</code>;</li>
+<li>We passed <code>my_dev</code> for <code>dev</code>.</li>
+</ul>
+<p>On failure, the code prints an error and returns. If the call returns zero, the handler has been successfully installed. From that point forward, the handler is invoked in response to an interrupt. It is important to initialize hardware and register an interrupt handler in the proper order to prevent the interrupt handler from running before the device is fully initialized.</p>
+<h4 id="freeing-an-interrupt-handler">Freeing an Interrupt Handler</h4>
+<p>When your driver unloads, you need to unregister your interrupt handler and disable the interrupt line, by calling:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L147">include/linux/interrupt.h#L147</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">free_irq</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">dev</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>If the specified interrupt line is not shared, this function removes the handler and disables the line.</li>
+<li>If the interrupt line is shared, the handler identified via <code>dev</code> is removed, but the interrupt line is disabled only when the last handler is removed. With shared interrupt lines, a unique cookie is required to differentiate between the multiple handlers that can exist on a single line and enable <code>free_irq()</code> to remove only the correct handler.</li>
+</ul>
+<p>In either case (shared or unshared), if <code>dev</code> is non-<code>NULL</code>, it must match the desired handler. A call to <code>free_irq()</code> must be made from process context.</p>
+<p>The following table reviews the functions for registering and deregistering an interrupt handler.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request_irq()</code></td>
+<td>Register a given interrupt handler on a given interrupt line.</td>
+</tr>
+<tr>
+<td><code>free_irq()</code></td>
+<td>Unregister a given interrupt handler; if no handlers remain on the line, the given interrupt line is disabled.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="writing-an-interrupt-handler">Writing an Interrupt Handler</h3>
             </div>
         </div>
 

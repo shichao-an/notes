@@ -161,6 +161,22 @@
                             <a href="../ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
                         </li>
                     
+                        <li >
+                            <a href="../ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                    
                         <li class="active">
                             <a href="./">Chapter 12. Memory Management</a>
                         </li>
@@ -373,6 +389,8 @@
         <li class="main "><a href="#kmalloc">kmalloc()</a></li>
         
             <li><a href="#gfp_mask-flags">gfp_mask Flags</a></li>
+        
+            <li><a href="#kfree">kfree()</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -643,8 +661,246 @@
 <p>Flags are represented by the <code>gfp_t</code> type, which is defined in <code>&lt;linux/types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/types.h#L179">include/linux/types.h#L179</a>) as an <code>unsigned int</code>. <em>gfp</em> stands for <code>__get_free_pages()</code> (discussed earlier).</p>
 <p>The flags are broken up into three categories:</p>
 <ul>
-<li><strong>Action modifiers</strong> specify how the kernel is supposed to allocate the requested memory. In certain situations, only certain methods can be employed to allocate memory. For example, interrupt handlers must instruct the kernel not to sleep (because interrupt handlers cannot reschedule) in the course of allocating memory.</li>
+<li><strong>Action modifiers</strong> specify <em>how</em> the kernel is supposed to allocate the requested memory. In certain situations, only certain methods can be employed to allocate memory. For example, interrupt handlers must instruct the kernel not to sleep (because interrupt handlers cannot reschedule) while allocating memory.</li>
+<li><strong>Zone modifiers</strong> specify from <em>where</em> (from which zones) to allocate memory.</li>
+<li><strong>Type</strong> specify a combination of action and zone modifiers for a certain type of memory allocation. This simplifies the specification of multiple modifiers; instead of providing a combination of action and zone modifiers, you can specify just one type flag. The <code>GFP_KERNEL</code> is a type flag, which is used for code in process context inside the kernel.</li>
 </ul>
+<h5 id="action-modifiers"><strong>Action Modifiers</strong></h5>
+<p>All the flags are declared in <code>&lt;linux/gfp.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/gfp.h">include/linux/gfp.h</a>). The file
+<code>&lt;linux/slab.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab.h">include/linux/slab.h</a>) includes this header.</p>
+<p>The table below is a list of the action modifiers.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__GFP_WAIT</code></td>
+<td>The allocator can sleep.</td>
+</tr>
+<tr>
+<td><code>__GFP_HIGH</code></td>
+<td>The allocator can access emergency pools.</td>
+</tr>
+<tr>
+<td><code>__GFP_IO</code></td>
+<td>The allocator can start disk I/O.</td>
+</tr>
+<tr>
+<td><code>__GFP_FS</code></td>
+<td>The allocator can start filesystem I/O.</td>
+</tr>
+<tr>
+<td><code>__GFP_COLD</code></td>
+<td>The allocator should use cache cold pages.</td>
+</tr>
+<tr>
+<td><code>__GFP_NOWARN</code></td>
+<td>The allocator does not print failure warnings.</td>
+</tr>
+<tr>
+<td><code>__GFP_REPEAT</code></td>
+<td>The allocator repeats the allocation if it fails, but the allocation can potentially fail.</td>
+</tr>
+<tr>
+<td><code>__GFP_NOFAIL</code></td>
+<td>The allocator indefinitely repeats the allocation. The allocation cannot fail.</td>
+</tr>
+<tr>
+<td><code>__GFP_NORETRY</code></td>
+<td>The allocator never retries if the allocation fails.</td>
+</tr>
+<tr>
+<td><code>__GFP_NOMEMALLOC</code></td>
+<td>The allocator does not fall back on reserves.</td>
+</tr>
+<tr>
+<td><code>__GFP_HARDWALL</code></td>
+<td>The allocator enforces "hardwall" <a href="http://man7.org/linux/man-pages/man7/cpuset.7.html">cpuset</a> boundaries.</td>
+</tr>
+<tr>
+<td><code>__GFP_RECLAIMABLE</code></td>
+<td>The allocator marks the pages reclaimable.</td>
+</tr>
+<tr>
+<td><code>__GFP_COMP</code></td>
+<td>The allocator adds compound.</td>
+</tr>
+</tbody>
+</table>
+<p>These allocations can be specified together. For example:</p>
+<div class="codehilite"><pre><span class="n">ptr</span> <span class="o">=</span> <span class="n">kmalloc</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">__GFP_WAIT</span> <span class="o">|</span> <span class="n">__GFP_IO</span> <span class="o">|</span> <span class="n">__GFP_FS</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This call instructs the page allocator (ultimately <code>alloc_pages()</code>) that the allocation can block, perform I/O, and perform filesystem operations. This gives the kernel great freedom in how it can find the free memory to satisfy the allocation.</p>
+<h5 id="zone-modifiers"><strong>Zone Modifiers</strong></h5>
+<p>Zone modifiers specify from which memory zone the allocation should originate. Though allocations can be fulfilled from any zone, the kernel prefers <code>ZONE_NORMAL</code> to ensure that the other zones have free pages when they are needed.</p>
+<p>There are only three zone modifiers because there are only three zones other than <code>ZONE_NORMAL</code>, as in the following table:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__GFP_DMA</code></td>
+<td>Allocates only from <code>ZONE_DMA</code></td>
+</tr>
+<tr>
+<td><code>__GFP_DMA32</code></td>
+<td>Allocates only from <code>ZONE_DMA32</code></td>
+</tr>
+<tr>
+<td><code>__GFP_HIGHMEM</code></td>
+<td>Allocates from <code>ZONE_HIGHMEM</code> or <code>ZONE_NORMAL</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>__GFP_DMA</code> flag forces the kernel to satisfy the request from <code>ZONE_DMA</code>.</li>
+<li>The <code>__GFP_HIGHMEM</code> flag instructs the allocator to satisfy the request from either <code>ZONE_NORMAL</code> or (preferentially) <code>ZONE_HIGHMEM</code>.</li>
+</ul>
+<p>If neither flag is specified, the kernel fulfills the allocation from either <code>ZONE_DMA</code> or <code>ZONE_NORMAL</code>, with a strong preference to satisfy the allocation from <code>ZONE_NORMAL</code>.</p>
+<p>You cannot specify <code>__GFP_HIGHMEM</code> to either <code>__get_free_pages()</code> or <code>kmalloc()</code>, because these both return a logical address, and not a <code>page</code> structure. It is possible that these functions would allocate memory not currently mapped in the kernel’s virtual address space and thus, does not have a logical address. Only <code>alloc_pages()</code> can allocate high memory.</p>
+<p>The majoriy of allocations will not specify a zone modifier because <code>ZONE_NORMAL</code> is sufficient.</p>
+<h5 id="type-flags"><strong>Type Flags</strong></h5>
+<p>The type flags specify the required action and zone modifiers to fulfill a particular type of transaction. Therefore, kernel code tends to use the correct type flag and not specify the myriad of other flags it might need. This is both simpler and less error-prone.</p>
+<p>The table below is a list of the type flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GFP_ATOMIC</code></td>
+<td>The allocation is high priority and must not sleep. This is the flag to use in interrupt handlers, in bottom halves, while holding a spinlock, and in other situations where you cannot sleep.</td>
+</tr>
+<tr>
+<td><code>GFP_NOWAIT</code></td>
+<td>Like <code>GFP_ATOMIC</code>, except that the call will not fallback on emergency memory pools. This increases the liklihood of the memory allocation failing.</td>
+</tr>
+<tr>
+<td><code>GFP_NOIO</code></td>
+<td>This allocation can block, but must not initiate disk I/O. This is the flag to use in block I/O code when you cannot cause more disk I/O, which might lead to some unpleasant recursion.</td>
+</tr>
+<tr>
+<td><code>GFP_NOFS</code></td>
+<td>This allocation can block and can initiate disk I/O, if it must, but it will not initiate a filesystem operation. This is the flag to use in filesystem code when you cannot start another filesystem operation.</td>
+</tr>
+<tr>
+<td><code>GFP_KERNEL</code></td>
+<td>This is a normal allocation and might block. This is the flag to use in process context code when it is safe to sleep. The kernel will do whatever it has to do to obtain the memory requested by the caller. This flag should be your default choice.</td>
+</tr>
+<tr>
+<td><code>GFP_USER</code></td>
+<td>This is a normal allocation and might block. This flag is used to allocate memory for user-space processes.</td>
+</tr>
+<tr>
+<td><code>GFP_HIGHUSER</code></td>
+<td>This is an allocation from <code>ZONE_HIGHMEM</code> and might block. This flag is used to allocate memory for user-space processes.</td>
+</tr>
+<tr>
+<td><code>GFP_DMA</code></td>
+<td>This is an allocation from <code>ZONE_DMA</code>. Device drivers that need DMA-able memory use this flag, usually in combination with one of the preceding flags.</td>
+</tr>
+</tbody>
+</table>
+<p>The following table shows which modifiers are associated with each type flag:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Modifier Flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GFP_NOFS</code></td>
+<td><code>(&#95;&#95;GFP_WAIT &#124; &#95;&#95;GFP_IO)</code></td>
+</tr>
+<tr>
+<td><code>GFP_KERNEL</code></td>
+<td><code>(&#95;&#95;GFP_WAIT &#124; &#95;&#95;GFP_IO &#124; &#95;&#95;GFP_FS)</code></td>
+</tr>
+<tr>
+<td><code>GFP_USER</code></td>
+<td><code>(&#95;&#95;GFP_WAIT &#124; &#95;&#95;GFP_IO &#124; &#95;&#95;GFP_FS)</code></td>
+</tr>
+<tr>
+<td><code>GFP_HIGHUSER</code></td>
+<td><code>(&#95;&#95;GFP_WAIT &#124; &#95;&#95;GFP_IO &#124; &#95;&#95;GFP_FS &#124; &#95;&#95;GFP_HIGHMEM)</code></td>
+</tr>
+<tr>
+<td><code>GFP_DMA</code></td>
+<td><code>__GFP_DMA</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<p>The <code>GFP_KERNEL</code> flag. This flag is used in vast majority of allocations. The resulting allocation is a normal priority allocation that might sleep. Because the call can block, this flag can be used only from process context that can safely reschedule (no locks are held and so on.) Because this flag does not make any stipulations as to how the kernel may obtain the requested memory, the memory allocation has a high probability of succeeding.</p>
+</li>
+<li>
+<p>The <code>GFP_ATOMIC</code> flag. Because this flag specifies a memory allocation that cannot sleep, the allocation is restrictive in the memory it can obtain for the caller. If no sufficiently sized contiguous chunk of memory is available, the kernel is not likely to free memory because it cannot put the caller to sleep. Conversely, the <code>GFP_KERNEL</code> allocation can put the caller to sleep to swap inactive pages to disk, flush dirty pages to disk, and so on. Because <code>GFP_ATOMIC</code> cannot perform any of these actions, it has less of a chance of succeeding (at least when memory is low) compared to <code>GFP_KERNEL</code> allocations. Nonetheless, the <code>GFP_ATOMIC</code> flag is the only option when the current code cannot sleep, such as with interrupt handlers, softirqs, and tasklets.</p>
+</li>
+</ul>
+<p>Allocations initiated with <code>GFP_NOIO</code> and <code>GFP_NOFS</code> might block, but they refrain from performing certain other operations.</p>
+<ul>
+<li>The <code>GFP_NOIO</code> allocation does not initiate any disk I/O whatsoever to fulfill the request.</li>
+<li>The <code>GFP_NOFS</code> allocation might initiate disk I/O, but does not initiate filesystem I/O.</li>
+</ul>
+<p>They are needed for certain low-level block I/O or filesystem code. For example, <u>a common path in the filesystem code allocated memory without the <code>GFP_NOFS</code> flag, the allocation could result in more filesystem operations, which may beget other allocations. This could continue indefinitely. Such filesystem code that invokes the allocator must ensure that the allocator also does not execute itself, or else the allocation can create a deadlock.</u></p>
+<p>The <code>GFP_DMA</code> flag specifes that the allocator must satisfy the request from <code>ZONE_DMA</code>. This flag is used by device drivers, which need DMA-able memory for their devices. Normally, you combine this flag with the <code>GFP_ATOMIC</code> or <code>GFP_KERNEL</code> flag.</p>
+<p>The majority of the code uses either <code>GFP_KERNEL</code> or <code>GFP_ATOMIC</code>. Regardless of the allocation type, you must check for and handle failures.</p>
+<p>Below is a list of the common situations and the flags to use.</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Process context, can sleep</td>
+<td>Use <code>GFP_KERNEL</code>.</td>
+</tr>
+<tr>
+<td>Process context, cannot sleep</td>
+<td>Use <code>GFP_ATOMIC</code>, or perform your allocations with <code>GFP_KERNEL</code> at an earlier or later point when you can sleep.</td>
+</tr>
+<tr>
+<td>Interrupt handler</td>
+<td>Use <code>GFP_ATOMIC</code>.</td>
+</tr>
+<tr>
+<td>Softirq</td>
+<td>Use <code>GFP_ATOMIC</code>.</td>
+</tr>
+<tr>
+<td>Tasklet</td>
+<td>Use <code>GFP_ATOMIC</code>.</td>
+</tr>
+<tr>
+<td>Need DMA-able memory, can sleep</td>
+<td>Use <code>(GFP_DMA  &#124; GFP_KERNEL)</code>.</td>
+</tr>
+<tr>
+<td>Need DMA-able memory, cannot sleep</td>
+<td>Use <code>(GFP_DMA &#124; GFP_ATOMIC)</code>, or perform your allocation at an earlier point when you can sleep.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="kfree"><code>kfree()</code></h4>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on zones:</p>
