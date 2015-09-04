@@ -182,6 +182,10 @@
                         </li>
                     
                         <li >
+                            <a href="../ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                    
+                        <li >
                             <a href="../ch15/">Chapter 15. The Process Address Space</a>
                         </li>
                     
@@ -391,6 +395,18 @@
             <li><a href="#gfp_mask-flags">gfp_mask Flags</a></li>
         
             <li><a href="#kfree">kfree()</a></li>
+        
+    
+        <li class="main "><a href="#vmalloc">vmalloc()</a></li>
+        
+    
+        <li class="main "><a href="#slab-layer">Slab Layer</a></li>
+        
+            <li><a href="#free-lists">Free Lists *</a></li>
+        
+            <li><a href="#slab-layer-generic-data-structure-caching-layer">Slab Layer: generic data structure-caching layer *</a></li>
+        
+            <li><a href="#design-of-the-slab-layer">Design of the Slab Layer</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -621,7 +637,7 @@
 <span class="n">page</span> <span class="o">=</span> <span class="n">__get_free_pages</span><span class="p">(</span><span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
 <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">page</span><span class="p">)</span> <span class="p">{</span>
     <span class="cm">/* insufficient memory: you must handle this error! */</span>
-    <span class="k">return</span> <span class="err">–</span><span class="n">ENOMEM</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">ENOMEM</span><span class="p">;</span>
 <span class="p">}</span>
 <span class="cm">/* &#39;page&#39; is now the address of the first of eight contiguous pages ... */</span>
 </pre></div>
@@ -903,19 +919,217 @@
 <h4 id="kfree"><code>kfree()</code></h4>
 <p>The counterpart to <code>kmalloc()</code> is <code>kfree()</code>, declared in <code>&lt;linux/slab.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab.h#L144">include/linux/slab.h#L144</a></small></p>
-<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">kfree</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">kfree</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
 </pre></div>
 
 
 <p>The <code>kfree()</code> method frees a block of memory previously allocated with <code>kmalloc()</code>.</p>
 <p>Do not call this function on memory not previously allocated with <code>kmalloc(</code>), or on memory that has already been freed. Doing so is a bug, resulting in bad behavior such as freeing memory belonging to another part of the kernel.</p>
 <p>As in user-space, be careful to balance your allocations with your deallocations to prevent memory leaks and other bugs.  <code>kfree(NULL)</code> is explicitly checked for and safe.</p>
+<p>[p243]</p>
+<h3 id="vmalloc"><code>vmalloc()</code></h3>
+<p>The <code>vmalloc()</code> function works in a similar fashion to <code>kmalloc()</code>, except <code>vmalloc()</code> allocates memory that is only virtually contiguous and not necessarily physically contiguous. This is similar to user-space <code>malloc()</code>, the returned pages by which are contiguous within the virtual address space, but necessarily contiguous in physical RAM.</p>
+<p>The <code>vmalloc()</code> function ensures that the pages are physically contiguous by by allocating potentially noncontiguous chunks of physical memory and "fixing up" the page tables to map the memory into a contiguous chunk of the logical address space.</p>
+<ul>
+<li>Usually, only hardware devices require physically contiguous memory allocations, because they live on the other side of the memory management unit and do not understand virtual addresses.</li>
+<li>Blocks of memory used only by software (e.g.process-related buffers) are fine using memory that is only virtually contiguous. In your programming, you never know the difference. All memory appears to the kernel as logically contiguous.</li>
+</ul>
+<p>Though physically contiguous memory is required in only certain cases, most kernel code uses <code>kmalloc()</code> and not <code>vmalloc()</code> to obtain memory primarily for performance. The <code>vmalloc()</code> function, to make nonphysically contiguous pages contiguous in the virtual address space, must specifically set up the page table entries. Worse, pages obtained via <code>vmalloc()</code> must be mapped by their individual pages (because they are not physically contiguous), which results in much greater <a href="https://en.wikipedia.org/wiki/Thrashing_(computer_science)#TLB_thrashing">TLB thrashing</a> than you see when directly mapped memory is used.  Because of these concerns, <code>vmalloc()</code> is used only when absolutely necessary (typically, to obtain large regions of memory). For example, when modules are dynamically inserted into the kernel, they are loaded into memory created via <code>vmalloc()</code>.</p>
+<p>The <code>vmalloc()</code> function is declared in <code>&lt;linux/vmalloc.h&gt;</code> and defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/vmalloc.c#L1595">mm/vmalloc.c</a>. Its usage is identical to user-space’s <code>malloc()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/vmalloc.h#L53">include/linux/vmalloc.h#L53</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span> <span class="n">vmalloc</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">size</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>The function returns a pointer to at least <code>size</code> bytes of virtually contiguous memory.</li>
+<li>On error, the function returns <code>NULL</code>.</li>
+<li>The function might sleep and thus cannot be called from interrupt context or other situations in which blocking is not permissible.</li>
+</ul>
+<p>To free an allocation obtained via <code>vmalloc()</code>, use:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/vmalloc.h#L62">include/linux/vmalloc.h#L62</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">vfree</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>This function frees the block of memory beginning at <code>addr</code> that was previously allocated via <code>vmalloc()</code>.</li>
+<li>The function can sleep and thus cannot be called from interrupt context.</li>
+<li>It has no return value</li>
+</ul>
+<p>[p245]</p>
+<h3 id="slab-layer">Slab Layer</h3>
+<h4 id="free-lists">Free Lists *</h4>
+<p>To facilitate frequent allocations and deallocations of data, programmers often introduce <strong>free lists</strong>. A free list contains a block of available, already allocated, data structures:</p>
+<ul>
+<li>When code requires a new instance of a data structure, it can grab one of the structures off the free list rather than allocate the sufficient amount of memory and set it up for the data structure.</li>
+<li>When the data structure is no longer needed, it is returned to the free list instead of deallocated.</li>
+</ul>
+<p>In this sense, the free list acts as an object cache, caching a frequently used type of object.</p>
+<p>A main problem with free lists in the kernel is that there exists no global control. When available memory is low, there is no way for the kernel to communicate to every free list that it should shrink the sizes of its cache to free up memory. The kernel has no understanding of the random free lists at all.To remedy this and to consolidate code, the Linux kernel provides the <strong>slab layer</strong> (also called the <strong>slab allocator</strong>). The slab layer acts as a generic data structure-caching layer.</p>
+<h4 id="slab-layer-generic-data-structure-caching-layer">Slab Layer: generic data structure-caching layer *</h4>
+<p>The concept of a slab allocator was first implemented in Sun Microsystem’s SunOS 5.4 operating system. The Linux data structure caching layer shares the same name and basic design.</p>
+<p>The slab layer attempts to leverage several basic tenets:</p>
+<ul>
+<li>Frequently used data structures tend to be allocated and freed often, so cache them.</li>
+<li>Frequent allocation and deallocation can result in memory fragmentation (the inability to find large contiguous chunks of available memory).To prevent this, the cached free lists are arranged contiguously. Because freed data structures return to the free list, there is no resulting fragmentation.</li>
+<li>The free list provides improved performance during frequent allocation and deallocation because a freed object can be immediately returned to the next allocation.</li>
+<li>If the allocator is aware of concepts such as object size, page size, and total cache size, it can make more intelligent decisions.</li>
+<li>If part of the cache is made per-processor (separate and unique to each processor on the system), allocations and frees can be performed without an SMP lock.</li>
+<li>If the allocator is NUMA-aware, it can fulfill allocations from the same memory node as the requestor.</li>
+<li>Stored objects can be colored to prevent multiple objects from mapping to the same cache lines.</li>
+</ul>
+<p>The slab layer in Linux was designed and implemented with these premises in mind.</p>
+<h4 id="design-of-the-slab-layer">Design of the Slab Layer</h4>
+<ul>
+<li><strong>Caches</strong>. The slab layer divides different objects into groups called caches, each of which stores a different type of object. <u>There is one cache per object type.</u><ul>
+<li>For example, one cache is for process descriptors (a free list of <code>task_struct</code> structures), whereas another cache is for inode objects (<code>struct inode</code>).</li>
+<li>The <code>kmalloc()</code> interface is built on top of the slab layer, using a family of general purpose caches.</li>
+</ul>
+</li>
+<li><strong>Slabs</strong>. The caches are divided into slabs.The slabs are composed of one or more physically contiguous pages.<ul>
+<li>Slabs are typically composed of only a single page.</li>
+<li>Each cache may consist of multiple slabs.</li>
+</ul>
+</li>
+<li><strong>Objects</strong>. Each slab contains some number of objects, which are the data structures being cached.<ul>
+<li>Each slab is in one of three states: full, partial, or empty:<ul>
+<li>A <strong>full slab</strong> has no free objects. (All objects in the slab are allocated.)</li>
+<li>An <strong>empty slab</strong> has no allocated objects. (All objects in the slab are free.)</li>
+<li>A <strong>partial slab</strong> has some allocated objects and some free objects.</li>
+</ul>
+</li>
+<li>
+<p>When some part of the kernel requests a new object:</p>
+<ol>
+<li>The request is satisfied from a partial slab, if one exists.</li>
+<li>Otherwise, the request is satisfied from an empty slab.</li>
+<li>If there exists no empty slab, one is created.</li>
+</ol>
+<p>Obviously, a full slab can never satisfy a request because it does not have any free objects. This strategy reduces fragmentation.</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>The following figure diagrams the relationship between caches, slabs, and objects.</p>
+<p><a href="../figure_12.1.png" title="Figure 12.1 The relationship between caches, slabs, and objects."><img alt="Figure 12.1 The relationship between caches, slabs, and objects." src="../figure_12.1.png" /></a></p>
+<p>For example of the <code>inode</code> structure, the in-memory representation of a disk inode (<a href="../ch13/">Chapter 13</a>). These structures are frequently created and destroyed, so it makes sense to manage them via the slab allocator.</p>
+<ul>
+<li><code>struct inode</code> is allocated from the <code>inode_cachep</code> cache (such a naming convention is standard.). This cache is made up of a lot of slabs because there are a lot of objects and each slab contains as many <code>struct inode</code> objects as possible.</li>
+<li>
+<p>When the kernel requests a new <code>inode</code> structure, the kernel returns a pointer to:</p>
+<ul>
+<li>An already allocated but unused structure from a partial slab, or,</li>
+<li>An empty slab, if there is no partial slab</li>
+</ul>
+<p>When the kernel is done using the <code>inode</code> object, the slab allocator marks the object as free.</p>
+</li>
+</ul>
+<p>Each cache is represented by a <code>kmem_cache</code> structure, which contains three lists (stored inside a <code>kmem_list3</code> structure, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c#L293">mm/slab.c</a>)</p>
+<ul>
+<li><code>slabs_full</code></li>
+<li><code>slabs_partial</code></li>
+<li><code>slabs_empty</code></li>
+</ul>
+<p>These lists contain all the slabs associated with the cache.</p>
+<p>A slab descriptor <code>struct slab</code> represents each slab:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">slab</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span> <span class="cm">/* full, partial, or empty list */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">colouroff</span><span class="p">;</span> <span class="cm">/* offset for the slab coloring */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">s_mem</span><span class="p">;</span> <span class="cm">/* first object in the slab */</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">inuse</span><span class="p">;</span> <span class="cm">/* allocated objects in the slab */</span>
+    <span class="kt">kmem_bufctl_t</span> <span class="n">free</span><span class="p">;</span> <span class="cm">/* first free object, if any */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Slab descriptors are allocated either outside the slab in a general cache or inside the slab itself, at the beginning. The descriptor is stored inside the slab if the total size of the slab is sufficiently small, or if internal slack space is sufficient to hold the descriptor.</p>
+<p>The slab allocator creates new slabs by interfacing with the low-level kernel page allocator via <code>__get_free_pages()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c#L1609">mm/slab.c#L1609</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span> <span class="o">*</span><span class="nf">kmem_getpages</span><span class="p">(</span><span class="k">struct</span> <span class="n">kmem_cache</span> <span class="o">*</span><span class="n">cachep</span><span class="p">,</span> <span class="kt">gfp_t</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">int</span> <span class="n">nodeid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+
+    <span class="n">flags</span> <span class="o">|=</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfpflags</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="n">nodeid</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">__get_free_pages</span><span class="p">(</span><span class="n">flags</span><span class="p">,</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfporder</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">addr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">virt_to_page</span><span class="p">(</span><span class="n">addr</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">alloc_pages_node</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">flags</span><span class="p">,</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfporder</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">page</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="n">page_address</span><span class="p">(</span><span class="n">page</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfporder</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">cachep</span><span class="o">-&gt;</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">SLAB_RECLAIM_ACCOUNT</span><span class="p">)</span>
+        <span class="n">atomic_add</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">slab_reclaim_pages</span><span class="p">);</span>
+    <span class="n">add_page_state</span><span class="p">(</span><span class="n">nr_slab</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">SetPageSlab</span><span class="p">(</span><span class="n">page</span><span class="p">);</span>
+      <span class="n">page</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">addr</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function uses <code>__get_free_pages()</code> to allocate memory sufficient to hold the
+cache:</p>
+<ul>
+<li>The first parameter <code>cachep</code> points to the specific cache that needs more pages.</li>
+<li>The second parameter <code>flags</code> points to the flags given to <code>__get_free_pages()</code>. It adds default flags that the cache requires to the <code>flags</code> parameter.</li>
+<li>The third parameter <code>nodeid</code> makes the allocator <a href="https://en.wikipedia.org/wiki/Non-uniform_memory_access">NUMA</a>-aware. When <code>nodeid</code> is not negative one, the allocator attempts to fulfill the allocation from the same memory node that requested the allocation. This provides better performance on NUMA systems, in which accessing memory outside your node results in a performance penalty.</li>
+</ul>
+<p>A simplified version <code>kmem_getpages()</code> that ignores NUMA-aware code (for educational purpose) is like:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="o">*</span> <span class="nf">kmem_getpages</span><span class="p">(</span><span class="k">struct</span> <span class="n">kmem_cache</span> <span class="o">*</span><span class="n">cachep</span><span class="p">,</span> <span class="kt">gfp_t</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">;</span>
+    <span class="n">flags</span> <span class="o">|=</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfpflags</span><span class="p">;</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span> <span class="n">__get_free_pages</span><span class="p">(</span><span class="n">flags</span><span class="p">,</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfporder</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">addr</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Memory is freed by <code>kmem_freepages()</code>, which calls <code>free_pages()</code> on the given cache’s pages.</p>
+<p>The point of the slab layer is to refrain from allocating and freeing pages. In turn, the slab layer invokes the page allocation function only when there does not exist any partial or empty slabs in a given cache.The freeing function is called only when available memory grows low and the system is attempting to free memory, or when a cache is explicitly destroyed.</p>
+<p>The slab layer is managed on a per-cache basis through a simple interface, which is exported to the entire kernel. The interface enables the creation and destruction of new caches and the allocation and freeing of objects within the caches. The sophisticated management of caches and the slabs within is entirely handled by the internals of the slab layer. After you create a cache, the slab layer works just like a specialized allocator for the specific type of object.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on zones:</p>
 <blockquote>
 <p>A specific lock does not protect individual pages, although parts of the kernel may lock the data that happens to reside in said pages.</p>
 </blockquote>
+<p>p244 on <code>vmalloc()</code>:</p>
+<blockquote>
+<p>The <code>vmalloc()</code> function, to make nonphysically contiguous pages contiguous in the virtual address space, must specifically set up the page table entries. Worse, pages obtained via <code>vmalloc()</code> must be mapped by their individual pages (because they are not physically contiguous), which results in much greater <a href="https://en.wikipedia.org/wiki/Thrashing_(computer_science)#TLB_thrashing">TLB thrashing</a> than you see when directly mapped memory is used.</p>
+</blockquote>
+<p>p248 on slab descriptors:</p>
+<blockquote>
+<p>The descriptor is stored inside the slab if the total size of the slab is sufficiently small, or if internal slack space is sufficient to hold the descriptor.</p>
+</blockquote>
+<p>p249 on <code>kmem_getpages()</code>:</p>
+<blockquote>
+<p>For educational purposes, we can ignore the NUMA-aware code and write a simple <code>kmem_getpages()</code>:</p>
+</blockquote>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="o">*</span> <span class="nf">kmem_getpages</span><span class="p">(</span><span class="k">struct</span> <span class="n">kmem_cache</span> <span class="o">*</span><span class="n">cachep</span><span class="p">,</span> <span class="kt">gfp_t</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">;</span>
+    <span class="n">flags</span> <span class="o">|=</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfpflags</span><span class="p">;</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span> <span class="n">__get_free_pages</span><span class="p">(</span><span class="n">flags</span><span class="p">,</span> <span class="n">cachep</span><span class="o">-&gt;</span><span class="n">gfporder</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">addr</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The "educational" code merely wraps around <code>__get_free_pages</code> without any slab related code. WTF?</p>
             </div>
         </div>
 
