@@ -408,6 +408,24 @@
         
             <li><a href="#design-of-the-slab-layer">Design of the Slab Layer</a></li>
         
+            <li><a href="#slab-allocator-interface">Slab Allocator Interface</a></li>
+        
+            <li><a href="#example-of-using-the-slab-allocator">Example of Using the Slab Allocator</a></li>
+        
+    
+        <li class="main "><a href="#statically-allocating-on-the-stack">Statically Allocating on the Stack</a></li>
+        
+            <li><a href="#single-page-kernel-stacks">Single-Page Kernel Stacks</a></li>
+        
+            <li><a href="#playing-fair-on-the-stack">Playing Fair on the Stack</a></li>
+        
+    
+        <li class="main "><a href="#high-memory-mappings">High Memory Mappings</a></li>
+        
+            <li><a href="#permanent-mappings">Permanent Mappings</a></li>
+        
+            <li><a href="#temporary-mappings">Temporary Mappings</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1100,6 +1118,81 @@ cache:</p>
 <p>Memory is freed by <code>kmem_freepages()</code>, which calls <code>free_pages()</code> on the given cache’s pages.</p>
 <p>The point of the slab layer is to refrain from allocating and freeing pages. In turn, the slab layer invokes the page allocation function only when there does not exist any partial or empty slabs in a given cache.The freeing function is called only when available memory grows low and the system is attempting to free memory, or when a cache is explicitly destroyed.</p>
 <p>The slab layer is managed on a per-cache basis through a simple interface, which is exported to the entire kernel. The interface enables the creation and destruction of new caches and the allocation and freeing of objects within the caches. The sophisticated management of caches and the slabs within is entirely handled by the internals of the slab layer. After you create a cache, the slab layer works just like a specialized allocator for the specific type of object.</p>
+<h4 id="slab-allocator-interface">Slab Allocator Interface</h4>
+<p>A new cache is created via <code>kmem_cache_create()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c#L2098">/mm/slab.c#L2098</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">kmem_cache</span> <span class="o">*</span> <span class="nf">kmem_cache_create</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
+                                      <span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span>
+                                      <span class="kt">size_t</span> <span class="n">align</span><span class="p">,</span>
+                                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">,</span>
+                                      <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">ctor</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">));</span>
+</pre></div>
+
+
+<ul>
+<li>The first parameter <code>name</code> is a string storing the name of the cache.</li>
+<li>The second parameter <code>size</code> is the size of each element in the cache.</li>
+<li>The third parameter <code>align</code> is the offset of the first object within a slab, which ensures a particular alignment within the page. A value of zero results in the standard alignment.</li>
+<li>The <code>flags</code> parameter specifies optional settings controlling the cache’s behavior. It can be zero, specifying no special behavior, or one or more of the following flags OR’ed together:<ul>
+<li><code>SLAB_HWCACHE_ALIGN</code> instructs the slab layer to align each object within a slab to a cache line, which prevents "false sharing" (two or more objects mapping to the same cache line despite existing at different addresses in memory).<ul>
+<li>This improves performance but comes at a cost of increased <a href="https://en.wikipedia.org/wiki/Memory_footprint">memory footprint</a> because the stricter alignment results in more wasted slack space.</li>
+<li>How large the increase in memory consumption is depends on the size of the objects and how they naturally align with respect to the system’s cache lines. For frequently used caches in performance-critical code, setting this option is a good idea.</li>
+</ul>
+</li>
+<li><code>SLAB_POISON</code> causes the slab layer to fill the slab with a known value (<em>a5a5a5a5</em>). This is called <strong>poisoning</strong> and is useful for catching access to uninitialized memory.</li>
+<li><code>SLAB_RED_ZONE</code> causes the slab layer to insert "red zones" around the allocated memory to help detect buffer overruns.</li>
+<li><code>SLAB_PANIC</code> causes the slab layer to panic if the allocation fails. This flag is useful when the allocation must not fail, e.g. allocating the VMA structure cache (<a href="../ch15/">Chapter 15</a>) during bootup.</li>
+<li><code>SLAB_CACHE_DMA</code> instructs the slab layer to allocate each slab in DMA-able memory. This is needed if the allocated object is used for DMA and must
+reside in <code>ZONE_DMA</code>; otherwise do not set it.</li>
+</ul>
+</li>
+<li>The final parameter <code>ctor</code> is a constructor for the cache. The constructor is called whenever new pages are added to the cache. In practice, caches in the Linux kernel do not often utilize a constructor.</li>
+</ul>
+<p><code>kmem_cache_destroy</code> destroy a cache:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c#L2543">mm/slab.c#L2543</a></small></p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">kmem_cache_destroy</span><span class="p">(</span><span class="k">struct</span> <span class="n">kmem_cache</span> <span class="o">*</span><span class="n">cachep</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function is invoked from module shutdown code in modules that create their own caches. It must not be called from interrupt context because it may sleep.The caller of this function must ensure two conditions before invoking this function:</p>
+<ul>
+<li>All slabs in the cache are empty. Indeed, if an object in one of the slabs were still allocated and in use, how could the cache be destroyed?</li>
+<li>No one accesses the cache during and after a call to <code>kmem_cache_destroy()</code>. The caller must ensure this synchronization</li>
+</ul>
+<h5 id="allocating-from-the-cache"><strong>Allocating from the Cache</strong></h5>
+<p>[p250]</p>
+<h4 id="example-of-using-the-slab-allocator"><strong>Example of Using the Slab Allocator</strong></h4>
+<p>[p251]</p>
+<h3 id="statically-allocating-on-the-stack">Statically Allocating on the Stack</h3>
+<p>User-space can afforded large, dynamically growing stack, whereas the the kernel’s stack is small and fixed.</p>
+<p>The size of the per-process kernel stacks depends on both the architecture and a compile-time
+option. Historically, the kernel stack has been two pages per process.This is usually:</p>
+<ul>
+<li>8KB for 32-bit architectures (with 4KB pages)</li>
+<li>16KB for 64-bit architectures (wtih 8KB pages)</li>
+</ul>
+<h4 id="single-page-kernel-stacks">Single-Page Kernel Stacks</h4>
+<p>Early in the 2.6 kernel series, an option was introduced to move to single-page kernel stacks, where each process is given only a single page (4KB on 32-bit architectures and 8KB on 64-bit architectures). This was done for two reasons:</p>
+<ol>
+<li>It results in a page with less memory consumption per process.</li>
+<li>As uptime increases, it becomes increasingly hard to find two physically contiguous unallocated pages. Physical memory becomes fragmented, and the resulting VM pressure from allocating a single new process is expensive.</li>
+</ol>
+<p>There is one more complication. <u>Each process’s entire call chain has to fit in its kernel stack.</u> Historically, however, interrupt handlers also used the kernel stack of the process they interrupted, thus they too had to fit. This was efficient and simple, but it placed even tighter constraints on the already meager kernel stack. When the stack moved to only a single page, interrupt handlers no longer fit.</p>
+<h5 id="interrupt-stacks"><strong>Interrupt stacks</strong></h5>
+<p>To rectify this problem, the kernel developers implemented a new feature: interrupt stacks. <u>Interrupt stacks provide a single per-processor stack used for interrupt handlers. With this option, interrupt handlers no longer share the kernel stack of the interrupted process. </u> Instead, they use their own stacks. This consumes only a single page per processor.</p>
+<p>To summarize, kernel stacks are either one or two pages, depending on compile-time configuration options. The stack can therefore range from 4KB to 16KB. Historically, interrupt handlers shared the stack of the interrupted process. When single page stacks are enabled, interrupt handlers are given their own stacks. In any case, unbounded recursion and <code>alloca()</code> are obviously not allowed.</p>
+<h4 id="playing-fair-on-the-stack">Playing Fair on the Stack</h4>
+<p>In any given function, you must keep stack usage to a minimum. You should keep the sum of all local (automatic) variables in a function to a maximum of a couple hundred bytes. Performing a large static allocation on the stack (e.g. a large array or structure) is dangerous. Otherwise, stack allocations are performed in the kernel just as in user-space.</p>
+<p>Stack overflows occur silently and will
+undoubtedly result in problems. Because the kernel does not make any effort to manage
+the stack, when the stack overflows, the excess data simply spills into whatever exists at
+the tail end of the stack, the first thing of which is the <code>thread_info</code> structure, which is allocated at the end of each process’s kernel stack (<a href="../ch3/">Chapter 3</a>).</p>
+<p>Beyond the stack, any kernel data might lurk.At best, the machine will crash when the stack overflows. At worst, the overflow will silently corrupt data. Therefore, it is wise to use a dynamic allocation scheme (discussed perviouly in this chapter) for any large memory allocations.</p>
+<h3 id="high-memory-mappings">High Memory Mappings</h3>
+<p>By definition, pages in high memory might not be permanently mapped into the kernel’s (virtual) address space. Thus, pages obtained via <code>alloc_pages()</code> with the <code>__GFP_HIGHMEM</code> flag might not have a logical address (see relevant text in <a href="#zone-modifiers">Zone Modifers</a> subsection).</p>
+<p>On the x86 architecture, all physical memory beyond the 896MB mark is high memory and is not permanently or automatically mapped into the kernel’s address space, despite x86 processors being capable of physically addressing up to 4GB (64GB with <a href="https://en.wikipedia.org/wiki/Physical_Address_Extension">PAE</a>) of physical RAM. After they are allocated, these pages must be mapped into the kernel’s logical address space. On x86, pages in high memory are mapped somewhere between the 3GB and 4GB mark.</p>
+<h4 id="permanent-mappings">Permanent Mappings</h4>
+<h4 id="temporary-mappings">Temporary Mappings</h4>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on zones:</p>
@@ -1130,6 +1223,15 @@ cache:</p>
 
 
 <p>The "educational" code merely wraps around <code>__get_free_pages</code> without any slab related code. WTF?</p>
+<p>p250 on flags to <code>kmem_cache_create()</code>:</p>
+<blockquote>
+<p><code>SLAB_HWCACHE_ALIGN</code> instructs the slab layer to align each object within a slab to a cache line, which prevents "false sharing" (two or more objects mapping to the same cache line despite existing at different addresses in memory). This improves performance but comes at a cost of increased memory footprint because the stricter alignment results in more wasted slack space. How large the increase in memory consumption is depends on the size of the objects and how they naturally align with respect to the system’s cache lines. For frequently used caches in performance-critical code, setting this option is a good idea; otherwise, think twice.</p>
+</blockquote>
+<p>p253 on single-page kernel stacks</p>
+<blockquote>
+<p>When single page stacks are enabled, interrupt handlers are given their own stacks. In any case, unbounded recursion and <code>alloca()</code> are obviously not allowed.</p>
+</blockquote>
+<p>What is unbounded recursion and <code>alloca()</code>?</p>
             </div>
         </div>
 
