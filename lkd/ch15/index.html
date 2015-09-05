@@ -377,12 +377,160 @@
         <li class="main active"><a href="#chapter-15-the-process-address-space">Chapter 15. The Process Address Space</a></li>
         
     
+        <li class="main "><a href="#address-spaces">Address Spaces</a></li>
+        
+            <li><a href="#flat-and-segmented-address-space">Flat and segmented address space *</a></li>
+        
+            <li><a href="#memory-areas">Memory areas*</a></li>
+        
+    
+        <li class="main "><a href="#the-memory-descriptor">The Memory Descriptor</a></li>
+        
+            <li><a href="#allocating-a-memory-descriptor">Allocating a Memory Descriptor</a></li>
+        
+            <li><a href="#destroying-a-memory-descriptor">Destroying a Memory Descriptor</a></li>
+        
+            <li><a href="#the-mm_struct-and-kernel-threads">The mm_struct and Kernel Threads</a></li>
+        
+    
+        <li class="main "><a href="#virtual-memory-areas">Virtual Memory Areas</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-15-the-process-address-space"><strong>Chapter 15. The Process Address Space</strong></h3>
+<p><a href="../ch12/">Chapter 12 Memory Management</a> covers how the kernel manages physical memory.  In addition to managing its own memory, the kernel also has to manage the memory of user-space processes. This memory is called the <strong>process address space</strong>, which is the representation of memory given to each user-space process on the system.</p>
+<p>Linux is a virtual memory operating system:</p>
+<ul>
+<li>The memory is virtualized among the processes on the system. An individual process’s view of memory is as if it alone has full access to the system’s physical memory.</li>
+<li>More important, the address space of even a single process can be much larger than physical memory.</li>
+</ul>
+<p>This chapter discusses how the kernel manages the process address space.</p>
+<h3 id="address-spaces">Address Spaces</h3>
+<h4 id="flat-and-segmented-address-space">Flat and segmented address space *</h4>
+<p>The process address space consists of the virtual memory addressable by a process and the addresses within the virtual memory that the process is allowed to use. Each process is given a flat 32- or 64-bit address space, with the size depending on the architecture. The term <em>flat</em> denotes that the address space exists in a single range. (For example, a 32-bit address space extends from the address 0 to 4294967295.)</p>
+<p>Some operating systems provide a <strong>segmented address space</strong>, with addresses existing not in a single linear range, but instead in multiple segments. Modern virtual memory operating systems generally have a flat memory model and not a segmented one.</p>
+<p>In the flat memory model, the flat address space is unique to each process. A memory address in one process’s address space is completely unrelated to that same memory address in another process’s address space. Both processes can have different data at the same address in their respective address spaces.Alternatively, processes can elect to share their address space with other processes; these processes are known as as <strong>threads</strong>.</p>
+<h4 id="memory-areas">Memory areas*</h4>
+<p>A memory address is a given value within the address space, such as <code>4021f000</code>. This particular value identifies a specific byte in a process’s 32-bit address space. Although a process can address up to 4GB of memory (with a 32-bit address space), it doesn’t have permission to access all of it.</p>
+<p>These intervals of legal addresses (the process has permission to access), such as <code>08048000-0804c000</code> are called <strong>memory areas</strong>. The process, through the kernel, can dynamically add and remove memory areas to its address space.</p>
+<p>The process can access a memory address only in a valid memory area. Memory areas have associated permissions, such as readable, writable, and executable, that the associated process must respect. If a process accesses a memory address not in a valid memory area, or if it accesses a valid area in an invalid manner, the kernel kills the process with the dreaded "Segmentation Fault" message.</p>
+<p>Memory areas can contain the following things:</p>
+<ul>
+<li>A memory map of the executable file’s code, called the <strong>text section</strong>.</li>
+<li>A memory map of the executable file’s initialized global variables, called the <strong>data section</strong>.</li>
+<li>A memory map of the zero page (a page consisting of all zeros, used for purposes such as this) containing uninitialized global variables, called the <strong>bss section</strong>.<ul>
+<li>The term "BSS" is historical and stands for <strong>b</strong>lock <strong>s</strong>tarted by <strong>s</strong>ymbol.</li>
+<li>Uninitialized variables are not stored in the executable object because they do not have any associated value. But the C standard decrees that uninitialized global variables are assigned certain default values (all zeros), so the kernel loads the variables (without value) from the executable into memory and maps the zero page over the area, thereby giving the variables the value zero, without having to waste space in the object file with explicit initializations.</li>
+</ul>
+</li>
+<li>A memory map of the zero page used for the process’s user-space stack. (Do not confuse this with the process’s <a href="../ch12/#statically-allocating-on-the-stack">kernel stack</a>, which is separate and maintained and used by the kernel.)</li>
+<li>An additional text, data, and bss section for each shared library, such as the C library and dynamic linker, loaded into the process’s address space.</li>
+<li>Any memory mapped files.</li>
+<li>Any shared memory segments.</li>
+<li>Any anonymous memory mappings, such as those associated with <code>malloc()</code> (newer versions of glibc implement <code>malloc()</code> via <code>mmap()</code>, in addition to <code>brk()</code>).</li>
+</ul>
+<h3 id="the-memory-descriptor">The Memory Descriptor</h3>
+<p>The kernel represents a process’s address space with a data structure called the <strong>memory descriptor</strong>. This structure contains all the information related to the process address space.</p>
+<p>The memory descriptor is represented by <code>struct mm_struct</code> and defined in <code>&lt;linux/mm_types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h">include/linux/mm_types.h</a>):</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h#L222">include/linux/mm_types.h#L222</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">mm_struct</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">mmap</span><span class="p">;</span> <span class="cm">/* list of memory areas */</span>
+    <span class="k">struct</span> <span class="n">rb_root</span> <span class="n">mm_rb</span><span class="p">;</span> <span class="cm">/* red-black tree of VMAs */</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">mmap_cache</span><span class="p">;</span> <span class="cm">/* last used memory area */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">free_area_cache</span><span class="p">;</span> <span class="cm">/* 1st address space hole */</span>
+    <span class="kt">pgd_t</span> <span class="o">*</span><span class="n">pgd</span><span class="p">;</span> <span class="cm">/* page global directory */</span>
+    <span class="kt">atomic_t</span> <span class="n">mm_users</span><span class="p">;</span> <span class="cm">/* address space users */</span>
+    <span class="kt">atomic_t</span> <span class="n">mm_count</span><span class="p">;</span> <span class="cm">/* primary usage counter */</span>
+    <span class="kt">int</span> <span class="n">map_count</span><span class="p">;</span> <span class="cm">/* number of memory areas */</span>
+    <span class="k">struct</span> <span class="n">rw_semaphore</span> <span class="n">mmap_sem</span><span class="p">;</span> <span class="cm">/* memory area semaphore */</span>
+    <span class="kt">spinlock_t</span> <span class="n">page_table_lock</span><span class="p">;</span> <span class="cm">/* page table lock */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">mmlist</span><span class="p">;</span> <span class="cm">/* list of all mm_structs */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_code</span><span class="p">;</span> <span class="cm">/* start address of code */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">end_code</span><span class="p">;</span> <span class="cm">/* final address of code */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_data</span><span class="p">;</span> <span class="cm">/* start address of data */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">end_data</span><span class="p">;</span> <span class="cm">/* final address of data */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_brk</span><span class="p">;</span> <span class="cm">/* start address of heap */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">brk</span><span class="p">;</span> <span class="cm">/* final address of heap */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_stack</span><span class="p">;</span> <span class="cm">/* start address of stack */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg_start</span><span class="p">;</span> <span class="cm">/* start of arguments */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg_end</span><span class="p">;</span> <span class="cm">/* end of arguments */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">env_start</span><span class="p">;</span> <span class="cm">/* start of environment */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">env_end</span><span class="p">;</span> <span class="cm">/* end of environment */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">rss</span><span class="p">;</span> <span class="cm">/* pages allocated */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">total_vm</span><span class="p">;</span> <span class="cm">/* total number of pages */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">locked_vm</span><span class="p">;</span> <span class="cm">/* number of locked pages */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">saved_auxv</span><span class="p">[</span><span class="n">AT_VECTOR_SIZE</span><span class="p">];</span> <span class="cm">/* saved auxv */</span>
+    <span class="kt">cpumask_t</span> <span class="n">cpu_vm_mask</span><span class="p">;</span> <span class="cm">/* lazy TLB switch mask */</span>
+    <span class="kt">mm_context_t</span> <span class="n">context</span><span class="p">;</span> <span class="cm">/* arch-specific data */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">;</span> <span class="cm">/* status flags */</span>
+    <span class="kt">int</span> <span class="n">core_waiters</span><span class="p">;</span> <span class="cm">/* thread core dump waiters */</span>
+    <span class="k">struct</span> <span class="n">core_state</span> <span class="o">*</span><span class="n">core_state</span><span class="p">;</span> <span class="cm">/* core dump support */</span>
+    <span class="kt">spinlock_t</span> <span class="n">ioctx_lock</span><span class="p">;</span> <span class="cm">/* AIO I/O list lock */</span>
+    <span class="k">struct</span> <span class="n">hlist_head</span> <span class="n">ioctx_list</span><span class="p">;</span> <span class="cm">/* AIO I/O list */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>mm_users</code> field is the number of processes using this address space.<ul>
+<li>For example, if two threads share this address space, <code>mm_users</code> is equal to two.</li>
+</ul>
+</li>
+<li>The <code>mm_count</code> field is the primary reference count for the <code>mm_struct</code>.<ul>
+<li>All <code>mm_users</code> equate to one increment of <code>mm_count</code>. In the previous example, <code>mm_count</code> is only one. If nine threads shared an address space, <code>mm_users</code> would be nine, but again <code>mm_count</code> would be only one. Only when <code>mm_users</code> reaches zero (when all threads using an address space exit) is mm_count decremented. When <code>mm_count</code> finally reaches zero, there are no remaining references to this <code>mm_struct</code>, and it is freed.</li>
+<li>When the kernel operates on an address space and needs to bump its associated reference count, the kernel increments <code>mm_count</code>.</li>
+</ul>
+</li>
+</ul>
+<p>Having two counters enables the kernel to differentiate between the main usage counter (<code>mm_count</code>) and the number of processes using the address space (<code>mm_users</code>).</p>
+<ul>
+<li>The <code>mmap</code> and <code>mm_rb</code> fields are different data structures that contain the same thing: all the memory areas in this address space.<ul>
+<li><code>mmap</code> stores them in a linked list.</li>
+<li><code>mm_rb</code> stores them in a red-black tree. A red-black tree is a type of binary tree; like all binary trees, searching for a given element is an O(log <em>n</em>) operation.</li>
+</ul>
+</li>
+</ul>
+<p>This redundancy (two <code>mmap</code> and <code>mm_rb</code> data structures on the same data) are handy:
+  * The <code>mmap</code> data structure, as a linked list, allows for simple and efficient traversing of all elements.
+  * The <code>mm_rb</code> data structure, as a red-black tree, is more suitable to searching for a given element.</p>
+<p>The kernel isn’t duplicating the <code>mm_struct</code> structures; just the containing objects. Overlaying a linked list onto a tree, and using both to access the same set of data, is sometimes called a <a href="https://en.wikipedia.org/wiki/Threaded_binary_tree"><strong>threaded tree</strong></a>.</p>
+<p>All of the <code>mm_struct</code> structures are strung together in a doubly linked list via the <code>mmlist</code> field. The initial element in the list is the <code>init_mm</code> memory descriptor, which describes the address space of the <code>init</code> process. The list is protected from concurrent access via the <code>mmlist_lock</code>, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/fork.c">kernel/fork.c</a>.</p>
+<h4 id="allocating-a-memory-descriptor">Allocating a Memory Descriptor</h4>
+<p>The memory descriptor associated with a given task is stored in the <code>mm</code> field of the task’s process descriptor:</p>
+<ul>
+<li>The process descriptor is represented by the <code>task_struct</code> structure, defined in <code>&lt;linux/sched.h&gt;</code>. Thus, <code>current-&gt;mm</code> is the current process’s memory descriptor.</li>
+<li>The <code>copy_mm()</code> function copies a parent’s memory descriptor to its child during <code>fork()</code>.</li>
+<li>The <code>mm_struct</code> structure is allocated from the <code>mm_cachep</code> slab cache via the <code>allocate_mm()</code> macro in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/fork.c">kernel/fork.c</a>.</li>
+<li>Each process receives a unique <code>mm_struct</code> and thus a unique process address space.</li>
+</ul>
+<p>Processes may share their address spaces with their children via the <code>CLONE_VM</code> flag to <code>clone()</code>. The process is then called a <em>thread</em>. <u>This is essentially the only difference between normal processes and so-called threads in Linux (<a href="../ch3/">Chapter 3</a>); the Linux kernel does not otherwise differentiate between them. Threads are regular processes to the kernel that merely share certain resources.</u></p>
+<p>When <code>CLONE_VM</code> is specified, <code>allocate_mm()</code> is not called, and the process’s <code>mm</code> field is set to point to the memory descriptor of its parent via this logic in <code>copy_mm()</code>:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="p">(</span><span class="n">clone_flags</span> <span class="o">&amp;</span> <span class="n">CLONE_VM</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">    * current is the parent process and</span>
+<span class="cm">    * tsk is the child process during a fork()</span>
+<span class="cm">    */</span>
+    <span class="n">atomic_inc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">current</span><span class="o">-&gt;</span><span class="n">mm</span><span class="o">-&gt;</span><span class="n">mm_users</span><span class="p">);</span>
+    <span class="n">tsk</span><span class="o">-&gt;</span><span class="n">mm</span> <span class="o">=</span> <span class="n">current</span><span class="o">-&gt;</span><span class="n">mm</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="destroying-a-memory-descriptor">Destroying a Memory Descriptor</h4>
+<p>When the process associated with a specific address space exits, <code>exit_mm()</code>, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/exit.c">kernel/exit.c</a>, is invoked. This function performs some housekeeping and updates some statistics. It then calls <code>mmput()</code>, which decrements the memory descriptor’s <code>mm_users</code> user counter. If the user count reaches zero, <code>mmdrop()</code> is called to decrement the <code>mm_count</code> usage counter. If that counter is finally zero, the <code>free_mm()</code> macro is invoked to return the <code>mm_struct</code> to the <code>mm_cachep</code> slab cache via <code>kmem_cache_free()</code>, because the memory descriptor does not have any users.</p>
+<h4 id="the-mm_struct-and-kernel-threads">The <code>mm_struct</code> and Kernel Threads</h4>
+<p><u>Kernel threads do not have a process address space and therefore do not have an associated memory descriptor.</u> Thus, the <code>mm</code> field of a kernel thread’s process descriptor is <code>NULL</code>.  This is the definition of a kernel thread: processes that have no user context.</p>
+<p>Kernel threads do not ever access any userspace memory. Because kernel threads do not have any pages in user-space, they do not deserve their own memory descriptor and <a href="#page-tables">page tables</a> (discussed later in the chapter). However, kernel threads need some of the data, such as the page tables, even to access kernel memory. To provide kernel threads the needed data, without wasting memory on a memory descriptor and page tables, or wasting processor cycles to switch to a new address space whenever a kernel thread begins running, kernel threads use the memory descriptor of whatever task ran previously:</p>
+<ul>
+<li>Whenever a process is scheduled, the process address space referenced by the process’s <code>mm</code> field is loaded. The <code>active_mm</code> field in the process descriptor is then updated to refer to the new address space.</li>
+<li>Kernel threads do not have an address space and <code>mm</code> is <code>NULL</code>. Therefore, when a kernel thread is scheduled, the kernel notices that <code>mm</code> is <code>NULL</code> and keeps the previous process’s address space loaded. The kernel then updates the <code>active_mm</code> field of the kernel thread’s process descriptor to refer to the previous process’s memory descriptor.</li>
+<li>The kernel thread can then use the previous process’s page tables as needed. Because kernel threads do not access user-space memory, they make use of only the information in the address space pertaining to kernel memory, which is the same for all processes.</li>
+</ul>
+<h3 id="virtual-memory-areas">Virtual Memory Areas</h3>
             </div>
         </div>
 
