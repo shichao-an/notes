@@ -395,6 +395,12 @@
     
         <li class="main "><a href="#virtual-memory-areas">Virtual Memory Areas</a></li>
         
+            <li><a href="#vma-flags">VMA Flags</a></li>
+        
+            <li><a href="#vma-operations">VMA Operations</a></li>
+        
+            <li><a href="#lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas</a></li>
+        
     
     </ul>
 </div></div>
@@ -494,9 +500,11 @@
 </ul>
 </li>
 </ul>
-<p>This redundancy (two <code>mmap</code> and <code>mm_rb</code> data structures on the same data) are handy:
-  * The <code>mmap</code> data structure, as a linked list, allows for simple and efficient traversing of all elements.
-  * The <code>mm_rb</code> data structure, as a red-black tree, is more suitable to searching for a given element.</p>
+<p>This redundancy (two <code>mmap</code> and <code>mm_rb</code> data structures on the same data) are handy:</p>
+<ul>
+<li>The <code>mmap</code> data structure, as a linked list, allows for simple and efficient traversing of all elements.</li>
+<li>The <code>mm_rb</code> data structure, as a red-black tree, is more suitable to searching for a given element.</li>
+</ul>
 <p>The kernel isn’t duplicating the <code>mm_struct</code> structures; just the containing objects. Overlaying a linked list onto a tree, and using both to access the same set of data, is sometimes called a <a href="https://en.wikipedia.org/wiki/Threaded_binary_tree"><strong>threaded tree</strong></a>.</p>
 <p>All of the <code>mm_struct</code> structures are strung together in a doubly linked list via the <code>mmlist</code> field. The initial element in the list is the <code>init_mm</code> memory descriptor, which describes the address space of the <code>init</code> process. The list is protected from concurrent access via the <code>mmlist_lock</code>, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/fork.c">kernel/fork.c</a>.</p>
 <h4 id="allocating-a-memory-descriptor">Allocating a Memory Descriptor</h4>
@@ -531,6 +539,227 @@
 <li>The kernel thread can then use the previous process’s page tables as needed. Because kernel threads do not access user-space memory, they make use of only the information in the address space pertaining to kernel memory, which is the same for all processes.</li>
 </ul>
 <h3 id="virtual-memory-areas">Virtual Memory Areas</h3>
+<p>The memory area structure <code>vm_area_struct</code> represents memory areas, defined in <code>&lt;linux/mm_types.h&gt;</code>. In the Linux kernel, memory areas are often called <strong>virtual memory areas</strong> (<strong>VMA</strong>s).</p>
+<p>The <code>vm_area_struct</code> structure describes a single memory area over a contiguous interval in a given address space:</p>
+<ul>
+<li>The kernel treats each memory area as a unique memory object.</li>
+<li>Each memory area possesses certain properties, such as permissions and a set of associated operations.</li>
+</ul>
+<p>In this manner, each VMA structure can represent different types of memory areas, e.g. memory-mapped files or the process’s user-space stack. This is similar to the object-oriented approach taken by the VFS layer (<a href="../ch13/">Chapter 13</a>).</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h#L130">include/linux/mm_types.h#L130</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">vm_mm</span><span class="p">;</span> <span class="cm">/* associated mm_struct */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_start</span><span class="p">;</span> <span class="cm">/* VMA start, inclusive */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_end</span><span class="p">;</span> <span class="cm">/* VMA end , exclusive */</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vm_next</span><span class="p">;</span> <span class="cm">/* list of VMA’s */</span>
+    <span class="kt">pgprot_t</span> <span class="n">vm_page_prot</span><span class="p">;</span> <span class="cm">/* access permissions */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_flags</span><span class="p">;</span> <span class="cm">/* flags */</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="n">vm_rb</span><span class="p">;</span> <span class="cm">/* VMA’s node in the tree */</span>
+    <span class="k">union</span> <span class="p">{</span> <span class="cm">/* links to address_space-&gt;i_mmap or i_mmap_nonlinear */</span>
+    <span class="k">struct</span> <span class="p">{</span>
+            <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span>
+            <span class="kt">void</span> <span class="o">*</span><span class="n">parent</span><span class="p">;</span>
+            <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">head</span><span class="p">;</span>
+        <span class="p">}</span> <span class="n">vm_set</span><span class="p">;</span>
+        <span class="k">struct</span> <span class="n">prio_tree_node</span> <span class="n">prio_tree_node</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">shared</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">anon_vma_node</span><span class="p">;</span> <span class="cm">/* anon_vma entry */</span>
+    <span class="k">struct</span> <span class="n">anon_vma</span> <span class="o">*</span><span class="n">anon_vma</span><span class="p">;</span> <span class="cm">/* anonymous VMA object */</span>
+    <span class="k">struct</span> <span class="n">vm_operations_struct</span> <span class="o">*</span><span class="n">vm_ops</span><span class="p">;</span> <span class="cm">/* associated ops */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_pgoff</span><span class="p">;</span> <span class="cm">/* offset within file */</span>
+    <span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">vm_file</span><span class="p">;</span> <span class="cm">/* mapped file, if any */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">vm_private_data</span><span class="p">;</span> <span class="cm">/* private data */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Each memory descriptor is associated with a unique interval in the process’s address space.</p>
+<ul>
+<li>The <code>vm_start</code> field is the initial (lowest) address in the interval. (inclusive start)</li>
+<li>The <code>vm_end</code> field is the first byte after the final (highest) address in the interval. (exclusive end)</li>
+</ul>
+<p><code>vm_end - vm_start</code> is the length in bytes of the memory area, which exists over the interval <code>[vm_start, vm_end)</code>. Intervals in different memory areas in the same address space cannot overlap.</p>
+<p>The <code>vm_mm</code> field points to this VMA’s associated <code>mm_struct</code>. Each VMA is unique to the <code>mm_struct</code> with which it is associated:</p>
+<ul>
+<li>Therefore, even if two separate processes map the same file into their respective address spaces, each has a unique <code>vm_area_struct</code> to identify its unique memory area.</li>
+<li>Conversely, two threads that share an address space also share all the <code>vm_area_struct</code> structures therein.</li>
+</ul>
+<h4 id="vma-flags">VMA Flags</h4>
+<p>The <code>vm_flags</code> field contains bit flags, defined in <code>&lt;linux/mm.h&gt;</code>, that specify the behavior of and provide information about the pages contained in the memory area. Unlike permissions associated with a specific physical page, the VMA flags specify behavior for which the kernel is responsible, not the hardware. <code>vm_flags</code> contains information that relates to the memory area as a whole (each page), not specific individual pages.</p>
+<p>The following table is a listing of the possible <code>vm_flags</code> values.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect on the VMA and Its Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VM_READ</code></td>
+<td>Pages can be read from.</td>
+</tr>
+<tr>
+<td><code>VM_WRITE</code></td>
+<td>Pages can be written to.</td>
+</tr>
+<tr>
+<td><code>VM_EXEC</code></td>
+<td>Pages can be executed.</td>
+</tr>
+<tr>
+<td><code>VM_SHARED</code></td>
+<td>Pages are shared.</td>
+</tr>
+<tr>
+<td><code>VM_MAYREAD</code></td>
+<td>The <code>VM_READ</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_MAYWRITE</code></td>
+<td>The <code>VM_WRITE</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_MAYEXEC</code></td>
+<td>The <code>VM_EXEC</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_MAYSHARE</code></td>
+<td>The <code>VM_SHARE</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_GROWSDOWN</code></td>
+<td>The area can grow downward.</td>
+</tr>
+<tr>
+<td><code>VM_GROWSUP</code></td>
+<td>The area can grow upward.</td>
+</tr>
+<tr>
+<td><code>VM_SHM</code></td>
+<td>The area is used for shared memory.</td>
+</tr>
+<tr>
+<td><code>VM_DENYWRITE</code></td>
+<td>The area maps an unwritable file.</td>
+</tr>
+<tr>
+<td><code>VM_EXECUTABLE</code></td>
+<td>The area maps an executable file.</td>
+</tr>
+<tr>
+<td><code>VM_LOCKED</code></td>
+<td>The pages in this area are locked.</td>
+</tr>
+<tr>
+<td><code>VM_IO</code></td>
+<td>The area maps a device’s I/O space.</td>
+</tr>
+<tr>
+<td><code>VM_SEQ_READ</code></td>
+<td>The pages seem to be accessed sequentially.</td>
+</tr>
+<tr>
+<td><code>VM_RAND_READ</code></td>
+<td>The pages seem to be accessed randomly.</td>
+</tr>
+<tr>
+<td><code>VM_DONTCOPY</code></td>
+<td>This area must not be copied on <code>fork()</code>.</td>
+</tr>
+<tr>
+<td><code>VM_DONTEXPAND</code></td>
+<td>This area cannot grow via <code>mremap()</code>.</td>
+</tr>
+<tr>
+<td><code>VM_RESERVED</code></td>
+<td>This area must not be swapped out.</td>
+</tr>
+<tr>
+<td><code>VM_ACCOUNT</code></td>
+<td>This area is an accounted VM object.</td>
+</tr>
+<tr>
+<td><code>VM_HUGETLB</code></td>
+<td>This area uses hugetlb pages.</td>
+</tr>
+<tr>
+<td><code>VM_NONLINEAR</code></td>
+<td>This area is a nonlinear mapping.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>VM_READ</code>, <code>VM_WRITE</code>, and <code>VM_EXEC</code> flags specify the usual read, write, and execute permissions for the pages in this particular memory area. They are combined as needed to form the appropriate access permissions that a process accessing this VMA must respect. For example:<ul>
+<li>The object code for a process might be mapped with <code>VM_READ</code> and <code>VM_EXEC</code> but not <code>VM_WRITE</code>.</li>
+<li>The data section from an executable object would be mapped <code>VM_READ</code> and <code>VM_WRITE</code>, but <code>VM_EXEC</code> would make little sense.</li>
+<li>A read-only memory mapped data file would be mapped with only the <code>VM_READ</code> flag.</li>
+</ul>
+</li>
+<li>The <code>VM_SHARED</code> flag specifies whether the memory area contains a mapping that is shared among multiple processes.<ul>
+<li>If the flag is set, it is intuitively called a <strong>shared mapping</strong>.</li>
+<li>If the flag is not set, only a single process can view this particular mapping, and it is called a <strong>private mapping</strong>.</li>
+</ul>
+</li>
+<li>The <code>VM_IO</code> flag specifies that this memory area is a mapping of a device’s I/O space. This field is typically set by device drivers when <code>mmap()</code> is called on their I/O space. It specifies, among other things, that the memory area must not be included in any process’s core dump.</li>
+<li>The <code>VM_RESERVED</code> flag specifies that the memory region must not be swapped out. It is also used by device driver mappings.</li>
+<li>The <code>VM_SEQ_READ</code> flag indicates that the application is performing sequential (i.e. linear and contiguous) reads in this mapping. <u>The kernel can then opt to increase the read-ahead performed on the backing file.</u></li>
+<li>The <code>VM_RAND_READ</code> flag specifies that the application is performing relatively random (i.e. not sequential) reads in this mapping. The kernel can then opt to decrease or disable read-ahead on the backing file.</li>
+</ul>
+<p>These flags (<code>VM_SEQ_READ</code> and <code>VM_RAND_READ</code> flags) are set via the <code>madvise()</code> system call with the <code>MADV_SEQUENTIAL</code> and <code>MADV_RANDOM</code> flags, respectively:</p>
+<ul>
+<li>Read-ahead is the act of reading sequentially ahead of requested data, in hopes that the additional data will be needed soon. This is beneficial if applications are reading data sequentially.</li>
+<li>If data access patterns are random, however, read-ahead is not effective.</li>
+</ul>
+<h4 id="vma-operations">VMA Operations</h4>
+<p>The <code>vm_ops</code> field in the <code>vm_area_struct</code> structure points to the table of operations associated with a given memory area, which the kernel can invoke to manipulate the VMA. The <code>vm_area_struct</code> acts as a generic object for representing any type of memory area, and the operations table describes the specific methods that can operate on this particular instance of the object.</p>
+<p>The operations table is represented by struct <code>vm_operations_struct</code> and is defined in <code>&lt;linux/mm.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L185">include/linux/mm.h#L185</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_operations_struct</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">open</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">close</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">fault</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">,</span> <span class="k">struct</span> <span class="n">vm_fault</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">page_mkwrite</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vma</span><span class="p">,</span> <span class="k">struct</span> <span class="n">vm_fault</span> <span class="o">*</span><span class="n">vmf</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">access</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="p">,</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<ul>
+<li><code>void open(struct vm_area_struct *area)</code>. This function is invoked when the given memory area is added to an address space.</li>
+<li><code>void close(struct vm_area_struct *area)</code>. This function is invoked when the given memory area is removed from an
+address space.</li>
+<li><code>int fault(struct vm_area_sruct *area, struct vm_fault *vmf)</code>. This function is invoked by the page fault handler when a page that is not present in physical memory is accessed.</li>
+<li><code>int page_mkwrite(struct vm_area_sruct *area, struct vm_fault *vmf)</code>. This function is invoked by the page fault handler when a page that was read-only is being made writable.</li>
+<li><code>int access(struct vm_area_struct *vma, unsigned long address, void *buf, int len, int write)</code>. This function is invoked by <code>access_process_vm()</code> when <code>get_user_pages()</code> fails.</li>
+</ul>
+<h4 id="lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas</h4>
+<p>As discussed earlier, memory areas are accessed via both the <code>mmap</code> and the <code>mm_rb</code> fields of the memory descriptor. These two data structures independently point to all the memory area objects associated with the memory descriptor. They both contain pointers to the same <code>vm_area_struct</code> structures, represented in different ways.</p>
+<p>The first field, <code>mmap</code>, links together all the memory area objects in a singly linked list:</p>
+<ul>
+<li>Each <code>vm_area_struct</code> structure is linked into the list via its <code>vm_next</code> field.</li>
+<li>The areas are sorted by ascending address.</li>
+<li>The first memory area is the <code>vm_area_struct</code> structure to which mmap points.</li>
+<li>The last structure points to <code>NULL</code>.</li>
+</ul>
+<p>The second field, <code>mm_rb</code>, links together all the memory area objects in a red-black tree.</p>
+<ul>
+<li>The root of the red-black tree is <code>mm_rb</code></li>
+<li>Each <code>vm_area_struct</code> structure in this address space is linked to the tree via its <code>vm_rb</code> field.</li>
+</ul>
+<p>A <a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree"><strong>red-black tree</strong></a> is a type of balanced binary tree.</p>
+<ul>
+<li>Each element in a red-black tree is called a node.</li>
+<li>The initial node is called the root of the tree.</li>
+<li>Most nodes have two children: a left child and a right child. Some nodes have only one child, and the final nodes, called leaves, have no children. For any node, the elements to the left are smaller in value, whereas the elements to the right are larger in value. Furthermore, each node is assigned a color (red or black) according to two rules: The children of a red node are black, and every path through the tree from a node to a leaf must contain the same number of black nodes. The root node is always red.</li>
+<li>Searching of, insertion to, and deletion from the tree is an O(log(<em>n</em>)) operation.</li>
+</ul>
+<p>The kernel uses the redundant data structures to provide optimal performance regardless of the operation performed on the memory areas:</p>
+<ul>
+<li>The linked list is used when every node needs to be traversed.</li>
+<li>The red-black tree is used when locating a specific memory area in the address space.</li>
+</ul>
             </div>
         </div>
 
