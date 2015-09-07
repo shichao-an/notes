@@ -401,6 +401,30 @@
         
             <li><a href="#lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas</a></li>
         
+            <li><a href="#memory-areas-in-real-life">Memory Areas in Real Life</a></li>
+        
+    
+        <li class="main "><a href="#manipulating-memory-areas">Manipulating Memory Areas</a></li>
+        
+            <li><a href="#find_vma">find_vma()</a></li>
+        
+            <li><a href="#find_vma_prev">find_vma_prev()</a></li>
+        
+            <li><a href="#find_vma_intersection">find_vma_intersection()</a></li>
+        
+    
+        <li class="main "><a href="#mmap-and-do_mmap-creating-an-address-interval">mmap() and do_mmap(): Creating an Address Interval</a></li>
+        
+    
+        <li class="main "><a href="#munmap-and-do_munmap-removing-an-address-interval">munmap() and do_munmap(): Removing an Address Interval</a></li>
+        
+    
+        <li class="main "><a href="#page-tables">Page Tables</a></li>
+        
+            <li><a href="#translation-lookaside-buffer">Translation Lookaside Buffer *</a></li>
+        
+            <li><a href="#future-work-of-page-tables">Future work of page tables *</a></li>
+        
     
     </ul>
 </div></div>
@@ -760,6 +784,352 @@ address space.</li>
 <li>The linked list is used when every node needs to be traversed.</li>
 <li>The red-black tree is used when locating a specific memory area in the address space.</li>
 </ul>
+<h4 id="memory-areas-in-real-life">Memory Areas in Real Life</h4>
+<p>This section discusses a particular process’s address space and the memory areas inside, with the useful <code>/proc</code> filesystem and the <code>pmap(1)</code> utility. The example is a simple userspace program which does nothing:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Memory areas in this process's address space include:</p>
+<ul>
+<li>The text section, data section, and bss.</li>
+<li>Assuming this process is dynamically linked with the C library, these three memory areas also exist for <code>libc.so</code> and again for <code>ld.so</code>.</li>
+<li>The process’s stack.</li>
+</ul>
+<p>The output from <code>/proc/&lt;pid&gt;/maps</code> lists the memory areas in this process’s address space:</p>
+<div class="codehilite"><pre>$ cat /proc/1426/maps
+00e80000-00faf000 r-xp 00000000 03:01 208530 /lib/tls/libc-2.5.1.so
+00faf000-00fb2000 rw-p 0012f000 03:01 208530 /lib/tls/libc-2.5.1.so
+00fb2000-00fb4000 rw-p 00000000 00:00 0
+08048000-08049000 r-xp 00000000 03:03 439029 /home/rlove/src/example
+08049000-0804a000 rw-p 00000000 03:03 439029 /home/rlove/src/example
+40000000-40015000 r-xp 00000000 03:01 80276 /lib/ld-2.5.1.so
+40015000-40016000 rw-p 00015000 03:01 80276 /lib/ld-2.5.1.so
+4001e000-4001f000 rw-p 00000000 00:00 0
+bfffe000-c0000000 rwxp fffff000 00:00 0
+</pre></div>
+
+
+<p>The data is in the form:</p>
+<div class="codehilite"><pre>start-end permission offset major:minor inode file
+</pre></div>
+
+
+<p>The <code>pmap(1)</code> utility (of the <code>procps</code> package) formats this information in a bit more readable manner:</p>
+<div class="codehilite"><pre>$ pmap 1426
+example[1426]
+00e80000    (1212 KB)   r-xp    (03:01 208530)  /lib/tls/libc-2.5.1.so
+00faf000    (12 KB)     rw-p    (03:01 208530)  /lib/tls/libc-2.5.1.so
+00fb2000    (8 KB)      rw-p    (00:00 0)
+08048000    (4 KB)      r-xp    (03:03 439029)  /home/rlove/src/example
+08049000    (4 KB)      rw-p    (03:03 439029)  /home/rlove/src/example
+40000000    (84 KB)     r-xp    (03:01 80276)   /lib/ld-2.5.1.so
+40015000    (4 KB)      rw-p    (03:01 80276)   /lib/ld-2.5.1.so
+4001e000    (4 KB)      rw-p    (00:00 0)
+bfffe000    (8 KB)      rwxp        (00:00 0)       [ stack ]
+mapped: 1340 KB writable/private: 40 KB shared: 0 KB
+</pre></div>
+
+
+<p>Description of the above output:</p>
+<ul>
+<li>The first three rows are the text section, data section, and bss of <a href="http://man7.org/linux/man-pages/man7/libc.7.html"><code>libc.so</code></a>, the C library.</li>
+<li>The next two rows are the text and data section of our executable object.</li>
+<li>The following three rows are the text section, data section, and bss for <a href="http://man7.org/linux/man-pages/man8/ld.so.8.html"><code>ld.so</code></a>, the <a href="https://en.wikipedia.org/wiki/Dynamic_linker">dynamic linker</a>.</li>
+<li>The last row is the process’s stack.</li>
+</ul>
+<p>Permissions:</p>
+<ul>
+<li>The text sections are all readable and executable, which is what you expect for object code.</li>
+<li>The data section and bss (which both contain global variables) are marked readable and writable, but not executable.</li>
+<li>The stack is readable, writable, and executable.</li>
+</ul>
+<p>Sizes:</p>
+<p>The entire address space takes up about 1340KB, but only 40KB are writable and private. If a memory region is shared or nonwritable, the kernel keeps only one copy of the backing file in memory. Since a nonwritable mapping can never be changed (the mapping is only read from), it is safe to load the image only once into memory. Therefore, the C library needs to occupy only 1212KB in physical memory (not 1212KB multiplied by every process using the library). Because this process has access to about 1340KB worth of data and code, yet consumes only about 40KB of physical memory, the space savings from such sharing is substantial.</p>
+<p>The memory areas without a mapped file on device 00:00 and inode zere are the zero pages, each of which is a mapping that consists of all zeros. By mapping the zero page over a writable memory area, the area is in effect "initialized" to all zeros. This is important in that it provides a zeroed memory area, which is expected by the bss and stack. Because the mapping is not shared, as soon as the process writes to this data, a copy is made (à la <a href="https://en.wikipedia.org/wiki/Copy-on-write">copy-on-write</a>) and the value updated from zero.</p>
+<p>Each of the memory areas associated with the process corresponds to a <code>vm_area_struct</code> structure. Because the process was not a thread, it has a unique <code>mm_struct</code> structure referenced from its <code>task_struct</code>.</p>
+<h3 id="manipulating-memory-areas">Manipulating Memory Areas</h3>
+<p>The kernel often has to perform operations on a memory area, e.g. checking whether a given address exists in a given VMA. These operations are frequent and form the basis of the <code>mmap()</code> routine (discussed later). Helper functions are defined to assist these jobs.</p>
+<p>These functions are all declared in <code>&lt;linux/mm.h&gt;</code>.</p>
+<h4 id="find_vma"><code>find_vma()</code></h4>
+<p>The kernel provides a function <code>find_vma()</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1335">include/linux/mm.h#L1335</a>) for searching for the VMA in which a given memory address resides. It is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="nf">find_vma</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">);</span>
+</pre></div>
+
+
+<ul>
+<li>This function searches the given address space for the first memory area whose <code>vm_end</code> field is greater than <code>addr</code>. In other words, this function finds the first memory area that contains <code>addr</code> or begins at an address greater than <code>addr</code>.</li>
+<li>If no such memory area exists, the function returns <code>NULL</code>. Otherwise, a pointer to the <code>vm_area_struct</code> structure is returned.</li>
+<li>Because the returned VMA may start at an address greater than <code>addr</code>, the given address does not necessarily lie inside the returned VMA.</li>
+<li>The result of the <code>find_vma()</code> function is cached in the <code>mmap_cache</code> field of the memory descriptor.</li>
+<li>Because of the probability of an operation on one VMA being followed by more operations on that same VMA, the cached results have a decent hit rate (about 30–40% in practice).  Checking the cached result is quick. If the given address is not in the cache, you must search the memory areas associated with this memory descriptor for a match, which is done via the red-black tree:</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c#L1569">mm/mmap.c#L1569</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="nf">find_vma</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vma</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">mm</span><span class="p">)</span> <span class="p">{</span>
+        <span class="cm">/* Check the cache first. */</span>
+        <span class="cm">/* (Cache hit rate is typically around 35%.) */</span>
+        <span class="n">vma</span> <span class="o">=</span> <span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_cache</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">vma</span> <span class="o">&amp;&amp;</span> <span class="n">vma</span><span class="o">-&gt;</span><span class="n">vm_end</span> <span class="o">&gt;</span> <span class="n">addr</span> <span class="o">&amp;&amp;</span> <span class="n">vma</span><span class="o">-&gt;</span><span class="n">vm_start</span> <span class="o">&lt;=</span> <span class="n">addr</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span> <span class="n">rb_node</span><span class="p">;</span>
+
+            <span class="n">rb_node</span> <span class="o">=</span> <span class="n">mm</span><span class="o">-&gt;</span><span class="n">mm_rb</span><span class="p">.</span><span class="n">rb_node</span><span class="p">;</span>
+            <span class="n">vma</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+            <span class="k">while</span> <span class="p">(</span><span class="n">rb_node</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="n">vma_tmp</span><span class="p">;</span>
+
+                <span class="n">vma_tmp</span> <span class="o">=</span> <span class="n">rb_entry</span><span class="p">(</span><span class="n">rb_node</span><span class="p">,</span>
+                        <span class="k">struct</span> <span class="n">vm_area_struct</span><span class="p">,</span> <span class="n">vm_rb</span><span class="p">);</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">vma_tmp</span><span class="o">-&gt;</span><span class="n">vm_end</span> <span class="o">&gt;</span> <span class="n">addr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">vma</span> <span class="o">=</span> <span class="n">vma_tmp</span><span class="p">;</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">vma_tmp</span><span class="o">-&gt;</span><span class="n">vm_start</span> <span class="o">&lt;=</span> <span class="n">addr</span><span class="p">)</span>
+                        <span class="k">break</span><span class="p">;</span>
+                    <span class="n">rb_node</span> <span class="o">=</span> <span class="n">rb_node</span><span class="o">-&gt;</span><span class="n">rb_left</span><span class="p">;</span>
+                <span class="p">}</span> <span class="k">else</span>
+                    <span class="n">rb_node</span> <span class="o">=</span> <span class="n">rb_node</span><span class="o">-&gt;</span><span class="n">rb_right</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">vma</span><span class="p">)</span>
+                <span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_cache</span> <span class="o">=</span> <span class="n">vma</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">vma</span><span class="p">;</span>
+</pre></div>
+
+
+<ul>
+<li>The initial check of <code>mmap_cache</code> tests whether the cached VMA contains the desired address. Note that simply checking whether the VMA’s <code>vm_end</code> field is bigger than <code>addr</code> would not ensure that this is the first such VMA that is larger than <code>addr</code>. Thus, for the cache to be useful here, the given <code>addr</code> must lie in (<code>vma-&gt;vm_end &gt; addr &amp;&amp; vma-&gt;vm_start &lt;= addr</code>) the VMA.</li>
+<li>If the cache does not contain the desired VMA, the function must search the red-black tree:<ul>
+<li>If the current VMA’s <code>vm_end</code> is larger than <code>addr</code>, the function follows the left child; otherwise, it follows the right child.</li>
+<li>The function terminates as soon as a VMA is found that contains <code>addr</code>.</li>
+<li>If such a VMA is not found, the function continues traversing the tree and returns the first VMA it found that starts after <code>addr</code>. If no VMA is ever found, <code>NULL</code> is returned.</li>
+</ul>
+</li>
+</ul>
+<h4 id="find_vma_prev"><code>find_vma_prev()</code></h4>
+<p>The <code>find_vma_prev()</code> function works the same as <code>find_vma()</code>, but it also returns the last VMA before addr. The function is also defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a> and declared in <code>&lt;linux/mm.h&gt;</code>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="n">find_vma_prev</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+                                      <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">**</span><span class="n">pprev</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>pprev</code> argument stores a pointer to the VMA preceding <code>addr</code>.</p>
+<h4 id="find_vma_intersection"><code>find_vma_intersection()</code></h4>
+<p>The <code>find_vma_intersection()</code> function returns the first VMA that overlaps a given address interval. The function is defined in <code>&lt;linux/mm.h&gt;</code> because it is inline:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span>
+<span class="nf">find_vma_intersection</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_addr</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">end_addr</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vma</span><span class="p">;</span>
+
+    <span class="n">vma</span> <span class="o">=</span> <span class="n">find_vma</span><span class="p">(</span><span class="n">mm</span><span class="p">,</span> <span class="n">start_addr</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">vma</span> <span class="o">&amp;&amp;</span> <span class="n">end_addr</span> <span class="o">&lt;=</span> <span class="n">vma</span><span class="o">-&gt;</span><span class="n">vm_start</span><span class="p">)</span>
+    <span class="n">vma</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">vma</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The first parameter is the address space to search, <code>start_addr</code> is the start of the interval, and <code>end_addr</code> is the end of the interval.</p>
+<p>If <code>find_vma()</code> returns <code>NULL</code>, so would <code>find_vma_intersection()</code>. If <code>find_vma()</code> returns a valid VMA, however, <code>find_vma_intersection()</code> returns the same VMA only if it does not start after the end of the given address range. If the returned memory area does start after the end of the given address range, the function returns <code>NULL</code>.</p>
+<h3 id="mmap-and-do_mmap-creating-an-address-interval"><code>mmap()</code> and <code>do_mmap()</code>: Creating an Address Interval</h3>
+<p>The <code>do_mmap()</code> function creates a new linear address interval. This function does not technically create a new VMA, because:</p>
+<ul>
+<li>If the created address interval is adjacent to an existing address interval, and if they share the same permissions, the two intervals are merged into one.</li>
+<li>If this is not possible, a new VMA is created.</li>
+</ul>
+<p>In any case, <code>do_mmap()</code> is the function used to add an address interval to a process’s address space, whether that means expanding an existing memory area or creating a new one.</p>
+<p>The <code>do_mmap()</code> function is declared in <code>&lt;linux/mm.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1271">include/linux/mm.h#L1271</a></small></p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">do_mmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">len</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">prot</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flag</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">offset</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>This function maps the file specified by <code>file</code> at offset <code>offset</code> for length <code>len</code>.<ul>
+<li>The <code>file</code> parameter can be <code>NULL</code> and <code>offset</code> can be zero, in which case the mapping will not be backed by a file. In that case, this is called an <strong>anonymous mapping</strong>.</li>
+<li>If a <code>file</code> and <code>offset</code> are provided, the mapping is called a <strong>file-backed mapping</strong>.</li>
+</ul>
+</li>
+<li>The <code>addr</code> function optionally specifies the initial address from which to start the search for a free interval.</li>
+<li>The <code>prot</code> parameter specifies the access permissions for pages in the memory area.The possible permission flags are defined in <code>&lt;asm/mman.h&gt;</code> and are unique to each supported architecture, although in practice each architecture defines the flags listed in the following table:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect on the Pages in the New Interval</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROT_READ</code></td>
+<td>Corresponds to <code>VM_READ</code></td>
+</tr>
+<tr>
+<td><code>PROT_WRITE</code></td>
+<td>Corresponds to <code>VM_WRITE</code></td>
+</tr>
+<tr>
+<td><code>PROT_EXEC</code></td>
+<td>Corresponds to <code>VM_EXEC</code></td>
+</tr>
+<tr>
+<td><code>PROT_NONE</code></td>
+<td>Cannot access page</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>flags</code> parameter specifies flags that correspond to the remaining VMA flags. These flags specify the type and change the behavior of the mapping. They are also defined in <code>&lt;asm/mman.h&gt;</code>:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect on the New Interval</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MAP_SHARED</code></td>
+<td>The mapping can be shared.</td>
+</tr>
+<tr>
+<td><code>MAP_PRIVATE</code></td>
+<td>The mapping cannot be shared.</td>
+</tr>
+<tr>
+<td><code>MAP_FIXED</code></td>
+<td>The new interval must start at the given address <code>addr</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_ANONYMOUS</code></td>
+<td>The mapping is not file-backed, but is anonymous.</td>
+</tr>
+<tr>
+<td><code>MAP_GROWSDOWN</code></td>
+<td>Corresponds to <code>VM_GROWSDOWN</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_DENYWRITE</code></td>
+<td>Corresponds to <code>VM_DENYWRITE</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_EXECUTABLE</code></td>
+<td>Corresponds to <code>VM_EXECUTABLE</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_LOCKED</code></td>
+<td>Corresponds to <code>VM_LOCKED</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_NORESERVE</code></td>
+<td>No need to reserve space for the mapping.</td>
+</tr>
+<tr>
+<td><code>MAP_POPULATE</code></td>
+<td>Populate (prefault) page tables.</td>
+</tr>
+<tr>
+<td><code>MAP_NONBLOCK</code></td>
+<td>Do not block on I/O.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>If any of the parameters are invalid, <code>do_mmap()</code> returns a negative value. Otherwise, a suitable interval in virtual memory is located.</li>
+<li>If possible, the interval is merged with an adjacent memory area. Otherwise:<ul>
+<li>A new <code>vm_area_struct</code> structure is allocated from the <code>vm_area_cachep</code> slab cache, and the new memory area is added to the address space’s
+linked list and red-black tree of memory areas via the <code>vma_link()</code> function.</li>
+<li>Next, the <code>total_vm</code> field in the memory descriptor is updated.</li>
+<li>Finally, the function returns the initial address of the newly created address interval.</li>
+</ul>
+</li>
+</ul>
+<p>The <code>do_mmap()</code> functionality is exported to user-space via the <code>mmap()</code> system call, defined as:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span> <span class="n">mmap2</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">start</span><span class="p">,</span>
+             <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>
+             <span class="kt">int</span> <span class="n">prot</span><span class="p">,</span>
+             <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span>
+             <span class="kt">int</span> <span class="n">fd</span><span class="p">,</span>
+             <span class="kt">off_t</span> <span class="n">pgoff</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This system call is named <code>mmap2()</code> because it is the second variant of<code>mmap()</code>:</p>
+<ul>
+<li>The original <code>mmap()</code> took an offset in bytes as the last parameter; the current <code>mmap2()</code> receives the offset in pages. This enables larger files with larger offsets to be mapped.</li>
+<li>The original <code>mmap()</code>, as specified by POSIX, is available from the C library as <code>mmap()</code>, but is no longer implemented in the kernel proper, whereas the new version is available as <code>mmap2()</code>. Both library calls use the <code>mmap2()</code> system call, with the original <code>mmap()</code> converting the offset from bytes to pages.</li>
+</ul>
+<h3 id="munmap-and-do_munmap-removing-an-address-interval"><code>munmap()</code> and <code>do_munmap()</code>: Removing an Address Interval</h3>
+<p>The <code>do_munmap()</code> function removes an address interval from a specified process address space. The function is declared in <code>&lt;linux/mm.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1284">include/linux/mm.h#L1284</a></small></p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">do_munmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The first parameter <code>mm</code> specifies the address space from which the interval starting at address <code>start</code> of length <code>len</code> bytes is removed. On success, zero is returned. Otherwise, a negative error code is returned.</p>
+<p>As the complement of the <code>mmap()</code>, the <code>munmap()</code> system call is exported to user-space as a means to enable processes to remove address intervals from their address space:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">munmap</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">start</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The system call is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a> and acts as a simple wrapper to <code>do_munmap()</code>:</p>
+<div class="codehilite"><pre><span class="n">asmlinkage</span> <span class="kt">long</span> <span class="nf">sys_munmap</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">;</span>
+    <span class="n">mm</span> <span class="o">=</span> <span class="n">current</span><span class="o">-&gt;</span><span class="n">mm</span><span class="p">;</span>
+    <span class="n">down_write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_sem</span><span class="p">);</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">do_munmap</span><span class="p">(</span><span class="n">mm</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+    <span class="n">up_write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_sem</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="page-tables">Page Tables</h3>
+<p>Although applications operate on virtual memory mapped to physical addresses, processors operate directly on those physical addresses. Consequently, when an application accesses a virtual memory address, it must first be converted to a physical address before the processor can resolve the request. Performing this lookup is done via <strong>page tables</strong>. Page tables work by splitting the virtual address into chunks. Each chunk is used as an index into a table. The table points to either another table or the associated physical page.</p>
+<p>In Linux, the page tables consist of three levels. The multiple levels enable a sparsely populated address space, even on 64-bit machines. If the page tables were implemented as a single static array, their size on even 32-bit architectures would be enormous. Linux uses three levels of page tables even on architectures that do not support three levels in hardware. (For example, some hardware uses only two levels or implements a hash in hardware.) Using three levels is a sort of "greatest common denominator": architectures with a less complicated implementation can simplify the kernel page tables as needed with compiler optimizations.</p>
+<ul>
+<li>The top-level page table is the <strong>page global directory</strong> (PGD), which consists of an array of <code>pgd_t</code> types. On most architectures, the <code>pgd_t</code> type is an <code>unsigned long</code>.The entries in the PGD point to entries in the second-level directory, the PMD.</li>
+<li>The second-level page table is the <strong>page middle directory</strong> (PMD), which is an array of <code>pmd_t</code> types. The entries in the PMD point to entries in the PTE.</li>
+<li>The final level is called simply the <strong>page table</strong> and consists of page table entries of type <code>pte_t</code>. Page table entries point to physical pages.<ul>
+<li>In most architectures, page table lookups are handled (at least to some degree) by hardware.</li>
+<li>In normal operation, hardware can handle much of the responsibility of using the page tables. [p321]</li>
+</ul>
+</li>
+</ul>
+<p>The following figure diagrams the flow of a virtual to physical address lookup using page tables.</p>
+<p><a href="../figure_15.1.png" title="Figure 15.1 Virtual-to-physical address lookup"><img alt="Figure 15.1 Virtual-to-physical address lookup" src="../figure_15.1_600.png" /></a></p>
+<hr />
+<p>[UTLK p57-58]</p>
+<p>Up to version 2.6.10, the Linux paging model consisted of three paging levels. Starting with version 2.6.11, a four-level paging model has been adopted. The four types of page tables illustrated in the figure below:</p>
+<p><a href="../../utlk/figure_2-12.png" title="Figure 2-12. The Linux paging model (UTLK"><img alt="Figure 2-12. The Linux paging model (UTLK)" src="../../utlk/figure_2-12_600.png" /></a></p>
+<hr />
+<ul>
+<li>Each process has its own page tables (threads share them).The <code>pgd</code> field of the memory descriptor points to the process’s page global directory. Manipulating and traversing page tables requires the <code>page_table_lock</code>, which is located inside the associated memory descriptor.</li>
+<li>Page table data structures are quite architecture-dependent and thus are defined in <code>&lt;asm/page.h&gt;</code>.</li>
+</ul>
+<h4 id="translation-lookaside-buffer">Translation Lookaside Buffer *</h4>
+<p>Because nearly every access of a page in virtual memory must be resolved to its corresponding address in physical memory, the performance of the page tables is very critical. Unfortunately, looking up all these addresses in memory can not be done so quickly. To facilitate this, most processors implement a <a href="https://en.wikipedia.org/wiki/Translation_lookaside_buffer">translation lookaside buffer</a> (TLB), which acts as a hardware cache of virtual-to-physical mappings. When accessing a virtual address, the processor first checks whether the mapping is cached in the TLB:</p>
+<ul>
+<li>If there is a hit, the physical address is immediately returned.</li>
+<li>If there is a miss, the page tables are consulted for the corresponding physical address.</li>
+</ul>
+<h4 id="future-work-of-page-tables">Future work of page tables *</h4>
+<p>Page table management is still a critical and evolving—part of the kernel. Changes to this area in 2.6 include allocating parts of the page table out of high memory. Future possibilities include shared page tables with copy-on-write semantics. In that scheme, page tables would be shared between parent and child across a <code>fork()</code>. When the parent or the child attempted to modify a particular page table entry, a copy would be created, and the two processes would no longer share that entry. Sharing page tables would remove the overhead of copying the page table entries on <code>fork()</code>.</p>
             </div>
         </div>
 

@@ -257,7 +257,7 @@ struct task_struct *task;
 
 for_each_process(task) {
     /* this pointlessly prints the name and PID of each task */
-    printk(“%s[%d]\n”, task->comm, task->pid);
+    printk("%s[%d]\n", task->comm, task->pid);
 }
 ```
 
