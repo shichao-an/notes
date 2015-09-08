@@ -427,6 +427,16 @@
             <li><a href="#temporary-mappings">Temporary Mappings</a></li>
         
     
+        <li class="main "><a href="#per-cpu-allocations">Per-CPU Allocations</a></li>
+        
+    
+        <li class="main "><a href="#the-new-percpu-interface">The New percpu Interface</a></li>
+        
+            <li><a href="#per-cpu-data-at-compile-time">Per-CPU Data at Compile-Time</a></li>
+        
+            <li><a href="#per-cpu-data-at-runtime">Per-CPU Data at Runtime</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1192,7 +1202,120 @@ the tail end of the stack, the first thing of which is the <code>thread_info</co
 <p>By definition, pages in high memory might not be permanently mapped into the kernel’s (virtual) address space. Thus, pages obtained via <code>alloc_pages()</code> with the <code>__GFP_HIGHMEM</code> flag might not have a logical address (see relevant text in <a href="#zone-modifiers">Zone Modifers</a> subsection).</p>
 <p>On the x86 architecture, all physical memory beyond the 896MB mark is high memory and is not permanently or automatically mapped into the kernel’s address space, despite x86 processors being capable of physically addressing up to 4GB (64GB with <a href="https://en.wikipedia.org/wiki/Physical_Address_Extension">PAE</a>) of physical RAM. After they are allocated, these pages must be mapped into the kernel’s logical address space. On x86, pages in high memory are mapped somewhere between the 3GB and 4GB mark.</p>
 <h4 id="permanent-mappings">Permanent Mappings</h4>
+<p>To map a given page structure into the kernel’s address space, use this function, declared in <code>&lt;linux/highmem.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/highmem.h#L58">include/linux/highmem.h#L58</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span><span class="n">kmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function works on either high or low memory:</p>
+<ul>
+<li>If the <code>page</code> structure belongs to a page in low memory, the page’s virtual address is simply returned.</li>
+<li>If the page resides in high memory, a permanent mapping is created and the address is returned.</li>
+</ul>
+<p>The function may sleep, so <code>kmap()</code> works only in process context.</p>
+<p>Because the number of permanent mappings are limited, high memory should be unmapped when no longer needed. This is done via the <code>kunmap</code> function, which unmaps the given page:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">kunmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">)</span>
+</pre></div>
+
+
 <h4 id="temporary-mappings">Temporary Mappings</h4>
+<p>When a mapping must be created but the current context cannot sleep, the kernel provides <strong>temporary mappings</strong> (also called <strong>atomic mappings</strong>). The kernel can atomically map a high memory page into one of the reserved mappings (which can hold temporary mappings). Consequently, a temporary mapping can be used in places that cannot sleep, such as interrupt handlers, because obtaining the mapping never blocks.</p>
+<p>Setting up a temporary mapping is done via <code>kmap_atomic()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/highmem.h#L68">include/linux/highmem.h#L68</a></small></p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span><span class="n">kmap_atomic</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">,</span> <span class="k">enum</span> <span class="n">km_type</span> <span class="n">type</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>type</code> parameter is one of the following enumerations defined in <code>&lt;asm-generic/kmap_types.h&gt;</code>, which describe the purpose of the temporary mapping.</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/kmap_types.h">include/asm-generic/kmap_types.h</a></small></p>
+<div class="codehilite"><pre><span class="k">enum</span> <span class="n">km_type</span> <span class="p">{</span>
+    <span class="n">KM_BOUNCE_READ</span><span class="p">,</span>
+    <span class="n">KM_SKB_SUNRPC_DATA</span><span class="p">,</span>
+    <span class="n">KM_SKB_DATA_SOFTIRQ</span><span class="p">,</span>
+    <span class="n">KM_USER0</span><span class="p">,</span>
+    <span class="n">KM_USER1</span><span class="p">,</span>
+    <span class="n">KM_BIO_SRC_IRQ</span><span class="p">,</span>
+    <span class="n">KM_BIO_DST_IRQ</span><span class="p">,</span>
+    <span class="n">KM_PTE0</span><span class="p">,</span>
+    <span class="n">KM_PTE1</span><span class="p">,</span>
+    <span class="n">KM_PTE2</span><span class="p">,</span>
+    <span class="n">KM_IRQ0</span><span class="p">,</span>
+    <span class="n">KM_IRQ1</span><span class="p">,</span>
+    <span class="n">KM_SOFTIRQ0</span><span class="p">,</span>
+    <span class="n">KM_SOFTIRQ1</span><span class="p">,</span>
+    <span class="n">KM_SYNC_ICACHE</span><span class="p">,</span>
+    <span class="n">KM_SYNC_DCACHE</span><span class="p">,</span>
+    <span class="n">KM_UML_USERCOPY</span><span class="p">,</span>
+    <span class="n">KM_IRQ_PTE</span><span class="p">,</span>
+    <span class="n">KM_NMI</span><span class="p">,</span>
+    <span class="n">KM_NMI_PTE</span><span class="p">,</span>
+    <span class="n">KM_TYPE_NR</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>This function does not block and thus can be used in interrupt context and other places that cannot reschedule. It also disables kernel preemption, which is needed because the mappings are unique to each processor and a reschedule might change which task is running on which processor.</p>
+<p>The mapping is undone via:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">kunmap_atomic</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">kvaddr</span><span class="p">,</span> <span class="k">enum</span> <span class="n">km_type</span> <span class="n">type</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function also does not block. In many architectures it does not do anything at all except enable kernel preemption, because a temporary mapping is valid only until the next temporary mapping. Thus, the kernel can just "forget about" the <code>kmap_atomic()</code> mapping, and <code>kunmap_atomic()</code> does not need to do anything special. The next atomic mapping then simply overwrites the previous one.</p>
+<h3 id="per-cpu-allocations">Per-CPU Allocations</h3>
+<p>Modern SMP-capable operating systems use per-CPU data (data that is unique to a given processor). Typically, per-CPU data is stored in an array. Each item in the array corresponds to a possible processor on the system. The current processor number indexes this array (from 2.4 to 2.6 kernel). [p255] You declare the data as:</p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">my_percpu</span><span class="p">[</span><span class="n">NR_CPUS</span><span class="p">];</span>
+</pre></div>
+
+
+<p>Then you can access it as:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">cpu</span><span class="p">;</span>
+
+<span class="n">cpu</span> <span class="o">=</span> <span class="n">get_cpu</span><span class="p">();</span> <span class="cm">/* get current processor and disable kernel preemption */</span>
+<span class="n">my_percpu</span><span class="p">[</span><span class="n">cpu</span><span class="p">]</span><span class="o">++</span><span class="p">;</span> <span class="cm">/* ... or whatever */</span>
+<span class="n">printk</span><span class="p">(</span><span class="s">&quot;my_percpu on cpu=%d is %lu</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">cpu</span><span class="p">,</span> <span class="n">my_percpu</span><span class="p">[</span><span class="n">cpu</span><span class="p">]);</span>
+<span class="n">put_cpu</span><span class="p">();</span> <span class="cm">/* enable kernel preemption */</span>
+</pre></div>
+
+
+<p>No lock is required because this data is unique to the current processor. If no processor touches this data except the current, no concurrency concerns exist, and the current processor can safely access the data without lock.</p>
+<p>Kernel preemption is the only concern with per-CPU data, which poses two problems:</p>
+<ul>
+<li>If your code is preempted and reschedules on another processor, the <code>cpu</code> variable is no longer valid because it points to the wrong processor. (In general, code cannot sleep after obtaining the current processor.)</li>
+<li>If another task preempts your code, it can concurrently access <code>my_percpu</code> on the same processor, which is a race condition.</li>
+</ul>
+<p>The call <code>get_cpu()</code>, on top of returning the current processor number, also disables kernel preemption. The corresponding call to <code>put_cpu()</code> enables kernel preemption. If you use a call to <code>smp_processor_id()</code> to get the current processor number, kernel preemption is not disabled. Always use the aforementioned methods to remain safe.</p>
+<h3 id="the-new-percpu-interface">The New <code>percpu</code> Interface</h3>
+<p>The 2.6 kernel introduced a new interface, <code>percpu</code>, for creating and manipulating per-CPU data. This interface generalizes the previous example. Creation and manipulation of per-CPU data is simplified with this new approach.</p>
+<p>The previously discussed method of creating and accessing per-CPU data is still valid and accepted. This new interface, however, grew out of the needs for a simpler and more powerful method for manipulating per-CPU data on large symmetrical multiprocessing computers.</p>
+<p>The header <code>&lt;linux/percpu.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/percpu.h">include/linux/percpu.h</a>) declares all the routines. You can find the actual definitions there, in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c">mm/slab.c</a>, and in <code>&lt;asm/percpu.h&gt;</code>.</p>
+<h4 id="per-cpu-data-at-compile-time">Per-CPU Data at Compile-Time</h4>
+<p>Define a per-CPU variable at compile time:</p>
+<div class="codehilite"><pre><span class="n">DEFINE_PER_CPU</span><span class="p">(</span><span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This creates an instance of a variable of type <code>type</code>, named <code>name</code>, for each processor on the system. If you need a declaration of the variable elsewhere, to avoid compile warnings, use the following macro:</p>
+<div class="codehilite"><pre><span class="n">DECLARE_PER_CPU</span><span class="p">(</span><span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+</pre></div>
+
+
+<p>You can manipulate the variables with the <code>get_cpu_var()</code> and <code>put_cpu_var()</code> routines. A call to <code>get_cpu_var()</code> returns an lvalue for the given variable on the current processor. It also disables preemption, which <code>put_cpu_var()</code> correspondingly enables.</p>
+<div class="codehilite"><pre><span class="n">get_cpu_var</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">++</span><span class="p">;</span> <span class="cm">/* increment name on this processor */</span>
+<span class="n">put_cpu_var</span><span class="p">(</span><span class="n">name</span><span class="p">);</span> <span class="cm">/* done; enable kernel preemption */</span>
+</pre></div>
+
+
+<p>You can obtain the value of another processor’s per-CPU data, too:</p>
+<div class="codehilite"><pre><span class="n">per_cpu</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cpu</span><span class="p">)</span><span class="o">++</span><span class="p">;</span> <span class="cm">/* increment name on the given processor */</span>
+</pre></div>
+
+
+<p>You need to be careful with this approach because <code>per_cpu()</code> neither disables kernel preemption nor provides any sort of locking mechanism.The lockless nature of per-CPU data exists only if the current processor is the only manipulator of the data. If other processors touch other processors’ data, you need locks. <a href="../ch9/">Chapter 9</a> and <a href="../ch10/">Chapter 10</a> discuss locking.</p>
+<p>These compile-time per-CPU examples do not work for modules because the linker actually creates them in a unique executable section (<code>.data.percpu</code>). If you need to access per-CPU data from modules, or if you need to create such data dynamically, you cannot use compile-time per-CPU data.</p>
+<h4 id="per-cpu-data-at-runtime">Per-CPU Data at Runtime</h4>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p235 on zones:</p>
