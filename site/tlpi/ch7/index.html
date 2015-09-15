@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/lkd/ch13/">
+        <link rel="canonical" href="https://notes.shichao.io/tlpi/ch7/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 13. The Virtual Filesystem - Shichao's Notes</title>
+	<title>Chapter 7. Memory Allocation - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -134,64 +134,64 @@
             
             
             
-                <li class="dropdown active">
+                <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
                         </li>
                     
                         <li >
-                            <a href="../ch2/">Chapter 2. Getting Started with the Kernel</a>
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
                         </li>
                     
                         <li >
-                            <a href="../ch3/">Chapter 3. Process Management</a>
+                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
                         </li>
                     
                         <li >
-                            <a href="../ch4/">Chapter 4. Process Scheduling</a>
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
                         </li>
                     
                         <li >
-                            <a href="../ch5/">Chapter 5. System Calls</a>
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
                         </li>
                     
                         <li >
-                            <a href="../ch6/">Chapter 6. Kernel Data Structures</a>
+                            <a href="../../lkd/ch6/">Chapter 6. Kernel Data Structures</a>
                         </li>
                     
                         <li >
-                            <a href="../ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                            <a href="../../lkd/ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
                         </li>
                     
                         <li >
-                            <a href="../ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                            <a href="../../lkd/ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
                         </li>
                     
                         <li >
-                            <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                            <a href="../../lkd/ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
                         </li>
                     
                         <li >
-                            <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                            <a href="../../lkd/ch10/">Chapter 10. Kernel Synchronization Methods</a>
                         </li>
                     
                         <li >
-                            <a href="../ch11/">Chapter 11. Timers and Time Management</a>
+                            <a href="../../lkd/ch11/">Chapter 11. Timers and Time Management</a>
                         </li>
                     
                         <li >
-                            <a href="../ch12/">Chapter 12. Memory Management</a>
-                        </li>
-                    
-                        <li class="active">
-                            <a href="./">Chapter 13. The Virtual Filesystem</a>
+                            <a href="../../lkd/ch12/">Chapter 12. Memory Management</a>
                         </li>
                     
                         <li >
-                            <a href="../ch15/">Chapter 15. The Process Address Space</a>
+                            <a href="../../lkd/ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../lkd/ch15/">Chapter 15. The Process Address Space</a>
                         </li>
                     
                     </ul>
@@ -317,16 +317,16 @@
             
             
             
-                <li class="dropdown">
+                <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li >
-                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                            <a href="../ch6/">Chapter 6. Processes</a>
                         </li>
                     
-                        <li >
-                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        <li class="active">
+                            <a href="./">Chapter 7. Memory Allocation</a>
                         </li>
                     
                     </ul>
@@ -389,7 +389,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch13.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/tlpi/ch7.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -407,7 +407,14 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-13-the-virtual-filesystem">Chapter 13. The Virtual Filesystem</a></li>
+        <li class="main active"><a href="#chapter-7-memory-allocation">Chapter 7. Memory Allocation</a></li>
+        
+    
+        <li class="main "><a href="#allocating-memory-on-the-heap">Allocating Memory on the Heap</a></li>
+        
+            <li><a href="#adjusting-the-program-break-brk-and-sbrk">Adjusting the Program Break: brk() and sbrk()</a></li>
+        
+            <li><a href="#allocating-memory-on-the-heap-malloc-and-free">Allocating Memory on the Heap: malloc() and free()</a></li>
         
     
     </ul>
@@ -415,8 +422,74 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-13-the-virtual-filesystem"><strong>Chapter 13. The Virtual Filesystem</strong></h3>
-<p>The <strong>Virtual Filesystem</strong> (VFS), sometimes called the <strong>Virtual File Switch</strong> is the subsystem of the kernel that implements the file and filesystem-related interfaces to user-space. All filesystems rely on the VFS not only to coexist but also to interoperate. This enables programs to use standard Unix system calls to read and write to different filesystems, even on different media.</p>
+<h3 id="chapter-7-memory-allocation"><strong>Chapter 7. Memory Allocation</strong></h3>
+<p>Many system programs need to be able to allocate extra memory for dynamic data structures (e.g., linked lists and binary trees), whose size depends on information that is available only at run time. This chapter describes the functions that are used to allocate memory on the heap or the stack.</p>
+<h3 id="allocating-memory-on-the-heap">Allocating Memory on the Heap</h3>
+<p>A process can allocate memory by increasing the size of the heap, a variable-size segment of contiguous virtual memory that begins just after the uninitialized data segment of a process and grows and shrinks as memory is allocated and freed (<a href="../figure_6-1.png">Figure 6-1</a>). The current limit of the heap is referred to as the <strong>program break</strong>.</p>
+<h4 id="adjusting-the-program-break-brk-and-sbrk">Adjusting the Program Break: <code>brk()</code> and <code>sbrk()</code></h4>
+<p>Resizing the heap (allocating or deallocating memory) is actually as simple as telling the kernel to adjust its idea of where the process’s program break is. Initially, the program break lies just past the end of the uninitialized data segment (the same location as <code>&amp;end</code>, shown in <a href="../figure_6-1.png">Figure 6-1</a>).</p>
+<p>After the program break is increased, the program may access any address in the newly allocated area, but no physical memory pages are allocated yet. The kernel automatically allocates new physical pages on the first attempt by the process to access addresses in those pages.</p>
+<p>Traditionally, the UNIX system has provided two system calls for manipulating the program break, and these are both available on Linux: <code>brk()</code> and <code>sbrk()</code>.  Although these system calls are seldom used directly in programs, understanding them helps clarify how memory allocation works.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+<span class="kt">int</span> <span class="nf">brk</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">end_data_segment</span><span class="p">);</span>
+<span class="cm">/* Returns 0 on success, or –1 on error */</span>
+
+<span class="kt">void</span> <span class="o">*</span><span class="nf">sbrk</span><span class="p">(</span><span class="kt">intptr_t</span> <span class="n">increment</span><span class="p">);</span>
+<span class="cm">/* Returns previous program break on success, or (void *) –1 on error */</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>brk()</code> system call sets the program break to the location specified by <em>end_data_segment</em>. Since virtual memory is allocated in units of pages, <em>end_data_segment</em> is effectively rounded up to the next page boundary.<ul>
+<li>Attempts to set the program break below its initial value (i.e., below <code>&amp;end</code>) are likely to result in unexpected behavior, such as a segmentation fault (the <code>SIGSEGV</code> signal) when trying to access data in now nonexistent parts of the initialized or uninitialized data segments.</li>
+<li>The precise upper limit on where the program break can be set depends on a range of factors, including:<ul>
+<li>The process resource limit for the size of the data segment (<code>RLIMIT_DATA</code>)</li>
+<li>The location of memory mappings, shared memory segments, and shared libraries.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>A call to <code>sbrk()</code> adjusts the program break by adding increment to it. On Linux, <code>sbrk()</code> is a library function implemented on top of <code>brk()</code>.<ul>
+<li>The <code>intptr_t</code> type used to declare increment is an integer data type.</li>
+<li>On success, <code>sbrk()</code> returns the previous address of the program break. In other words, if we have increased the program break, then the return value is a pointer to the start of the newly allocated block of memory.</li>
+<li>The call <code>sbrk(0)</code> returns the current setting of the program break without changing it. This can be useful if we want to track the size of the heap, perhaps in order to monitor the behavior of a memory allocation package.</li>
+</ul>
+</li>
+</ul>
+<h4 id="allocating-memory-on-the-heap-malloc-and-free">Allocating Memory on the Heap: <code>malloc()</code> and <code>free()</code></h4>
+<p>In general, C programs use the <code>malloc</code> family of functions to allocate and deallocate memory on the heap. These functions offer several advantages over <code>brk()</code> and <code>sbrk()</code> in that:</p>
+<ul>
+<li>They are standardized as part of the C language;</li>
+<li>They are easier to use in threaded programs;</li>
+<li>They provide a simple interface that allows memory to be allocated in small units;</li>
+<li>They allow us to arbitrarily deallocate blocks of memory, which are maintained on a free list and recycled in future calls to allocate memory.</li>
+</ul>
+<p>The <code>malloc()</code> function allocates <em>size</em> bytes from the heap and returns a pointer to the start of the newly allocated block of memory. The allocated memory is not initialized.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span> <span class="o">*</span><span class="nf">malloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+<span class="cm">/* Returns pointer to allocated memory on success, or NULL on error */</span>
+</pre></div>
+
+
+<p>Because <code>malloc()</code> returns <code>void *</code>, we can assign it to any type of C pointer. The block of memory returned by <code>malloc()</code> is always aligned on a byte boundary suitable for any type of C data structure. In practice, this means that it is allocated on an 8-byte or 16-byte boundary on most architectures.</p>
+<p>SUSv3 specifies that the call <code>malloc(0)</code> may return either <code>NULL</code> or a pointer to a small piece of memory that can (and should) be freed with <code>free()</code>. On Linux, <code>malloc(0)</code> follows the latter behavior.</p>
+<p>If memory could not be allocated (perhaps because we reached the limit to which the program break could be raised), then <code>malloc()</code> returns <code>NULL</code> and sets <code>errno</code> to indicate the error. Although the possibility of failure in allocating memory is small, all calls to <code>malloc()</code>, and the related functions that we describe later, should check for this error return.</p>
+<p>The <code>free()</code> function deallocates the block of memory pointed to by its <em>ptr</em> argument, which should be an address previously returned by <code>malloc()</code> or one of the other heap memory allocation functions described later this chapter.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+</pre></div>
+
+
+<p>In general, <code>free()</code> doesn’t lower the program break, but instead adds the block of memory to a list of free blocks that are recycled by future calls to <code>malloc()</code>. This is done for several reasons:</p>
+<ul>
+<li><u>The block of memory being freed is typically somewhere in the middle of the heap, rather than at the end, so that lowering the program break is not possible.</u></li>
+<li>It minimizes the number of <code>sbrk()</code> calls that the program must perform. System calls have a small but significant overhead.</li>
+<li>In many cases, lowering the break would not help programs that allocate large amounts of memory, since they typically tend to hold on to allocated memory or repeatedly release and reallocate memory, rather than release it all and then continue to run for an extended period of time.</li>
+</ul>
+<p>If the argument given to <code>free()</code> is a <code>NULL</code> pointer, then the call does nothing. In other words, it is not an error to give a <code>NULL</code> pointer to <code>free()</code>.</p>
+<p>Making any use of <em>ptr</em> after the call to <code>free</code> (e.g. passing it to <code>free()</code> a second time) is an error that can lead to unpredictable results.</p>
             </div>
         </div>
 
