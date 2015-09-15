@@ -80,6 +80,10 @@ by Daniel P. Bovet and Marco Cesati
 1. [Introduction](utlk/ch1.md)
 2. [Memory Addressing](utlk/ch2.md)
 
+#### Linux System Programming: Talking Directly to the Kernel and C Library Second Edition
+
+#### The Linux Programming Interface
+
 #### CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
 1. [Networking Fundamentals](icnd1/part1.md)
