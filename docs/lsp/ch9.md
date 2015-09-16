@@ -36,7 +36,7 @@ Alternatively, the MMU can intercept the write operation and raise an exception;
 
 The kernel arranges pages into blocks that share certain properties (e.g. access permissions). These blocks are called **mappings**, **memory areas**, or **memory regions**. Certain types of memory regions can be found in every process:
 
-* The **text segment** contains a process’s program code, string literals, constant vari‐ ables, and other read-only data. In Linux, this segment is marked read-only and is mapped in directly from the object file (the program executable or a library).
+* The **text segment** contains a process’s program code, string literals, constant variables, and other read-only data. In Linux, this segment is marked read-only and is mapped in directly from the object file (the program executable or a library).
 * The **stack** contains the process’s execution stack, which grows and shrinks dynamically as the stack depth increases and decreases. The execution stack contains local variables and function return data. In a multithreaded process, there is one stack per thread.
 * The **data segment**, or **heap**, contains a process’s dynamic memory. This segment is writable and can grow or shrink in size. `malloc()` can satisfy memory requests from this segment.
 * The **bss segment** contains uninitialized global variables. These variables contain special values (all zeros), per the C standard.
