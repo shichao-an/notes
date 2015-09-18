@@ -572,7 +572,7 @@ set_fl(int fd, int flags) /* flags are file status flags to turn on */
 If we change the middle statement to
 
 ```c
-val &= ˜flags; /* turn flags off */
+val &= ~flags; /* turn flags off */
 ```
 we have a function named `clr_fl`,  logically ANDs the one’s complement of `flags` with the current `val`.
 
