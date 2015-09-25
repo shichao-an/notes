@@ -459,13 +459,66 @@
 <li>Packet erasures (drops)</li>
 </ul>
 <p>An error-correcting protocol designed for use over a multihop communications channel (such as IP) must cope with all of these problems.</p>
+<h5 id="packet-drops-and-bit-errors"><strong>Packet drops and bit errors</strong></h5>
 <p>A straightforward method dealing with packet drops (and bit errors) is to resend the packet until it is received properly. This requires a way to determine:</p>
 <ol>
-<li>Whether the receiver has received the packet.</li>
-<li>Whether the packet it received was the same one the sender sent.</li>
+<li><strong>Whether the receiver has received the packet.</strong></li>
+<li><strong>Whether the packet it received was the same one the sender sent.</strong></li>
 </ol>
-<p>[p580]</p>
+<p>This is solved by using acknowledgment (ACK): the sender sends a packet and awaits an ACK. When the receiver receives
+the packet, it sends the ACK. When the sender receives the ACK, it sends another
+packet, and the process continues. Interesting questions to ask here are:</p>
+<ol>
+<li><strong>How long should the sender (expect to) wait for an ACK?</strong><ul>
+<li>This is discussed in <a href="ch14.md">Chapter 14</a>.</li>
+</ul>
+</li>
+<li><strong>What if the ACK is lost?</strong><ul>
+<li>If an ACK is dropped, the sender cannot distinguish this case from the case in which the original packet is dropped, so it simply sends the packet again. The receiver may receive two or more copies in that case, so it must be prepared to handle that situation</li>
+</ul>
+</li>
+<li><strong>What if the packet was received but had errors in it?</strong><ul>
+<li>Detecting errors is easiter than correcting errors. By using a form of checksum. When a receiver receives a packet containing an error, it refrains from sending an ACK. Eventually, the sender resends the packet, which ideally arrives undamaged.</li>
+</ul>
+</li>
+</ol>
+<h5 id="packet-duplication"><strong>Packet duplication</strong></h5>
+<p>The receiver might receive duplicate copies of the packet. This problem is addressed using a <strong>sequence number</strong>. Every unique packet gets a new sequence number when it is sent at the source, and this sequence number is carried along in the packet itself. The receiver can use this number to determine whether it has already seen the packet and if so, discard it.</p>
+<h5 id="efficiency"><strong>Efficiency</strong></h5>
+<p>The protocol described so far is reliable but not very efficient. The sender injects a single packet into the communications path but then must stop until it hears the ACK. This protocol is therefore called "<strong>stop and wait</strong>". Its throughput performance (data sent on the network per unit time) is proportional to <em>M/R</em> where <em>M</em> is the packet size and <em>R</em> is the round-trip time (RTT), assuming no packets are lost or irreparably damaged in transit. For a fixed-size packet, as <em>R</em> goes up, the throughput goes down. If packets are lost or damaged, the situation is even worse: the "<a href="https://en.wikipedia.org/wiki/Goodput">goodput</a>" (useful amount of data transferred per unit time) can be considerably less than the throughput.</p>
+<p>For a network that doesn’t damage or drop many packets, the cause for low throughput is usually that the network is not being kept busy. The situation is similar to using an assembly line where new work cannot enter the line until a complete product emerges. Most of the line goes idle. We could have more than one work unit in the line at a time. This is same for networks: if we could have more than one packet in the network, we would keep it "more busy", leading to higher throughput.</p>
+<p>Allowing more than one packet to be in the network at a time:</p>
+<ul>
+<li>The sender must decide not only when to inject a packet into the network, but also how many. It also must figure out how to keep the timers when waiting for ACKs, and it must keep a copy of each packet not yet acknowledged in case retransmissions are necessary.</li>
+<li>The receiver needs to have a more sophisticated ACK mechanism: one that can distinguish which packets have been received and which have not.</li>
+<li>The receiver may need a more sophisticated buffering (packet storage) mechanism: one that allows it to hold "out-of-sequence" packets (those packets that have arrived earlier than those expected because of loss or reordering).</li>
+</ul>
+<p>There are other issues:</p>
+<ul>
+<li>What if the receiver is slower than the sender? If the sender simply injects many packets at a very high rate, the receiver might just drop them because of processing or memory limitations. The same question can be asked about the routers in the middle.</li>
+<li>What if the network infrastructure cannot handle the rate of data the sender and receiver wish to use?</li>
+</ul>
 <h4 id="windows-of-packets-and-sliding-windows">Windows of Packets and Sliding Windows</h4>
+<p>Assume each unique packet has a sequence number. We define a <strong>window</strong> of packets as the collection of packets (or their sequence numbers) that have been injected by the sender but not yet completely acknowledged (the sender has not received an ACK for them). We refer to the <strong>window size</strong> as the number of packets in the window.</p>
+<p><a href="../figure_12-1.png" title=" The sender’s window, showing which packets are eligible to be sent (or have already been sent), which are not yet eligible, and which have already been sent and acknowledged.  In this example, the window size is fixed at three packets."><img alt="The sender’s window, showing which packets are eligible to be sent (or have already been sent), which are not yet eligible, and which have already been sent and acknowledged. In this example, the window size is fixed at three packets." src="../figure_12-1_600.png" /></a></p>
+<p>In the figure:</p>
+<ul>
+<li>Packet number 3 has already been sent and acknowledged, so the copy of it that the sender was keeping can now be released.</li>
+<li>Packet 7 is ready at the sender but not yet able to be sent because it is not yet "in" the window.</li>
+<li>When the sender receives an ACK for packet 4, the window "slides" to the right by one packet, meaning that the copy of packet 4 can be released and packet 7 can be sent.</li>
+</ul>
+<p>This movement of the window gives rise to another name for this type of protocol, a <strong>sliding window</strong> protocol.</p>
+<p>Typically, this window structure is kept at both the sender and the receiver.</p>
+<ul>
+<li>At the sender, it keeps track of what packets can be released, awaiting ACKs, and cannot yet be sent.</li>
+<li>At the receiver, it keeps track of:<ul>
+<li>What packets have already been received and acknowledged,</li>
+<li>What packets are expected (and how much memory has been allocated to hold them),</li>
+<li>Which packets (even if received) will not be kept because of limited memory.</li>
+</ul>
+</li>
+</ul>
+<p>Although the window structure is convenient for keeping track of data as it flows between sender and receiver, it does not provide guidance as to how large the window should be, or what happens if the receiver or network cannot handle the sender’s data rate.</p>
 <h4 id="variable-windows-flow-control-and-congestion-control">Variable Windows: Flow Control and Congestion Control</h4>
 <h4 id="setting-the-retransmission-timeout">Setting the Retransmission Timeout</h4>
 <h3 id="introduction-to-tcp">Introduction to TCP</h3>
