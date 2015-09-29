@@ -425,6 +425,9 @@
         <li class="main "><a href="#common-filesystem-interface">Common Filesystem Interface</a></li>
         
     
+        <li class="main "><a href="#filesystem-abstraction-layer">Filesystem Abstraction Layer</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -435,6 +438,27 @@
 <h3 id="common-filesystem-interface">Common Filesystem Interface</h3>
 <p>The VFS is the glue that enables system calls such as <code>open()</code>, <code>read()</code>, and <code>write()</code> to work regardless of the filesystem or underlying physical medium. The system calls work between these different filesystems and media; we can use standard system calls to copy or move files from one filesystem to another. Modern operating systems, such as Linux, abstract access to the filesystems via a virtual interface that such interoperation and generic access is possible. [p262]</p>
 <p>New filesystems and new varieties of storage media can find their way into Linux, and programs need not be rewritten or even recompiled.</p>
+<p>The VFS and the block I/O layer (<a href="../ch14/">Chapter 14</a>) provide the abstractions, interfaces, and glue that allow user-space programs to issue generic system calls to access files via a uniform naming policy on any filesystem, which itself exists on any storage medium.</p>
+<h3 id="filesystem-abstraction-layer">Filesystem Abstraction Layer</h3>
+<p>Such a generic interface for any type of filesystem is feasible only because the kernel implements an abstraction layer around its low-level filesystem interface. This abstraction layer enables Linux to support different filesystems, even if they differ in supported features or behavior.</p>
+<p>This is possible because the VFS provides a common file model that can represent any filesystem’s general feature set and behavior. It is biased toward Unix-style filesystems. Regardless, wildly differing filesystem types are still supportable in Linux, from DOS’s FAT to Windows’s NTFS to many Unix-style and Linux-specific filesystems.</p>
+<p>The abstraction layer works by defining the basic conceptual interfaces and data structures that all filesystems support. The actual filesystem code hides the implementation details. To the VFS layer and the rest of the kernel, each filesystem looks the same. They all support notions such as files and directories, and they all support operations such as creating and deleting files.</p>
+<p>The result is a general abstraction layer that enables the kernel to support many types of filesystems easily and cleanly.The filesystems are programmed to provide the abstracted interfaces and data structures the VFS expects; in turn, the kernel easily works with any filesystem and the exported user-space interface seamlessly works on any filesystem.</p>
+<p>Nothing in the kernel needs to understand the underlying details of the filesystems, except the filesystems themselves. For example, consider a simple user-space program that does:</p>
+<div class="codehilite"><pre><span class="n">ret</span> <span class="o">=</span> <span class="n">write</span> <span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This system call writes the <code>len</code> bytes pointed to by <code>buf</code> into the current position in the file represented by the file descriptor <code>fd</code>.</p>
+<ol>
+<li>This system call is first handled by a generic <code>sys_write()</code> system call that determines the actual file writing method for the filesystem
+on which <code>fd</code> resides.</li>
+<li>The generic write system call then invokes this method, which is part
+of the filesystem implementation, to write the data to the media (or whatever this filesystem
+does on write).</li>
+</ol>
+<p>The following figure shows the flow from user-space’s <code>write()</code> call through the data arriving on the physical media. On one side of the system call is the generic VFS interface, providing the frontend to user-space; on the other side of the system call is the filesystem-specific backend, dealing with the implementation details.</p>
+<p><a href="../figure_13.2.png" title="Figure 13.2 The flow of data from user-space issuing a write() call, through the VFS’s generic system call, into the filesystem’s specific write method, and finally arriving at the physical media."><img alt="Figure 13.2 The flow of data from user-space issuing a write() call, through the VFS’s generic system call, into the filesystem’s specific write method, and finally arriving at the physical media." src="../figure_13.2_600.png" /></a></p>
             </div>
         </div>
 
