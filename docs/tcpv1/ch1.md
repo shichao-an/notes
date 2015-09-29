@@ -106,6 +106,6 @@ p5-6 on message boundaries:
 
 Some explanations:
 
+* [The TCP Service Model](ch12.md#the-tcp-service-model) in Chapter 12.
 * [TCP stream vs UDP message](http://stackoverflow.com/questions/17446491/tcp-stream-vs-udp-message)
 * [What is a message boundary?](http://stackoverflow.com/questions/9563563/what-is-a-message-boundary)
-
