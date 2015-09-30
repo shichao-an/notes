@@ -247,7 +247,7 @@ Most modern implementations of `exit` do not close the streams. Because the proc
 A process can terminate normally in five ways (as described in [Section 7.3](ch7/#process-termination)):
 
 1. Executing a return from the `main` function. This is equivalent to calling `exit`.
-2. Calling the exit function, which includes the calling of all exit handlers that have been registered by calling `atexit` and closing all standard I/O streams.
+2. Calling the `exit` function, which includes the calling of all exit handlers that have been registered by calling `atexit` and closing all standard I/O streams.
     * ISO C does not deal with file descriptors, multiple processes (parents and children), and job control. The definition of this function is incomplete for a UNIX system.
 3. Calling the `_exit` or `_Exit` function.
     * `_Exit`: defined by ISO C to provide a way for a process to terminate without running exit handlers or signal handlers
