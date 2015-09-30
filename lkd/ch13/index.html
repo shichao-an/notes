@@ -285,6 +285,22 @@
                         </li>
                     
                         <li >
+                            <a href="../../tcpv1/ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../tcpv1/ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../tcpv1/ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../../tcpv1/ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                    
+                        <li >
                             <a href="../../tcpv1/ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
                         </li>
                     
@@ -432,12 +448,62 @@
         <li class="main "><a href="#filesystem-abstraction-layer">Filesystem Abstraction Layer</a></li>
         
     
+        <li class="main "><a href="#unix-filesystems">Unix Filesystems</a></li>
+        
+            <li><a href="#filesystem-and-namespace">Filesystem and namespace *</a></li>
+        
+            <li><a href="#files-and-directories">Files and directories *</a></li>
+        
+            <li><a href="#file-metadata-inode-and-superblock">File metadata, inode and superblock *</a></li>
+        
+    
+        <li class="main "><a href="#vfs-objects-and-their-data-structures">VFS Objects and Their Data Structures</a></li>
+        
+    
+        <li class="main "><a href="#the-superblock-object">The Superblock Object</a></li>
+        
+    
+        <li class="main "><a href="#superblock-operations">Superblock Operations</a></li>
+        
+    
+        <li class="main "><a href="#the-inode-object">The Inode Object</a></li>
+        
+    
+        <li class="main "><a href="#inode-operations">Inode Operations</a></li>
+        
+    
+        <li class="main "><a href="#the-dentry-object">The Dentry Object</a></li>
+        
+            <li><a href="#dentry-state">Dentry State</a></li>
+        
+            <li><a href="#the-dentry-cache">The Dentry Cache</a></li>
+        
+    
+        <li class="main "><a href="#dentry-operations">Dentry Operations</a></li>
+        
+    
+        <li class="main "><a href="#the-file-object">The File Object</a></li>
+        
+    
+        <li class="main "><a href="#file-operations">File Operations</a></li>
+        
+    
+        <li class="main "><a href="#data-structures-associated-with-filesystems">Data Structures Associated with Filesystems</a></li>
+        
+    
+        <li class="main "><a href="#data-structures-associated-with-a-process">Data Structures Associated with a Process</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-13-the-virtual-filesystem"><strong>Chapter 13. The Virtual Filesystem</strong></h3>
+<blockquote>
+<p>Although the kernel developers may shun C++ and other explicitly object-oriented languages, thinking in terms of objects is often useful.
+<small>Robert Love</small></p>
+</blockquote>
 <p>The <strong>Virtual Filesystem</strong> (VFS), sometimes called the <strong>Virtual File Switch</strong> is the subsystem of the kernel that implements the file and filesystem-related interfaces to user-space. All filesystems rely on the VFS not only to coexist but also to interoperate. This enables programs to use standard Unix system calls to read and write to different filesystems, even on different media.</p>
 <h3 id="common-filesystem-interface">Common Filesystem Interface</h3>
 <p>The VFS is the glue that enables system calls such as <code>open()</code>, <code>read()</code>, and <code>write()</code> to work regardless of the filesystem or underlying physical medium. The system calls work between these different filesystems and media; we can use standard system calls to copy or move files from one filesystem to another. Modern operating systems, such as Linux, abstract access to the filesystems via a virtual interface that such interoperation and generic access is possible. [p262]</p>
@@ -463,6 +529,118 @@ does on write).</li>
 </ol>
 <p>The following figure shows the flow from user-space’s <code>write()</code> call through the data arriving on the physical media. On one side of the system call is the generic VFS interface, providing the frontend to user-space; on the other side of the system call is the filesystem-specific backend, dealing with the implementation details.</p>
 <p><a href="../figure_13.2.png" title="Figure 13.2 The flow of data from user-space issuing a write() call, through the VFS’s generic system call, into the filesystem’s specific write method, and finally arriving at the physical media."><img alt="Figure 13.2 The flow of data from user-space issuing a write() call, through the VFS’s generic system call, into the filesystem’s specific write method, and finally arriving at the physical media." src="../figure_13.2_600.png" /></a></p>
+<h3 id="unix-filesystems">Unix Filesystems</h3>
+<p>Historically, Unix has provided four basic filesystem-related abstractions:</p>
+<ul>
+<li>Files</li>
+<li>Directory entries</li>
+<li>inodes</li>
+<li>Mount points</li>
+</ul>
+<h4 id="filesystem-and-namespace">Filesystem and namespace *</h4>
+<p>A <strong>filesystem</strong> is a hierarchical storage of data adhering to a specific structure. Filesystems contain files, directories, and associated control information. Typical operations performed on filesystems are creation, deletion, and mounting. In Unix, filesystems are mounted at a specific mount point in a global hierarchy known as a <strong>namespace</strong>. (Linux has made this hierarchy per-process, to give a unique namespace to each process.  Because each process inherits its parent’s namespace unless you specify otherwise, there is seemingly one global namespace.) This enables all mounted filesystems to appear as entries in a single tree.</p>
+<p>Contrast this single, unified tree with the behavior of DOS and Windows, which break the file namespace up into drive letters, such as <code>C:</code>. This breaks the namespace up among device and partition boundaries, "leaking" hardware details into the filesystem abstraction. As this delineation may be arbitrary and even confusing to the user, it is inferior to Linux’s unified namespace</p>
+<h4 id="files-and-directories">Files and directories *</h4>
+<p>A <strong>file</strong> is an ordered string of bytes. The first byte marks the beginning of the file, and the last byte marks the end of the file. Each file is assigned a human-readable name for identification by both the system and the user. Typical file operations are read, write, create, and delete. The Unix concept of the file is in stark contrast to record-oriented filesystems, such as OpenVMS’s Files-11. <a href="https://en.wikipedia.org/wiki/Record-oriented_filesystem">Record-oriented filesystems</a> provide a richer, more structured representation of files than Unix’s simple byte-stream abstraction, at the cost of simplicity and flexibility.</p>
+<p>Files are organized in directories. A <strong>directory</strong> is analogous to a folder and usually contains related files. Directories can also contain other directories, called subdirectories. In this fashion, directories may be nested to form paths. Each component of a path is called a directory entry. A path example is <code>/home/wolfman/butter</code>: the root directory <code>/</code>, the directories <code>home</code> and <code>wolfman</code>, and the file <code>butter</code> are all directory entries, called <strong>dentries</strong>. In Unix, directories are actually normal files that simply list the files contained therein. Because a directory is a file to the VFS, the same operations performed on files can be performed on directories.</p>
+<h4 id="file-metadata-inode-and-superblock">File metadata, inode and superblock *</h4>
+<p>Unix systems separate the concept of a file from any associated information about it, such as access permissions, size, owner, creation time, and so on. This information is sometimes called <strong>file metadata</strong> (data about the file’s data) and is stored in a separate data structure from the file, called the <strong>inode</strong>. This name is short for index node, although these days the term inode is much more ubiquitous.</p>
+<p>All this information is tied together with the filesystem’s own control information, which is stored in the <strong>superblock</strong>. The superblock is a data structure containing information about the filesystem as a whole. Sometimes the collective data is referred to as <strong>filesystem metadata</strong>. Filesystem metadata includes information about both the individual files and the filesystem as a whole.</p>
+<p>Traditionally, Unix filesystems implement these notions as part of their physical on-disk layout. For example, file information is stored as an inode in a separate block on the disk; directories are files; control information is stored centrally in a superblock, and so on. The Unix file concepts are <em>physically mapped</em> on to the storage medium.</p>
+<p>The Linux VFS is designed to work with filesystems that understand and implement such concepts. Non-Unix filesystems, such as FAT or NTFS, still work in Linux, but their filesystem code must provide the appearance of these concepts. For example, even if a filesystem does not support distinct inodes, it must assemble the inode data structure in memory as if it did. Or if a filesystem treats directories as a special object, to the VFS they must represent directories as mere files. Often, this involves some special processing done on-the-fly by the non-Unix filesystems to cope with the Unix paradigm and the requirements of the VFS. Such filesystems still work, however, and the overhead is not unreasonable.</p>
+<h3 id="vfs-objects-and-their-data-structures">VFS Objects and Their Data Structures</h3>
+<p>The VFS is object-oriented. A family of data structures represents the common file model. These data structures are akin to objects. Because the kernel is programmed strictly in C, without the benefit of a language directly supporting object-oriented paradigms, the data structures are represented as C structures. The structures contain both data and pointers to filesystem-implemented functions that operate on the data.</p>
+<p>The four primary object types of the VFS are:</p>
+<ul>
+<li>The <strong>superblock</strong> object, which represents a specific mounted filesystem.</li>
+<li>The <strong>inode</strong> object, which represents a specific file.</li>
+<li>The <strong>dentry</strong> object, which represents a directory entry, which is a single component of a path.</li>
+<li>The <strong>file</strong> object, which represents an open file as associated with a process.</li>
+</ul>
+<p>Because the VFS treats directories as normal files, there is not a specific directory object. A dentry represents a component in a path, which might include a regular file. In other words, a dentry is not the same as a directory, but a directory is just another kind of file.</p>
+<p>An <em>operations</em> object is contained within each of these primary objects. These objects describe the methods that the kernel invokes against the primary objects:</p>
+<ul>
+<li>The <strong><code>super_operations</code></strong> object, which contains the methods that the kernel can invoke on a specific filesystem, such as <code>write_inode()</code> and <code>sync_fs()</code>.</li>
+<li>The <strong><code>inode_operations</code></strong> object, which contains the methods that the kernel can invoke on a specific file, such as <code>create()</code> and <code>link()</code>.</li>
+<li>The <strong><code>dentry_operations</code></strong> object, which contains the methods that the kernel can invoke on a specific directory entry, such as <code>d_compare()</code> and <code>d_delete()</code>.</li>
+<li>The <strong><code>file_operations</code></strong> object, which contains the methods that a process can invoke on an open file, such as <code>read()</code> and <code>write()</code>.</li>
+</ul>
+<p>The operations objects are implemented as a structure of pointers to functions that operate on the parent object. For many methods, the objects can inherit a generic function if basic functionality is sufficient. Otherwise, the specific instance of the particular filesystem fills in the pointers with its own filesystem-specific methods.</p>
+<p>Note that objects refer to structures, not explicit class types, such as those in C++ or Java. These structures, however, represent specific instances of an object, their associated data, and methods to operate on themselves. They are very much objects.</p>
+<p>The VFS is comprised of a couple more than the primary objects previously discussed:</p>
+<ul>
+<li>Each registered filesystem is represented by a <code>file_system_type</code> structure. This object describes the filesystem and its capabilities.</li>
+<li>Each mount point is represented by the <code>vfsmount</code> structure. This structure contains information about the mount point, such as its location and mount flags.</li>
+</ul>
+<p>Two per-process structures, which describe the filesystem and files associated with a process, are respectively, the <code>fs_struct</code> structure and the <code>file</code> structure. The rest of this chapter discusses these objects and the role they play in implementing the VFS layer.</p>
+<p>The superblock object is implemented by each filesystem and is used to store information
+describing that specific filesystem. This object usually corresponds to the filesystem
+superblock or the filesystem control block, which is stored in a special sector on disk (hence
+the object’s name). Filesystems that are not disk-based (a virtual memory–based filesystem,
+such as sysfs) generate the superblock on-the-fly and store it in memory.</p>
+<p>The superblock object is represented by struct <code>super_block</code> and defined in <code>&lt;linux/fs.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/fs.h#L1319">include/linux/fs.h#L1319</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">super_block</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_list</span><span class="p">;</span> <span class="cm">/* list of all superblocks */</span>
+    <span class="kt">dev_t</span> <span class="n">s_dev</span><span class="p">;</span> <span class="cm">/* identifier */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">s_blocksize</span><span class="p">;</span> <span class="cm">/* block size in bytes */</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">s_blocksize_bits</span><span class="p">;</span> <span class="cm">/* block size in bits */</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">s_dirt</span><span class="p">;</span> <span class="cm">/* dirty flag */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span> <span class="n">s_maxbytes</span><span class="p">;</span> <span class="cm">/* max file size */</span>
+    <span class="k">struct</span> <span class="n">file_system_type</span> <span class="n">s_type</span><span class="p">;</span> <span class="cm">/* filesystem type */</span>
+    <span class="k">struct</span> <span class="n">super_operations</span> <span class="n">s_op</span><span class="p">;</span> <span class="cm">/* superblock methods */</span>
+    <span class="k">struct</span> <span class="n">dquot_operations</span> <span class="o">*</span><span class="n">dq_op</span><span class="p">;</span> <span class="cm">/* quota methods */</span>
+    <span class="k">struct</span> <span class="n">quotactl_ops</span> <span class="o">*</span><span class="n">s_qcop</span><span class="p">;</span> <span class="cm">/* quota control methods */</span>
+    <span class="k">struct</span> <span class="n">export_operations</span> <span class="o">*</span><span class="n">s_export_op</span><span class="p">;</span> <span class="cm">/* export methods */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">s_flags</span><span class="p">;</span> <span class="cm">/* mount flags */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">s_magic</span><span class="p">;</span> <span class="cm">/* filesystem’s magic number */</span>
+    <span class="k">struct</span> <span class="n">dentry</span> <span class="o">*</span><span class="n">s_root</span><span class="p">;</span> <span class="cm">/* directory mount point */</span>
+    <span class="k">struct</span> <span class="n">rw_semaphore</span> <span class="n">s_umount</span><span class="p">;</span> <span class="cm">/* unmount semaphore */</span>
+    <span class="k">struct</span> <span class="n">semaphore</span> <span class="n">s_lock</span><span class="p">;</span> <span class="cm">/* superblock semaphore */</span>
+    <span class="kt">int</span> <span class="n">s_count</span><span class="p">;</span> <span class="cm">/* superblock ref count */</span>
+    <span class="kt">int</span> <span class="n">s_need_sync</span><span class="p">;</span> <span class="cm">/* not-yet-synced flag */</span>
+    <span class="kt">atomic_t</span> <span class="n">s_active</span><span class="p">;</span> <span class="cm">/* active reference count */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">s_security</span><span class="p">;</span> <span class="cm">/* security module */</span>
+    <span class="k">struct</span> <span class="n">xattr_handler</span> <span class="o">**</span><span class="n">s_xattr</span><span class="p">;</span> <span class="cm">/* extended attribute handlers */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_inodes</span><span class="p">;</span> <span class="cm">/* list of inodes */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_dirty</span><span class="p">;</span> <span class="cm">/* list of dirty inodes */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_io</span><span class="p">;</span> <span class="cm">/* list of writebacks */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_more_io</span><span class="p">;</span> <span class="cm">/* list of more writeback */</span>
+    <span class="k">struct</span> <span class="n">hlist_head</span> <span class="n">s_anon</span><span class="p">;</span> <span class="cm">/* anonymous dentries */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_files</span><span class="p">;</span> <span class="cm">/* list of assigned files */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_dentry_lru</span><span class="p">;</span> <span class="cm">/* list of unused dentries */</span>
+    <span class="kt">int</span> <span class="n">s_nr_dentry_unused</span><span class="p">;</span> <span class="cm">/* number of dentries on list */</span>
+    <span class="k">struct</span> <span class="n">block_device</span> <span class="o">*</span><span class="n">s_bdev</span><span class="p">;</span> <span class="cm">/* associated block device */</span>
+    <span class="k">struct</span> <span class="n">mtd_info</span> <span class="o">*</span><span class="n">s_mtd</span><span class="p">;</span> <span class="cm">/* memory disk information */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">s_instances</span><span class="p">;</span> <span class="cm">/* instances of this fs */</span>
+    <span class="k">struct</span> <span class="n">quota_info</span> <span class="n">s_dquot</span><span class="p">;</span> <span class="cm">/* quota-specific options */</span>
+    <span class="kt">int</span> <span class="n">s_frozen</span><span class="p">;</span> <span class="cm">/* frozen status */</span>
+    <span class="kt">wait_queue_head_t</span> <span class="n">s_wait_unfrozen</span><span class="p">;</span> <span class="cm">/* wait queue on freeze */</span>
+    <span class="kt">char</span> <span class="n">s_id</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span> <span class="cm">/* text name */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">s_fs_info</span><span class="p">;</span> <span class="cm">/* filesystem-specific info */</span>
+    <span class="kt">fmode_t</span> <span class="n">s_mode</span><span class="p">;</span> <span class="cm">/* mount permissions */</span>
+    <span class="k">struct</span> <span class="n">semaphore</span> <span class="n">s_vfs_rename_sem</span><span class="p">;</span> <span class="cm">/* rename semaphore */</span>
+    <span class="n">u32</span> <span class="n">s_time_gran</span><span class="p">;</span> <span class="cm">/* granularity of timestamps */</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">s_subtype</span><span class="p">;</span> <span class="cm">/* subtype name */</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">s_options</span><span class="p">;</span> <span class="cm">/* saved mount options */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The code for creating, managing, and destroying superblock objects lives in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/fs/super.c">fs/super.c</a>. A superblock object is created and initialized via the <code>alloc_super()</code> function. When mounted, a filesystem invokes this function, reads its superblock off of the disk, and fills in its superblock object.</p>
+<p>The most important item in the superblock object is <code>s_op</code>, which is a pointer to the superblock operations table. The superblock operations table is represented by struct super_operations and is defined in <code>&lt;linux/fs.h&gt;</code>. It looks like this:</p>
+<h3 id="the-superblock-object">The Superblock Object</h3>
+<h3 id="superblock-operations">Superblock Operations</h3>
+<h3 id="the-inode-object">The Inode Object</h3>
+<h3 id="inode-operations">Inode Operations</h3>
+<h3 id="the-dentry-object">The Dentry Object</h3>
+<h4 id="dentry-state">Dentry State</h4>
+<h4 id="the-dentry-cache">The Dentry Cache</h4>
+<h3 id="dentry-operations">Dentry Operations</h3>
+<h3 id="the-file-object">The File Object</h3>
+<h3 id="file-operations">File Operations</h3>
+<h3 id="data-structures-associated-with-filesystems">Data Structures Associated with Filesystems</h3>
+<h3 id="data-structures-associated-with-a-process">Data Structures Associated with a Process</h3>
             </div>
         </div>
 
