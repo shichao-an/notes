@@ -628,7 +628,107 @@ such as sysfs) generate the superblock on-the-fly and store it in memory.</p>
 
 
 <p>The code for creating, managing, and destroying superblock objects lives in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/fs/super.c">fs/super.c</a>. A superblock object is created and initialized via the <code>alloc_super()</code> function. When mounted, a filesystem invokes this function, reads its superblock off of the disk, and fills in its superblock object.</p>
-<p>The most important item in the superblock object is <code>s_op</code>, which is a pointer to the superblock operations table. The superblock operations table is represented by struct super_operations and is defined in <code>&lt;linux/fs.h&gt;</code>. It looks like this:</p>
+<p>The most important item in the superblock object is <code>s_op</code>, which is a pointer to the superblock operations table. The superblock operations table is represented by <code>struct super_operations</code> and is defined in <code>&lt;linux/fs.h&gt;</code>, which looks like this:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">super_operations</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">alloc_inode</span><span class="p">)(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="n">sb</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">destroy_inode</span><span class="p">)(</span><span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">dirty_inode</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">write_inode</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">drop_inode</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">delete_inode</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">put_super</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">write_super</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">sync_fs</span><span class="p">)(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="n">sb</span><span class="p">,</span> <span class="kt">int</span> <span class="n">wait</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">freeze_fs</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">unfreeze_fs</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">statfs</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">dentry</span> <span class="o">*</span><span class="p">,</span> <span class="k">struct</span> <span class="n">kstatfs</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">remount_fs</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">clear_inode</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">inode</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">umount_begin</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">show_options</span><span class="p">)(</span><span class="k">struct</span> <span class="n">seq_file</span> <span class="o">*</span><span class="p">,</span> <span class="k">struct</span> <span class="n">vfsmount</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">show_stats</span><span class="p">)(</span><span class="k">struct</span> <span class="n">seq_file</span> <span class="o">*</span><span class="p">,</span> <span class="k">struct</span> <span class="n">vfsmount</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">quota_read</span><span class="p">)(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="kt">loff_t</span><span class="p">);</span>
+    <span class="kt">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">quota_write</span><span class="p">)(</span><span class="k">struct</span> <span class="n">super_block</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="kt">loff_t</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">bdev_try_to_free_page</span><span class="p">)(</span><span class="k">struct</span> <span class="n">super_block</span><span class="o">*</span><span class="p">,</span> <span class="k">struct</span> <span class="n">page</span><span class="o">*</span><span class="p">,</span> <span class="kt">gfp_t</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Each item in this structure is a pointer to a function that operates on a superblock object. The superblock operations perform low-level operations on the filesystem and its inodes.</p>
+<p>When a filesystem needs to perform an operation on its superblock, it follows the pointers from its superblock object to the desired method. For example, if a filesystem wanted to write to its superblock, it would invoke:</p>
+<div class="codehilite"><pre><span class="n">sb</span><span class="o">-&gt;</span><span class="n">s_op</span><span class="o">-&gt;</span><span class="n">write_super</span><span class="p">(</span><span class="n">sb</span><span class="p">);</span>
+</pre></div>
+
+
+<p>In this call, <code>sb</code> is a pointer to the filesystem’s superblock. Following that pointer into <code>s_op</code> yields the superblock operations table and ultimately the desired <code>write_super()</code> function, which is then invoked. Note how the <code>write_super()</code> call must be passed a superblock, despite the method being associated with one. This is because of the lack of object-oriented support in C. In C++, a call such as the following would suffice:</p>
+<div class="codehilite"><pre><span class="n">sb</span><span class="p">.</span><span class="n">write_super</span><span class="p">();</span>
+</pre></div>
+
+
+<p>In C, there is no way for the method to easily obtain its parent, so you have to pass it.</p>
+<p>The following are some of the superblock operations that are specified by <code>super_operations</code>:</p>
+<ul>
+<li><code>struct inode * alloc_inode(struct super_block *sb)</code><ul>
+<li>Creates and initializes a new inode object under the given superblock.</li>
+</ul>
+</li>
+<li><code>void destroy_inode(struct inode *inode)</code><ul>
+<li>Deallocates the given inode.</li>
+</ul>
+</li>
+<li><code>void dirty_inode(struct inode *inode)</code><ul>
+<li>Invoked by the VFS when an inode is dirtied (modified). Journaling filesystems such as ext3 and ext4 use this function to perform journal updates.</li>
+</ul>
+</li>
+<li><code>void write_inode(struct inode *inode, int wait)</code><ul>
+<li>Writes the given inode to disk. The <code>wait</code> parameter specifies whether the operation should be synchronous.</li>
+</ul>
+</li>
+<li><code>void drop_inode(struct inode *inode)</code><ul>
+<li>Called by the VFS when the last reference to an inode is dropped. Normal Unix filesystems do not define this function, in which case the VFS simply deletes the inode.</li>
+</ul>
+</li>
+<li><code>void delete_inode(struct inode *inode)</code><ul>
+<li>Deletes the given inode from the disk.</li>
+</ul>
+</li>
+<li><code>void put_super(struct super_block *sb)</code><ul>
+<li>Called by the VFS on unmount to release the given superblock object.The caller must hold the <code>s_lock</code> lock.</li>
+</ul>
+</li>
+<li><code>void write_super(struct super_block *sb)</code><ul>
+<li>Updates the on-disk superblock with the specified superblock.The VFS uses this function to synchronize a modified in-memory superblock with the disk. The caller must hold the <code>s_lock</code> lock.</li>
+</ul>
+</li>
+<li><code>int sync_fs(struct super_block *sb, int wait)</code><ul>
+<li>Synchronizes filesystem metadata with the on-disk filesystem. The <code>wait</code> parameter specifies whether the operation is synchronous.</li>
+</ul>
+</li>
+<li><code>void write_super_lockfs(struct super_block *sb)</code><ul>
+<li>Prevents changes to the filesystem, and then updates the on-disk superblock with the specified superblock. It is currently used by LVM (the Logical Volume Manager).</li>
+</ul>
+</li>
+<li><code>void unlockfs(struct super_block *sb)</code><ul>
+<li>Unlocks the filesystem against changes as done by <code>write_super_lockfs()</code>.</li>
+</ul>
+</li>
+<li><code>int statfs(struct super_block *sb, struct statfs *statfs)</code><ul>
+<li>Called by the VFS to obtain filesystem statistics. The statistics related to the given filesystem are placed in <code>statfs</code>.</li>
+</ul>
+</li>
+<li><code>int remount_fs(struct super_block *sb, int *flags, char *data)</code><ul>
+<li>Called by the VFS when the filesystem is remounted with new mount options.The caller must hold the <code>s_lock</code> lock.</li>
+</ul>
+</li>
+<li><code>void clear_inode(struct inode *inode)</code><ul>
+<li>Called by the VFS to release the inode and clear any pages containing related data.</li>
+</ul>
+</li>
+<li><code>void umount_begin(struct super_block *sb)</code><ul>
+<li>Called by the VFS to interrupt a mount operation. It is used by network filesystems, such as NFS.</li>
+</ul>
+</li>
+</ul>
 <h3 id="the-superblock-object">The Superblock Object</h3>
 <h3 id="superblock-operations">Superblock Operations</h3>
 <h3 id="the-inode-object">The Inode Object</h3>
