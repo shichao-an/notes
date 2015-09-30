@@ -437,14 +437,28 @@
     
         <li class="main "><a href="#fifos">FIFOs</a></li>
         
+            <li><a href="#using-fifos-to-duplicate-output-streams">Using FIFOs to Duplicate Output Streams</a></li>
+        
+            <li><a href="#clientserver-communication-using-a-fifo">Client–Server Communication Using a FIFO</a></li>
+        
     
         <li class="main "><a href="#xsi-ipc">XSI IPC</a></li>
+        
+            <li><a href="#identifiers-and-keys">Identifiers and Keys</a></li>
+        
+            <li><a href="#permission-structure">Permission Structure</a></li>
+        
+            <li><a href="#configuration-limits">Configuration Limits</a></li>
+        
+            <li><a href="#advantages-and-disadvantages">Advantages and Disadvantages</a></li>
         
     
         <li class="main "><a href="#message-queues">Message Queues</a></li>
         
     
         <li class="main "><a href="#semaphores">Semaphores</a></li>
+        
+            <li><a href="#timing-comparison-of-semaphores-record-locking-and-mutexes">Timing Comparison of Semaphores, Record Locking, and Mutexes</a></li>
         
     
         <li class="main "><a href="#shared-memory">Shared Memory</a></li>
@@ -585,12 +599,133 @@ indicate an end of file after all the data has been read.<ul>
 </ol>
 <p>Once we have used <code>mkfifo</code> or <code>mkfifoat</code> to create a FIFO, we open it using <code>open</code>. The normal file I/O functions (e.g., <code>close</code>, <code>read</code>, <code>write</code>, <code>unlink</code>) all work with FIFOs.</p>
 <p>Applications can create FIFOs with the <code>mknod</code> and <code>mknodat</code> functions. Because POSIX.1 originally didn’t include <code>mknod</code>, the <code>mkfifo</code> function was invented specifically for POSIX.1.  The <code>mknod</code> and <code>mknodat</code> functions are included in the XSI option in POSIX.1.  POSIX.1 also includes support for the <code>mkfifo(1)</code> command. All four platforms discussed in this text provide this command. As a result, we can create a FIFO using a shell command and then access it with the normal shell I/O redirection.</p>
-<p>When we open a FIFO, the nonblocking flag (<code>O_NONBLOCK</code>) affects what happens:
-<em> In the normal case (without <code>O_NONBLOCK</code>), an open for read-only blocks until some other process opens the FIFO for writing. Similarly, an open for writeonly blocks until some other process opens the FIFO for reading.
-</em> If <code>O_NONBLOCK</code> is specified, an <code>open</code> for read-only returns immediately. But an open for write-only returns −1 with <code>errno</code> set to <code>ENXIO</code> if no process has the FIFO open for reading.</p>
+<p>When we open a FIFO, the nonblocking flag (<code>O_NONBLOCK</code>) affects what happens:</p>
+<ul>
+<li>In the normal case (without <code>O_NONBLOCK</code>), an open for read-only blocks until some other process opens the FIFO for writing. Similarly, an open for writeonly blocks until some other process opens the FIFO for reading.</li>
+<li>If <code>O_NONBLOCK</code> is specified, an <code>open</code> for read-only returns immediately. But an open for write-only returns −1 with <code>errno</code> set to <code>ENXIO</code> if no process has the FIFO open for reading.</li>
+</ul>
+<p>As with a pipe, if we <code>write</code> to a FIFO that no process has open for reading, the signal <code>SIGPIPE</code> is generated. When the last writer for a FIFO closes the FIFO, an end of file is generated for the reader of the FIFO.</p>
+<p>It is common to have multiple writers for a given FIFO. This means that we have to worry about atomic writes if we don’t want the writes from multiple processes to be interleaved. As with pipes, the constant <code>PIPE_BUF</code> specifies the maximum amount of data that can be written atomically to a FIFO.</p>
+<p>There are two uses for FIFOs.</p>
+<ol>
+<li>FIFOs are used by shell commands to pass data from one shell pipeline to another without creating intermediate temporary files.</li>
+<li>FIFOs are used as rendezvous points in client–server applications to pass data between the clients and the servers.</li>
+</ol>
+<h4 id="using-fifos-to-duplicate-output-streams">Using FIFOs to Duplicate Output Streams</h4>
+<p>FIFOs can be used to duplicate an output stream in a series of shell commands. This prevents writing the data to an intermediate disk file (similar to using pipes to avoid intermediate disk files). But whereas pipes can be used only for linear connections between processes, a FIFO has a name, so it can be used for nonlinear connections.</p>
+<p>Consider a procedure that needs to process a filtered input stream twice. The figure below shows this arrangement.</p>
+<p><a href="../figure_15.20.png" title="Figure 15.20 Procedure that processes a filtered input stream twice"><img alt="Figure 15.20 Procedure that processes a filtered input stream twice" src="../figure_15.20.png" /></a></p>
+<p>With a FIFO and the UNIX program <code>tee(1)</code>, we can accomplish this procedure without using a temporary file. (The <code>tee</code> program copies its standard input to both its standard output and the file named on its command line.)</p>
+<div class="codehilite"><pre>mkfifo fifo1
+prog3 &lt; fifo1 <span class="p">&amp;</span>
+prog1 &lt; infile <span class="p">|</span> tee fifo1 <span class="p">|</span> prog2
+</pre></div>
+
+
+<p>We create the FIFO and then start <code>prog3</code> in the background, reading from the FIFO. We then start <code>prog1</code> and use <code>tee</code> to send its input to both the FIFO and <code>prog2</code>. The following figure shows the process arrangement.</p>
+<p><a href="../figure_15.21.png" title="Figure 15.21 Using a FIFO and tee to send a stream to two different processes"><img alt="Figure 15.21 Using a FIFO and tee to send a stream to two different processes" src="../figure_15.21.png" /></a></p>
+<h4 id="clientserver-communication-using-a-fifo">Client–Server Communication Using a FIFO</h4>
+<p>Another use for FIFOs is to send data between a client and a server. If we have a server that is contacted by numerous clients, each client can write its request to a well-known FIFO that the server creates. "well-known" means that the pathname of the FIFO is known to all the clients that need to contact the server.</p>
+<p><a href="../figure_15.22.png" title="Figure 15.22 Clients sending requests to a server using a FIFO"><img alt="Figure 15.22 Clients sending requests to a server using a FIFO" src="../figure_15.22.png" /></a></p>
+<p><u>Since there are multiple writers for the FIFO, the requests sent by the clients to the server need to be less than <code>PIPE_BUF</code> bytes in size. This prevents any interleaving of the client writes.</u></p>
+<p>The problem in using FIFOs for this type of client–server communication is how to send replies back from the server to each client. A single FIFO can’t be used, as the clients would never know when to read their response versus responses for other clients. One solution is for each client to send its process ID with the request. The server then creates a unique FIFO for each client, using a pathname based on the client’s process ID. For example, the server can create a FIFO with the name <code>/tmp/serv1.XXXXX</code>, where <code>XXXXX</code> is replaced with the client’s process ID. This arrangement is shown the figure below.</p>
+<p>This arrangement works, although it is impossible for the server to tell whether a client crashes. A client crash leaves the client-specific FIFO in the file system. The server also must catch <code>SIGPIPE</code>, since it’s possible for a client to send a request and terminate before reading the response, leaving the client-specific FIFO with one writer (the server) and no reader.</p>
+<p><a href="../figure_15.23.png" title="Figure 15.23 Client–server communication using FIFOs"><img alt="Figure 15.23 Client–server communication using FIFOs" src="../figure_15.23.png" /></a></p>
+<p>With the arrangement shown in the figure above, if the server opens its well-known FIFO read-only (since it only reads from it) each time the number of clients goes from 1 to 0, the server will read an end of file on the FIFO. To prevent the server from having to handle this case, a common trick is just to have the server open its well-known FIFO for read–write.</p>
 <h3 id="xsi-ipc">XSI IPC</h3>
+<p>The three types of IPC that we call XSI IPC: message queues, semaphores, and shared memory, have many similarities. This section covers these similar features; in the following sections, we look at the specific functions for each of the three IPC types.</p>
+<h4 id="identifiers-and-keys">Identifiers and Keys</h4>
+<p>Each IPC structure (message queue, semaphore, or shared memory segment) in the kernel is referred to by a non-negative integer identifier. To send a message to or fetch a message from a message queue, for example, all we need know is the identifier for the queue. Unlike file descriptors, IPC identifiers are not small integers. Indeed, when a given IPC structure is created and then removed, the identifier associated with that structure continually increases until it reaches the maximum positive value for an integer, and then wraps around to 0.</p>
+<p>The identifier is an internal name for an IPC object. Cooperating processes need an external naming scheme to be able to rendezvous using the same IPC object. For this purpose, an IPC object is associated with a <em>key</em> that acts as an external name.</p>
+<p>Whenever an IPC structure is being created (by calling <code>msgget</code>, <code>semget</code>, or <code>shmget</code>), a key must be specified. The data type of this key is the primitive system data type <code>key_t</code>, which is often defined as a long integer in the header <code>&lt;sys/types.h&gt;</code>.  This key is converted into an identifier by the kernel.</p>
+<p>[p557-560]</p>
+<h4 id="permission-structure">Permission Structure</h4>
+<h4 id="configuration-limits">Configuration Limits</h4>
+<h4 id="advantages-and-disadvantages">Advantages and Disadvantages</h4>
 <h3 id="message-queues">Message Queues</h3>
+<p>A message queue is a linked list of messages stored within the kernel and identified by a message queue identifier. The message queue is called a <em>queue</em> and its identifier is called a <em>queue ID</em>.</p>
+<p>[p561-565]</p>
 <h3 id="semaphores">Semaphores</h3>
+<p>A semaphore isn’t a form of IPC similar to the others described (pipes, FIFOs, and message queues). A semaphore is a counter used to provide access to a shared data object for multiple processes.</p>
+<p>The Single UNIX Specification includes an alternative set of semaphore interfaces that were originally part of its real-time extensions. These interfaces are discussed in <a href="#posix-semaphores">Section 15.10</a>.</p>
+<p>To obtain a shared resource, a process needs to do the following:</p>
+<ol>
+<li>Test the semaphore that controls the resource.</li>
+<li>If the value of the semaphore is positive, the process can use the resource. In this case, the process decrements the semaphore value by 1, indicating that it has used one unit of the resource.</li>
+<li>Otherwise, if the value of the semaphore is 0, the process goes to sleep until the semaphore value is greater than 0. When the process wakes up, it returns to step 1.</li>
+</ol>
+<p>When a process is done with a shared resource that is controlled by a semaphore, the semaphore value is incremented by 1. If any other processes are asleep, waiting for the semaphore, they are awakened.</p>
+<p><u>To implement semaphores correctly, the test of a semaphore’s value and the decrementing of this value must be an atomic operation. For this reason, semaphores are normally implemented inside the kernel.</u></p>
+<p>A common form of semaphore is called a <strong>binary semaphore</strong>. It controls a single resource, and its value is initialized to 1. In general, however, a semaphore can be initialized to any positive value, with the value indicating how many units of the shared resource are available for sharing.</p>
+<p>[p566-570]</p>
+<h4 id="timing-comparison-of-semaphores-record-locking-and-mutexes">Timing Comparison of Semaphores, Record Locking, and Mutexes</h4>
+<p>If we are sharing a single resource among multiple processes, we can use one of three
+techniques to coordinate access:</p>
+<ul>
+<li>A semaphore</li>
+<li>Record locking</li>
+<li>A mutex that is mapped into the address spaces of both processes</li>
+</ul>
+<p>It’s interesting to compare the timing differences between the three techniques:</p>
+<ul>
+<li>
+<p><strong>Semaphore</strong>. With a semaphore, we create a semaphore set consisting of a single member and initialize the semaphore’s value to 1.</p>
+<ul>
+<li>To allocate the resource, we call semop with a <code>sem_op</code> of −1;</li>
+<li>To release the resource, we perform a <code>sem_op</code> of +1.</li>
+</ul>
+<p>We also specify <code>SEM_UNDO</code> with each operation, to handle the case of a process that terminates without releasing its resource.</p>
+</li>
+<li>
+<p><strong>Record locking</strong>. With record locking, we create an empty file and use the first byte of the file (which need not exist) as the lock byte.</p>
+<ul>
+<li>To allocate the resource, we obtain a write lock on the byte;</li>
+<li>To release it, we unlock the byte.</li>
+</ul>
+<p>The record locking properties guarantee that if a process terminates while holding a lock, the kernel automatically releases the lock.</p>
+</li>
+<li>
+<p><strong>Mutex</strong>. To use a mutex, we need both processes to map the same file into their address spaces and initialize a mutex at the same offset in the file using the <code>PTHREAD_PROCESS_SHARED</code> mutex attribute.</p>
+<ul>
+<li>To allocate the resource, we lock the mutex;</li>
+<li>To release the resource, we unlock the mutex.</li>
+</ul>
+<p>If a process terminates without releasing the mutex, recovery is difficult unless we use a robust mutex (<code>pthread_mutex_consistent</code> function discussed in Section 12.4.1).</p>
+</li>
+</ul>
+<p>The following table shows the time required to perform these three locking techniques on Linux. In each case, the resource was allocated and then released 1,000,000 times. This was done simultaneously by three different processes. The times are the totals in seconds for all three processes.</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>User</th>
+<th>System</th>
+<th>Clock</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>semaphores with undo</td>
+<td>0.50</td>
+<td>6.08</td>
+<td>7.55</td>
+</tr>
+<tr>
+<td>advisory record locking</td>
+<td>0.51</td>
+<td>9.06</td>
+<td>4.38</td>
+</tr>
+<tr>
+<td>mutex in shared memory</td>
+<td>0.21</td>
+<td>0.40</td>
+<td>0.25</td>
+</tr>
+</tbody>
+</table>
+<p>On Linux, record locking is faster than semaphores, but mutexes in shared memory outperform both semaphores and record locking. If we’re locking a single resource and don’t need all the fancy features of XSI semaphores, record locking is preferred over semaphores. The reasons are that it is much simpler to use, it is faster (on this platform), and the system takes care of any lingering locks when a process terminates.  Even though using a mutex in shared memory is the fastest option on this platform, we still prefer to use record locking, unless performance is the primary concern. There are two reasons for this. First, recovery from process termination is more difficult using a mutex in memory shared among multiple processes. Second, the process-shared mutex attribute isn’t universally supported yet. In older versions of the Single UNIX Specification, it was optional. Although it is still optional in SUSv4, it is now required by all XSI-conforming implementations. Of the four platforms covered in this text, only Linux 3.2.0 and Solaris 10 currently support the
+process-shared mutex attribute.</p>
 <h3 id="shared-memory">Shared Memory</h3>
 <h3 id="posix-semaphores">POSIX Semaphores</h3>
 <h3 id="clientserver-properties">Client–Server Properties</h3>
