@@ -49,7 +49,52 @@ This strategy is conceptually simple, but has some disadvantage:
 
 <u>A variation of this model is to do the traffic switching gradually. A small percentage of requests are first routed to version B, effectively conducting a canary test.</u> Canary testing is mentioned in Chapter 5 and discuss it in more detail in the section [Canary Testing](#canary-testing). If everything goes well for a while, more version B VMs can be provisioned and more requests can be routed to this pool of VMs, until all requests are routed to version B.  This increases confidence in your deployment, but also introduces a number of consistency issues (discussed in [Section 6.3](#logical-consistency)).
 
+#### Rolling Upgrade
+
+A **rolling upgrade** consists of deploying a small number of version B VMs at a time directly to the current production environment, while switching off the same number of VMs running version A. For example, we deploy one version B VM at a time. Once an additional version B VM has been deployed and is receiving requests, one version A VM is removed from the system. Repeating this process N times results in a complete deployment of version B.
+
+This strategy is inexpensive but more complicated. It may cost a small number of additional VMs for the duration of the deployment, but again introduces a number of issues of consistency and more risks in disturbing the current production environment.
+
+The following figure provides a representation of a rolling upgrade within the Amazon cloud:
+
+[![Figure 6.2 Representation of a rolling upgrade [Notation: BPMN]](figure_6.2.png)](figure_6.2.png "Figure 6.2 Representation of a rolling upgrade [Notation: BPMN]")
+
+1. Each VM (containing one service) is *decommissioned* (removed, deregistered from the elastic load balancer (ELB), and terminated)
+2. Then, a new VM is started and registered with the ELB.
+3. This process continues until all of the VMs containing version A have been replaced with VMs containing version B.
+
+The additional cost of a rolling upgrade can be low if you conduct your rolling upgrade when your VMs are not fully utilized, and your killing of one or a small number of VMs at a time still maintains your expected service level. It may cost a bit if you add a small number of VMs before you start the rolling upgrade to mitigate the performance impact and risk of your rolling upgrade.
+
+During a rolling upgrade, one subset of the VMs is providing service with version A, and the remainder of the VMs are providing service with version B.  This creates the possibility of failures as a result of mixed versions. This type of failure is discussed in the [next section](#logical-consistency).
+
 ### Logical Consistency
+
+There are some types of logical consistency:
+
+* **Mixed versions in deployment**. The deployment using a rolling upgrade introduces one type of logical inconsistency (multiple versions of the same service will be simultaneously active). This may also happen with those variants of the blue/green deployment that put new versions into service prior to the completion of the deployment.
+* **Inconsistency in functionality between a service and its clients**. Revisiting [Figure 6.1](figure_6.1.png), A service being deployed without synchronous coordination with its client or dependent services may introduce a possible source of logical inconsistency.
+* **Inconsistency between a service and data kept in a database.**
+
+The following figure shows an instance of an inconsistency because of two active versions of the same service. Two components are shown: the client and two versions (versions A and B) of a service.
+
+1. The client sends a message that is routed to version B.
+2. Version B performs its actions and returns some state to the client.
+3. The client then includes that state in its next request to the service.
+4. The second request is routed to version A, and this version does not know what to make of the state, because the state assumes version B. Therefore, an error occurs.
+
+This problem is called a **mixed-version race condition**.
+
+[![Figure 6.3 Mixed-version race condition, leading to an error [Notation: UML Sequence Diagram]](figure_6.3.png)](figure_6.3.png "Figure 6.3 Mixed-version race condition, leading to an error [Notation: UML Sequence Diagram]")
+
+Several techniques can prevent this situation:
+
+* **Make the client version aware** so that it knows that its initial request was serviced by a version B VM. Then it can require its second request to be serviced by a version B VM.
+    * [Chapter 4](ch4.md) describes how a service is registered with a registry/load balancer. This registration can contain the version number. The client can then request a specific version of the service.  Response messages from the service should contain a tag so that the client is aware of the version of the service with which it has just interacted.
+* **Toggle the new features** contained in version B and the client so that only one version is offering the service at any given time.
+* **Make the services forward and backward compatible**, and enable the clients to recognize when a particular request has not been satisfied.
+
+
+#### Multiple Versions of the Same Service Simultaneously Active
 
 ### Packaging
 

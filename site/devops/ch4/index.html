@@ -468,12 +468,65 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
+        <li class="main active"><a href="#chapter-4-overall-architecture">Chapter 4. Overall Architecture</a></li>
+        
+    
+        <li class="main "><a href="#do-devops-practices-require-architectural-change">Do DevOps Practices Require Architectural Change?</a></li>
+        
+    
+        <li class="main "><a href="#overall-architecture-structure">Overall Architecture Structure</a></li>
+        
+            <li><a href="#coordination-model">Coordination Model</a></li>
+        
+            <li><a href="#management-of-resources">Management of Resources</a></li>
+        
+            <li><a href="#mapping-among-architectural-elements">Mapping Among Architectural Elements</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
-
+<h3 id="chapter-4-overall-architecture"><strong>Chapter 4. Overall Architecture</strong></h3>
+<p>DevOps achieves its goals partially by replacing explicit coordination with implicit and often less coordination. [p65]</p>
+<h3 id="do-devops-practices-require-architectural-change">Do DevOps Practices Require Architectural Change?</h3>
+<h3 id="overall-architecture-structure">Overall Architecture Structure</h3>
+<ul>
+<li>A <strong>module</strong> is a code unit with coherent functionality.</li>
+<li>A <strong>component</strong> is an executable unit.</li>
+</ul>
+<p>A compiler or interpreter turns modules into binaries, and a builder turns the binaries into components. The development team directly develops modules. Components are results of the modules developed by development teams.</p>
+<p>Development teams using DevOps processes are usually small and have limited inter-team coordination. <u>When a team deploys a component, it cannot go into production unless the component is compatible with other components with which it interacts.</u> Ensuring this compatibility require either of the following:</p>
+<ul>
+<li>Explicit multi-team coordination,</li>
+<li>Implicitly definition of the architecture.</li>
+</ul>
+<p>An organization can introduce continuous deployment without major architectural modifications. However, dramatically reducing the time required to place a component into production requires architectural support:</p>
+<ul>
+<li><strong>Deploying without explicit coordination</strong> with other teams reduces the time required to place a component into production.</li>
+<li><strong> Allowing for different versions of the same service</strong> to be simultaneously in production leads to different team members deploying without coordination with other members of their team.</li>
+<li><strong>Rolling back a deployment</strong> in the event of errors allows for various forms of live testing.</li>
+</ul>
+<p><strong>Microservice architecture</strong> is an architectural style that satisfies these requirements. It is a good general basis for projects that are adopting DevOps practices. By definition, a microservice architecture consists of a collection of services where each service provides a small amount of functionality and the total functionality of the system is derived from composing multiple services.</p>
+<p>The following figure describes a microservice architecture. A user interacts with a single consumer-facing service, which in turn utilizes a collection of other services. We use the terminology <strong>service</strong> to refer to a component that provides a service and <strong>client</strong> to refer to a component that requests a service. A single component can be a client in one interaction and a service in another. In a system such as LinkedIn, the service depth may reach as much as 70 for a single user request.</p>
+<p><a href="../figure_4.1.png" title="Figure 4.1 User interacting with a single service that, in turn, utilizes multiple other services [Notation: Architecture]"><img alt="Figure 4.1 User interacting with a single service that, in turn, utilizes multiple other services [Notation: Architecture]" src="../figure_4.1.png" /></a></p>
+<p>To minimize inter-team coordination, there are three categories of design decisions that can be made globally as a portion of the architecture design, thus removing the need for inter-team coordination: the coordination model, management of resources, and mapping among architectural elements.</p>
+<h4 id="coordination-model">Coordination Model</h4>
+<p>If two services interact, there are two details of the coordination:</p>
+<ul>
+<li>How a client discovers a service that it wishes to use,</li>
+<li>How the individual services communicate.</li>
+</ul>
+<p>The following figure gives an overview of the interaction between a service and its client:</p>
+<ul>
+<li>The service registers with a registry. The registration includes a name for the service as well as information on how to invoke it (e.g. an endpoint location as a URL or an IP address),</li>
+<li>A client can retrieve the information about the service from the registry and invoke the service using this information. If the registry provides IP addresses, it acts as a local DNS server, because typically the registry is not open to the general Internet but is within the environment of the application.</li>
+</ul>
+<p><a href="../figure_4.2.png" title="Figure 4.2 An instance of a service registers itself with the registry, the client queries the registry for the address of the service and invokes the service.  [Notation: Architecture]"><img alt="Figure 4.2 An instance of a service registers itself with the registry, the client queries the registry for the address of the service and invokes the service.  [Notation: Architecture]" src="../figure_4.2.png" /></a></p>
+<p><a href="https://github.com/Netflix/eureka">Netflix Eureka</a> is an example of a cloud service registry that acts as a DNS server and serves as a catalogue of available services, and can further be used to track aspects such as versioning, ownership, service level agreements (SLAs) for the set of services in an organization. Extensions to the registry are further discussed in <a href="../ch6/">Chapter 6</a></p>
+<h4 id="management-of-resources">Management of Resources</h4>
+<h4 id="mapping-among-architectural-elements">Mapping Among Architectural Elements</h4>
             </div>
         </div>
 
