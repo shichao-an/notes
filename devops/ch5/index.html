@@ -471,12 +471,182 @@
         <li class="main active"><a href="#chapter-5-building-and-testing">Chapter 5. Building and Testing</a></li>
         
     
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#moving-a-system-through-the-deployment-pipeline">Moving a System Through the Deployment Pipeline</a></li>
+        
+            <li><a href="#traceability">Traceability</a></li>
+        
+            <li><a href="#the-environment">The Environment</a></li>
+        
+    
+        <li class="main "><a href="#crosscutting-aspects">Crosscutting Aspects</a></li>
+        
+    
+        <li class="main "><a href="#development-and-pre-commit-testing">Development and Pre-commit Testing</a></li>
+        
+    
+        <li class="main "><a href="#build-and-integration-testing">Build and Integration Testing</a></li>
+        
+            <li><a href="#build-scripts">Build Scripts</a></li>
+        
+            <li><a href="#packaging">Packaging</a></li>
+        
+            <li><a href="#continuous-integration-and-build-status">Continuous Integration and Build Status</a></li>
+        
+            <li><a href="#integration-testing">Integration Testing</a></li>
+        
+    
+        <li class="main "><a href="#uatstagingperformance-testing">UAT/Staging/Performance Testing</a></li>
+        
+    
+        <li class="main "><a href="#production">Production</a></li>
+        
+            <li><a href="#early-release-testing">Early Release Testing</a></li>
+        
+            <li><a href="#error-detection">Error Detection</a></li>
+        
+            <li><a href="#live-testing">Live Testing</a></li>
+        
+    
+        <li class="main "><a href="#incidents">Incidents</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-5-building-and-testing"><strong>Chapter 5. Building and Testing</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>The infrastructure used to support the development and deployment process should support the following requirements (some ignored):</p>
+<ul>
+<li>The code produced by one team can be easily integrated with code produced by other teams.</li>
+<li>An integrated version of the system can be easily deployed into various environments (e.g., testing, staging, and production).</li>
+<li>An integrated version of the system can be easily and fully tested without affecting the production version of the system.</li>
+<li>A recently deployed new version of the system can be closely supervised.</li>
+<li>Older versions of the code are available in case a problem develops once the code has been placed into production.</li>
+<li>Code can be rolled back in the case of a problem.</li>
+</ul>
+<p>A <strong>deployment pipeline</strong> (as shown in the figure below) consists of the steps that are taken between a developer committing code and the code actually being promoted into normal production, while ensuring high quality.</p>
+<p><a href="../figure_5.1.png" title="Figure 5.1 Deployment pipeline [Notation: BPMN]"><img alt="Figure 5.1 Deployment pipeline [Notation: BPMN]" src="../figure_5.1.png" /></a></p>
+<p>The deployment pipeline has following steps:</p>
+<ol>
+<li><strong>Pre-commit tests</strong>. The developer performs a series of pre-commit tests on their local environment</li>
+<li><strong>Commit</strong>. The developer commits code to the joint versioning system</li>
+<li><strong>Integration tests</strong>. A commit then triggers an integration build of the service being developed. This build is tested by integration tests.</li>
+<li><strong>Staging tests</strong>. If these tests are successful, the build is promoted to a quasi-production environment, the staging environment, where it is tested once more.</li>
+<li><strong>Production</strong>. Then, it is promoted to production under close supervision for another period of close supervision</li>
+<li><strong>Normal production</strong>. It is promoted to normal production.</li>
+</ol>
+<p>The specific tasks may vary a bit for different organizations. For example, a small company may not have a staging environment or special supervision for a recently deployed version. A larger company may have several different production environments for different purposes. Some of these different production environments are described in <a href="../ch6/">Chapter 6</a>.</p>
+<p>Some definitions:</p>
+<ul>
+<li><strong>Continuous integration</strong> is to have automatic triggers between one phase and the next, up to <u>integration tests</u>.<ul>
+<li>If the build is successful then integration tests are triggered. If not, the developer responsible for the failure is notified.</li>
+</ul>
+</li>
+<li><strong>Continuous delivery</strong> is having automated triggers as far as the <u>staging system</u>.</li>
+<li><strong>Continuous deployment</strong> means that the next to last step (deployment into the production system) is automated as well.</li>
+</ul>
+<p>Once a service is deployed into production it is closely monitored for a period and then it is promoted into normal production. At this final stage, monitoring and testing still exist but the service is no different from other services in this regard. In this chapter, we are concerned with the building and testing aspects of this pipeline.</p>
+<p><a href="../ch6/">Chapter 6</a> describes deployment practices, and <a href="../ch7/">Chapter 7</a> discusses monitoring methods.</p>
+<h3 id="moving-a-system-through-the-deployment-pipeline">Moving a System Through the Deployment Pipeline</h3>
+<p>Committed code moves through the steps shown in <a href="../figure_5.1.png">Figure 5.1</a>. It is moved by tools, which are controlled by their programs (called <em>scripts</em> in this context) or by developer/operator commands. Two aspects of this movement are of interest in this section:</p>
+<ol>
+<li>Traceability</li>
+<li>The environment associated with each step of the pipeline</li>
+</ol>
+<h4 id="traceability">Traceability</h4>
+<p>Traceability means that, for any system in production, it is possible to determine exactly how it came to be in production. This means keeping track not only of source code but also of all the commands to all the tools that acted on the elements of the system.</p>
+<p>A movement called <strong>Infrastructure as Code</strong> uses the rationale that:</p>
+<ul>
+<li>The scripts and associated configuration parameters should be kept under version control, just as the application code.</li>
+<li>Tests are also maintained in version control.</li>
+<li>Configuration parameters can be kept as files that are stored in version control or handled through dedicated configuration management systems.</li>
+</ul>
+<p>Treating infrastructure-as-code means that this code should be subject to the same quality control as application source code.</p>
+<p>A complication to the requirement to keep everything in version control is the treatment of third-party software such as Java libraries. Software project management tools like Apache Maven can go a long way to managing the complexities of library usage. [p82]</p>
+<h4 id="the-environment">The Environment</h4>
+<p>An executing system can be viewed as a collection of executing code, an environment, configuration, systems outside of the environment with which the primary system interacts, and data.</p>
+<p><a href="../figure_5.2.png" title="Figure 5.2 A sample environment [Notation: Architecture]"><img alt="Figure 5.2 A sample environment [Notation: Architecture]" src="../figure_5.2.png" /></a></p>
+<p>As the system moves through the deployment pipeline, these items work together to generate the desired behavior or information:</p>
+<ul>
+<li><strong>Pre-commit</strong>. The environment is typically a laptop or a desktop, the external systems are stubbed out or mocked, and only limited data is used for testing. Read-only external systems (e.g. RSS feed) can be accessed during the pre-commit stage. Configuration parameters should reflect the environment and also control the debugging level.</li>
+<li><strong>Build and integration testing</strong>. The environment is usually a continuous integration server.<ul>
+<li>The code is compiled, and the component is built and baked into a VM image. The image can be either heavily or lightly baked (see the later section on <a href="#packaging">packaging</a>).</li>
+<li>During integration testing, a set of test data forms a test database (not production), which consists of a sufficient amount of data to perform the automated tests associated with integration.</li>
+<li>The configuration parameters connect the built system with an integration testing environment</li>
+</ul>
+</li>
+<li><strong>UAT/staging/performance testing</strong>. The environment is as close to production as possible.<ul>
+<li>Automated acceptance tests are run, and stress testing is performed through the use of artificially generated workloads.</li>
+<li>The database should have some subset of actual production data in it. The subset should be large enough to enable the tests to be run in a realistic setting.</li>
+<li>Configuration parameters connect the tested system with the larger test environment. Access to the production database should not be allowed from the staging environment.</li>
+</ul>
+</li>
+<li><strong>Production</strong>. The production environment should access the live database and have sufficient resources to adequately handle its workload. Configuration parameters connect the system with the production environment.</li>
+</ul>
+<p>The configuration for each of these environments will be different, for example:</p>
+<ul>
+<li>Logging. Logging in development environment is usually in much detailed fashion to help debugging, since the performance overhead created does not matter as much.</li>
+<li>Credentials. The credentials for accessing production resources (e.g. the live customer database), should not be made available to developers.</li>
+</ul>
+<p><u>While some changes in configuration are unavoidable, it is important to keep these changes to a minimum to prevent affecting the behavior of the system. As such, testing with a vastly different configuration from the production system will not be helpful.</u></p>
+<p>Wikipedia has a longer list of environments:</p>
+<ul>
+<li>Local: Developer’s laptop/desktop/workstation</li>
+<li>Development: Development server, a.k.a. sandbox</li>
+<li>Integration: Continuous integration (CI) build target, or for developer testing of side effects</li>
+<li>Test/QA: For functional, performance testing, quality assurance, etc.</li>
+<li>UAT: User acceptance testing</li>
+<li>Stage/Pre-production: Mirror of production environment</li>
+<li>Production/Live: Serves end-users/clients</li>
+</ul>
+<h3 id="crosscutting-aspects">Crosscutting Aspects</h3>
+<p>This section discusses various crosscutting aspects of a deployment pipeline:</p>
+<ul>
+<li><strong>Test harnesses</strong>. A test harness is a collection of software and test data configured to test a program unit by running it under varying conditions and monitoring its behavior and output.<ul>
+<li>Test harnesses are essential in order to automate tests.</li>
+<li>A critical feature of a test harness is that it generates a report. It should, at a minimum, identify which tests failed.</li>
+<li>Most of the types of tests discussed in this chapter should be able to be automated and driven by the test harness.</li>
+</ul>
+</li>
+<li><strong>Negative tests</strong>. It is also important to test if the system behaves in a defined way without the assumptions, which are about the environment hold and the user performs actions expectedly (in the right order with the right inputs).<ul>
+<li>Examples are users performing actions in the wrong order (clicking buttons, calling commands) or simulated connectivity issues(external services becoming unavailable, connections being dropped at unexpected points in time).</li>
+<li>The common expectation is that:<ul>
+<li>The application should degrade or fail gracefully</li>
+<li>If failure is unavoidable, provide meaningful error messages and exit in a controlled manner.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Regression testing</strong>.</li>
+<li><strong>Traceability of errors</strong> (also referred to as lineage or a form of provenance).</li>
+</ul>
+<h3 id="development-and-pre-commit-testing">Development and Pre-commit Testing</h3>
+<h3 id="build-and-integration-testing">Build and Integration Testing</h3>
+<h4 id="build-scripts">Build Scripts</h4>
+<h4 id="packaging">Packaging</h4>
+<h4 id="continuous-integration-and-build-status">Continuous Integration and Build Status</h4>
+<h4 id="integration-testing">Integration Testing</h4>
+<h3 id="uatstagingperformance-testing">UAT/Staging/Performance Testing</h3>
+<h3 id="production">Production</h3>
+<h4 id="early-release-testing">Early Release Testing</h4>
+<p>This subsection focuses on the testing method. <a href="../ch6/">Chapter 6</a> discusses how to release the application to achieve early release testing.</p>
+<ul>
+<li><strong>Beta release</strong> is the most traditional approach. A selected few users, often subscribed to a beta program, are given access to a prerelease (beta) version of the application. Beta testing is primarily used for <a href="https://en.wikipedia.org/wiki/On-premises_software">on-premises use of software</a>.</li>
+<li><strong>Canary testing</strong> is a method of deploying the new version to a few servers first, to see how they perform. It is the cloud equivalent of beta testing.<ul>
+<li>One or a few of the application servers are upgraded from the current version to a stable, well-tested release candidate version of the application. Load balancers direct a small portion of the user requests to the candidate version, while monitoring is ongoing. If the candidate servers are acceptable in terms of some metrics (e.g., performance, scalability, number of errors) the candidate version is rolled out to all servers.</li>
+</ul>
+</li>
+<li><strong>A/B testing</strong> is similar to canary testing, except that the tests are intended
+to determine which version performs better in terms of certain business-level key performance indicators. For example, a new algorithm for recommending products may increase revenue, or UI changes may lead to more click-throughs.</li>
+</ul>
+<h4 id="error-detection">Error Detection</h4>
+<h4 id="live-testing">Live Testing</h4>
+<h3 id="incidents">Incidents</h3>
             </div>
         </div>
 
