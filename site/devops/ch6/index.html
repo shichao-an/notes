@@ -468,12 +468,94 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
+        <li class="main active"><a href="#chapter-6-deployment">Chapter 6. Deployment</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#strategies-for-managing-a-deployment">Strategies for Managing a Deployment</a></li>
+        
+            <li><a href="#bluegreen-deployment">Blue/Green Deployment</a></li>
+        
+    
+        <li class="main "><a href="#logical-consistency">Logical Consistency</a></li>
+        
+    
+        <li class="main "><a href="#packaging">Packaging</a></li>
+        
+    
+        <li class="main "><a href="#deploying-to-multiple-environments">Deploying to Multiple Environments</a></li>
+        
+    
+        <li class="main "><a href="#partial-deployment">Partial Deployment</a></li>
+        
+            <li><a href="#canary-testing">Canary Testing</a></li>
+        
+            <li><a href="#ab-testing">A/B Testing</a></li>
+        
+    
+        <li class="main "><a href="#rollback">Rollback</a></li>
+        
+    
+        <li class="main "><a href="#tools">Tools</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
-
+<h3 id="chapter-6-deployment"><strong>Chapter 6. Deployment</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p><strong>Deployment</strong> is the process of placing a version of a service into production. The initial deployment of a service can be viewed as going from no version of the service to the initial version of the service. Because an initial deployment happens only once for most systems and new versions happen frequently, this chapter discuss upgrading a service.</p>
+<p>The overall goal of a deployment is to place an upgraded version of the service into production with minimal impact to the users of the system, whether it is through failures or downtime.</p>
+<p>There are three reasons for changing a service:</p>
+<ul>
+<li>To fix an error</li>
+<li>To improve some quality of the service</li>
+<li>To add a new feature</li>
+</ul>
+<p>The initial discussion assumes that deployment is an all-or-nothing process: at the end of the deployment either all of the virtual machines (VMs) running a service have had the upgraded version deployed or none of them have. Later this chapter, partial deployments are discussed.</p>
+<p><a href="../figure_6.1.png" title="Figure 6.1 Microservice 3 is being upgraded. (Adapted from Figure 4.1.) [Notation: Architecture]"><img alt="Figure 6.1 Microservice 3 is being upgraded. (Adapted from Figure 4.1.) [Notation: Architecture]" src="../figure_6.1_600.png" /></a></p>
+<p>In the figure above, Microservice 3 is being upgraded (shown in dark gray). Microservice 3 depends on microservices 4 and 5, and microservices 1 and 2 (clients of microservice 3) depend on it. For now, assume that any VM runs exactly one service. Other options are discussed later in this chapter.</p>
+<p>The goal of a deployment is to move from the current state that has N VMs of the old version, A, of a service executing, to a new state where there are N VMs of the new version, B, of the same service in execution.</p>
+<h3 id="strategies-for-managing-a-deployment">Strategies for Managing a Deployment</h3>
+<p>There are two popular strategies for managing a deployment: <strong>blue/green deployment</strong> and <strong>rolling upgrade</strong>. They differ in terms of costs and complexity.</p>
+<p>Before discussing these strategies in more detail, we need to make the following two assumptions:</p>
+<ol>
+<li><strong>Service to the clients should be maintained while the new version is being deployed.</strong><ul>
+<li>Maintaining service to the clients with no downtime is essential for many Internet e-commerce businesses.</li>
+<li>Organizations that have customers primarily localized in one geographic area can afford scheduled downtime, but scheduled off-hours during downtime requires system administrators and op operators to work in the off-hours.</li>
+</ul>
+</li>
+<li><strong>Any development team should be able to deploy a new version of their service at any time without coordinating with other teams.</strong><ul>
+<li>This may have an impact on client services developed by other teams, but removes one cause for <a href="../ch1/#coordination">synchronous coordination</a>.</li>
+</ul>
+</li>
+</ol>
+<p>The placement of a new VM with a version into production takes time. In order to place an upgraded VM of a service into production, the new version must be loaded onto a VM and be initialized and integrated into the environment, sometimes with dependency on placements of some other services first. This can take on the order of minutes. Consequently, depending on how parallel some actions can be and their impact on the system still serving clients, the upgrade of hundreds or thousands of VMs can take hours or, in extreme cases, even days.</p>
+<h4 id="bluegreen-deployment">Blue/Green Deployment</h4>
+<p>A <strong>blue/green deployment</strong> (sometimes called <strong>big flip</strong> or <strong>red/black deployment</strong>) consists of maintaining the N VMs containing version A in service while provisioning N VMs of virtual machines containing version B.</p>
+<p>Once N VMs have been provisioned with version B and are ready to service requests, then client requests can be routed to version B. This is a matter of instructing the domain name server (DNS) or load balancer to change the routing of messages. This routing switch can be done in a single stroke for all requests. After a supervisory period, the N VMs provisioned with version A are removed from the system. If anything goes wrong during the supervisory period, the routing is switched back, so that the requests go to the VMs running version A again.</p>
+<p>This strategy is conceptually simple, but has some disadvantage:</p>
+<ul>
+<li>It is expensive in terms of both VM and software licensing costs.<ul>
+<li>The provisioning of the N VMs containing version B prior to terminating all version A VMs is the source of the cost. For this period of time, the VM-based cost doubles.</li>
+<li>The provisioning of the hundred (or more) new VMs (even if it can be done in parallel) hundreds of VMs can be time-consuming.</li>
+</ul>
+</li>
+<li><u>Long-running requests and stateful data during the switch-over and rollback require special care.</u></li>
+</ul>
+<p><u>A variation of this model is to do the traffic switching gradually. A small percentage of requests are first routed to version B, effectively conducting a canary test.</u> Canary testing is mentioned in Chapter 5 and discuss it in more detail in the section <a href="#canary-testing">Canary Testing</a>. If everything goes well for a while, more version B VMs can be provisioned and more requests can be routed to this pool of VMs, until all requests are routed to version B.  This increases confidence in your deployment, but also introduces a number of consistency issues (discussed in <a href="#logical-consistency">Section 6.3</a>).</p>
+<h3 id="logical-consistency">Logical Consistency</h3>
+<h3 id="packaging">Packaging</h3>
+<h3 id="deploying-to-multiple-environments">Deploying to Multiple Environments</h3>
+<h3 id="partial-deployment">Partial Deployment</h3>
+<h4 id="canary-testing">Canary Testing</h4>
+<h4 id="ab-testing">A/B Testing</h4>
+<h3 id="rollback">Rollback</h3>
+<h3 id="tools">Tools</h3>
             </div>
         </div>
 
