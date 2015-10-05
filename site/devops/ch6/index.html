@@ -485,6 +485,8 @@
         
             <li><a href="#multiple-versions-of-the-same-service-simultaneously-active">Multiple Versions of the Same Service Simultaneously Active</a></li>
         
+            <li><a href="#compatibility-with-data-kept-in-a-database">Compatibility with Data Kept in a Database</a></li>
+        
     
         <li class="main "><a href="#packaging">Packaging</a></li>
         
@@ -571,6 +573,7 @@
 <li><strong>Inconsistency in functionality between a service and its clients</strong>. Revisiting <a href="../figure_6.1.png">Figure 6.1</a>, A service being deployed without synchronous coordination with its client or dependent services may introduce a possible source of logical inconsistency.</li>
 <li><strong>Inconsistency between a service and data kept in a database.</strong></li>
 </ul>
+<h4 id="multiple-versions-of-the-same-service-simultaneously-active">Multiple Versions of the Same Service Simultaneously Active</h4>
 <p>The following figure shows an instance of an inconsistency because of two active versions of the same service. Two components are shown: the client and two versions (versions A and B) of a service.</p>
 <ol>
 <li>The client sends a message that is routed to version B.</li>
@@ -589,7 +592,21 @@
 <li><strong>Toggle the new features</strong> contained in version B and the client so that only one version is offering the service at any given time.</li>
 <li><strong>Make the services forward and backward compatible</strong>, and enable the clients to recognize when a particular request has not been satisfied.</li>
 </ul>
-<h4 id="multiple-versions-of-the-same-service-simultaneously-active">Multiple Versions of the Same Service Simultaneously Active</h4>
+<p>These options are not mutually exclusive (some of these options can be used together). For example, you can use feature toggles within a backward compatible setting. Within a rolling upgrade you will have installed some VMs of the new version while still not having activated the new features. This requires the new version to be backward compatible.</p>
+<h5 id="feature-toggling"><strong>Feature Toggling</strong></h5>
+<p>[p107]</p>
+<h5 id="backward-and-forward-compatibility"><strong>Backward and Forward Compatibility</strong></h5>
+<p>[p108]</p>
+<h4 id="compatibility-with-data-kept-in-a-database">Compatibility with Data Kept in a Database</h4>
+<p>Besides the compatibility of services, some services must also be able to read and write to a database in consistently. For example, that the data schema changes: In the old version of the schema, there is one field for customer address; in the new version, the address is broken into street, city, postal code, and country. Inconsistency, in this case, means that a service intends to write the address as a single field using the schema that has the address broken into portions.</p>
+<p>Inconsistencies are triggered by a change in the database schema. A schema can be either explicit such as in relational database management systems (RDBMSs) or implicit such as in various NoSQL database management systems.</p>
+<p>The most basic solution to such a schema change is <u>not to modify existing fields but only to add new fields or tables</u>, which can be done without affecting existing code. The use of the new fields or tables can be integrated into the application incrementally. <u>One method for accomplishing this is to treat new fields or tables as new features in a release</u>. That is, either the use of the new field or table is under the control of a feature toggle or the services are forward and backward compatible with respect to database fields and tables.</p>
+<p>If a change to the schema is absolutely required you have two options:</p>
+<ol>
+<li>Convert the persistent data from the old schema to the new one.</li>
+<li>Convert data into the appropriate form during reads and writes. This could be done either by the service or by the database management system.</li>
+</ol>
+<p>These options are not mutually exclusive. You might perform the conversion in the background and convert data on the fly while the conversion is ongoing.  Modern RDBMSs provide the ability to reorganize data from one schema to another online while satisfying requests, although at a storage and performance cost. Database systems typically do not provide this capability, and so, if you use them, you have to engineer a solution for your particular situation. [p111]</p>
 <h3 id="packaging">Packaging</h3>
 <h3 id="deploying-to-multiple-environments">Deploying to Multiple Environments</h3>
 <h3 id="partial-deployment">Partial Deployment</h3>
