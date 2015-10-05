@@ -112,6 +112,14 @@ This section discusses various crosscutting aspects of a deployment pipeline:
 
 ### Development and Pre-commit Testing
 
+#### Version Control and Branching
+
+#### Feature Toggles
+
+#### Configuration Parameters
+
+#### Testing During Development and Pre-commit Tests
+
 ### Build and Integration Testing
 
 #### Build Scripts
