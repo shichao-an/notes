@@ -595,8 +595,44 @@
 <p>These options are not mutually exclusive (some of these options can be used together). For example, you can use feature toggles within a backward compatible setting. Within a rolling upgrade you will have installed some VMs of the new version while still not having activated the new features. This requires the new version to be backward compatible.</p>
 <h5 id="feature-toggling"><strong>Feature Toggling</strong></h5>
 <p>[p107]</p>
+<p>To coordinate the activation of the feature in two directions:</p>
+<ol>
+<li>All of the VMs for the service you just deployed must have the service’s portion of the feature activated.</li>
+<li>All of the services involved in implementing the feature must have their portion of the feature activated.</li>
+</ol>
+<p>Feature toggles (described in <a href="../ch5/#feature-toggles">Chapter 5</a>) can be used to control whether a feature is activated. A feature toggle is a piece of code within an <em>if</em> statement where the <em>if</em> condition is based on an externally settable feature variable. Using this technique means that the problems associated with activating a feature are:</p>
+<ul>
+<li>Determining that all services involved in implementing a feature have been sufficiently upgraded,</li>
+<li>Activating the feature in all of the VMs of these services at the same time.</li>
+</ul>
+<p>Both of these problems are examples of synchronizing across the elements of a distributed system. The primary modern methods for performing such synchronization are based on the Paxos or ZAB algorithms, which are difficult to implement correctly. However, standard implementations are available in systems such as ZooKeeper.</p>
+<p><strong>Example of feature toggling with ZooKeeper</strong></p>
+<p>Assume the service being deployed implements a portion of a single feature, <em>Feature X</em>. When a VM of the service is deployed, it registers itself as being interested in <em>FeatureXActivationFlag</em>. If the flag is false, then the feature is toggled off; if the flag is true, the feature is toggled on. If the state of the <em>FeatureXActivationFlag</em> changes, then the VM is informed of this and reacts accordingly.</p>
+<p>An agent (which can human or automated) external to any of the services in the system being upgraded is responsible for setting <em>FeatureXActivationFlag</em>. The flag is maintained in ZooKeeper and thus kept consistent across the VMs involved. As long as all of the VMs are informed simultaneously of the toggling, then the feature is activated simultaneously and there is no version inconsistency that could lead to failures. The simultaneous information broadcast is performed by ZooKeeper. This particular use of ZooKeeper for feature toggling is often implemented in other tools. For example, Netflix’s <a href="https://github.com/Netflix/archaius">Archaius</a> tool provides configuration management for distributed systems. The configuration being managed can be feature toggles or any other property.</p>
+<p><u>The agent is aware of the various services implementing <em>Feature X</em> and does not activate the feature until all of these services have been upgraded. </u></p>
+<p>One complication comes from deciding when the VMs have been "sufficiently upgraded". VMs may fail or become unavailable. Waiting for these VMs to be upgraded before activating the feature is not desirable. The use of a registry/ load balancer as described in <a href="../ch4/">Chapter 4</a> enables the activation agent to avoid these problems. Recall that each VM must renew its registration periodically to indicate that it is still active. The activation agent examines the relevant VMs that are registered to determine when all VMs of the relevant services have been upgraded to the appropriate versions.</p>
 <h5 id="backward-and-forward-compatibility"><strong>Backward and Forward Compatibility</strong></h5>
-<p>[p108]</p>
+<ul>
+<li><strong>Backward compatibility</strong> means the new version of the service behaves as the old version. For requests that are known to the old version of a service, the new version provides the same behavior. In other words, the external interfaces provided by version B of a service are a superset of the external interfaces provided by version A of that service.</li>
+<li><strong>Forward compatibility</strong> means that a client deals gracefully with error responses indicating an incorrect method call. Suppose a client wishes to utilize a method that will be available in version B of a service but the method is not present in version A. Then if the service returns an error code indicating it does not recognize the method call, the client can infer that it has reached version A of the service.</li>
+</ul>
+<p>Maintaining backward compatibility can be done using the pattern depicted in the figure below:</p>
+<p><a href="../figure_6.4.png" title="Figure 6.4 Maintaining backward compatibility for service interfaces [Notation: Architecture]"><img alt="Figure 6.4 Maintaining backward compatibility for service interfaces [Notation: Architecture]" src="../figure_6.4.png" /></a></p>
+<p>The service being upgraded makes a distinction between internal and external interfaces:</p>
+<ul>
+<li><strong>External interfaces</strong> include all of the existing interfaces from prior versions as well as, possibly, new ones added with this version.</li>
+<li><strong>Internal interfaces</strong> can be restructured with every version.</li>
+<li>In-between the external interfaces and the internal interfaces is a <strong>translation layer</strong> that maps the old interfaces to the new ones.</li>
+</ul>
+<p>As far as a client is concerned, the old interfaces are still available for the new version. If a client wishes to use a new feature, then a new interface is available for that feature.</p>
+<p>One consequence of using this pattern is that obsolete interfaces may be maintained beyond the point where any clients use them. Determining which clients use which interfaces can be done through monitoring and recording all service invocations. Once there are no usages for a sufficiently long time, the interface can be deprecated. The deprecating of an interface may result in additional maintenance work, so it should not be done lightly.</p>
+<p>Forward and backward compatibility allows for independent upgrade for services under your control. Not all services will be under your control. In particular, third-party services, libraries, or legacy services may not be backward compatible. In this case, there are several techniques you can use, although none of them are foolproof:</p>
+<ul>
+<li>Discovery.</li>
+<li>Exploration.</li>
+<li><strong>Portability layer</strong>. The following figure shows the concept of a portability layer. A portability layer provides a single interface that can be translated into the interfaces for a variety of similar systems. This technique has been used to port applications to different operating systems, to allow multiple different devices to look identical from the application perspective, or to allow for the substitution of different database systems.</li>
+</ul>
+<p><a href="../figure_6.5.png" title="Figure 6.5 Portability layer with two versions of the external system coexisting [Notation: Architecture]"><img alt="Figure 6.5 Portability layer with two versions of the external system coexisting [Notation: Architecture]" src="../figure_6.5.png" /></a></p>
 <h4 id="compatibility-with-data-kept-in-a-database">Compatibility with Data Kept in a Database</h4>
 <p>Besides the compatibility of services, some services must also be able to read and write to a database in consistently. For example, that the data schema changes: In the old version of the schema, there is one field for customer address; in the new version, the address is broken into street, city, postal code, and country. Inconsistency, in this case, means that a service intends to write the address as a single field using the schema that has the address broken into portions.</p>
 <p>Inconsistencies are triggered by a change in the database schema. A schema can be either explicit such as in relational database management systems (RDBMSs) or implicit such as in various NoSQL database management systems.</p>
@@ -610,8 +646,21 @@
 <h3 id="packaging">Packaging</h3>
 <h3 id="deploying-to-multiple-environments">Deploying to Multiple Environments</h3>
 <h3 id="partial-deployment">Partial Deployment</h3>
+<p>Up to this point the discussion has been focused on all-or-nothing deployments.  Now we discuss two types of partial deployments: canary testing and A/B testing.</p>
 <h4 id="canary-testing">Canary Testing</h4>
+<p>A new version is deployed into production after having been tested in a staging environment, which is as close to a production environment as possible. There is still a possibility of errors existing in the new version. <u>These errors can be either functional or have a quality impact. Performing an additional step of testing in a real production environment is the purpose of canary testing.</u> A canary test is conceptually similar to a beta test in the shrink-wrapped software world.</p>
+<p>One question is to whom to expose the canary servers. This can be a random sample of users. An alternative is to decide the question based on the organization a user belongs to, for example, the employees of the developing organization, or particular customers. The question could also be answered based on geography, for example, such that all requests that are routed to a particular datacenter are served by canary versions.</p>
+<p>The mechanism for performing the canary tests depends on whether features are activated with feature toggles or whether services are assumed to be forward or backward compatible. In either case, a new feature cannot be fully tested in production until all of the services involved in delivering the feature have been partially deployed.</p>
+<p>Messages can be routed to the canaries by making the registry/load balancer canary-aware and having it route messages from the designated testers to the canary versions. More and more messages can be routed until a desired level of performance has been exhibited.</p>
+<ul>
+<li>If new features are under the control of feature toggles, then turning on the toggle for the features on the canary versions activates these features and enables the tests to proceed.</li>
+<li>If the services use forward and backward compatibility, then the tests will be accomplished once all of the services involved in a new feature have been upgraded to the new version.</li>
+</ul>
+<p>In either case, you should carefully monitor the canaries, and they should be rolled back in the event an error is detected.</p>
 <h4 id="ab-testing">A/B Testing</h4>
+<p>A/B testing is introduced in <a href="../ch5/">Chapter 5</a>. It is another form of testing that occurs in the production environment through partial deployment. The "A" and "B" refer to two different versions of a service that present either different user interfaces or different behavior. In this case, it is the behavior of the user when presented with these two different versions that is being tested.</p>
+<p>If either A or B shows preferable behavior in terms of some business metric such as orders placed, then that version becomes the production version and the other version is retired.</p>
+<p>Implementing A/B testing is similar to implementing canaries. The registry/ load balancer must be made aware of A/B testing and ensure that a single customer is served by VMs with either the A behavior or the B behavior but not both. The choice of users that are presented with version B (or A) may be randomized, or it may be deliberate. If deliberate, factors such as geographic location, age group (for registered users), or customer level (e.g., "gold" frequent flyers), may be taken into account.</p>
 <h3 id="rollback">Rollback</h3>
 <h3 id="tools">Tools</h3>
             </div>
