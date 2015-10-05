@@ -75,6 +75,8 @@ There are some types of logical consistency:
 * **Inconsistency in functionality between a service and its clients**. Revisiting [Figure 6.1](figure_6.1.png), A service being deployed without synchronous coordination with its client or dependent services may introduce a possible source of logical inconsistency.
 * **Inconsistency between a service and data kept in a database.**
 
+#### Multiple Versions of the Same Service Simultaneously Active
+
 The following figure shows an instance of an inconsistency because of two active versions of the same service. Two components are shown: the client and two versions (versions A and B) of a service.
 
 1. The client sends a message that is routed to version B.
@@ -93,8 +95,30 @@ Several techniques can prevent this situation:
 * **Toggle the new features** contained in version B and the client so that only one version is offering the service at any given time.
 * **Make the services forward and backward compatible**, and enable the clients to recognize when a particular request has not been satisfied.
 
+These options are not mutually exclusive (some of these options can be used together). For example, you can use feature toggles within a backward compatible setting. Within a rolling upgrade you will have installed some VMs of the new version while still not having activated the new features. This requires the new version to be backward compatible.
 
-#### Multiple Versions of the Same Service Simultaneously Active
+##### **Feature Toggling**
+
+[p107]
+
+##### **Backward and Forward Compatibility**
+
+[p108]
+
+#### Compatibility with Data Kept in a Database
+
+Besides the compatibility of services, some services must also be able to read and write to a database in consistently. For example, that the data schema changes: In the old version of the schema, there is one field for customer address; in the new version, the address is broken into street, city, postal code, and country. Inconsistency, in this case, means that a service intends to write the address as a single field using the schema that has the address broken into portions.
+
+Inconsistencies are triggered by a change in the database schema. A schema can be either explicit such as in relational database management systems (RDBMSs) or implicit such as in various NoSQL database management systems.
+
+The most basic solution to such a schema change is <u>not to modify existing fields but only to add new fields or tables</u>, which can be done without affecting existing code. The use of the new fields or tables can be integrated into the application incrementally. <u>One method for accomplishing this is to treat new fields or tables as new features in a release</u>. That is, either the use of the new field or table is under the control of a feature toggle or the services are forward and backward compatible with respect to database fields and tables.
+
+If a change to the schema is absolutely required you have two options:
+
+1. Convert the persistent data from the old schema to the new one.
+2. Convert data into the appropriate form during reads and writes. This could be done either by the service or by the database management system.
+
+These options are not mutually exclusive. You might perform the conversion in the background and convert data on the fly while the conversion is ongoing.  Modern RDBMSs provide the ability to reorganize data from one schema to another online while satisfying requests, although at a storage and performance cost. Database systems typically do not provide this capability, and so, if you use them, you have to engineer a solution for your particular situation. [p111]
 
 ### Packaging
 
