@@ -48,4 +48,34 @@ The following figure gives an overview of the interaction between a service and 
 
 #### Management of Resources
 
+Two types of resource management decisions can be made globally and incorporated in the architecture: provisioning/deprovisioning VMs and managing variation in demand.
+
+##### **Provisioning and Deprovisioning VMs**
+
+[p70]
+
+Determining which component controls the provisioning and deprovisioning of a new instance for a service is another important aspect. Three possibilities exist for the controlling component:
+
+1. A service itself can be responsible for (de)provisioning additional instances.
+2. A client or a component in the client chain can be responsible for (de) provisioning instances of a service
+3. An external component monitors the performance of service instances (e.g., their CPU load) and (de)provisions an instance when the load reaches a given threshold. Amazon’s autoscaling groups provide this capability, in collaboration with the CloudWatch monitoring system.
+
+##### **Managing Demand**
+
+The number of instances of an individual service that exist should reflect the demand on the service from client requests. We just discussed several different methods for provisioning and deprovisioning instances, and these methods make different assumptions about how demand is managed.
+
+[p71]
+
+* One method for managing demand is to monitor performance.
+* Another possible technique is to use SLAs to control the number of instances.
+
 #### Mapping Among Architectural Elements
+
+We discuss two different types of mappings: work assignments and allocation. Both of these are decisions that are made globally.
+
+* **Work assignments**. A single team may work on multiple modules, but having multiple development teams work on the same module requires a great deal of coordination among those development teams.
+    * Since coordination takes time, an easier structure is to package the work of a single team into modules and develop interfaces among the modules to allow modules developed by different teams to interoperate. In fact, the original definition of a module by David Parnas in the 1970s was as a work assignment of a team.
+    * Although not required, it is reasonable that each component (i.e., microservice) is the responsibility of a single development team. That is, the set of modules that, when linked, constitute a component are the output of a single development team. This does not preclude a single development team from being responsible for multiple components but it means that any coordination involving a component is settled within a single development team, and that any coordination involving multiple development teams goes across components. Given the set of constraints on the architecture we are describing, cross-team coordination requirements are limited.
+* **Allocation**. Allocation. Each component (i.e., microservice) will exist as an independent deployable unit. This allows each component to be allocated to a single (virtual) machine or container, or it allows multiple components to be allocated to a single (virtual) machine. The redeployment or upgrade of one microservice will not affect any other microservices. This choice is explored in [Chapter 6](ch6.md)
+
+### Quality Discussion of Microservice Architecture
