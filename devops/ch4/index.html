@@ -483,6 +483,9 @@
             <li><a href="#mapping-among-architectural-elements">Mapping Among Architectural Elements</a></li>
         
     
+        <li class="main "><a href="#quality-discussion-of-microservice-architecture">Quality Discussion of Microservice Architecture</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -526,7 +529,33 @@
 <p><a href="../figure_4.2.png" title="Figure 4.2 An instance of a service registers itself with the registry, the client queries the registry for the address of the service and invokes the service.  [Notation: Architecture]"><img alt="Figure 4.2 An instance of a service registers itself with the registry, the client queries the registry for the address of the service and invokes the service.  [Notation: Architecture]" src="../figure_4.2.png" /></a></p>
 <p><a href="https://github.com/Netflix/eureka">Netflix Eureka</a> is an example of a cloud service registry that acts as a DNS server and serves as a catalogue of available services, and can further be used to track aspects such as versioning, ownership, service level agreements (SLAs) for the set of services in an organization. Extensions to the registry are further discussed in <a href="../ch6/">Chapter 6</a></p>
 <h4 id="management-of-resources">Management of Resources</h4>
+<p>Two types of resource management decisions can be made globally and incorporated in the architecture: provisioning/deprovisioning VMs and managing variation in demand.</p>
+<h5 id="provisioning-and-deprovisioning-vms"><strong>Provisioning and Deprovisioning VMs</strong></h5>
+<p>[p70]</p>
+<p>Determining which component controls the provisioning and deprovisioning of a new instance for a service is another important aspect. Three possibilities exist for the controlling component:</p>
+<ol>
+<li>A service itself can be responsible for (de)provisioning additional instances.</li>
+<li>A client or a component in the client chain can be responsible for (de) provisioning instances of a service</li>
+<li>An external component monitors the performance of service instances (e.g., their CPU load) and (de)provisions an instance when the load reaches a given threshold. Amazon’s autoscaling groups provide this capability, in collaboration with the CloudWatch monitoring system.</li>
+</ol>
+<h5 id="managing-demand"><strong>Managing Demand</strong></h5>
+<p>The number of instances of an individual service that exist should reflect the demand on the service from client requests. We just discussed several different methods for provisioning and deprovisioning instances, and these methods make different assumptions about how demand is managed.</p>
+<p>[p71]</p>
+<ul>
+<li>One method for managing demand is to monitor performance.</li>
+<li>Another possible technique is to use SLAs to control the number of instances.</li>
+</ul>
 <h4 id="mapping-among-architectural-elements">Mapping Among Architectural Elements</h4>
+<p>We discuss two different types of mappings: work assignments and allocation. Both of these are decisions that are made globally.</p>
+<ul>
+<li><strong>Work assignments</strong>. A single team may work on multiple modules, but having multiple development teams work on the same module requires a great deal of coordination among those development teams.<ul>
+<li>Since coordination takes time, an easier structure is to package the work of a single team into modules and develop interfaces among the modules to allow modules developed by different teams to interoperate. In fact, the original definition of a module by David Parnas in the 1970s was as a work assignment of a team.</li>
+<li>Although not required, it is reasonable that each component (i.e., microservice) is the responsibility of a single development team. That is, the set of modules that, when linked, constitute a component are the output of a single development team. This does not preclude a single development team from being responsible for multiple components but it means that any coordination involving a component is settled within a single development team, and that any coordination involving multiple development teams goes across components. Given the set of constraints on the architecture we are describing, cross-team coordination requirements are limited.</li>
+</ul>
+</li>
+<li><strong>Allocation</strong>. Allocation. Each component (i.e., microservice) will exist as an independent deployable unit. This allows each component to be allocated to a single (virtual) machine or container, or it allows multiple components to be allocated to a single (virtual) machine. The redeployment or upgrade of one microservice will not affect any other microservices. This choice is explored in <a href="../ch6/">Chapter 6</a></li>
+</ul>
+<h3 id="quality-discussion-of-microservice-architecture">Quality Discussion of Microservice Architecture</h3>
             </div>
         </div>
 
