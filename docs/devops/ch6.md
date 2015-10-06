@@ -144,12 +144,11 @@ One consequence of using this pattern is that obsolete interfaces may be maintai
 
 Forward and backward compatibility allows for independent upgrade for services under your control. Not all services will be under your control. In particular, third-party services, libraries, or legacy services may not be backward compatible. In this case, there are several techniques you can use, although none of them are foolproof:
 
-* Discovery.
-* Exploration.
+* **Discovery**.
+* **Exploration**.
 * **Portability layer**. The following figure shows the concept of a portability layer. A portability layer provides a single interface that can be translated into the interfaces for a variety of similar systems. This technique has been used to port applications to different operating systems, to allow multiple different devices to look identical from the application perspective, or to allow for the substitution of different database systems.
 
 [![Figure 6.5 Portability layer with two versions of the external system coexisting [Notation: Architecture]](figure_6.5.png)](figure_6.5.png "Figure 6.5 Portability layer with two versions of the external system coexisting [Notation: Architecture]")
-
 
 #### Compatibility with Data Kept in a Database
 
@@ -168,7 +167,77 @@ These options are not mutually exclusive. You might perform the conversion in th
 
 ### Packaging
 
+This section discusses consistency of the build process in terms of getting the latest versions into the services. Deciding that components package services and that each service is packaged as exactly one component (discussed in [Chapter 4](ch4.md)), does not end your packaging decisions. You must decide on the binding time among components residing on the same VM and a strategy for placing services into VMs. Packaging components onto a VM image is called **baking** and the options range from **lightly baked** to **heavily baked** (discussed in [Chapter 5](ch5.md)). What we add to that discussion here is the number of processes loaded into each VM.
+
+A VM is an image that is running on top of a hypervisor that enables sharing a single bare metal processor, memory, and network among multiple tenants or VMs. The image of the VM is loaded onto the hypervisor from which it is scheduled.
+
+A VM image could include multiple independent processes, each a service. The question is: **Should multiple services be placed in a single VM image?** The following figure shows two options:
+
+* In the top option, a developer commits a service for deployment, which is embedded into a single VM image. For example, Netflix claims they package one service per VM.
+* In the bottom option, different developers commit different services into a single VM image. <u>The emergence of lightweight containers often assumes one service per container, but with the possibility to have multiple containers per VM.</u>
+
+[![Figure 6.6 Different options for packaging services [Notation: Architecture]](figure_6.6.png)](figure_6.6.png "Figure 6.6 Different options for packaging services [Notation: Architecture]")
+
+One minor difference in these two options is the number of times that a VM image must be baked:
+
+* If there is one service per VM, then that VM image is created when a change in its service is committed.
+* If there are two services per VM, then the VM image must be rebaked whenever a change to either the first or second service is committed.
+
+A more important difference occurs when service 1 sends a message to service 2:
+
+* If the two are in the same VM, then the message does not need to leave the VM to be delivered.
+* If they are in different VMs, then more handling and network communication are involved.
+
+This means the latency for messages will be higher when each service is packaged into a single VM.
+
+However, packaging multiple services into the same VM image opens up the possibility of deployment race conditions, because different development teams do not coordinate over their deployment schedules and they may be deploying their upgrades at (roughly) the same time.
+
+The examples below assume the upgraded services are included in the deployed portion of the VM (heavily baked) and not loaded later by the deployed software.
+
+* In Figure 6.7 (below), development team 1 creates a new image with a new version (v<sub>m+1</sub>) of service 1 (S1) and an old version of service 2 (S2). Development team 2 creates a new image with an old version of service 1 and a new version (v<sub>n+1</sub>) of service 2. The provisioning processes of the two teams overlap, which causes a deployment race condition.
+
+[![Figure 6.7 One type of race condition when two development teams deploy independently [Notation: UML Sequence Diagram]](figure_6.7.png)](figure_6.7.png "Figure 6.7 One type of race condition when two development teams deploy independently [Notation: UML Sequence Diagram]")
+
+* In Figure 6.8 (below), development team 1 builds their image after development team 2 has committed their changes. The result is similar in that the final version that is deployed does not have the latest version of both service 1 and service 2.
+
+[![Figure 6.8 A different type of race condition when two development teams deploy independently [Notation: UML Sequence Diagram]](figure_6.8.png)](figure_6.8.png "Figure 6.8 A different type of race condition when two development teams deploy independently [Notation: UML Sequence Diagram]")
+
+The tradeoff for including multiple services into the same VM is between reduced latency and the possibility of deployment race conditions.
+
 ### Deploying to Multiple Environments
+
+As long as services are independent and communicate only through messages, deployment to multiple environments (e.g. VMware and Amazon EC2) is possible basically with the design we have presented. The registry/load balancer discussed in [Chapter 4](ch4.md) needs to be able to direct messages to different environments.
+
+#### Business Continuity
+
+Introduced in [Chapter 2](ch2.md), **business continuity** is the ability for a business to maintain service when facing a disaster or serious outages. It is achieved by deploying to sites that are physically and logically separated from each other. This section differentiates between deploying to a public cloud and a private cloud, although the essential element, the management of state, is the same. Disaster recovery is discussed in [Chapter 10](ch10.md) and case study in [Chapter 11](ch11.md).
+
+##### **Public Cloud**
+
+Public clouds are extremely reliable in the aggregate. They consist of hundreds of thousands of physical servers and provide extensive replication and failover services. Failures do occur, which can be to particular VMs of your system or to other cloud services.
+
+* A failure to a VM is not a rare occurrence.
+    * Cloud providers achieve economies of scale partially by purchasing commodity hardware. Any element of the hardware can fail: memory, disk, motherboard, network, or CPU.
+    * Failures may be total or partial. A partial failure in the underlying hardware can make your VM run slowly although it is still executing. In either case, you must architect your system to detect VM failures and respond to them. This is outside the scope of this chapter.
+* A failure to the cloud infrastructure is a rare but not impossible occurrence.
+    * A quick search on "public cloud outages" can give you information about the latest high-profile outages that have occurred.
+    * Other outages are lower-profile but do still occur. You can survive many outages by choosing how you deploy your VMs.
+
+Amazon EC2 has multiple regions (nine as of this writing) scattered around the globe. Each region has multiple availability zones. Each availability zone is housed in a location that is physically distinct from other availability zones and that has its own power supply, physical security, and so forth:
+
+* If you deploy VMs of your system to different availability zones within the same region, you have some measure of protection against a cloud outage.
+* If you deploy VMs of your system to different regions, then you have much more protection against outages, since some of the services such as elastic load balancing are per-region.
+
+Two considerations to keep in mind when you deploy to different availability zones or regions are state management and latency:
+
+1. **State management**. Making services stateless has several advantages, as discussed in [Chapter 4](ch4.md).
+    * If a service is stateless then additional VMs can be created at any time to handle increased workload. Additional VMs can also be created in the event of a VM failure.
+    * The disadvantages of stateless services are that state must be maintained somewhere in the system and latency may increase when the service needs to obtain or change this state.
+2. **Latency**. Sending messages from one availability zone to another adds a bit of latency; messages sent from one region to another adds more latency to your system.
+
+##### **Private Cloud**
+
+[p116]
 
 ### Partial Deployment
 
@@ -197,7 +266,69 @@ If either A or B shows preferable behavior in terms of some business metric such
 
 Implementing A/B testing is similar to implementing canaries. The registry/ load balancer must be made aware of A/B testing and ensure that a single customer is served by VMs with either the A behavior or the B behavior but not both. The choice of users that are presented with version B (or A) may be randomized, or it may be deliberate. If deliberate, factors such as geographic location, age group (for registered users), or customer level (e.g., "gold" frequent flyers), may be taken into account.
 
-
 ### Rollback
 
+The new version of a service is on probation for some period after deployment. It has gone through testing of a variety of forms but it still is not fully trusted.
+
+**Rolling back** means reverting to a prior release. It is also possible to roll forward, to correct the error and generate a new release with the error fixed. Rolling forward is essentially just an instance of upgrading.
+
+Because of the sensitivity of a rollback and the possibility of rolling forward, rollbacks are rarely triggered automatically. <u>A human should be in the loop who decides whether the error is serious enough to justify discontinuing the current deployment.</u> The human then must decide whether to roll back or roll forward.
+
+#### Rollback for blue/green deployment
+
+If you still have VMs with version A available, as in the blue/green deployment model before decommissioning all version A VMs, rolling back can be done by simply redirecting the traffic back to these. <u>One way of dealing with the persistent state problem is to keep version A VMs receiving a replicated copy of the requests version B has been receiving during the probation period.</u>
+
+#### Rollback for rolling upgrade deployment
+
+With a rolling upgrade model or you cannot simply replace version B by version A as a whole, you have to replace a version B VM with a version A VM in more complicated ways. The new version B can be in one of four states during its lifetime:
+
+* **Uninstalled**: cannot be rolled back.
+* **Partially installed**: have rollback possibilities (see below).
+* **Fully installed but on probation**: rollback possibilities (see below).
+* **Committed into production**: cannot be rolled back, although the old version could be treated as a new deployment and be redeployed.
+    *  As in [Chapter 5](ch5.md), if version B has been committed then removal of all of the feature toggles that have been activated within version B should be put on the development teams’ list of activities to perform.
+
+The strategy for rolling back (version B is partially installed or fully installed but on probation) depends on whether feature toggles are being used and have been activated. This pertains to both of the remaining two states:
+
+* **Not using feature toggles**. Rolling back VMs in this case is a matter of disabling those VMs and reinstalling VMs running version A of the service.
+* **Using feature toggles**.
+    * If the features have not been activated, then we have the prior version. Disable VMs running version B and reinstall version A.
+    * If the feature toggles have been activated, then deactivate them. If this prevents further errors, then no further action is required. If it does not, then we have the situation as if feature toggles were not present.
+
+The remaining case deals with persistent data and is the most complicated. <u>Suppose all of the version B VMs have been installed and version B’s features activated, but a rollback is necessary. Rolling back to the state where version B is installed but no features activated is a matter of toggling off the new features, which is a simple action.</u> The complications come from consideration of persistent data.
+
+A concern when an error is detected is that incorrect values have been written into the database. Dealing with erroneous database values is a delicate operation with significant business implications.
+
+[p119-120]
+
+Identifying and correcting incorrect values in the database is a delicate and complicated operation requiring the collection of much metadata.
+
 ### Tools
+
+One method for categorizing tools is to determine whether they directly affect the internals of the entity being deployed. As in [Chapter 5](ch5.md), if a VM image contains all the required software including the new version, you can replace a whole VM of the old version with a whole VM of the new version. This is called using a **heavily baked** deployment approach.
+
+Alternatively, you can use tools to change the internals of a VM, so as to deploy the new version by replacing the old version without terminating the VM. Even if you terminate the VM with the old version, you can start a new **lightly baked** VM but then access the machine from the inside to deploy the new version at a later stage of the deployment process.
+
+* [Netflix Asgard](https://github.com/Netflix/asgard) is an open source, web-based tool for managing cloud-based applications and infrastructure. Asgard is not interested in the contents of these VMs. It uses a VM image that contains the new version and creates VMs for these images. One of the features of Asgard is that it understands deployment processes such as rolling upgrade. It allows specification of the number of VMs to be upgraded in a single cycle.
+* Infrastructure-as-a-Service (IaaS) vendors also provide specific tools for coordinated VM provisioning, which is used as a part of a deployment. For example, Amazon allows users to use [CloudFormation](https://aws.amazon.com/cloudformation/) scripts as a parameterized, declarative approach for deployment of VMs. CloudFormation scripts understand dependencies and rollback.
+* [Chef](https://www.chef.io/chef/) and [Puppet](https://puppetlabs.com/) are two examples of tools that manage the items inside a virtual machine. They can replace a version of a piece of software inside a VM and ensure that configuration settings conform to a specification.
+* One emerging trend is the use of lightweight container tools, such as [Docker](https://www.docker.com/), in deployment. A lightweight container is an OS-level virtualization technique for running multiple isolated OSs on a single host (VM or physical machine). They are like VMs, but they are smaller and start much faster.
+* Image management and testing tools such as [Vagrant](https://www.vagrantup.com/) and [Test Kitchen](http://kitchen.ci/) help control both VMs and items inside the VMs. A developer can spin up production-like environments for pre-commit testing and integration testing to reveal issues that would only surface in production.
+
+### Summary
+
+Strategies for deploying multiple VMs of a service include blue/green deployment and rolling upgrade:
+
+* A blue/green deployment does not introduce any logical problems but requires allocating twice the number of VMs required to provide a service.
+* A rolling upgrade is more efficient in how it uses resources but introduces a number of logical consistency problems:
+    * Multiple different versions of a single service can be simultaneously active. These multiple versions may provide inconsistent versions of the service.
+    * A client may assume one version of a dependent service and actually be served by a different version.
+    * Race conditions can exist because of the choice of packing multiple and dependent services and multiple development teams performing concurrent deployment. Choosing the number of services to be packed into a single VM is often a tradeoff among resource utilization, performance, and complexity of deployment.
+
+Solutions to the problems of logical consistency involve using some combination of feature toggles, forward and backward compatibility, and version awareness.
+
+Deployments must occasionally be rolled back. Feature toggles support rolling back features, but the treatment of persistent data is especially sensitive when rolling back a deployment.
+
+Deployment also plays an important role for achieving business continuity. Deploying into distinct sites provides one measure of continuity. Having an architecture that includes replication allows for a shorter time to repair and to resume processing in the event of an unexpected outage.
+
+A variety of tools exist for managing deployment. The emergence of lightweight containers and image management tools is helping developers to deploy into small-scale production-like environments more easily for testing.
