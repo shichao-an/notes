@@ -488,6 +488,25 @@
         
             <li><a href="#business-continuity-and-security">Business Continuity and Security</a></li>
         
+            <li><a href="#service-strategy">Service Strategy</a></li>
+        
+            <li><a href="#service-design">Service Design</a></li>
+        
+            <li><a href="#service-transition">Service Transition</a></li>
+        
+            <li><a href="#service-operation">Service Operation</a></li>
+        
+            <li><a href="#service-operation-concepts">Service Operation Concepts</a></li>
+        
+    
+        <li class="main "><a href="#service-operation-functions">Service Operation Functions</a></li>
+        
+    
+        <li class="main "><a href="#continual-service-improvement">Continual Service Improvement</a></li>
+        
+    
+        <li class="main "><a href="#operations-and-devops">Operations and DevOps</a></li>
+        
     
     </ul>
 </div></div>
@@ -497,6 +516,8 @@
 <h3 id="chapter-3-operations"><strong>Chapter 3. Operations</strong></h3>
 <h3 id="introduction">Introduction</h3>
 <p>[p47]</p>
+<p>DevOps does not subsume Dev and does not subsume Ops. To understand DevOps, however, it is important to be aware of the context that people in Ops or Dev come from.</p>
+<p>One characterization of Ops is given in the Information Technology Infrastructure Library (ITIL). ITIL acts as a kind of coarse-grained job description for the operations staff. ITIL is based on the concept of "services", and the job of Ops is to support the design, implementation, operation, and improvement of these services within the context of an overall strategy.</p>
 <h3 id="operations-services">Operations Services</h3>
 <p>An operations service can be the provisioning of hardware, the provisioning of software, or supporting various IT functions. Services provided by operations also include the specification and monitoring of <a href="https://en.wikipedia.org/wiki/Service-level_agreement">service level agreements</a> (SLAs), capacity planning, business continuity, and information security.</p>
 <h4 id="provisioning-of-hardware">Provisioning of Hardware</h4>
@@ -526,8 +547,19 @@
 <ol>
 <li>Figure 3.2a shows an external agent (the backup process) copying the database periodically. No application support is required but the backup process should copy a consistent version of the database, which means no updates are currently being applied. If the backup process is external to the database management system, then transactions may be in process and so the activation of the backup should be carefully performed. In this case, the RPO is the period between two backups. That is, if a disaster occurs just prior to the backup process being activated, all changes in the period from the last backup will be lost.</li>
 <li>Figure 3.2b shows an alternative without an external agent. In this case, the database management system creates a copy periodically. The difference between 3.2a and 3.2b is that in 3.2b, guaranteeing consistency is done by the database management system, whereas in 3.2a, consistency is guaranteed by some mechanism that governs the activation of the backup process.  If the database is a relational database management system (RDBMS) offering some level of replication (i.e., a transaction only completes a commit when the replica database has executed the transaction as well), then transactions lost in the event of a disaster will be those not yet committed to the replicating database. The cost, however, is increased overhead per transaction.</li>
-<li>Figure 3.2c modifies Figure 3.2b by having the database management system log every write. Then the data can be re-created by beginning with the backup database and replaying the entries in the log. If both the log and the backup database are available during recovery, the RPO is 0 since all data is either in the backup database or in the log. The protocol for committing a transaction to the production database is that no transaction is committed until the respective log entry has been written. It is possible in this scheme that some transactions have not been completed, but no data from a completed transaction will be lost. This scheme is used by high-reliability relational database management systems. It is also used by distributed file systems such as Hadoop Distributed File System (HDFS).</li>
+<li>Figure 3.2c modifies Figure 3.2b by having the database management system log every write. <u>Then the data can be re-created by beginning with the backup database and replaying the entries in the log.</u> If both the log and the backup database are available during recovery, the RPO is 0 since all data is either in the backup database or in the log. The protocol for committing a transaction to the production database is that no transaction is committed until the respective log entry has been written. It is possible in this scheme that some transactions have not been completed, but no data from a completed transaction will be lost. This scheme is used by high-reliability relational database management systems. It is also used by distributed file systems such as Hadoop Distributed File System (HDFS).</li>
 </ol>
+<p>When considering RTO (how quickly you can get your application up and running after an outage or disaster), alternatives include: using multiple datacenters as discussed in the case study in <a href="../ch11/">Chapter 11</a> or using distinct availability zones or regions offered by a cloud provider, or even using several cloud providers.</p>
+<p>By considering RTO and RPO, the business can perform a cost/benefit analysis of a variety of different disaster recovery techniques. Some of these techniques will involve application systems architecture such as replication and maintaining state consistency in the different replicas. Other techniques such as periodic backups can be performed with any application architecture. Using stateless servers on the application tier and different regions within a cloud provider results in a short RTO but does not address RPO.</p>
+<p>Traditionally, Ops is responsible for the overall security of computer systems.  Securing the network, detecting intruders, and patching operating systems are all activities performed by Ops. <a href="../ch8/">Chapter 8</a> discusses security and its maintenance in some depth.</p>
+<h4 id="service-strategy">Service Strategy</h4>
+<h4 id="service-design">Service Design</h4>
+<h4 id="service-transition">Service Transition</h4>
+<h4 id="service-operation">Service Operation</h4>
+<h4 id="service-operation-concepts">Service Operation Concepts</h4>
+<h3 id="service-operation-functions">Service Operation Functions</h3>
+<h3 id="continual-service-improvement">Continual Service Improvement</h3>
+<h3 id="operations-and-devops">Operations and DevOps</h3>
             </div>
         </div>
 
