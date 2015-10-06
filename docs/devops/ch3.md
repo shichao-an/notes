@@ -4,6 +4,10 @@
 
 [p47]
 
+DevOps does not subsume Dev and does not subsume Ops. To understand DevOps, however, it is important to be aware of the context that people in Ops or Dev come from.
+
+One characterization of Ops is given in the Information Technology Infrastructure Library (ITIL). ITIL acts as a kind of coarse-grained job description for the operations staff. ITIL is based on the concept of "services", and the job of Ops is to support the design, implementation, operation, and improvement of these services within the context of an overall strategy.
+
 ### Operations Services
 
 An operations service can be the provisioning of hardware, the provisioning of software, or supporting various IT functions. Services provided by operations also include the specification and monitoring of [service level agreements](https://en.wikipedia.org/wiki/Service-level_agreement) (SLAs), capacity planning, business continuity, and information security.
@@ -47,4 +51,26 @@ The following figure (Figure 3.2) shows three alternative backup strategies with
 
 1. Figure 3.2a shows an external agent (the backup process) copying the database periodically. No application support is required but the backup process should copy a consistent version of the database, which means no updates are currently being applied. If the backup process is external to the database management system, then transactions may be in process and so the activation of the backup should be carefully performed. In this case, the RPO is the period between two backups. That is, if a disaster occurs just prior to the backup process being activated, all changes in the period from the last backup will be lost.
 2. Figure 3.2b shows an alternative without an external agent. In this case, the database management system creates a copy periodically. The difference between 3.2a and 3.2b is that in 3.2b, guaranteeing consistency is done by the database management system, whereas in 3.2a, consistency is guaranteed by some mechanism that governs the activation of the backup process.  If the database is a relational database management system (RDBMS) offering some level of replication (i.e., a transaction only completes a commit when the replica database has executed the transaction as well), then transactions lost in the event of a disaster will be those not yet committed to the replicating database. The cost, however, is increased overhead per transaction.
-3. Figure 3.2c modifies Figure 3.2b by having the database management system log every write. Then the data can be re-created by beginning with the backup database and replaying the entries in the log. If both the log and the backup database are available during recovery, the RPO is 0 since all data is either in the backup database or in the log. The protocol for committing a transaction to the production database is that no transaction is committed until the respective log entry has been written. It is possible in this scheme that some transactions have not been completed, but no data from a completed transaction will be lost. This scheme is used by high-reliability relational database management systems. It is also used by distributed file systems such as Hadoop Distributed File System (HDFS).
+3. Figure 3.2c modifies Figure 3.2b by having the database management system log every write. <u>Then the data can be re-created by beginning with the backup database and replaying the entries in the log.</u> If both the log and the backup database are available during recovery, the RPO is 0 since all data is either in the backup database or in the log. The protocol for committing a transaction to the production database is that no transaction is committed until the respective log entry has been written. It is possible in this scheme that some transactions have not been completed, but no data from a completed transaction will be lost. This scheme is used by high-reliability relational database management systems. It is also used by distributed file systems such as Hadoop Distributed File System (HDFS).
+
+When considering RTO (how quickly you can get your application up and running after an outage or disaster), alternatives include: using multiple datacenters as discussed in the case study in [Chapter 11](ch11.md) or using distinct availability zones or regions offered by a cloud provider, or even using several cloud providers.
+
+By considering RTO and RPO, the business can perform a cost/benefit analysis of a variety of different disaster recovery techniques. Some of these techniques will involve application systems architecture such as replication and maintaining state consistency in the different replicas. Other techniques such as periodic backups can be performed with any application architecture. Using stateless servers on the application tier and different regions within a cloud provider results in a short RTO but does not address RPO.
+
+Traditionally, Ops is responsible for the overall security of computer systems.  Securing the network, detecting intruders, and patching operating systems are all activities performed by Ops. [Chapter 8](ch8.md) discusses security and its maintenance in some depth.
+
+#### Service Strategy
+
+#### Service Design
+
+#### Service Transition
+
+#### Service Operation
+
+#### Service Operation Concepts
+
+### Service Operation Functions
+
+### Continual Service Improvement
+
+### Operations and DevOps
