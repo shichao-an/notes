@@ -20,98 +20,91 @@ This site documents reading and learning notes of the following books and materi
   </div>
 </div>
 
-### Reading Notes
+### Books
 
 Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
 
-#### Advanced Programming in the UNIX Environment, 3rd Edition
+#### [APUE](apue/index.md)
 
-by W. Richard Stevens and Stephen A. Rago
+Advanced Programming in the UNIX Environment, 3rd Edition
 
-1. [UNIX System Overview](apue/ch1.md)
-2. [UNIX Standardization and Implementations](apue/ch2.md)
-3. [File I/O](apue/ch3.md)
-4. [Files and Directories](apue/ch4.md)
-5. [Standard I/O Library](apue/ch5.md)
-6. [System Data Files and Information](apue/ch6.md)
-7. [Process Environment](apue/ch7.md)
-8. [Process Control](apue/ch8.md)
-9. [Process Relationships](apue/ch9.md)
-10. [Signals](apue/ch10.md)
-11. [Threads](apue/ch11.md)
-12. [Thread Control](apue/ch12.md)
-13. [Daemon Processes](apue/ch13.md)
-14. [Advanced I/O](apue/ch14.md)
-15. [Interprocess Communication](apue/ch15.md)
+<small>by W. Richard Stevens and Stephen A. Rago</small>
 
-#### Linux Kernel Development (3rd Edition)
+#### [LKD](lkd/index.md)
 
-by Robert Love
+Linux Kernel Development (3rd Edition)
 
-1. [Introduction to the Linux Kernel](lkd/ch1.md)
-2. [Getting Started with the Kernel](lkd/ch2.md)
-3. [Process Management](lkd/ch3.md)
-4. [Process Scheduling](lkd/ch4.md)
-5. [System Calls](lkd/ch5.md)
-5. [Kernel Data Structures](lkd/ch6.md)
+<small>by Robert Love</small>
 
-#### Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
+#### [UTLK](utlk/index.md)
 
-by W. Richard Stevens and Bill Fenner
+Understanding the Linux Kernel, Third Edition
 
-1. [Introduction](unp/ch1.md)
-2. [The Transport Layer: TCP, UDP, and SCTP](unp/ch2.md)
-3. [Sockets Introduction](unp/ch3.md)
-4. [Elementary TCP Sockets](unp/ch4.md)
-5. [TCP Client/Server Example](unp/ch5.md)
-6. [I/O Multiplexing: The select and poll Functions](unp/ch6.md)
+<small>by Daniel P. Bovet and Marco Cesati</small>
 
-#### TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
+#### [UNP](unp/index.md)
 
-by Kevin R. Fall and W. Richard Stevens
+Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 
-1. [Introduction](tcpv1/ch1.md)
-2. [The Internet Address Architecture](tcpv1/ch2.md)
+<small>by W. Richard Stevens and Bill Fenner</small>
 
-#### Understanding the Linux Kernel, Third Edition
+#### [TCPv1](tcpv1/index.md)
 
-by Daniel P. Bovet and Marco Cesati
+TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
 
-1. [Introduction](utlk/ch1.md)
-2. [Memory Addressing](utlk/ch2.md)
+<small>by Kevin R. Fall and W. Richard Stevens</small>
 
-#### Linux System Programming: Talking Directly to the Kernel and C Library Second Edition
+#### [TCPIP](tcpip/index.md)
 
-#### The Linux Programming Interface
+The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference
 
-#### CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
+<small>by Charles M. Kozierok</small>
 
-1. [Networking Fundamentals](icnd1/part1.md)
+#### [LSP](lsp/index.md)
 
-#### CCNA ICND2 Official Exam Certification Guide, Second Edition
+Linux System Programming: Talking Directly to the Kernel and C Library (Second Edition)
 
-1. [LAN Switching](icnd2/part1.md)
+<small>by Robert Love</small>
 
-#### Hacking: The Art of Exploitation, 2nd Edition
+#### [TLPI](tlpi/index.md)
 
-by Jon Erickson
+The Linux Programming Interface
 
-1. Introduction (skipped)
-2. [Programming](htae/index.md)
+<small>by Michael Kerrisk</small>
 
-### Learning Notes
+#### [DevOps](devops/index.md)
+
+DevOps: A Software Architect's Perspective
+
+<small>by Len Bass, Ingo Weber, Liming Zhu</small>
+
+#### ICND1
+
+CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
+
+#### ICND2
+
+CCNA ICND2 Official Exam Certification Guide, Second Edition
+
+#### [HTAE](htae/index.md)
+
+Hacking: The Art of Exploitation, 2nd Edition
+
+<small>by Jon Erickson</small>
+
+### Programming Languages
 
 Each topic is included in a single page and references one or more books and materials.
 
-#### Programming Languages
+#### [Go](golang/index.md)
+#### [Bash](bash/index.md)
+#### [C](c/index.md)
+#### [Ruby](ruby/index.md)
+#### [Python](python/index.md)
+#### [x86 Assembly](asm/index.md)
 
-* [Golang](golang/index.md)
-* [Bash](bash/index.md)
-* [C](c/index.md)
-* [x86 Assembly](asm/index.md)
+### Software and Technologies
 
-#### Software and Technologies
-
-* [Nginx](nginx/index.md)
-* [Iptables](iptables/index.md)
-* [Vim](vim/index.md)
+#### [Iptables](iptables/index.md)
+#### [Nginx](nginx/index.md)
+#### [Vim](vim/index.md)

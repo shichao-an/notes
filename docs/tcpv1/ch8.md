@@ -28,3 +28,5 @@ In IPv6, ICMPv6 is used for several purposes beyond simple error reporting and s
 * Manageing hand-offs in Mobile IPv6.
 
 #### Encapsulation in IPv4 and IPv6
+
+[![Encapsulation of ICMP messages in IPv4 and IPv6. The ICMP header contains a checksum covering the ICMP data area. In ICMPv6, the checksum also covers the Source and Destination IPv6 Address, Length, and Next Header fields in the IPv6 header.](figure_8-1.png)](figure_8-1.png " Encapsulation of ICMP messages in IPv4 and IPv6. The ICMP header contains a checksum covering the ICMP data area. In ICMPv6, the checksum also covers the Source and Destination IPv6 Address, Length, and Next Header fields in the IPv6 header.")
