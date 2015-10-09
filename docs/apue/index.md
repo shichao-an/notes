@@ -15,4 +15,5 @@
 * [Chapter 13. Daemon Processes](ch13.md)
 * [Chapter 14. Advanced I/O](ch14.md)
 * [Chapter 15. Interprocess Communication](ch15.md)
+* [Chapter 16. Network IPC: Sockets](ch16.md)
 * [Chapter 17. Advanced IPC](ch17.md)
