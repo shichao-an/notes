@@ -96,8 +96,8 @@ Hacking: The Art of Exploitation, 2nd Edition
 
 Each topic is included in a single page and references one or more books and materials.
 
-#### [Go](golang/index.md)
 #### [Bash](bash/index.md)
+#### [Go](golang/index.md)
 #### [C](c/index.md)
 #### [Ruby](ruby/index.md)
 #### [Python](python/index.md)
@@ -105,6 +105,6 @@ Each topic is included in a single page and references one or more books and mat
 
 ### Software and Technologies
 
-#### [Iptables](iptables/index.md)
+#### [iptables](iptables/index.md)
 #### [Nginx](nginx/index.md)
 #### [Vim](vim/index.md)
