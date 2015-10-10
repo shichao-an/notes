@@ -1,4 +1,4 @@
-### **Golang**
+### **Go**
 
 ### Structs
 #### Visibility
@@ -94,7 +94,7 @@ if v, ok := varI.(T); ok {
 
 ```go
 if sv, ok := v.(Stringer); ok {
-	fmt.Printf(“v implements String(): %s\n”, sv.String()); // note: sv, not v
+	fmt.Printf("v implements String(): %s\n", sv.String()); // note: sv, not v
 }
 ```
 

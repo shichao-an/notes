@@ -498,8 +498,6 @@ Key points regarding the operation of IP unicast forwarding:
 2. The source and destination IP addresses in the datagram never change once in the regular Internet. This is always the case unless either source routing is used, or when other functions (such as NAT, as in the example) are encountered along the data path. Forwarding decisions at the IP layer are based on the destination address.
 3. A different lower-layer header is used on each link that uses addressing, and the lower-layer destination address (if present) always contains the lower-layer address of the next hop. Therefore, lower-layer headers routinely change as the datagram is moved along each hop toward its destination.  In our example, both Ethernet LANs encapsulated a link-layer header containing the next hop’s Ethernet address, but the DSL link did not. Lower-layer addresses are normally obtained using ARP (see Chap
 
-
-
 ### Mobile IP
 
 (skipped)
