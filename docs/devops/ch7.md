@@ -101,7 +101,42 @@ A reduction in throughput is not, by itself, a problem. The reduction in through
 
 ##### **Utilization**
 
+Utilization is the relative amount of use of a resource and is typically measured by inserting probes on the resources of interest. For example, the CPU utilization may be 80%. High utilization can be used as either of the following:
+
+* An early warning indicator of problems with latency or throughput,
+* A diagnostic tool used to find the cause of problems with latency or throughput.
+
+The resources can either be at the infrastructure or application level:
+
+* Hard resources such as CPU, memory, disk, or network are best measured by the infrastructure.
+* Soft resources such as queues or thread pools can be measured either by the application or the infrastructure depending on where the resource lives.
+
+Making sense of utilization frequently requires attributing usage to activities or applications. For example, *app1* is using 20% of the CPU, disk compression is using 30%, and so on. Thus, connecting the measurements with applications or activities is an important portion of data collection.
+
 #### Capacity Planning
+
+There two types of capacity planning:
+
+* **Long-term capacity planning** involves humans and has a time frame on the order of days,
+* **Short-term capacity planning** is performed automatically and has a time frame on the order of minutes.
+
+##### **Long-Term Capacity Planning**
+
+Long-term capacity planning is intended to match hardware needs (whether real or virtualized) with workload requirements.
+
+* In a physical datacenter, it involves ordering hardware.
+* In a virtualized public datacenter, it involves deciding on the number and characteristics of the virtual resources that are to be allocated.
+
+In both cases, the input to the capacity planning process is a characterization of the current workload gathered from monitoring data and a projection of the future workload based on business considerations and the current workload. <u>Based on the future workload, the desired throughput and latency for the future workload, and the costs of various provisioning options, the organization will decide on one option and provide the budget for it.</u>
+
+##### **Short-Term Capacity Planning**
+
+In the cloud, short-term capacity planning means creating a new virtual machine (VM) for an application or deleting an existing VM.
+
+* A common method of making and executing these decisions (creating and deleting VMs) is based on monitoring information collected by the infrastructure.
+    * [Chapter 4](ch4.md) discusses various options for controlling the allocation of VM instances based on the current load.
+    * Monitoring the usage of the current VM instances was an important portion of each option.
+* Monitoring data is also used for billing in public clouds. In order to charge for use, the use must be determined, and this is accomplished through monitoring by the cloud provider.
 
 #### User Interaction
 
