@@ -662,6 +662,20 @@
     
         <li class="main "><a href="#tcp-header-and-encapsulation">TCP Header and Encapsulation</a></li>
         
+            <li><a href="#sequence-number-and-acknowledgment-number-fields">Sequence Number and Acknowledgment Number fields *</a></li>
+        
+            <li><a href="#other-fields-in-the-tcp-header">Other fields in the TCP header *</a></li>
+        
+            <li><a href="#tcp-segments-without-data">TCP segments without data *</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -825,7 +839,70 @@ resending a packet is about the sum of the following times:</p>
 <p>The TCP header (show in the figure below) is considerably more complicated than the UDP header (<a href="../ch10/">Chapter 10</a>). This is not very surprising, as TCP is a significantly more complicated protocol that must keep each end of the connection informed (synchronized) about the current state.</p>
 <p><a href="../figure_12-3.png" title="Figure 12-3 The TCP header. Its normal size is 20 bytes, unless options are present. The Header Length field gives the size of the header in 32-bit words (minimum value is 5). The shaded fields (Acknowledgment Number, Window Size, plus ECE and ACK bits) refer to the data flowing in the opposite direction relative to the sender of this segment."><img alt="Figure 12-3 The TCP header. Its normal size is 20 bytes, unless options are present. The Header Length field gives the size of the header in 32-bit words (minimum value is 5). The shaded fields (Acknowledgment Number, Window Size, plus ECE and ACK bits) refer to the data flowing in the opposite direction relative to the sender of this segment." src="../figure_12-3_600.png" /></a></p>
 <p>Each TCP header contains the source and destination port number. <u>The source and destination port number, along with the source and destination IP addresses in the IP header, uniquely identify each connection.</u></p>
-<p>The combination of an IP address and a port number is sometimes called an <strong>endpoint</strong> or <strong>socket</strong> in the TCP literature. The term "socket" appeared in [RFC0793] and was ultimately adopted as the name of the Berkeley-derived programming interface for network communications (called "Berkeley sockets"). It is a pair of sockets or endpoints (<u>the 4-tuple consisting of the client IP address, client port number, server IP address, and server port number) that uniquely identifies each TCP connection</u>. This fact will become important when we look at how a TCP server can communicate with multiple clients (<a href="../ch13/">Chapter 13</a>).</p>
+<p>The combination of an IP address and a port number is sometimes called an <strong>endpoint</strong> or <strong>socket</strong> in the TCP literature. The term "socket" appeared in [RFC0793] and was ultimately adopted as the name of the Berkeley-derived programming interface for network communications (called "Berkeley sockets"). It is a <em>pair</em> of sockets or endpoints (<u>the 4-tuple consisting of the client IP address, client port number, server IP address, and server port number) that uniquely identifies each TCP connection</u>. This fact will become important when we look at how a TCP server can communicate with multiple clients (<a href="../ch13/">Chapter 13</a>).</p>
+<h4 id="sequence-number-and-acknowledgment-number-fields">Sequence Number and Acknowledgment Number fields *</h4>
+<ul>
+<li><u>The <strong>Sequence Number</strong> field identifies the byte in the stream of data from the sending TCP to the receiving TCP that the first byte of data in the containing segment represents.</u><ul>
+<li>If we consider the stream of bytes flowing in one direction between two applications, TCP numbers each byte with a sequence number.</li>
+<li>This sequence number is a 32-bit unsigned number that wraps back around to 0 after reaching (2<sup>32</sup>) − 1.</li>
+</ul>
+</li>
+<li>The <strong>Acknowledgment Number</strong> field (also called the <strong>ACK Number</strong> or ACK field for short) contains the next sequence number that the sender of the acknowledgment expects to receive. <u>This is therefore the sequence number of the last successfully received byte of data plus 1.</u><ul>
+<li><u>This field is valid only if the <strong>ACK</strong> bit field is on</u>, which it usually is for all but initial and closing segments.</li>
+<li>Sending an ACK costs nothing more than sending any other TCP segment because the 32-bit ACK Number field is always part of the header, as is the ACK bit field.</li>
+</ul>
+</li>
+</ul>
+<p>When a new connection is being established, the <strong>SYN</strong> bit field is turned on in the first segment sent from client to server. Such segments are called <strong>SYN segments</strong>, or simply <strong>SYNs</strong>. The Sequence Number field contains the first sequence number to be used on that direction of the connection for subsequent sequence numbers and in returning ACK numbers. This number is not 0 or 1 but instead is another number, often randomly chosen, called the <strong>initial sequence number</strong> (ISN). The reason for the ISN not being 0 or 1 is a security measure and will be discussed in <a href="../ch13/">Chapter 13</a>. The sequence number of the first byte of data sent on this direction of the connection is the ISN plus 1 because the SYN bit field consumes one sequence number. Consuming a sequence number also implies reliable delivery using retransmission (discussed later). Thus, SYNs and application bytes (and FINs) are reliably delivered. ACKs, which do not consume sequence numbers, are not.</p>
+<p>TCP can be described as "a sliding window protocol with cumulative positive acknowledgments". The <strong>ACK Number</strong> field is constructed to indicate <u>the largest byte received in order at the receiver (plus 1)</u>. For example, if bytes 1–1024 are received OK, and the next segment contains bytes 2049–3072, the receiver cannot use the regular ACK Number field to signal the sender that it received this new segment. Modern TCPs, however, have a <strong>selective acknowledgment</strong> (SACK) option that allows the receiver to indicate to the sender out-of-order data it has received correctly. When paired with a TCP sender capable of <strong>selective repeat</strong>, a significant performance benefit may be realized [FF96]. <a href="../ch14/">Chapter 14</a> discusses how TCP uses <strong>duplicate acknowledgments</strong> (multiple segments with the same ACK field) to help with its congestion control and error control procedures</p>
+<h4 id="other-fields-in-the-tcp-header">Other fields in the TCP header *</h4>
+<ul>
+<li>The <strong>Header Length</strong> field gives the length of the header in 32-bit words. This is required because the length of the <strong>Options</strong> field is variable.<ul>
+<li>With a 4-bit field, TCP is limited to a 60-byte header.</li>
+<li>Without options, the size is 20 bytes.</li>
+</ul>
+</li>
+</ul>
+<p>Currently eight bit fields are defined for the TCP header, although some older implementations understand only the last six of them ([RFC3540], an experimental RFC, also defines the least significant of the Resv bits as a nonce sum (NS)). One or more of them can be turned on at the same time. Their use are briefly mentioned here and detailed in later chapters:</p>
+<ol>
+<li><strong>CWR</strong>. Congestion Window Reduced (the sender reduced its sending rate); see <a href="../ch16/">Chapter 16</a>.</li>
+<li><strong>ECE</strong>. ECN Echo (the sender received an earlier congestion notification); see Chapter 16.</li>
+<li><strong>URG</strong>. Urgent (the <strong>Urgent Pointer</strong> field is valid; rarely used); see <a href="../ch15/">Chapter 15</a>.</li>
+<li><strong>ACK</strong>. Acknowledgment (the <strong>Acknowledgment Number</strong> field is valid; always on after a connection is established); see <a href="../ch13/">Chapters 13</a> and 15.</li>
+<li><strong>PSH</strong>. Push (the receiver should pass this data to the application as soon as possible; not reliably implemented or used); see Chapter 15.</li>
+<li><strong>RST</strong>. Reset the connection (connection abort, usually because of an error); see Chapter 13.</li>
+<li><strong>SYN</strong>. Synchronize sequence numbers to initiate a connection; see Chapter 13.</li>
+<li><strong>FIN</strong>. The sender of the segment is finished sending data to its peer; see Chapter 13.</li>
+</ol>
+<p>Remaining fields:</p>
+<ul>
+<li><strong>Window Size</strong> field. TCP’s flow control is provided by each end advertising a window size using the Window Size field. This is the number of bytes, starting with the one specified by the ACK number, that the receiver is willing to accept. This is a 16-bit field, limiting the window to 65,535 bytes, and thereby limiting TCP’s throughput performance. <a href="../ch15/">Chapter 15</a> discusses the Window Scale option that allows this value to be scaled, providing much larger windows and improved performance for high-speed and long-delay networks.</li>
+<li>The <strong>TCP Checksum</strong> field covers the TCP header and data and some fields in the IP header, using a pseudo-header computation similar to the one used with ICMPv6 and UDP discussed in <a href="../ch8/">Chapters 8</a> and <a href="../ch10/">Chapter 10</a>. It is mandatory for this field to be calculated and stored by the sender, and then verified by the receiver.  The TCP checksum is calculated with the same algorithm as the IP, ICMP, and UDP ("Internet") checksums.</li>
+<li>The <strong>Urgent Pointer</strong> field is valid only if the <strong>URG</strong> bit field is set. This "pointer" is a positive offset that must be added to the Sequence Number field of the segment to yield the sequence number of the last byte of urgent data. TCP’s urgent mechanism is a way for the sender to provide specially marked data to the other end.</li>
+<li>The most common <strong>Option</strong> field is the <a href="https://en.wikipedia.org/wiki/Maximum_segment_size">Maximum Segment Size</a> option, called the MSS. Each end of a connection normally specifies this option on the first segment it sends (the ones with the SYN bit field set to establish the connection). <u>The MSS option specifies the maximum-size segment that the sender of the option is willing to receive in the reverse direction.</u> The MSS option is detailed in <a href="../ch13/">Chapter 13</a> and some of the other TCP options in <a href="../ch14/">Chapters 14</a> and <a href="../ch15/">Chapter 15</a>.<ul>
+<li>Other common options include SACK, Timestamp, and Window Scale.</li>
+</ul>
+</li>
+</ul>
+<h4 id="tcp-segments-without-data">TCP segments without data *</h4>
+<p>In <a href="../figure_12-2.png">Figure 12-2</a>, the data portion of the TCP segment is optional. The TCP segment without data may be one of the following cases:</p>
+<ul>
+<li><strong>Connection establishment and termination</strong>. <u>When a connection is established, and when a connection is terminated, segments are exchanged that contain only the TCP header (with or without options) but no data</u>.</li>
+<li><strong>Acknowledgment</strong>. A header without any data is also used to acknowledge received data, if there is no data to be transmitted in that direction (called a pure ACK)</li>
+<li><strong>Window update</strong> notifies the communication peer of a change in the window size.</li>
+<li>There are also some cases resulting from timeouts when a segment can be sent without any data.</li>
+</ul>
+<h3 id="summary">Summary</h3>
+<p>The problem of providing reliable communications over lossy communication channels has been studied for years. The two primary methods for dealing with errors include error-correcting codes and data retransmission. The protocols using retransmissions must also handle data loss, usually by setting a timer, and must also arrange some way for the receiver to signal the sender what it has received.  Deciding how long to wait for an ACK can be tricky, as the appropriate time may change as network routing or load on the end systems varies. Modern protocols estimate the round-trip time and set the retransmission timer based on some function of these measurements.</p>
+<p>Except for setting the retransmission timer, retransmission protocols are simple when only one packet may be in the network at one time, but they perform poorly for networks where the delay is high. To be more efficient, multiple packets must be injected into the network before an ACK is received. This approach is more efficient but also more complex. A typical approach to managing the complexity is to use sliding windows, whereby packets are marked with sequence numbers, and the window size bounds the number of such packets. When the window size varies based on either feedback from the receiver or other signals (such as dropped packets), both flow control and congestion control can be achieved.</p>
+<p>TCP provides a reliable, connection-oriented, byte stream, transport-layer service built using many of these techniques. We looked briefly at all of the fields in the TCP header, noting that most of them are directly related to these abstract concepts in reliable delivery. We will examine them in detail in the chapters that follow. TCP packetizes the application data into segments, sets a timeout anytime it sends data, acknowledges data received by the other end, reorders out-of-order data, discards duplicate data, provides end-to-end flow control, and calculates and verifies a mandatory end-to-end checksum. It is the most widely used protocol on the Internet. It is used by most of the popular applications, such as HTTP, SSH/TLS, <a href="https://en.wikipedia.org/wiki/NetBIOS">NetBIOS</a> (NBT—NetBIOS over TCP), Telnet, FTP, and electronic mail (SMTP). Many distributed file-sharing applications (e.g., BitTorrent, Shareaza) also use TCP.</p>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p589 on SYN segments:</p>
+<blockquote>
+<p>Consuming a sequence number also implies reliable delivery using retransmission (discussed later). Thus, SYNs and application bytes (and FINs) are reliably delivered. ACKs, which do not consume sequence numbers, are not.</p>
+</blockquote>
+<p>Why?</p>
             </div>
         </div>
 
