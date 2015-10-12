@@ -645,6 +645,16 @@
     
         <li class="main "><a href="#what-to-monitor">What to Monitor</a></li>
         
+            <li><a href="#failure-detection">Failure Detection</a></li>
+        
+            <li><a href="#performance-degradation-detection">Performance Degradation Detection</a></li>
+        
+            <li><a href="#capacity-planning">Capacity Planning</a></li>
+        
+            <li><a href="#user-interaction">User Interaction</a></li>
+        
+            <li><a href="#intrusion-detection">Intrusion Detection</a></li>
+        
     
         <li class="main "><a href="#how-to-monitor">How to Monitor</a></li>
         
@@ -692,11 +702,90 @@
 <li>Setting thresholds based on normal operation will trigger multiple false alarms during a deployment. Disabling alarms during deployments will, potentially, miss critical errors when a system is already in a fairly unstable state. Multiple deployments can simultaneously occur as we discussed in Chapter 6, and these deployments further complicate the setting of thresholds.</li>
 </ul>
 </li>
-<li>The cloud environment introduces different levels from application programming interface (API) calls to VM resource usage. Choosing between a top-down approach and a bottom-up approach for different scenarios and balancing the tradeoffs is not easy.</li>
-<li>Monitoring requires attention to more moving parts.</li>
-<li>Managing logs becomes a challenge in large-scale distributed systems.</li>
+<li><strong>The cloud environment introduces different levels from application programming interface (API) calls to VM resource usage.</strong> Choosing between a top-down approach and a bottom-up approach for different scenarios and balancing the tradeoffs is not easy.</li>
+<li><strong>Monitoring requires attention to more moving parts</strong> (when adopting the microservice architecture as introduced in <a href="../ch4/">Chapter 4</a>).<ul>
+<li>It also requires logging more inter-service communication to ensure a user request traversing through a dozen services still meets your service level agreements. If anything goes wrong, you need to determine the cause through analysis of large volumes of (distributed) data.</li>
 </ul>
+</li>
+<li><strong>Managing logs becomes a challenge in large-scale distributed systems.</strong><ul>
+<li>When you have hundreds or thousands of nodes, collecting all logs centrally becomes difficult or prohibitively expensive. Performing analysis on huge collections of logs is challenging as well, because of the sheer volume of logs, noise, and inconsistencies in logs from multiple independent sources.</li>
+</ul>
+</li>
+</ul>
+<p>Monitoring solutions must be tested and validated just as other portions of the infrastructure. Testing a monitoring solution in your various environments is one portion of the testing, but the scale of your non-production environments may not approach the scale of your production—which implies that your monitoring environments may be only partially tested prior to being placed into production</p>
 <h3 id="what-to-monitor">What to Monitor</h3>
+<p>The following table lists the insights you might gain from the monitoring data and the portions of the stack where such data can be collected: [p129]</p>
+<table>
+<thead>
+<tr>
+<th>Goal of Monitoring</th>
+<th>Source of Data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Failure detection</td>
+<td>Application and infrastructure</td>
+</tr>
+<tr>
+<td>Performance degradation detection</td>
+<td>Application and infrastructure</td>
+</tr>
+<tr>
+<td>Capacity planning</td>
+<td>Application and infrastructure</td>
+</tr>
+<tr>
+<td>User reaction to business offerings</td>
+<td>Application</td>
+</tr>
+<tr>
+<td>Intruder detection</td>
+<td>Application and infrastructure</td>
+</tr>
+</tbody>
+</table>
+<p>The fundamental items to be monitored consist of inputs, resources, and outcomes:</p>
+<ul>
+<li>The resources can be hard resources such as CPU, memory, disk, and network (even if virtualized).</li>
+<li>They can also be soft resources such as queues, thread pools, or configuration specifications.</li>
+<li>The outcomes include items such as transactions and business-oriented activities.</li>
+</ul>
+<h4 id="failure-detection">Failure Detection</h4>
+<p>Any element of the physical infrastructure can fail. Total failures are relatively easy to detect: No data is flowing where data used to flow. It is the partial failures that are difficult to detect, for instance: a cable is not firmly seated and degrades performance; before a machine totally fails because of overheating it experiences intermittent failure; and so forth.</p>
+<p>Detecting failure of the physical infrastructure is the datacenter provider’s problem. Instrumenting the operating system or its virtual equivalent will provide the data for the datacenter.</p>
+<p>Software can also fail, either totally or partially. Total failure is relatively easy to detect. Partial software failures have myriad causes (similar to partial hardware failures):</p>
+<ul>
+<li>The underlying hardware may have a partial failure;</li>
+<li>A downstream service may have failed;</li>
+<li>The software (or its supporting software) may have been misconfigured.</li>
+</ul>
+<p>Detecting software failures can be done in one of three fashions:</p>
+<ol>
+<li>The monitoring software performs <strong>health checks</strong> on the system from an external point.</li>
+<li>A <strong>special agent inside the system</strong> performs the monitoring.</li>
+<li>The <strong>system itself</strong> detects problems and reports them.</li>
+</ol>
+<p>Partial failures may also manifest as performance problems (discussed in the following subsection).</p>
+<h4 id="performance-degradation-detection">Performance Degradation Detection</h4>
+<p>Detecting performance degradations is the most common use of monitoring data. Degraded performance can be observed by comparing current performance to historical data, or by complaints from clients or end users. Ideally, the monitoring system catches performance degradation before users are impacted at a notable strength.</p>
+<p>Performance measures include <strong>latency</strong>, <strong>throughput</strong>, and <strong>utilization</strong>.</p>
+<h5 id="latency"><strong>Latency</strong></h5>
+<p>Latency is the time from the initiation of an activity to its completion, which can be measured at various levels of granularity:</p>
+<ul>
+<li>At a coarse grain, latency can refer to the period from a user request to the satisfaction of that request.</li>
+<li>At a fine grain, latency can refer to the period from placing a message on a network to the receipt of that message.</li>
+</ul>
+<p>Latency can also be measured at either the infrastructure or the application level. Measuring latency across different physical computers is more problematic because of the difficulty of synchronizing clocks.</p>
+<p>Latency is cumulative in the sense that the latency of responding to a user request is the sum of the latency of all of the activities that occur until the request is satisfied, adjusted for parallelism. It is useful when diagnosing the cause of a latency problem to know the latency of the various subactivities performed in the satisfaction of the original request. [p131]</p>
+<h5 id="throughput"><strong>Throughput</strong></h5>
+<p>Throughput is the number of operations of a particular type in a unit time. Although throughput could refer to infrastructure activities (e.g., the number of disk reads per minute), it is more commonly used at the application level. For example, the number of transactions per second is a common reporting measure.</p>
+<p><u>Throughput provides a system-wide measure involving all of the users, whereas latency has a single-user or client focus.</u> High throughput may or may not be related to low latency. The relation will depend on the number of users and their pattern of use.</p>
+<p>A reduction in throughput is not, by itself, a problem. The reduction in throughput may be caused by a reduction in the number of users. Problems are indicated through the coupling of throughput and user numbers.</p>
+<h5 id="utilization"><strong>Utilization</strong></h5>
+<h4 id="capacity-planning">Capacity Planning</h4>
+<h4 id="user-interaction">User Interaction</h4>
+<h4 id="intrusion-detection">Intrusion Detection</h4>
 <h3 id="how-to-monitor">How to Monitor</h3>
 <h3 id="when-to-change-the-monitoring-configuration">When to Change the Monitoring Configuration</h3>
 <h3 id="interpreting-monitoring-data">Interpreting Monitoring Data</h3>
