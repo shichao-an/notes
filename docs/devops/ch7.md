@@ -231,17 +231,154 @@ In some situations, the system to be monitored already has internal monitoring f
 
 The agent-based and agentless approaches both have their strengths and weaknesses:
 
-* The agentless approach is better in terms of deployment and maintenance effort. However, it is less secure if the collection repository is outside of your network because more ports need to be opened and firewall rules relaxed to allow different layers of a system to communicate its data to the external world.
-* In contrast, an agent on a host can communicate with the OS and applications locally and send all collected information over a single channel. This also allows an agent-based approach to optimize network traffic and processing overhead.
+* **Agentless**. <u>The **agentless** approach is better in terms of deployment and maintenance effort.</u> However, it is less secure if the collection repository is outside of your network because more ports need to be opened and firewall rules relaxed to allow different layers of a system to communicate its data to the external world.
+* **Agent-based**. In contrast, an **agent** on a host can communicate with the OS and applications locally and send all collected information over a single channel. <u>This also allows an agent-based approach to optimize network traffic and processing overhead.</u>
+* **External**. In addition to collecting monitoring data from inside a system, you can collect information from an external viewpoint. You can set up **health checks** to periodically check a system or conduct performance monitoring from an external user’s point of view
+
+Questions to be considered when designing a system include:
+
+* Where does this information come from?
+* How does this information fit into the application and monitoring architecture?
+* What are the quality implications?
 
 #### Monitoring Operation Activities
 
+Some operations tools (such as Chef) monitor resources such as configuration settings to determine whether they conform to prespecified settings. We also mentioned monitoring resource specification files to identify changes. Both of these types of monitoring are best done by agents that periodically sample the actual values and the files that specify those values.
+
+Treating infrastructure-as-code implies that infrastructure should contribute monitoring information in the same fashion as other applications, which can be through any of the means discussed: agents, agentless, or external.
+
+[Chapter 14](ch14.md) discusses how to perform fine-grained monitoring of the behavior of operations tools and scripts. This can include assertions over monitoring data. <u>For instance, during a rolling upgrade a number of VMs are taken out of service to be replaced with VMs running a newer version of the application. Then you can expect the average CPU utilization of the remaining machines to increase by a certain factor.</u>
+
 #### Collection and Storage
+
+The core of monitoring is recoding and analyzing time series data (a sequence of time-stamped data points):
+
+* These data points are acquired at successive intervals in time and represent certain aspects of states and state changes.
+* The system being monitored will generate time-stamped event notifications at various levels of severity. These notifications are typically output as logs.
+
+The monitoring system can conduct direct measurement or collect existing data, statistics, or logs and then turn them into metrics (with time and space). The data is then transferred to a repository. The incoming data streams need to be processed into a time series and stored in a time series database.
+
+Three key challenges are: [p138]
+
+* **Collating related items by time.** Time stamps in a distributed system are not going to be consistent.
+    * Different nodes in a single cluster may differ in their clocks by several microseconds.
+    * Different nodes across multiple clusters may differ by much more.
+* **Collating related items by context.**
+* **The volume of monitoring data.** You may need a retention policy to cope with the volume of data collected.
+
+The [Round-Robin Database](https://en.wikipedia.org/wiki/RRDtool) (RRD) is a popular time series database, which is designed for storing and displaying time series data with good retention policy configuration capabilities. Big data storage and processing solutions are increasingly used for monitoring data. You can treat your monitoring data as data streams feeding into streaming systems for real-time processing, combined with (big) historical data. You can load all your data into big data storage systems such as Hadoop Distributed File System (HDFS) or archive it in relatively inexpensive online storage systems such as [Amazon Glacier](https://aws.amazon.com/glacier/).
 
 ### When to Change the Monitoring Configuration
 
+Monitoring is either time-based or event-based. Timing frequency and generation of events should all be configurable and changed in response to events occurring in the datacenter.
+
+Some examples of events that could change the monitoring configuration are:
+
+* **An alert.** One consequence of an alert could be that the frequency of sampling is increased.  The frequency could be decreased if the alert does not turn into an alarm.
+* **Deployment.** Any of the deployment scenarios can trigger changes to monitoring:
+    * Canary deployment. The new versions under test should be monitored more closely
+    * Rolling upgrade. Closer monitoring will help detect the occurrence of a race condition more quickly.
+    * Feature activation or deactivation. Feature changes should trigger changes in the monitoring configuration.
+* **Changes to any infrastructure software including DevOps tools.**
+* **Changes to any configuration parameters.** One of the major sources of errors in modern distributed systems is incorrect parameters.
+
 ### Interpreting Monitoring Data
 
+Assume that the monitoring data (both time-based and event-based) has been collected in a central repository. This data is being added and examined continually, by both other systems and humans.
+
+#### Logs
+
+A log is a time series of events. Records are typically appended to the end of the log. Logs usually record the actions performed that may result in a state change of the system.
+
+[p140]
+
+Logs are used:
+
+* During operations to detect and diagnose problems.
+* During debugging to detect errors.
+* During post-problem forensics to understand the sequence that led to a particular problem.
+
+Some general rules about writing logs are:
+
+* Logs should have a consistent format.
+* Logs should include an explanation for why this particular log message was produced.
+* Log entries should include context information. Besides date and time, it also includes information to support tracking the log entry such as:
+    * Source of the log entry within the code
+    * Process ID for the process executing when the log entry was produced
+    * Request ID for the request that caused that process to execute this log producer
+    * VM ID for the VM that produced this message
+* Logs should provide screening information. Log messages are collected in a repository that is accessed through queries. Severity levels are an example of screening information, alert levels are another.
+
+#### Graphing and Display
+
+Once you have all relevant data, it is useful to visualize it:
+
+* Some monitoring systems have strong visualization capabilities embedded.
+* There are also specialized systems just for visualization and querying, such as [Graphite](https://github.com/graphite-project/graphite-web), which support real-time graphing of large amounts of data.
+
+You can set up a dashboard showing important real-time aspects of your system and its components at an aggregated level. You can also dive into the details interactively or navigate through history when you detect an issue. An experienced operator will use visual patterns of graphs to discern problems.
+
+[p141]
+
+#### Alarms and Alerts
+
+Monitoring systems inform the operator of significant events. This information can be in the form of either an alarm or an alert:
+
+* **Alerts** are raised for purposes of informing and may be in advance of an alarm (e.g., the datacenter temperature is rising);
+* **Alarms** require action by the operator or another system (e.g., the datacenter is on fire).
+
+Alarms and alerts can be triggered by any of the following:
+
+* Events (e.g., a particular physical machine is not responding),
+* Values crossing a threshold (e.g., the response time for a particular disk is greater than an acceptable value),
+* Sophisticated combinations of values and trends.
+
+[p141]
+
+The typical issues are:
+
+* How do you configure your monitoring system to reduce **false positives** (alarms without the necessity for action) and **false negatives** (the necessity for action without an alarm being raised)?
+* How do you configure your monitoring system so that the alerts provide necessary information to diagnose an alarm?
+
+A problem for operators is receiving false positive alarms or a flood of alerts from different channels about the same event. Under such conditions, operators will quickly get "alert fatigue" and start ignoring alerts or simply turn some of them off. On the other hand, if you try to reduce false positives, you may risk missing important events, which increases false negatives.
+
+If your alarms are very specific in their triggering conditions, you may be informed about some subtle errors early in their occurrence. However, you may risk rendering your alarms less effective when the system undergoes changes over time, or when the system momentarily exhibits interference of legitimate but previously unknown operations. [p142]
+
+Some general rules to improve the usefulness of alerts and alarms are:
+
+* Introduce context to your alarms.
+    * This could be as simple as disabling certain alerts during specific times or actions; for example, when replacing a physical computer it does not make sense to raise alarms about the computer’s health.
+    * Other more complex contexts could be related to external events or interfering operations.
+* <u>Alarms can not only go off if something happens, they can also be set to go off if an expected event did not happen</u>. This helps with drills and testing of your alarms since you can set an alarm to go off when an event that you know is not going to happen does not, in fact, happen.
+* Aggregate different alerts that are likely referring to the same events.
+* Set clear severity levels and urgency levels so people or systems receiving the alerts can act accordingly.
+
+#### Diagnosis and Reaction
+
+Operators often use monitoring systems to diagnose the causes and observe the progress of mitigation and recovery. However, monitoring systems are not designed for interactive or automated diagnosis. Thus, operators, in ad hoc ways, will try to correlate events, dive into details and execute queries, and examine logs. Concurrently, they manually trigger more diagnostic tests and recovery actions (such as restarting processes or isolating problematic components) and observe their effects from the monitoring system.
+
+The essence of the skill of a reliability engineer is the ability to diagnose a problem in the presence of uncertainty. Once the problem has been diagnosed, frequently the reaction is clear although, at times, possible reactions have different business consequences. [p142-143]
+
+#### Monitoring DevOps Processes
+
+DevOps processes should be monitored so that they can be improved and problems can be detected.
+
+Five things that are important to monitor:
+
+1. A business metric
+2. Cycle time
+3. Mean time to detect errors
+4. Mean time to report errors
+5. Amount of scrap (rework)
+
 ### Challenges
+
+#### Challenge 1: Monitoring Under Continuous Changes
+
+#### Challenge 2: Bottom-Up vs. Top-Down and Monitoring in the Cloud
+
+#### Challenge 3: Monitoring a Microservice Architecture
+
+#### Challenge 4: Dealing with Large Volumes of Distributed (Log) Data
 
 ### Tools
