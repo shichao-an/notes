@@ -140,6 +140,26 @@ In the cloud, short-term capacity planning means creating a new virtual machine 
 
 #### User Interaction
 
+User satisfaction is an important element of a business. It depends on four elements that can be monitored:
+
+1. **The latency of a user request.** Users expect decent response times. Depending on the application, seemingly trivial variations in response can have a large impact.
+2. **The reliability of the system with which the user is interacting.** Failure and failure detection are discussed earlier.
+3. **The effect of a particular business offering or user interface modification.** A/B testing is discussed in [Chapters 5](ch5.md) and [Chapter 6](ch6.md). The measurements collected from A/B testing must be meaningful for the goal of the test, and the data must be associated with variant A or B of the system.
+4. **The organization’s particular set of metrics.** These metrics should be important indicators either of the following:
+    * User satisfaction,
+    * The effectiveness of the organization’s computer-based services.
+
+There are generally two types of user interaction monitoring.
+
+1. **Real user monitoring** (RUM). RUM essentially records all user interactions with an application.
+    * RUM data is used to assess the real service level a user experiences and whether server side changes are being propagated to users correctly.
+    * RUM is usually passive in terms of not affecting the application payload without exerting load or changing the server-side application.
+2. **Synthetic monitoring**. It is similar to developers performing stress testing on an application.
+    * Expected user behaviors are scripted either using some emulation system or using actual client software
+(such as a browser). However, the goal is often not to stress test with heavy
+loads, but again to monitor the user experience.
+    * Synthetic monitoring allows you to monitor user experience in a systematic and repeatable fashion, not dependent on how users are using the system right now. Synthetic monitoring may be a portion of the automated user acceptance tests that we discussed in [Chapter 5](ch5.md).
+
 #### Intrusion Detection
 
 ### How to Monitor
