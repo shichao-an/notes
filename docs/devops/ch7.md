@@ -206,7 +206,33 @@ Once monitoring data is collected, you can do many things:
 * Graphing and dashboards can be used to visualize system state changes for human operators.
 * A monitoring system also allows operators to drill down into detailed monitoring data and logs, which is important for error diagnosis, root cause analysis, and deciding on the best reaction to a problem.
 
+The traditional view of the monitoring system (as discussed so far) is increasingly being challenged by new interactions between the monitoring system and other systems, which are shown outside of the dotted areas in [Figure 7.1](figure_7.1.png).
+
+You can perform stream processing and (big) data analytics on monitoring data streams and historical data. Not only can you gain insights into system characteristics using system-level monitoring data, you may also gain insights into user behaviors and intentions using application- and user-level monitoring data.
+
+Because of these growing different uses of monitoring data, many companies are starting to use a unified log and metrics-centric publish-subscribe architecture for both the monitoring system and the overall application system. More and more types of data, including nontraditional log and metrics data, are being put into a unified storage, where various other systems (whether monitoring-related or not) can subscribe to the data of interest. Several implications of the unified view are:
+
+* It significantly reduces the coupling of any two systems. <u>Systems interact with the unified log in a publish-subscribe fashion that makes publishers ignorant of the specific identity of the subscriber and vice versa.</u>
+* It simplifies the integration of multiple sources of data. <u>Using a central log store allows data to be correlated based on attributes such as time stamps rather than their source.</u> [p136]
+
+The line between the monitoring system and the system to be monitored is getting blurred when application and user monitoring data are treated the same as system-level monitoring data: data from anywhere and at any level could contribute to insights about both systems and users.
+
+The following sections discuss the method of retrieving monitoring data, monitoring operations, and data collection and storage:
+
 #### Agent-Based and Agentless Monitoring
+
+In some situations, the system to be monitored already has internal monitoring facilities that can be accessed through a defined protocol. For example:
+
+* The [Simple Network Management Protocol](https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol) (SNMP) is a common mechanism for gathering metrics from servers and network equipment. It is especially useful on network equipment because that equipment often comes as a closed system and you cannot install monitoring agents.
+* You can use protocols like Secure Shell (SSH) to remotely access a system and retrieve available data.
+* [Application Response Measurement](https://en.wikipedia.org/wiki/Application_Response_Measurement) (ARM) is an industry standard that provides ways for an application to trigger actions such as requesting an external ARMsupported system to start or stop tracking a transaction and correlating times spent in different systems for a single transaction.
+
+ Agentless monitoring is particularly useful when you cannot install agents, and it can simplify the deployment of your monitoring system.
+
+The agent-based and agentless approaches both have their strengths and weaknesses:
+
+* The agentless approach is better in terms of deployment and maintenance effort. However, it is less secure if the collection repository is outside of your network because more ports need to be opened and firewall rules relaxed to allow different layers of a system to communicate its data to the external world.
+* In contrast, an agent on a host can communicate with the OS and applications locally and send all collected information over a single channel. This also allows an agent-based approach to optimize network traffic and processing overhead.
 
 #### Monitoring Operation Activities
 
