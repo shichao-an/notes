@@ -155,14 +155,62 @@ There are generally two types of user interaction monitoring.
     * RUM data is used to assess the real service level a user experiences and whether server side changes are being propagated to users correctly.
     * RUM is usually passive in terms of not affecting the application payload without exerting load or changing the server-side application.
 2. **Synthetic monitoring**. It is similar to developers performing stress testing on an application.
-    * Expected user behaviors are scripted either using some emulation system or using actual client software
-(such as a browser). However, the goal is often not to stress test with heavy
-loads, but again to monitor the user experience.
-    * Synthetic monitoring allows you to monitor user experience in a systematic and repeatable fashion, not dependent on how users are using the system right now. Synthetic monitoring may be a portion of the automated user acceptance tests that we discussed in [Chapter 5](ch5.md).
+    * Expected user behaviors are scripted either using some emulation system or using actual client software (such as a browser). However, the goal is often not to stress test with heavy loads, but to monitor the user experience.
+    * Synthetic monitoring allows you to monitor user experience in a systematic and repeatable fashion, not dependent on how users are using the system right now.
+    * Synthetic monitoring may be a portion of the automated user acceptance tests discussed in [Chapter 5](ch5.md).
 
 #### Intrusion Detection
 
+Intruders can break into a system by subverting an application (for example, through incorrect authorization or a man-in-the-middle attack). Applications can monitor users and their activities to determine whether the activities are consistent with the users’ role in the organization or their past behavior.
+
+For instance, if user John has a mobile phone using the application, and the phone is currently in Australia, any log-in attempts from, say, Nigeria should be seen as suspicious.
+
+##### **Intrusion detector** *
+
+An **intrusion detector** is a software application that monitors network traffic by looking for abnormalities. These abnormalities can be caused by:
+
+* Attempts to compromise a system by unauthorized users,
+* Violations of an organization’s security policies.
+
+Intrusion detectors use a variety of different techniques to identify attacks. They frequently use historical data from an organization’s network to understand what is normal. They also use libraries that contain the network traffic patterns observed during various attacks. Current traffic on a network is compared to the expected (from an organization’s history) and the abnormal (from the attack history) to decide whether an attack is currently under way.
+
+Intrusion detectors can also monitor traffic to determine whether an organization’s security policies are being violated without malicious intent.
+
+Intrusion detectors generate alerts and alarms as discussed in [Section 7.5](#interpreting-monitoring-data). Problems with false positives and false negatives exist with intrusion detectors as they do with all monitoring systems.
+
 ### How to Monitor
+
+Monitoring systems interact with the elements being monitored, as shown in the figure below.
+
+[![Figure 7.1 Monitoring system interacting with the elements being monitored [Notation: Architecture]](figure_7.1.png)](figure_7.1.png "Figure 7.1 Monitoring system interacting with the elements being monitored [Notation: Architecture]")
+
+The system to be monitored can be as broad as a collection of independent applications or services, or as narrow as a single application:
+
+1. **Agentless monitoring**. If the system is actively contributing to the data being monitored (the arrow labeled "agentless") then the monitoring is intrusive and affects the system design.
+2. **Agent-based monitoring**. If the system is not actively contributing to the data being monitored (the arrow labeled "agent-based") then the monitoring is nonintrusive and does not affect the system design.
+3. **Health checks**. A third source of data is indicted by the arrow labeled "health checks". External systems can also monitor system or application-level states through health checks, performance-related requests, or transaction monitoring
+
+The data collected either through agents or through agentless means is eventually sent to a central repository ("Monitoring data storage" in [Figure 7.1](figure_7.1.png)). The central repository is typically distributed (logically but not physically central). Each step from the initial collection to the central repository can do filtering and aggregation.
+
+The considerations in determining the amount of filtering and aggregation are:
+
+* The volume of data being generated,
+* The potential failure of local nodes,
+* The granularity of the necessary communication.
+
+Retrieving the data from local nodes is important because the local node may fail and the data become unavailable. Sending all of the data directly to a central repository may introduce congestion to the network. Thus, selecting the intermediate steps from the local nodes to the central repository and the filtering and aggregation done at each step are important architectural decisions when setting up a monitoring framework.
+
+Once monitoring data is collected, you can do many things:
+
+* Alarms can be configured to trigger alerts that notify operators or other systems about major state changes.
+* Graphing and dashboards can be used to visualize system state changes for human operators.
+* A monitoring system also allows operators to drill down into detailed monitoring data and logs, which is important for error diagnosis, root cause analysis, and deciding on the best reaction to a problem.
+
+#### Agent-Based and Agentless Monitoring
+
+#### Monitoring Operation Activities
+
+#### Collection and Storage
 
 ### When to Change the Monitoring Configuration
 

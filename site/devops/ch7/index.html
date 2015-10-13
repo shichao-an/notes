@@ -658,6 +658,12 @@
     
         <li class="main "><a href="#how-to-monitor">How to Monitor</a></li>
         
+            <li><a href="#agent-based-and-agentless-monitoring">Agent-Based and Agentless Monitoring</a></li>
+        
+            <li><a href="#monitoring-operation-activities">Monitoring Operation Activities</a></li>
+        
+            <li><a href="#collection-and-storage">Collection and Storage</a></li>
+        
     
         <li class="main "><a href="#when-to-change-the-monitoring-configuration">When to Change the Monitoring Configuration</a></li>
         
@@ -837,15 +843,50 @@
 </ul>
 </li>
 <li><strong>Synthetic monitoring</strong>. It is similar to developers performing stress testing on an application.<ul>
-<li>Expected user behaviors are scripted either using some emulation system or using actual client software
-(such as a browser). However, the goal is often not to stress test with heavy
-loads, but again to monitor the user experience.</li>
-<li>Synthetic monitoring allows you to monitor user experience in a systematic and repeatable fashion, not dependent on how users are using the system right now. Synthetic monitoring may be a portion of the automated user acceptance tests that we discussed in <a href="../ch5/">Chapter 5</a>.</li>
+<li>Expected user behaviors are scripted either using some emulation system or using actual client software (such as a browser). However, the goal is often not to stress test with heavy loads, but to monitor the user experience.</li>
+<li>Synthetic monitoring allows you to monitor user experience in a systematic and repeatable fashion, not dependent on how users are using the system right now.</li>
+<li>Synthetic monitoring may be a portion of the automated user acceptance tests discussed in <a href="../ch5/">Chapter 5</a>.</li>
 </ul>
 </li>
 </ol>
 <h4 id="intrusion-detection">Intrusion Detection</h4>
+<p>Intruders can break into a system by subverting an application (for example, through incorrect authorization or a man-in-the-middle attack). Applications can monitor users and their activities to determine whether the activities are consistent with the users’ role in the organization or their past behavior.</p>
+<p>For instance, if user John has a mobile phone using the application, and the phone is currently in Australia, any log-in attempts from, say, Nigeria should be seen as suspicious.</p>
+<h5 id="intrusion-detector"><strong>Intrusion detector</strong> *</h5>
+<p>An <strong>intrusion detector</strong> is a software application that monitors network traffic by looking for abnormalities. These abnormalities can be caused by:</p>
+<ul>
+<li>Attempts to compromise a system by unauthorized users,</li>
+<li>Violations of an organization’s security policies.</li>
+</ul>
+<p>Intrusion detectors use a variety of different techniques to identify attacks. They frequently use historical data from an organization’s network to understand what is normal. They also use libraries that contain the network traffic patterns observed during various attacks. Current traffic on a network is compared to the expected (from an organization’s history) and the abnormal (from the attack history) to decide whether an attack is currently under way.</p>
+<p>Intrusion detectors can also monitor traffic to determine whether an organization’s security policies are being violated without malicious intent.</p>
+<p>Intrusion detectors generate alerts and alarms as discussed in <a href="#interpreting-monitoring-data">Section 7.5</a>. Problems with false positives and false negatives exist with intrusion detectors as they do with all monitoring systems.</p>
 <h3 id="how-to-monitor">How to Monitor</h3>
+<p>Monitoring systems interact with the elements being monitored, as shown in the figure below.</p>
+<p><a href="../figure_7.1.png" title="Figure 7.1 Monitoring system interacting with the elements being monitored [Notation: Architecture]"><img alt="Figure 7.1 Monitoring system interacting with the elements being monitored [Notation: Architecture]" src="../figure_7.1.png" /></a></p>
+<p>The system to be monitored can be as broad as a collection of independent applications or services, or as narrow as a single application:</p>
+<ol>
+<li><strong>Agentless monitoring</strong>. If the system is actively contributing to the data being monitored (the arrow labeled "agentless") then the monitoring is intrusive and affects the system design.</li>
+<li><strong>Agent-based monitoring</strong>. If the system is not actively contributing to the data being monitored (the arrow labeled "agent-based") then the monitoring is nonintrusive and does not affect the system design.</li>
+<li><strong>Health checks</strong>. A third source of data is indicted by the arrow labeled "health checks". External systems can also monitor system or application-level states through health checks, performance-related requests, or transaction monitoring</li>
+</ol>
+<p>The data collected either through agents or through agentless means is eventually sent to a central repository ("Monitoring data storage" in <a href="../figure_7.1.png">Figure 7.1</a>). The central repository is typically distributed (logically but not physically central). Each step from the initial collection to the central repository can do filtering and aggregation.</p>
+<p>The considerations in determining the amount of filtering and aggregation are:</p>
+<ul>
+<li>The volume of data being generated,</li>
+<li>The potential failure of local nodes,</li>
+<li>The granularity of the necessary communication.</li>
+</ul>
+<p>Retrieving the data from local nodes is important because the local node may fail and the data become unavailable. Sending all of the data directly to a central repository may introduce congestion to the network. Thus, selecting the intermediate steps from the local nodes to the central repository and the filtering and aggregation done at each step are important architectural decisions when setting up a monitoring framework.</p>
+<p>Once monitoring data is collected, you can do many things:</p>
+<ul>
+<li>Alarms can be configured to trigger alerts that notify operators or other systems about major state changes.</li>
+<li>Graphing and dashboards can be used to visualize system state changes for human operators.</li>
+<li>A monitoring system also allows operators to drill down into detailed monitoring data and logs, which is important for error diagnosis, root cause analysis, and deciding on the best reaction to a problem.</li>
+</ul>
+<h4 id="agent-based-and-agentless-monitoring">Agent-Based and Agentless Monitoring</h4>
+<h4 id="monitoring-operation-activities">Monitoring Operation Activities</h4>
+<h4 id="collection-and-storage">Collection and Storage</h4>
 <h3 id="when-to-change-the-monitoring-configuration">When to Change the Monitoring Configuration</h3>
 <h3 id="interpreting-monitoring-data">Interpreting Monitoring Data</h3>
 <h3 id="challenges">Challenges</h3>
