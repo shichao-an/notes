@@ -71,6 +71,25 @@ Traditionally, Ops is responsible for the overall security of computer systems. 
 
 ### Service Operation Functions
 
+Monitoring is of central importance during operations, as it allows collecting events, detecting incidents, and measuring to determine if SLAs are being fulfilled; it provides the basis for service improvement. SLAs can also be defined and monitored for operations activities,
+
+Monitoring can be combined with some *control* (for example, as done in autoscaling for cloud resources, where an average CPU load among the pool of web servers of 70% triggers a rule to start another web server).
+
+Control can be **open-loop** or **closed-loop**:
+
+* Open-loop control (monitoring feedback is not taken into account) can be used for regular backups at predefined times.
+* In closed-loop control, monitoring information is taken into account when deciding on an action, such as in the autoscaling example.
+
+[p57]
+
 ### Continual Service Improvement
+
+All of the Ops services: the provisioning of hardware and software, IT support functions, specification and monitoring of SLAs, capacity planning, business continuity, and information security—are organizational processes. They should be monitored and evaluated from the perspective of the questions we have identified.
+
+Organizationally, each of these services should have an owner, and the owner of a service is the individual responsible for overseeing its monitoring, evaluation, and improvement.
+
+The figure below depicts the seven-step process for improvement, as suggested by ITIL.
+
+[![FIGURE 3.3 Continual service improvement process (Adapted from ITIL) [Notation: BPMN]](figure_3.3_600.png)](figure_3.3.png "FIGURE 3.3 Continual service improvement process (Adapted from ITIL) [Notation: BPMN]")
 
 ### Operations and DevOps
