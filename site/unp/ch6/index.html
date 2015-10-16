@@ -705,9 +705,12 @@
         
             <li><a href="#after-first-client-terminates-its-connection">After first client terminates its connection *</a></li>
         
-            <li><a href="#summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited)</a></li>
+            <li><a href="#summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited) *</a></li>
         
             <li><a href="#denial-of-service-attacks">Denial-of-Service Attacks</a></li>
+        
+    
+        <li class="main "><a href="#pselect-function">pselect Function</a></li>
         
     
     </ul>
@@ -1167,7 +1170,7 @@
 <h4 id="after-first-client-terminates-its-connection">After first client terminates its connection *</h4>
 <p>Next, we assume the first client terminates its connection. The client TCP sends a FIN, which makes descriptor 4 in the server readable. When our server reads this connected socket, <code>read</code> returns 0. We then close this socket and update our data structures accordingly. The value of <code>client[0]</code> is set to –1 and descriptor 4 in the descriptor set is set to 0. This is shown in the figure below. Notice that the value of <code>maxfd</code> does not change.</p>
 <p><a href="../figure_6.20.png" title="Figure 6.20. Data structures after first client terminates its connection."><img alt="Figure 6.20. Data structures after first client terminates its connection." src="../figure_6.20.png" /></a></p>
-<h4 id="summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited)</h4>
+<h4 id="summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited) *</h4>
 <ul>
 <li>As clients arrive, we record their connected socket descriptor in the first available entry in the client array (the first entry with a value of –1) and also add the connected socket to the read descriptor set.</li>
 <li>The variable <code>maxi</code> is the highest index in the client array that is currently in use and the variable <code>maxfd</code> (plus one) is the current value of the first argument to select.</li>
@@ -1284,7 +1287,7 @@
 </ul>
 <p>This server is more complicated than the earlier version (<a href="../ch5/#tcp-echo-server-main-function">Section 5.2</a> and <a href="../ch5/#tcp-echo-server-str_echo-function">5.3</a>, but it avoids all the overhead of creating a new process for each client and it is a nice example of <code>select</code>. Nevertheless, in <a href="ch16.md#nonblocking-accept">Section 16.6</a>, we will describe a problem with this server that is easily fixed by making the listening socket nonblocking and then checking for, and ignoring, a few errors from <code>accept</code>.</p>
 <h4 id="denial-of-service-attacks">Denial-of-Service Attacks</h4>
-<p>There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call <code>read</code>, which will read the single byte of data from the client and then block in the next call to <code>read</code>, waiting for more data from this client. The server is then blocked ("hung"( by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.</p>
+<p>There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call <code>read</code>, which will read the single byte of data from the client and then block in the next call to <code>read</code>, waiting for more data from this client. The server is then blocked ("hung") by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.</p>
 <p>The basic concept here is that when a server is handling multiple clients, the server can never block in a function call related to a single client. Doing so can hang the server and deny service to all other clients. This is called a <strong>denial-of-service</strong> attack, which prevents the server from servicing other legitimate clients.</p>
 <p>Possible solutions are:</p>
 <ul>
@@ -1292,6 +1295,73 @@
 <li>Have each client serviced by a separate thread of control (either spawn a process or a thread to service each client)</li>
 <li>Place a timeout on the I/O operations</li>
 </ul>
+<h3 id="pselect-function"><code>pselect</code> Function</h3>
+<p>The <code>pselect</code> function was invented by POSIX and is now supported by many of the Unix variants.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/select.h&gt;</span>
+<span class="cp">#include &lt;signal.h&gt;</span>
+<span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pselect</span> <span class="p">(</span><span class="kt">int</span> <span class="n">maxfdp1</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">readset</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">writeset</span><span class="p">,</span> <span class="n">fd_set</span> <span class="o">*</span><span class="n">exceptset</span><span class="p">,</span>
+             <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">timeout</span><span class="p">,</span> <span class="k">const</span> <span class="kt">sigset_t</span> <span class="o">*</span><span class="n">sigmask</span><span class="p">);</span>
+
+<span class="cm">/* Returns: count of ready descriptors, 0 on timeout, –1 on error */</span>
+</pre></div>
+
+
+<p><code>pselect</code> contains two changes from the normal <code>select</code> function:</p>
+<ol>
+<li>
+<p><code>pselect</code> uses the <code>timespec</code> structure (another POSIX invention) instead of the <code>timeval</code> structure. The <code>tv_nsec</code> member of the newer structure specifies nanoseconds, whereas the <code>tv_usec</code> member of the older structure specifies microseconds.</p>
+<div class="codehilite"><pre>struct timespec {
+  time_t tv_sec;       /* seconds */
+  long   tv_nsec;      /* nanoseconds */
+};
+</pre></div>
+
+
+</li>
+<li>
+<p><code>pselect</code> adds a sixth argument: a pointer to a signal mask. This allows the program to disable the delivery of certain signals, test some global variables that are set by the handlers for these now-disabled signals, and then call <code>pselect</code>, telling it to reset the signal mask.</p>
+</li>
+</ol>
+<p>With regard to the second point, consider the following example (discussed on <a href="../../apue/ch10/#example-of-signals-that-synchronize-a-parent-and-child">APUE</a>). Our program's signal handler for <code>SIGINT</code> just sets the global <code>intr_flag</code> and returns. If our process is blocked in a call to <code>select</code>, the return from the signal handler causes the function to return with <code>errno</code> set to <code>EINTR</code>. But when <code>select</code> is called, the code looks like the following:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>
+    <span class="n">handle_intr</span><span class="p">();</span>       <span class="cm">/* handle the signal */</span>
+
+<span class="cm">/* signals occurring in here are lost */</span>
+
+<span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">nready</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span> <span class="p">...</span> <span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>
+            <span class="n">handle_intr</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The problem is that between the test of <code>intr_flag</code> and the call to <code>select</code>, if the signal occurs, it will be lost if <code>select</code> blocks forever.</p>
+<p>With <code>pselect</code>, we can now code this example reliably as:</p>
+<div class="codehilite"><pre><span class="kt">sigset_t</span> <span class="n">newmask</span><span class="p">,</span> <span class="n">oldmask</span><span class="p">,</span> <span class="n">zeromask</span><span class="p">;</span>
+
+<span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">zeromask</span><span class="p">);</span>
+<span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">);</span>
+<span class="n">sigaddset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="n">SIGINT</span><span class="p">);</span>
+
+<span class="n">sigprocmask</span><span class="p">(</span><span class="n">SIG_BLOCK</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">newmask</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">oldmask</span><span class="p">);</span> <span class="cm">/* block SIGINT */</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>
+    <span class="n">handle_intr</span><span class="p">();</span>     <span class="cm">/* handle the signal */</span>
+<span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">nready</span> <span class="o">=</span> <span class="n">pselect</span> <span class="p">(</span> <span class="p">...</span> <span class="p">,</span> <span class="o">&amp;</span><span class="n">zeromask</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EINTR</span><span class="p">)</span>  <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">intr_flag</span><span class="p">)</span>
+            <span class="n">handle_intr</span> <span class="p">();</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Before testing the <code>intr_flag</code> variable, we block <code>SIGINT</code>. When <code>pselect</code> is called, it replaces the signal mask of the process with an empty set (i.e., <code>zeromask</code>) and then checks the descriptors, possibly going to <code>sleep</code>. But when <code>pselect</code> returns, the signal mask of the process is reset to its value before <code>pselect</code> was called (i.e., <code>SIGINT</code> is blocked).</p>
             </div>
         </div>
 
