@@ -503,7 +503,7 @@ Next, we assume the first client terminates its connection. The client TCP sends
 
 [![Figure 6.20. Data structures after first client terminates its connection.](figure_6.20.png)](figure_6.20.png "Figure 6.20. Data structures after first client terminates its connection.")
 
-#### Summary of TCP echo server (revisited)
+#### Summary of TCP echo server (revisited) *
 
 * As clients arrive, we record their connected socket descriptor in the first available entry in the client array (the first entry with a value of –1) and also add the connected socket to the read descriptor set.
 * The variable `maxi` is the highest index in the client array that is currently in use and the variable `maxfd` (plus one) is the current value of the first argument to select.
@@ -617,7 +617,7 @@ This server is more complicated than the earlier version ([Section 5.2](ch5.md#t
 
 #### Denial-of-Service Attacks
 
-There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call `read`, which will read the single byte of data from the client and then block in the next call to `read`, waiting for more data from this client. The server is then blocked ("hung"( by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.
+There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call `read`, which will read the single byte of data from the client and then block in the next call to `read`, waiting for more data from this client. The server is then blocked ("hung") by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.
 
 The basic concept here is that when a server is handling multiple clients, the server can never block in a function call related to a single client. Doing so can hang the server and deny service to all other clients. This is called a **denial-of-service** attack, which prevents the server from servicing other legitimate clients.
 
@@ -626,3 +626,72 @@ Possible solutions are:
 * Use nonblocking I/O ([Chapter 16](ch16.md))
 * Have each client serviced by a separate thread of control (either spawn a process or a thread to service each client)
 * Place a timeout on the I/O operations
+
+### `pselect` Function
+
+The `pselect` function was invented by POSIX and is now supported by many of the Unix variants.
+
+```c
+#include <sys/select.h>
+#include <signal.h>
+#include <time.h>
+
+int pselect (int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
+             const struct timespec *timeout, const sigset_t *sigmask);
+
+/* Returns: count of ready descriptors, 0 on timeout, –1 on error */
+```
+
+`pselect` contains two changes from the normal `select` function:
+
+1. `pselect` uses the `timespec` structure (another POSIX invention) instead of the `timeval` structure. The `tv_nsec` member of the newer structure specifies nanoseconds, whereas the `tv_usec` member of the older structure specifies microseconds.
+
+        struct timespec {
+          time_t tv_sec;       /* seconds */
+          long   tv_nsec;      /* nanoseconds */
+        };
+
+2. `pselect` adds a sixth argument: a pointer to a signal mask. This allows the program to disable the delivery of certain signals, test some global variables that are set by the handlers for these now-disabled signals, and then call `pselect`, telling it to reset the signal mask.
+
+With regard to the second point, consider the following example (discussed on [APUE](../apue/ch10.md#example-of-signals-that-synchronize-a-parent-and-child)). Our program's signal handler for `SIGINT` just sets the global `intr_flag` and returns. If our process is blocked in a call to `select`, the return from the signal handler causes the function to return with `errno` set to `EINTR`. But when `select` is called, the code looks like the following:
+
+```c
+if (intr_flag)
+    handle_intr();       /* handle the signal */
+
+/* signals occurring in here are lost */
+
+if ( (nready = select( ... )) < 0) {
+    if (errno == EINTR) {
+        if (intr_flag)
+            handle_intr();
+    }
+    ...
+}
+```
+
+The problem is that between the test of `intr_flag` and the call to `select`, if the signal occurs, it will be lost if `select` blocks forever.
+
+With `pselect`, we can now code this example reliably as:
+
+```c
+sigset_t newmask, oldmask, zeromask;
+
+sigemptyset(&zeromask);
+sigemptyset(&newmask);
+sigaddset(&newmask, SIGINT);
+
+sigprocmask(SIG_BLOCK, &newmask, &oldmask); /* block SIGINT */
+if (intr_flag)
+    handle_intr();     /* handle the signal */
+if ( (nready = pselect ( ... , &zeromask)) < 0) {
+    if (errno == EINTR)  {
+        if (intr_flag)
+            handle_intr ();
+    }
+    ...
+}
+```
+
+Before testing the `intr_flag` variable, we block `SIGINT`. When `pselect` is called, it replaces the signal mask of the process with an empty set (i.e., `zeromask`) and then checks the descriptors, possibly going to `sleep`. But when `pselect` returns, the signal mask of the process is reset to its value before `pselect` was called (i.e., `SIGINT` is blocked).
+
