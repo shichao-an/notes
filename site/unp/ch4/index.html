@@ -333,6 +333,12 @@
                         </li>
                       
                     
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
                     </ul>
                 </li>
             
@@ -1035,7 +1041,7 @@
 <p>An alternative technique is to run a single server that binds the wildcard address. When a connection arrives, the server calls <code>getsockname</code> to obtain the destination IP address from the client, which in our discussion above could be 198.69.10.128, 198.69.10.129, and so on. The server then handles the client request based on the IP address to which the connection was issued.</p>
 <p>One advantage in binding a non-wildcard IP address is that the demultiplexing of a given destination IP address to a given server process is then done by the kernel.</p>
 <p>We must be careful to distinguish between the interface on which a packet arrives versus the destination IP address of that packet. In <a href="ch8.md#verifying-received-response">Section 8.8</a>, we will talk about the <strong>weak end system model</strong> and the <strong>strong end system model</strong>. Most implementations employ the former, meaning it is okay for a packet to arrive with a destination IP address that identifies an interface other than the interface on which the packet arrives. (This assumes a multihomed host.) Binding a non-wildcard IP address restricts the datagrams that will be delivered to the socket based only on the destination IP address. It says nothing about the arriving interface, unless the host employs the strong end system model.</p>
-<p>A common error from bind is <code>EADDRINUSE</code> ("Address already in use"), which is detailed in <a href="ch7.md#generic-socket-options">Section 7.5</a> when discussing the <code>SO_REUSEADDR</code> and <code>SO_REUSEPORT</code> socket options.</p>
+<p>A common error from bind is <code>EADDRINUSE</code> ("Address already in use"), which is detailed in <a href="../ch7/#generic-socket-options">Section 7.5</a> when discussing the <code>SO_REUSEADDR</code> and <code>SO_REUSEPORT</code> socket options.</p>
 <h3 id="listen-function"><code>listen</code> Function</h3>
 <p>The <code>listen</code> function is called only by a TCP server and it performs two actions:</p>
 <ol>
@@ -1294,7 +1300,7 @@ bind error: Permission denied
 
 
 <p>The default action of <code>close</code> with a TCP socket is to mark the socket as closed and return to the process immediately. The socket descriptor is no longer usable by the process: It cannot be used as an argument to <code>read</code> or <code>write</code>. But, <u>TCP will try to send any data that is already queued to be sent to the other end, and after this occurs, the normal TCP connection termination sequence takes place.</u></p>
-<p><code>SO_LINGER</code> socket option (detailed in <a href="ch7.md#generic-socket-options">Section 7.5</a>) lets us change this default action with a TCP socket.</p>
+<p><code>SO_LINGER</code> socket option (detailed in <a href="../ch7/#generic-socket-options">Section 7.5</a>) lets us change this default action with a TCP socket.</p>
 <h4 id="descriptor-reference-counts">Descriptor Reference Counts</h4>
 <p>As mentioned in <a href="#reference-count-of-sockets">end of Section 4.8</a>, when the parent process in our concurrent server <code>closes</code> the connected socket, this just decrements the reference count for the descriptor. Since the reference count was still greater than 0, this call to close did not initiate TCP's four-packet connection termination sequence. This is the behavior we want with our concurrent server with the connected socket that is shared between the parent and child.</p>
 <p>If we really want to send a FIN on a TCP connection, the <code>shutdown</code> function can be used (<a href="../ch6/#shutdown-function">Section 6.6</a>) instead of <code>close</code>.</p>
