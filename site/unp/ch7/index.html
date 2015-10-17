@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/devops/ch9/">
+        <link rel="canonical" href="https://notes.shichao.io/unp/ch7/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 9. Other Ilities - Shichao's Notes</title>
+	<title>Chapter 7. Socket Options - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -287,55 +287,55 @@
             <!-- Hide pages from the navigation -->
             
             
-                <li class="dropdown">
+                <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                       
                         <li >
-                            <a href="../../unp/">Contents</a>
+                            <a href="../">Contents</a>
                         </li>
                       
                     
                       
                         <li >
-                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                            <a href="../ch1/">Chapter 1. Introduction</a>
                         </li>
                       
                     
                       
                         <li >
-                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                            <a href="../ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
                         </li>
                       
                     
                       
                         <li >
-                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                            <a href="../ch3/">Chapter 3. Sockets Introduction</a>
                         </li>
                       
                     
                       
                         <li >
-                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                            <a href="../ch4/">Chapter 4. Elementary TCP Sockets</a>
                         </li>
                       
                     
                       
                         <li >
-                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                            <a href="../ch5/">Chapter 5. TCP Client/Server Example</a>
                         </li>
                       
                     
                       
                         <li >
-                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                            <a href="../ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
                         </li>
                       
                     
                       
-                        <li >
-                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        <li class="active">
+                            <a href="./">Chapter 7. Socket Options</a>
                         </li>
                       
                     
@@ -625,7 +625,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/devops/ch9.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/unp/ch7.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -643,10 +643,13 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-9-other-ilities">Chapter 9. Other Ilities</a></li>
+        <li class="main active"><a href="#chapter-7-socket-options">Chapter 7. Socket Options</a></li>
         
     
         <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#getsockopt-and-setsockopt-functions">getsockopt and setsockopt Functions</a></li>
         
     
     </ul>
@@ -654,57 +657,23 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-9-other-ilities"><strong>Chapter 9. Other Ilities</strong></h3>
+<h3 id="chapter-7-socket-options"><strong>Chapter 7. Socket Options</strong></h3>
 <h3 id="introduction">Introduction</h3>
-<p>[p181]</p>
-<p>This chapter uses the word DevOps pipeline to represent all aspects of DevOps.</p>
-<p>In software architecture, the word "ility" is used to describe quality concerns other than those that focus on the basic functionalities and their correctness. In terms of DevOps, ilities correspond to questions such as:</p>
+<p>There are various ways to get and set the options that affect a socket:</p>
 <ul>
-<li>How well are these functionalities in your pipeline performing?</li>
-<li>Can you precisely repeat your DevOps operations when needed?</li>
-<li>How much time has passed between a business concept and its final release?</li>
-<li>How can different tools in your pipeline interoperate?</li>
+<li>The <code>getsockopt</code> and <code>setsockopt</code> functions.</li>
+<li>The <code>fcntl</code> function, which is the POSIX way to set a socket for nonblocking I/O, signal-driven I/O, and to set the owner of a socket.</li>
+<li>The <code>ioctl</code> function.</li>
 </ul>
-<p>Previous chapters discuss some major concerns such as monitoring and security. This chapter covers additional concerns. The following table is a list of the ilities and their primary quality concerns:</p>
-<table>
-<thead>
-<tr>
-<th>Ilities</th>
-<th>Quality Concerns</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Repeatability</td>
-<td>The degree to which repeating the same operation is possible</td>
-</tr>
-<tr>
-<td>Performance</td>
-<td>The time and resources required to execute a DevOps operation</td>
-</tr>
-<tr>
-<td>Reliability</td>
-<td>The degree to which the DevOps pipeline and individual pieces of software within it maintain their services for defined periods of time</td>
-</tr>
-<tr>
-<td>Recoverability</td>
-<td>The degree to which a failed DevOps operation can be brought back to a desired state with minimal impacts to the application being operated on</td>
-</tr>
-<tr>
-<td>Interoperability</td>
-<td>The degree to which different DevOps tools can usefully exchange information via interfaces in a particular context</td>
-</tr>
-<tr>
-<td>Testability</td>
-<td>The ease with which the DevOps operation software can be made to demonstrate its faults through testing</td>
-</tr>
-<tr>
-<td>Modifiability</td>
-<td>The amount of effort required to change the DevOps software, processes, or the operation environment of an application</td>
-</tr>
-</tbody>
-</table>
-<p>We focus on the ilities of the DevOps pipeline itself rather than the application the pipeline produces and operates on. There are certainly strong connections between the pipeline and the application. For example, the performance and recoverability of an upgrade operation may have significant impacts on the performance and recoverability of the application being upgraded—but we do not explore these connections here. We consider the ility issues of the DevOps pipeline from two different perspectives: product and process.</p>
+<h3 id="getsockopt-and-setsockopt-functions"><code>getsockopt</code> and <code>setsockopt</code> Functions</h3>
+<p>These two functions apply only to sockets:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/socket.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">getsockopt</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">level</span><span class="p">,</span> <span class="kt">int</span> <span class="n">optname</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">optval</span><span class="p">,</span> <span class="kt">socklen_t</span> <span class="o">*</span><span class="n">optlen</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setsockopt</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">level</span><span class="p">,</span> <span class="kt">int</span> <span class="n">optname</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">optval</span> <span class="kt">socklen_t</span> <span class="n">optlen</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK,–1 on error */</span>
+</pre></div>
             </div>
         </div>
 

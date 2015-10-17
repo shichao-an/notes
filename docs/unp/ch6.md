@@ -180,7 +180,7 @@ int FD_ISSET(int fd, fd_set *fdset); /* is the bit for fd on in fdset ? */
 
 We allocate a descriptor set of the `fd_set` datatype, we set and test the bits in the set using these macros, and we can also assign it to another descriptor set across an equals sign (=) in C.
 
-An array of integers using one bit per descriptor, is just one possible way to implement select. Nevertheless, it is common to refer to the individual descriptors within a descriptor set as bits, as in "turn on the bit for the listening descriptor in the read set."
+An array of integers using one bit per descriptor, is just one possible way to implement `select`. Nevertheless, it is common to refer to the individual descriptors within a descriptor set as bits, as in "turn on the bit for the listening descriptor in the read set."
 
 The following example defines a variable of type `fd_set` and then turn on the bits for descriptors 1, 4, and 5:
 
@@ -212,7 +212,6 @@ The reason the *maxfdp1* argument exists, along with the burden of calculating i
 ##### **Return value of `select`** *
 
 The return value from this function indicates the total number of bits that are ready across all the descriptor sets. If the timer value expires before any of the descriptors are ready, a value of 0 is returned. A return value of –1 indicates an error (which can happen, for example, if the function is interrupted by a caught signal).
-
 
 #### Conditions for a Ready Descriptor
 
@@ -285,7 +284,7 @@ The figure below shows the various conditions that are handled by our call to `s
 
 Three conditions are handled with the socket:
 
-1. If the peer TCP sends data, the socket becomes readable and read `returns` greater than 0 (the number of bytes of data).
+1. If the peer TCP sends data, the socket becomes readable and `read` returns greater than 0 (the number of bytes of data).
 2. If the peer TCP sends a FIN (the peer process terminates), the socket becomes readable and read returns 0 (EOF).
 3. If the peer TCP sends an RST (the peer host has crashed and rebooted), the socket becomes readable, read returns –1, and `errno` contains the specific error code.
 
@@ -606,7 +605,8 @@ The code does the following:
     * The arrival of data on the existing connection.
     * A FIN on the existing connection.
     * A RST on the existing connection.
-* **`accept` new connections**. * If the listening socket is readable, a new connection has been established.
+* **`accept` new connections**.
+    * If the listening socket is readable, a new connection has been established.
     * We call `accept` and update our data structures accordingly. We use the first unused entry in the `client` array to record the connected socket.
     * The number of ready descriptors is decremented, and if it is 0 ([tcpcliserv/tcpservselect01.c#L62](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c#L62)), we can avoid the next `for` loop. This lets us use the return value from `select` to avoid checking descriptors that are not ready.
 * **Check existing connections**.
@@ -695,3 +695,166 @@ if ( (nready = pselect ( ... , &zeromask)) < 0) {
 
 Before testing the `intr_flag` variable, we block `SIGINT`. When `pselect` is called, it replaces the signal mask of the process with an empty set (i.e., `zeromask`) and then checks the descriptors, possibly going to `sleep`. But when `pselect` returns, the signal mask of the process is reset to its value before `pselect` was called (i.e., `SIGINT` is blocked).
 
+
+### `poll` Function
+
+`poll` provides functionality that is similar to `select`, but `poll` provides additional information when dealing with STREAMS devices.
+
+```c
+#include <poll.h>
+
+int poll (struct pollfd *fdarray, unsigned long nfds, int timeout);
+
+/* Returns: count of ready descriptors, 0 on timeout, –1 on error */
+```
+
+Arguments:
+
+The first argument (*fdarray*) is a pointer to the first element of an array of structures. Each element is a `pollfd` structure that specifies the conditions to be tested for a given descriptor, `fd`.
+
+```c
+struct pollfd {
+  int     fd;       /* descriptor to check */
+  short   events;   /* events of interest on fd */
+  short   revents;  /* events that occurred on fd */
+};
+```
+
+The conditions to be tested are specified by the `events` member, and the function returns the status for that descriptor in the corresponding `revents` member. This data structure (having two variables per descriptor, one a value and one a result) avoids value-result arguments (the middle three arguments for `select` are value-result). Each of these two members is composed of one or more bits that specify a certain condition. The following figure shows the constants used to specify the `events` flag and to test the `revents` flag against.
+
+[![Figure 6.23. Input events and returned revents for poll.](figure_6.23.png)](figure_6.23.png "Figure 6.23. Input events and returned revents for poll.")
+
+The first four constants deal with input, the next three deal with output, and the final three deal with errors. The final three cannot be set in `events`, but are always returned in `revents` when the corresponding condition exists.
+
+With regard to TCP and UDP sockets, the following conditions cause `poll` to return the specified `revent`. Unfortunately, POSIX leaves many holes (optional ways to return the same condition) in its definition of `poll`.
+
+* All regular TCP data and all UDP data is considered normal.
+* TCP's out-of-band data is considered priority band.
+* When the read half of a TCP connection is closed (e.g., a FIN is received), this is also considered normal data and a subsequent read operation will return 0.
+* The presence of an error for a TCP connection can be considered either normal data or an error (`POLLERR`). In either case, a subsequent `read` will return –1 with `errno` set to the appropriate value. This handles conditions such as the receipt of an RST or a timeout.
+* The availability of a new connection on a listening socket can be considered either normal data or priority data. Most implementations consider this normal data.
+* The completion of a nonblocking `connect` is considered to make a socket writable.
+
+The number of elements in the array of structures is specified by the *nfds* argument.
+
+The *timeout* argument specifies how long the function is to wait before returning. A positive value specifies the number of milliseconds to wait. The constant `INFTIM` (wait forever) is defined to be a negative value.
+
+Return values from `poll`:
+
+* –1 if an error occurred
+* 0 if no descriptors are ready before the timer expires
+* Otherwise, it is the number of descriptors that have a nonzero `revents` member.
+
+If we are no longer interested in a particular descriptor, we just set the `fd` member of the `pollfd` structure to a negative value. Then the events member is ignored and the `revents` member is set to 0 on return.
+
+### TCP Echo Server (Revisited Again)
+
+This section is discusses the TCP echo server from [Section 6.8](#tcp-echo-server-revisited) using `poll` instead of `select`.
+
+In the `select` version we allocate a `client` array along with a descriptor set named `rset` ([tcpcliserv/tcpservselect01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c)). With `poll`, we must allocate an array of `pollfd` structures to maintain the client information instead of allocating another array. We handle the `fd` member of this array the same way we handled the `client` array in the `selection` version: a value of –1 means the entry is not in use; otherwise, it is the descriptor value. Any entry in the array of `pollfd` structures passed to `poll` with a negative value for the `fd` member is just ignored.
+
+<small>[tcpcliserv/tcpservpoll01.c](https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservpoll01.c)</small>
+
+```c
+/* include fig01 */
+#include	"unp.h"
+#include	<limits.h>		/* for OPEN_MAX */
+
+int
+main(int argc, char **argv)
+{
+	int					i, maxi, listenfd, connfd, sockfd;
+	int					nready;
+	ssize_t				n;
+	char				buf[MAXLINE];
+	socklen_t			clilen;
+	struct pollfd		client[OPEN_MAX];
+	struct sockaddr_in	cliaddr, servaddr;
+
+	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port        = htons(SERV_PORT);
+
+	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
+
+	Listen(listenfd, LISTENQ);
+
+	client[0].fd = listenfd;
+	client[0].events = POLLRDNORM;
+	for (i = 1; i < OPEN_MAX; i++)
+		client[i].fd = -1;		/* -1 indicates available entry */
+	maxi = 0;					/* max index into client[] array */
+/* end fig01 */
+
+/* include fig02 */
+	for ( ; ; ) {
+		nready = Poll(client, maxi+1, INFTIM);
+
+		if (client[0].revents & POLLRDNORM) {	/* new client connection */
+			clilen = sizeof(cliaddr);
+			connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
+#ifdef	NOTDEF
+			printf("new client: %s\n", Sock_ntop((SA *) &cliaddr, clilen));
+#endif
+
+			for (i = 1; i < OPEN_MAX; i++)
+				if (client[i].fd < 0) {
+					client[i].fd = connfd;	/* save descriptor */
+					break;
+				}
+			if (i == OPEN_MAX)
+				err_quit("too many clients");
+
+			client[i].events = POLLRDNORM;
+			if (i > maxi)
+				maxi = i;				/* max index in client[] array */
+
+			if (--nready <= 0)
+				continue;				/* no more readable descriptors */
+		}
+
+		for (i = 1; i <= maxi; i++) {	/* check all clients for data */
+			if ( (sockfd = client[i].fd) < 0)
+				continue;
+			if (client[i].revents & (POLLRDNORM | POLLERR)) {
+				if ( (n = read(sockfd, buf, MAXLINE)) < 0) {
+					if (errno == ECONNRESET) {
+							/* connection reset by client */
+#ifdef	NOTDEF
+						printf("client[%d] aborted connection\n", i);
+#endif
+						Close(sockfd);
+						client[i].fd = -1;
+					} else
+						err_sys("read error");
+				} else if (n == 0) {
+						/* connection closed by client */
+#ifdef	NOTDEF
+					printf("client[%d] closed connection\n", i);
+#endif
+					Close(sockfd);
+					client[i].fd = -1;
+				} else
+					Writen(sockfd, buf, n);
+
+				if (--nready <= 0)
+					break;				/* no more readable descriptors */
+			}
+		}
+	}
+}
+/* end fig02 */
+```
+
+This code does the following:
+
+* **Allocate array of `pollfd` structures.** We declare `OPEN_MAX` elements in our array of `pollfd` structures. Determining the maximum number of descriptors that a process can have open at any one time is difficult. One way is to call the POSIX sysconf function with an argument of `_SC_OPEN_MAX` (as described in APUE) and then dynamically allocate an array of the appropriate size.
+* **Initialize.** We use the first entry in the `client` array for the listening socket and set the descriptor for the remaining entries to –1. We also set the `POLLRDNORM` event for this descriptor, to be notified by `poll` when a new connection is ready to be accepted. The variable `maxi` contains the largest index of the `client` array currently in use.
+* **Call `poll`, check for new connection.** We call `poll` to wait for either a new connection or data on existing connection.
+    * When a new connection is accepted, we find the first available entry in the client array by looking for the first one with a negative descriptor.
+    * We start the search with the index of 1, since `client[0]` is used for the listening socket.
+    * When an available entry is found, we save the descriptor and set the `POLLRDNORM` event.
+* **Check for data on an existing connection.** The two return events that we check for are `POLLRDNORM` and `POLLERR`. We did not set `POLLERR` in the events member because it is always returned when the condition is true. The reason we check for `POLLERR` is because some implementations return this event when an RST is received for a connection, while others just return `POLLRDNORM`. In either case, we call `read` and if an error has occurred, it will return an error. When an existing connection is terminated by the client, we just set the `fd` member to –1.
