@@ -333,6 +333,12 @@
                         </li>
                       
                     
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
                     </ul>
                 </li>
             
@@ -713,6 +719,12 @@
         <li class="main "><a href="#pselect-function">pselect Function</a></li>
         
     
+        <li class="main "><a href="#poll-function">poll Function</a></li>
+        
+    
+        <li class="main "><a href="#tcp-echo-server-revisited-again">TCP Echo Server (Revisited Again)</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -866,7 +878,7 @@
 
 
 <p>We allocate a descriptor set of the <code>fd_set</code> datatype, we set and test the bits in the set using these macros, and we can also assign it to another descriptor set across an equals sign (=) in C.</p>
-<p>An array of integers using one bit per descriptor, is just one possible way to implement select. Nevertheless, it is common to refer to the individual descriptors within a descriptor set as bits, as in "turn on the bit for the listening descriptor in the read set."</p>
+<p>An array of integers using one bit per descriptor, is just one possible way to implement <code>select</code>. Nevertheless, it is common to refer to the individual descriptors within a descriptor set as bits, as in "turn on the bit for the listening descriptor in the read set."</p>
 <p>The following example defines a variable of type <code>fd_set</code> and then turn on the bits for descriptors 1, 4, and 5:</p>
 <div class="codehilite"><pre><span class="n">fd_set</span> <span class="n">rset</span><span class="p">;</span>
 
@@ -992,7 +1004,7 @@
 <p><a href="../figure_6.8.png" title="Figure 6.8. Conditions handled by select in str_cli."><img alt="Figure 6.8. Conditions handled by select in str_cli." src="../figure_6.8.png" /></a></p>
 <p>Three conditions are handled with the socket:</p>
 <ol>
-<li>If the peer TCP sends data, the socket becomes readable and read <code>returns</code> greater than 0 (the number of bytes of data).</li>
+<li>If the peer TCP sends data, the socket becomes readable and <code>read</code> returns greater than 0 (the number of bytes of data).</li>
 <li>If the peer TCP sends a FIN (the peer process terminates), the socket becomes readable and read returns 0 (EOF).</li>
 <li>If the peer TCP sends an RST (the peer host has crashed and rebooted), the socket becomes readable, read returns –1, and <code>errno</code> contains the specific error code.</li>
 </ol>
@@ -1274,7 +1286,8 @@
 <li>A RST on the existing connection.</li>
 </ul>
 </li>
-<li><strong><code>accept</code> new connections</strong>. * If the listening socket is readable, a new connection has been established.<ul>
+<li><strong><code>accept</code> new connections</strong>.<ul>
+<li>If the listening socket is readable, a new connection has been established.</li>
 <li>We call <code>accept</code> and update our data structures accordingly. We use the first unused entry in the <code>client</code> array to record the connected socket.</li>
 <li>The number of ready descriptors is decremented, and if it is 0 (<a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c#L62">tcpcliserv/tcpservselect01.c#L62</a>), we can avoid the next <code>for</code> loop. This lets us use the return value from <code>select</code> to avoid checking descriptors that are not ready.</li>
 </ul>
@@ -1362,6 +1375,157 @@
 
 
 <p>Before testing the <code>intr_flag</code> variable, we block <code>SIGINT</code>. When <code>pselect</code> is called, it replaces the signal mask of the process with an empty set (i.e., <code>zeromask</code>) and then checks the descriptors, possibly going to <code>sleep</code>. But when <code>pselect</code> returns, the signal mask of the process is reset to its value before <code>pselect</code> was called (i.e., <code>SIGINT</code> is blocked).</p>
+<h3 id="poll-function"><code>poll</code> Function</h3>
+<p><code>poll</code> provides functionality that is similar to <code>select</code>, but <code>poll</code> provides additional information when dealing with STREAMS devices.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;poll.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">poll</span> <span class="p">(</span><span class="k">struct</span> <span class="n">pollfd</span> <span class="o">*</span><span class="n">fdarray</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">nfds</span><span class="p">,</span> <span class="kt">int</span> <span class="n">timeout</span><span class="p">);</span>
+
+<span class="cm">/* Returns: count of ready descriptors, 0 on timeout, –1 on error */</span>
+</pre></div>
+
+
+<p>Arguments:</p>
+<p>The first argument (<em>fdarray</em>) is a pointer to the first element of an array of structures. Each element is a <code>pollfd</code> structure that specifies the conditions to be tested for a given descriptor, <code>fd</code>.</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">pollfd</span> <span class="p">{</span>
+  <span class="kt">int</span>     <span class="n">fd</span><span class="p">;</span>       <span class="cm">/* descriptor to check */</span>
+  <span class="kt">short</span>   <span class="n">events</span><span class="p">;</span>   <span class="cm">/* events of interest on fd */</span>
+  <span class="kt">short</span>   <span class="n">revents</span><span class="p">;</span>  <span class="cm">/* events that occurred on fd */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The conditions to be tested are specified by the <code>events</code> member, and the function returns the status for that descriptor in the corresponding <code>revents</code> member. This data structure (having two variables per descriptor, one a value and one a result) avoids value-result arguments (the middle three arguments for <code>select</code> are value-result). Each of these two members is composed of one or more bits that specify a certain condition. The following figure shows the constants used to specify the <code>events</code> flag and to test the <code>revents</code> flag against.</p>
+<p><a href="../figure_6.23.png" title="Figure 6.23. Input events and returned revents for poll."><img alt="Figure 6.23. Input events and returned revents for poll." src="../figure_6.23.png" /></a></p>
+<p>The first four constants deal with input, the next three deal with output, and the final three deal with errors. The final three cannot be set in <code>events</code>, but are always returned in <code>revents</code> when the corresponding condition exists.</p>
+<p>With regard to TCP and UDP sockets, the following conditions cause <code>poll</code> to return the specified <code>revent</code>. Unfortunately, POSIX leaves many holes (optional ways to return the same condition) in its definition of <code>poll</code>.</p>
+<ul>
+<li>All regular TCP data and all UDP data is considered normal.</li>
+<li>TCP's out-of-band data is considered priority band.</li>
+<li>When the read half of a TCP connection is closed (e.g., a FIN is received), this is also considered normal data and a subsequent read operation will return 0.</li>
+<li>The presence of an error for a TCP connection can be considered either normal data or an error (<code>POLLERR</code>). In either case, a subsequent <code>read</code> will return –1 with <code>errno</code> set to the appropriate value. This handles conditions such as the receipt of an RST or a timeout.</li>
+<li>The availability of a new connection on a listening socket can be considered either normal data or priority data. Most implementations consider this normal data.</li>
+<li>The completion of a nonblocking <code>connect</code> is considered to make a socket writable.</li>
+</ul>
+<p>The number of elements in the array of structures is specified by the <em>nfds</em> argument.</p>
+<p>The <em>timeout</em> argument specifies how long the function is to wait before returning. A positive value specifies the number of milliseconds to wait. The constant <code>INFTIM</code> (wait forever) is defined to be a negative value.</p>
+<p>Return values from <code>poll</code>:</p>
+<ul>
+<li>–1 if an error occurred</li>
+<li>0 if no descriptors are ready before the timer expires</li>
+<li>Otherwise, it is the number of descriptors that have a nonzero <code>revents</code> member.</li>
+</ul>
+<p>If we are no longer interested in a particular descriptor, we just set the <code>fd</code> member of the <code>pollfd</code> structure to a negative value. Then the events member is ignored and the <code>revents</code> member is set to 0 on return.</p>
+<h3 id="tcp-echo-server-revisited-again">TCP Echo Server (Revisited Again)</h3>
+<p>This section is discusses the TCP echo server from <a href="#tcp-echo-server-revisited">Section 6.8</a> using <code>poll</code> instead of <code>select</code>.</p>
+<p>In the <code>select</code> version we allocate a <code>client</code> array along with a descriptor set named <code>rset</code> (<a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c">tcpcliserv/tcpservselect01.c</a>). With <code>poll</code>, we must allocate an array of <code>pollfd</code> structures to maintain the client information instead of allocating another array. We handle the <code>fd</code> member of this array the same way we handled the <code>client</code> array in the <code>selection</code> version: a value of –1 means the entry is not in use; otherwise, it is the descriptor value. Any entry in the array of <code>pollfd</code> structures passed to <code>poll</code> with a negative value for the <code>fd</code> member is just ignored.</p>
+<p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservpoll01.c">tcpcliserv/tcpservpoll01.c</a></small></p>
+<div class="codehilite"><pre><span class="cm">/* include fig01 */</span>
+<span class="cp">#include    &quot;unp.h&quot;</span>
+<span class="cp">#include    &lt;limits.h&gt;      </span><span class="cm">/* for OPEN_MAX */</span><span class="cp"></span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>                 <span class="n">i</span><span class="p">,</span> <span class="n">maxi</span><span class="p">,</span> <span class="n">listenfd</span><span class="p">,</span> <span class="n">connfd</span><span class="p">,</span> <span class="n">sockfd</span><span class="p">;</span>
+    <span class="kt">int</span>                 <span class="n">nready</span><span class="p">;</span>
+    <span class="kt">ssize_t</span>             <span class="n">n</span><span class="p">;</span>
+    <span class="kt">char</span>                <span class="n">buf</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">socklen_t</span>           <span class="n">clilen</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">pollfd</span>       <span class="n">client</span><span class="p">[</span><span class="n">OPEN_MAX</span><span class="p">];</span>
+    <span class="k">struct</span> <span class="n">sockaddr_in</span>  <span class="n">cliaddr</span><span class="p">,</span> <span class="n">servaddr</span><span class="p">;</span>
+
+    <span class="n">listenfd</span> <span class="o">=</span> <span class="n">Socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">bzero</span><span class="p">(</span><span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_family</span>      <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">htonl</span><span class="p">(</span><span class="n">INADDR_ANY</span><span class="p">);</span>
+    <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_port</span>        <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="n">SERV_PORT</span><span class="p">);</span>
+
+    <span class="n">Bind</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">servaddr</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">servaddr</span><span class="p">));</span>
+
+    <span class="n">Listen</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="n">LISTENQ</span><span class="p">);</span>
+
+    <span class="n">client</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">fd</span> <span class="o">=</span> <span class="n">listenfd</span><span class="p">;</span>
+    <span class="n">client</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">events</span> <span class="o">=</span> <span class="n">POLLRDNORM</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">OPEN_MAX</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">fd</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>      <span class="cm">/* -1 indicates available entry */</span>
+    <span class="n">maxi</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>                   <span class="cm">/* max index into client[] array */</span>
+<span class="cm">/* end fig01 */</span>
+
+<span class="cm">/* include fig02 */</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">nready</span> <span class="o">=</span> <span class="n">Poll</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">maxi</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFTIM</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">client</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">revents</span> <span class="o">&amp;</span> <span class="n">POLLRDNORM</span><span class="p">)</span> <span class="p">{</span>   <span class="cm">/* new client connection */</span>
+            <span class="n">clilen</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cliaddr</span><span class="p">);</span>
+            <span class="n">connfd</span> <span class="o">=</span> <span class="n">Accept</span><span class="p">(</span><span class="n">listenfd</span><span class="p">,</span> <span class="p">(</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">clilen</span><span class="p">);</span>
+<span class="cp">#ifdef  NOTDEF</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;new client: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">Sock_ntop</span><span class="p">((</span><span class="n">SA</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">cliaddr</span><span class="p">,</span> <span class="n">clilen</span><span class="p">));</span>
+<span class="cp">#endif</span>
+
+            <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">OPEN_MAX</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">fd</span> <span class="o">=</span> <span class="n">connfd</span><span class="p">;</span>  <span class="cm">/* save descriptor */</span>
+                    <span class="k">break</span><span class="p">;</span>
+                <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">OPEN_MAX</span><span class="p">)</span>
+                <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;too many clients&quot;</span><span class="p">);</span>
+
+            <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">events</span> <span class="o">=</span> <span class="n">POLLRDNORM</span><span class="p">;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;</span> <span class="n">maxi</span><span class="p">)</span>
+                <span class="n">maxi</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>               <span class="cm">/* max index in client[] array */</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">nready</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">continue</span><span class="p">;</span>               <span class="cm">/* no more readable descriptors */</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">maxi</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>   <span class="cm">/* check all clients for data */</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">sockfd</span> <span class="o">=</span> <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">fd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">continue</span><span class="p">;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">revents</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">POLLRDNORM</span> <span class="o">|</span> <span class="n">POLLERR</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">ECONNRESET</span><span class="p">)</span> <span class="p">{</span>
+                            <span class="cm">/* connection reset by client */</span>
+<span class="cp">#ifdef  NOTDEF</span>
+                        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;client[%d] aborted connection</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+<span class="cp">#endif</span>
+                        <span class="n">Close</span><span class="p">(</span><span class="n">sockfd</span><span class="p">);</span>
+                        <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">fd</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+                    <span class="p">}</span> <span class="k">else</span>
+                        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error&quot;</span><span class="p">);</span>
+                <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="cm">/* connection closed by client */</span>
+<span class="cp">#ifdef  NOTDEF</span>
+                    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;client[%d] closed connection</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+<span class="cp">#endif</span>
+                    <span class="n">Close</span><span class="p">(</span><span class="n">sockfd</span><span class="p">);</span>
+                    <span class="n">client</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">fd</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+                <span class="p">}</span> <span class="k">else</span>
+                    <span class="n">Writen</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">nready</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="k">break</span><span class="p">;</span>              <span class="cm">/* no more readable descriptors */</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="cm">/* end fig02 */</span>
+</pre></div>
+
+
+<p>This code does the following:</p>
+<ul>
+<li><strong>Allocate array of <code>pollfd</code> structures.</strong> We declare <code>OPEN_MAX</code> elements in our array of <code>pollfd</code> structures. Determining the maximum number of descriptors that a process can have open at any one time is difficult. One way is to call the POSIX sysconf function with an argument of <code>_SC_OPEN_MAX</code> (as described in APUE) and then dynamically allocate an array of the appropriate size.</li>
+<li><strong>Initialize.</strong> We use the first entry in the <code>client</code> array for the listening socket and set the descriptor for the remaining entries to –1. We also set the <code>POLLRDNORM</code> event for this descriptor, to be notified by <code>poll</code> when a new connection is ready to be accepted. The variable <code>maxi</code> contains the largest index of the <code>client</code> array currently in use.</li>
+<li><strong>Call <code>poll</code>, check for new connection.</strong> We call <code>poll</code> to wait for either a new connection or data on existing connection.<ul>
+<li>When a new connection is accepted, we find the first available entry in the client array by looking for the first one with a negative descriptor.</li>
+<li>We start the search with the index of 1, since <code>client[0]</code> is used for the listening socket.</li>
+<li>When an available entry is found, we save the descriptor and set the <code>POLLRDNORM</code> event.</li>
+</ul>
+</li>
+<li><strong>Check for data on an existing connection.</strong> The two return events that we check for are <code>POLLRDNORM</code> and <code>POLLERR</code>. We did not set <code>POLLERR</code> in the events member because it is always returned when the condition is true. The reason we check for <code>POLLERR</code> is because some implementations return this event when an RST is received for a connection, while others just return <code>POLLRDNORM</code>. In either case, we call <code>read</code> and if an error has occurred, it will return an error. When an existing connection is terminated by the client, we just set the <code>fd</code> member to –1.</li>
+</ul>
             </div>
         </div>
 
