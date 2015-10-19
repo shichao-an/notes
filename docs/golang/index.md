@@ -1,5 +1,106 @@
 ### **Go**
 
+### How to Write Go Code
+
+* [How to Write Go Code](https://golang.org/doc/code.html)
+
+### Basic constructs and elementary data types
+
+#### Filenames, Keywords and Identifiers
+
+* **Filenames** consist of lowercase-letters (that may separated by underscores _), like `scanner.go` and `scanner_test.go`.  Filenames may not contain spaces or any other special characters.
+* **Identifiers** begin with a letter (a **letter** is every letter in Unicode UTF-8 or _) and followed by 0 or more letters or Unicode digits, like: `X56`, `group1`, `_x23`, `i`, `өԑ12`.
+    * The `_` itself is a special identifier, called the **blank identifier**. It can be used in declarations or variable assignments like any other identifier (and any type can be assigned to it), but its value is discarded, so it cannot be used anymore in the code that follows.
+* **Keywords** or reserved words are: `break`, `default`, `func`, `interface`, `select`, `case`, `defer`, `go`, `map`, `struct`, `chan`, `else`, `goto`, `package`, `switch`, `const`, `fallthrough`, `if`, `range`, `type`, `continue`, `for`, `import`, `return`, `var`.
+* **Predeclared identifiers** (names of elementary types and some basic built-in functions): `append`, `bool`, `byte`, `cap`, `close`, `complex`, `complex64`, `complex128`, `uint16`, `copy`, `false`, `float32`, `float64`, `imag`, `int`, `int8`, `int16`, `uint32`, `int32`, `int64`, `iota`, `len`, `make`, `new`, `nil`, `panic`, `uint64`, `print`, `println`, `real`, `recover`, `string`, `true`, `uint`, `uint8`, `uintptr`,
+* Programs consist out of keywords, constants, variables, operators, types and functions.
+* Delimiters: parentheses `( )`, brackets `[ ]` and braces `{ }`.
+* Punctuation characters: `.`, `;`, `...`.
+* Code is structured in **statements**. A statement doesn’t need to end with a `;`. The Go compiler automatically inserts semicolons at the end of statements. However, if multiple statements are written on one line (which is not encouraged for readability reasons), they must be separated by `;`.
+
+#### Packages, import and visibility
+
+[hello_world.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_4/hello_world.go)
+
+Every go file belongs to one and only one **package** (like a library or namespace in other languages). Many different .go files can belong to one package, so the filename(s) and package name are generally not the same.
+
+* The package to which the code-file belongs must be indicated on the first line, e.g. `package main`.
+* A standalone executable belongs to package `main` and each Go application contains one package `main`.
+* A package name is written in lowercase letters.
+
+An application can consist of different packages. Even if you use only package `main`, you don’t have to stuff all code in one big file: you can make a number of smaller files each having `package main` as the first codeline. If you compile a source file with a package name other than `main`, like `pack1`, the object file is stored in `pack1.a`.
+
+The [standard library](https://golang.org/pkg/#stdlib) contains ready-to-use packages of the Go installation.
+
+##### **Package compilation**
+
+* To build a program, the packages, and the files within them, must be compiled in the correct order.  Package dependencies determine the order in which to build packages.
+* Within a package, the source files must all be compiled together. The package is compiled as a unit, and by convention each directory contains one package.
+* If a package is changed and recompiled, all the client programs that use this package must be recompiled.
+* The package model uses **explicit dependencies** to enable faster builds. [p52]
+
+##### **Import**
+
+A Go program is created by linking together a set of packages through the `import` keyword. For example, `import "fmt"` tells Go that this program needs (functions, or other elements, from) the package `fmt`.
+
+* The package names are enclosed within ""
+* Import loads the public declarations from the compiled package; it does not insert the source code.
+
+If multiple packages are needed, they can each be imported by a separate statement:
+
+```go
+import "fmt"
+import "os"
+```
+
+The shorter and more elegant way (called *factoring the keyword*, also applicable to `const`, `var` and `type`) is available (<u>it is also clearer to list the package names in alphabetical order</u>):
+
+```go
+import (
+	"fmt"
+	"os"
+)
+```
+
+* If the name of a package does not start with . or /, like "fmt" or "container/list", Go looks for it in the global Go tree.
+* If it starts with ./ the package is searched in the actual directory
+* If it starts with /, the package is searched for in the (absolute) path indicated.
+
+Apart from `_`, identifiers of code-objects have to be unique in a package: there can be no naming conflicts. But the same identifier can be used in different packages: the package name qualifies it to be different.
+
+##### **Visibility rule**
+
+Packages expose their code-objects to code outside of the package according to the following rule:
+
+* When the identifier (of a constant, variable, type, function, struct field, etc.) starts with an uppercase letter, like `Group1`, then the "object" with this identifier is visible in code outside the package (thus available to client-programs, "importers" of the package), it is said to be exported (like public in OO languages).
+* Identifiers which start with a lowercase letter are not visible outside the package, but they are visible and usable in the whole package (like private).
+
+Some notes on this rule:
+
+* Uppercase letters can come from the entire Unicode-range, like Greek; not only ASCII letters are allowed.
+* Importing a package gives (only) access to the exported objects in that package.
+* Packages also serve as namespaces and can help to avoid name-clashes (name-conflicts): variables with the same name in two packages are differentiated by their package name. For example, `pack1.Thing` and `pack2.Thing`.
+
+A package can also be given another name (an **alias**), for example:
+
+```go
+package main
+
+import fm "fmt"  // alias
+
+func main() {
+	fm.Println("hello, world")
+}
+```
+
+Importing a package which is not used in the rest of the code is a build-error.
+
+##### **Package level declarations and initializations**
+
+After the import statement, zero or more constants (`const`), variables (`var)`, and types (`type`) can be declared; these are *global* (have package scope) and are known in all functions in the code (like `c` and `v` in [gotemplate.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_4/gotemplate.go) below), and they are followed by one or more functions (`func`).
+
+* [gotemplate.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_4/gotemplate.go)
+
 ### Structs
 #### Visibility
 
@@ -195,5 +296,6 @@ Example:
 ### References
 
 * [TWTG] *The Way To Go: A Thorough Introduction To The Go Programming Language*
+* [DOC] [Documentation](https://golang.org/doc/)
 * [EG] [Effective Go](https://golang.org/doc/effective_go.html)
 * [TGB] [The Go Blog](https://blog.golang.org/)
