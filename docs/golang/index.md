@@ -101,6 +101,47 @@ After the import statement, zero or more constants (`const`), variables (`var)`,
 
 * [gotemplate.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_4/gotemplate.go)
 
+#### Functions
+
+The simplest function declaration has the format:
+
+```go
+func functionName()
+```
+
+A `main` function as starting is required. The `main` function must have no arguments and no return values results.
+
+When the program executes, after initializations the first function called (the entry-point of the application) will be `main.main()`. The program exits immediately and successfully when `main.main` returns.
+
+The code in functions (the body) is enclosed between braces: `{ }`.
+
+* The first `{` must be on the same line as the function declaration: this is imposed by the compiler and `gofmt`.
+* The last `}` is positioned after the function code beneath function.
+* For small functions it is allowed that everything is written on one line, like for example: `func Sum(a, b int) int { return a + b }`.
+* The same rule applies wherever `{ }` are used (for example: `if`, etc.).
+
+Schematically, a general function looks like:
+
+```go
+func functionName(param1 type1, param2 type2, ...) (ret1 type1, ret2 type2, ...) {
+	// ...
+}
+```
+
+##### **Function names**
+
+* `PascalCasing` (exported): function names only start with a capital letter when the function has to be used outside the package.
+* `camelCasing` (private): every new word in the name starts with a capital letter.
+
+##### **Printing**
+
+* The line `fmt.Println("hello, world")` calls the function `Println` from the package `fmt`, which prints the string-parameter to the console, followed by a newline-character `\n`.
+* The same result can be obtained with `fmt.Print("hello, world\n")`.
+* `Print` and `Println` can also be applied to variables, like in: `fmt.Println(arr)`; they use the default output-format for the variable `arr`.
+* Printing a string or a variable can be done even simpler with the predefined functions `print` and `println`: print("ABC") or println("ABC") or (with a variable i): println(i)
+
+
+
 ### Structs
 #### Visibility
 
