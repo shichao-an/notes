@@ -657,6 +657,12 @@
         
             <li><a href="#functions">Functions</a></li>
         
+            <li><a href="#comments">Comments</a></li>
+        
+            <li><a href="#types">Types</a></li>
+        
+            <li><a href="#program-structure">Program structure</a></li>
+        
     
         <li class="main "><a href="#structs">Structs</a></li>
         
@@ -757,7 +763,7 @@
 <li>To build a program, the packages, and the files within them, must be compiled in the correct order.  Package dependencies determine the order in which to build packages.</li>
 <li>Within a package, the source files must all be compiled together. The package is compiled as a unit, and by convention each directory contains one package.</li>
 <li>If a package is changed and recompiled, all the client programs that use this package must be recompiled.</li>
-<li>The package model uses <strong>explicit dependencies</strong> to enable faster builds. [p52]</li>
+<li>The package model uses <strong>explicit dependencies</strong> to enable faster builds. [TWTG p52]</li>
 </ul>
 <h5 id="import"><strong>Import</strong></h5>
 <p>A Go program is created by linking together a set of packages through the <code>import</code> keyword. For example, <code>import "fmt"</code> tells Go that this program needs (functions, or other elements, from) the package <code>fmt</code>.</p>
@@ -842,12 +848,67 @@
 <li><code>camelCasing</code> (private): every new word in the name starts with a capital letter.</li>
 </ul>
 <h5 id="printing"><strong>Printing</strong></h5>
+<p><strong><code>fmt.Print</code> and <code>fmt.Println</code></strong></p>
 <ul>
 <li>The line <code>fmt.Println("hello, world")</code> calls the function <code>Println</code> from the package <code>fmt</code>, which prints the string-parameter to the console, followed by a newline-character <code>\n</code>.</li>
 <li>The same result can be obtained with <code>fmt.Print("hello, world\n")</code>.</li>
 <li><code>Print</code> and <code>Println</code> can also be applied to variables, like in: <code>fmt.Println(arr)</code>; they use the default output-format for the variable <code>arr</code>.</li>
-<li>Printing a string or a variable can be done even simpler with the predefined functions <code>print</code> and <code>println</code>: print("ABC") or println("ABC") or (with a variable i): println(i)</li>
 </ul>
+<p><strong><code>print</code> and <code>println</code></strong></p>
+<p>Printing a string or a variable can be done even simpler with the predefined functions <code>print</code> and <code>println</code>. For example,</p>
+<div class="codehilite"><pre><span class="nb">print</span><span class="p">(</span><span class="s">&quot;ABC&quot;</span><span class="p">)</span>
+<span class="nb">println</span><span class="p">(</span><span class="s">&quot;ABC&quot;</span><span class="p">)</span>
+<span class="nb">println</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+</pre></div>
+
+
+<p>These are only to be used in the debugging phase; when deploying a program replace them with their <code>fmt</code> relatives.</p>
+<h4 id="comments">Comments</h4>
+<p>Comments are not compiled. They are used by <a href="https://godoc.org/golang.org/x/tools/cmd/godoc">godoc</a>.</p>
+<ul>
+<li>A one-line comment starts with <code>//</code>, at the beginning or somewhere in a line; this is mostly used.</li>
+<li>A multi-line or block-comment starts with <code>/*</code> and ends with <code>*/</code>, nesting is not allowed; this is used for making package documentation and commenting out code.</li>
+</ul>
+<p>[TWTG p56]</p>
+<p>Every package should have a package comment, a block comment immediately preceding the package statement. A package can be spread over many files, but the comment needs to be in only one of them. This comment is shown when a developer demands info of the package with <code>godoc</code>.</p>
+<h4 id="types">Types</h4>
+<p>A declaration of a variable with <code>var</code> automatically initializes it to the zero-value defined for its type. A type defines the set of values and the set of operations that can take place on those values.</p>
+<p>Types can be:</p>
+<ul>
+<li><strong>Elementary</strong> (or <strong>primitive</strong>): int, float, bool, string,</li>
+<li><strong>Structured</strong> (or <strong>composite</strong>): struct, array, slice, map, channel,</li>
+<li><strong>Interfaces</strong> only describe the behavior of a type.</li>
+</ul>
+<p>A structured type which has no real value (yet) has the value <code>nil</code>, which is also the default value for these types (in C anc C++ it is NULL).</p>
+<p>Use the keyword <code>type</code> for defining your own type (usually a struct type). It is also possible to define an <strong>alias</strong> for an existing type, for example:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="p">(</span>
+    <span class="nx">IZ</span> <span class="kt">int</span>
+    <span class="nx">FZ</span> <span class="kt">float</span>
+    <span class="nx">STR</span> <span class="kt">string</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<h4 id="program-structure">Program structure</h4>
+<p><a href="https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_4/gotemplate.go">gotemplate.go</a> is an example of the general structure of a Go program. This structure is not necessary, the compiler does not mind if <code>main()</code> or the variable declarations come last, but a uniform structure makes Go code better readable from top to bottom:</p>
+<ul>
+<li>After import: declare constants, variables and the types</li>
+<li>Then comes the <code>init()</code> function if there is any: this is a special function that every package can contain and that is executed first.</li>
+<li>Then comes the <code>main()</code> function (only in the package <code>main</code>)</li>
+<li>Then come the rest of the functions:<ul>
+<li>The methods on the types first, or;</li>
+<li>The functions in order as they are called from <code>main()</code> onwards, or;</li>
+<li>The methods and functions alphabetically if the number of functions is high.</li>
+</ul>
+</li>
+</ul>
+<h5 id="order-of-execution"><strong>Order of execution</strong></h5>
+<ol>
+<li>All packages in package <code>main</code> are imported in the order as indicated.</li>
+<li>In every package, if it imports packages, Step 1 is called for this package (recursively) but a certain package is imported only once.</li>
+<li>For every package (in reverse order of dependencies) all constants and variables are evaluated, and the <code>init()</code> if it contains this function.</li>
+<li>In package <code>main</code> the same happens, and then <code>main()</code> starts executing.</li>
+</ol>
 <h3 id="structs">Structs</h3>
 <h4 id="visibility">Visibility</h4>
 <p>The naming of the struct type and its fields adheres to the visibility rule. It is possible that an exported struct type has a mix of fields: some exported, others not.</p>

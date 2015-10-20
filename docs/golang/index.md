@@ -37,7 +37,7 @@ The [standard library](https://golang.org/pkg/#stdlib) contains ready-to-use pac
 * To build a program, the packages, and the files within them, must be compiled in the correct order.  Package dependencies determine the order in which to build packages.
 * Within a package, the source files must all be compiled together. The package is compiled as a unit, and by convention each directory contains one package.
 * If a package is changed and recompiled, all the client programs that use this package must be recompiled.
-* The package model uses **explicit dependencies** to enable faster builds. [p52]
+* The package model uses **explicit dependencies** to enable faster builds. [TWTG p52]
 
 ##### **Import**
 
@@ -135,12 +135,75 @@ func functionName(param1 type1, param2 type2, ...) (ret1 type1, ret2 type2, ...)
 
 ##### **Printing**
 
+**`fmt.Print` and `fmt.Println`**
+
 * The line `fmt.Println("hello, world")` calls the function `Println` from the package `fmt`, which prints the string-parameter to the console, followed by a newline-character `\n`.
 * The same result can be obtained with `fmt.Print("hello, world\n")`.
 * `Print` and `Println` can also be applied to variables, like in: `fmt.Println(arr)`; they use the default output-format for the variable `arr`.
-* Printing a string or a variable can be done even simpler with the predefined functions `print` and `println`: print("ABC") or println("ABC") or (with a variable i): println(i)
 
+**`print` and `println`**
 
+Printing a string or a variable can be done even simpler with the predefined functions `print` and `println`. For example,
+
+```go
+print("ABC")
+println("ABC")
+println(i)
+```
+
+These are only to be used in the debugging phase; when deploying a program replace them with their `fmt` relatives.
+
+#### Comments
+
+Comments are not compiled. They are used by [godoc](https://godoc.org/golang.org/x/tools/cmd/godoc).
+
+* A one-line comment starts with `//`, at the beginning or somewhere in a line; this is mostly used.
+* A multi-line or block-comment starts with `/*` and ends with `*/`, nesting is not allowed; this is used for making package documentation and commenting out code.
+
+[TWTG p56]
+
+Every package should have a package comment, a block comment immediately preceding the package statement. A package can be spread over many files, but the comment needs to be in only one of them. This comment is shown when a developer demands info of the package with `godoc`.
+
+#### Types
+
+A declaration of a variable with `var` automatically initializes it to the zero-value defined for its type. A type defines the set of values and the set of operations that can take place on those values.
+
+Types can be:
+
+* **Elementary** (or **primitive**): int, float, bool, string,
+* **Structured** (or **composite**): struct, array, slice, map, channel,
+* **Interfaces** only describe the behavior of a type.
+
+A structured type which has no real value (yet) has the value `nil`, which is also the default value for these types (in C anc C++ it is NULL).
+
+Use the keyword `type` for defining your own type (usually a struct type). It is also possible to define an **alias** for an existing type, for example:
+
+```go
+type (
+	IZ int
+	FZ float
+	STR string
+)
+```
+
+#### Program structure
+
+[gotemplate.go](https://github.com/shichao-an/twtg/blob/master/code_examples/chapter_4/gotemplate.go) is an example of the general structure of a Go program. This structure is not necessary, the compiler does not mind if `main()` or the variable declarations come last, but a uniform structure makes Go code better readable from top to bottom:
+
+* After import: declare constants, variables and the types
+* Then comes the `init()` function if there is any: this is a special function that every package can contain and that is executed first.
+* Then comes the `main()` function (only in the package `main`)
+* Then come the rest of the functions:
+    * The methods on the types first, or;
+    * The functions in order as they are called from `main()` onwards, or;
+    * The methods and functions alphabetically if the number of functions is high.
+
+##### **Order of execution**
+
+1. All packages in package `main` are imported in the order as indicated.
+2. In every package, if it imports packages, Step 1 is called for this package (recursively) but a certain package is imported only once.
+3. For every package (in reverse order of dependencies) all constants and variables are evaluated, and the `init()` if it contains this function.
+4. In package `main` the same happens, and then `main()` starts executing.
 
 ### Structs
 #### Visibility
