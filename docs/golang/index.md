@@ -133,15 +133,13 @@ func functionName(param1 type1, param2 type2, ...) (ret1 type1, ret2 type2, ...)
 * `PascalCasing` (exported): function names only start with a capital letter when the function has to be used outside the package.
 * `camelCasing` (private): every new word in the name starts with a capital letter.
 
-##### **Printing**
-
-**`fmt.Print` and `fmt.Println`**
+##### **`fmt.Print` and `fmt.Println`**
 
 * The line `fmt.Println("hello, world")` calls the function `Println` from the package `fmt`, which prints the string-parameter to the console, followed by a newline-character `\n`.
 * The same result can be obtained with `fmt.Print("hello, world\n")`.
 * `Print` and `Println` can also be applied to variables, like in: `fmt.Println(arr)`; they use the default output-format for the variable `arr`.
 
-**`print` and `println`**
+##### **`print` and `println`**
 
 Printing a string or a variable can be done even simpler with the predefined functions `print` and `println`. For example,
 
@@ -204,6 +202,92 @@ type (
 2. In every package, if it imports packages, Step 1 is called for this package (recursively) but a certain package is imported only once.
 3. For every package (in reverse order of dependencies) all constants and variables are evaluated, and the `init()` if it contains this function.
 4. In package `main` the same happens, and then `main()` starts executing.
+
+#### Conversions
+
+A value can be *converted* (*cast*, *coerced*) into a value of another type. Go never does *implicit* (automatic) conversion, it must be done explicitly with the syntax like a function call, as in `valueOfTypeB = typeB(valueOfTypeA)`. For example:
+
+```go
+a := 5.0
+b := int(a)
+```
+
+This can only succeed in certain well defined cases (from a narrower type to a broader type, for example: `int16` to `int32`). When converting from a broader type to a narrower type (for example: `int32` to `int16`, or `float32` to `int`) loss of value (*truncation*) can occur. When the conversion is impossible and the compiler detects this, a compile-error is given, otherwise a runtime-error occurs.
+
+<u>Variables with the same underlying type can be converted into one another:</u>
+
+```go
+var a IZ = 5
+c := int(a)
+d := IZ(c)
+```
+
+#### Naming
+
+[TWTG p60]
+
+* [Names - Effective Go](https://golang.org/doc/effective_go.html#names)
+
+#### Constants
+
+A constant (`const`) contains data which does not change. This data can only be of type boolean, number (integer, float or complex) or string. It is defined with the format `const identifier [type] = value` (type specifier `[type]` is optional, the compiler can implicitly derive the type from the value). For example:
+
+```go
+const b string = "abc"
+const Pi = 3.14159
+```
+
+A value derived from an untyped constant becomes typed when it is used within a context that requires a typed value. For example:
+
+```go
+var n int
+f(n + 5) // untyped numeric constant 5 becomes typed as int
+```
+
+Constants must be evaluated at compile time; a const can be defined as a calculation, but all the values necessary for the calculation must be available at compile time. For example:
+
+```go
+const c1 = 2/3 // ok
+const c2 = getNumber() // gives the build error: getNumber() used as value
+```
+
+Constants can be used for **enumerations**:
+
+```go
+const (
+	Unknown = 0
+	Female = 1
+	Male = 2
+)
+```
+
+In such cases, the value `iota` can be used to enumerate the values:
+
+```go
+const (  // iota is reset to 0
+	c0 = iota  // c0 == 0
+	c1 = iota  // c1 == 1
+	c2 = iota  // c2 == 2
+)
+```
+
+This can be shortened to:
+
+```go
+const (
+	c0 = iota
+	c1
+	c2
+)
+```
+
+[TWTG p62-63]
+
+See [Constant declarations](https://golang.org/ref/spec#Constant_declarations) and [iota](https://golang.org/ref/spec#Iota).
+
+#### Variables
+
+The general form for declaring a variable is `var identifier type`. The type is written after the identifier of the variable, contrary to almost any other programming language. Why did the Go designers chose for this convention? It removes some ambiguity which can exist in C declarations, for example, in `int* a, b;`, only `a` is a pointer and `b` is not; in Go, they can both be declared pointers as follows: `var a, b *int`.
 
 ### Structs
 #### Visibility
