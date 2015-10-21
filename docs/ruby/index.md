@@ -41,7 +41,9 @@ positive = num.abs # => 1234
 * Methods are defined with the keyword def, followed by the method name and the method’s parameters between parentheses (parentheses are optional). Ruby doesn’t use braces to delimit the bodies of compound statements and definitions. Instead, you simply finish the body with the keyword `end`.
 * The most common way to create a string is to use **string literals**, which are sequences of characters between single or double quotation marks.
     * Single-quoted: with a few exceptions, what you enter in the string literal becomes the string’s value.
-    * Double-quoted: a. substitutions; b. expression interpolation.
+    * Double-quoted:
+        * Substitutions: sequences that start with a backslash character are replaced with some binary value.
+        * Expression interpolation: the sequence `#{expression}` is replaced by the value of `expression`.
 
 - - -
 
