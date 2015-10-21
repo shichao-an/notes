@@ -663,6 +663,14 @@
         
             <li><a href="#program-structure">Program structure</a></li>
         
+            <li><a href="#conversions">Conversions</a></li>
+        
+            <li><a href="#naming">Naming</a></li>
+        
+            <li><a href="#constants">Constants</a></li>
+        
+            <li><a href="#variables">Variables</a></li>
+        
     
         <li class="main "><a href="#structs">Structs</a></li>
         
@@ -847,14 +855,13 @@
 <li><code>PascalCasing</code> (exported): function names only start with a capital letter when the function has to be used outside the package.</li>
 <li><code>camelCasing</code> (private): every new word in the name starts with a capital letter.</li>
 </ul>
-<h5 id="printing"><strong>Printing</strong></h5>
-<p><strong><code>fmt.Print</code> and <code>fmt.Println</code></strong></p>
+<h5 id="fmtprint-and-fmtprintln"><strong><code>fmt.Print</code> and <code>fmt.Println</code></strong></h5>
 <ul>
 <li>The line <code>fmt.Println("hello, world")</code> calls the function <code>Println</code> from the package <code>fmt</code>, which prints the string-parameter to the console, followed by a newline-character <code>\n</code>.</li>
 <li>The same result can be obtained with <code>fmt.Print("hello, world\n")</code>.</li>
 <li><code>Print</code> and <code>Println</code> can also be applied to variables, like in: <code>fmt.Println(arr)</code>; they use the default output-format for the variable <code>arr</code>.</li>
 </ul>
-<p><strong><code>print</code> and <code>println</code></strong></p>
+<h5 id="print-and-println"><strong><code>print</code> and <code>println</code></strong></h5>
 <p>Printing a string or a variable can be done even simpler with the predefined functions <code>print</code> and <code>println</code>. For example,</p>
 <div class="codehilite"><pre><span class="nb">print</span><span class="p">(</span><span class="s">&quot;ABC&quot;</span><span class="p">)</span>
 <span class="nb">println</span><span class="p">(</span><span class="s">&quot;ABC&quot;</span><span class="p">)</span>
@@ -909,6 +916,76 @@
 <li>For every package (in reverse order of dependencies) all constants and variables are evaluated, and the <code>init()</code> if it contains this function.</li>
 <li>In package <code>main</code> the same happens, and then <code>main()</code> starts executing.</li>
 </ol>
+<h4 id="conversions">Conversions</h4>
+<p>A value can be <em>converted</em> (<em>cast</em>, <em>coerced</em>) into a value of another type. Go never does <em>implicit</em> (automatic) conversion, it must be done explicitly with the syntax like a function call, as in <code>valueOfTypeB = typeB(valueOfTypeA)</code>. For example:</p>
+<div class="codehilite"><pre><span class="nx">a</span> <span class="o">:=</span> <span class="mf">5.0</span>
+<span class="nx">b</span> <span class="o">:=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This can only succeed in certain well defined cases (from a narrower type to a broader type, for example: <code>int16</code> to <code>int32</code>). When converting from a broader type to a narrower type (for example: <code>int32</code> to <code>int16</code>, or <code>float32</code> to <code>int</code>) loss of value (<em>truncation</em>) can occur. When the conversion is impossible and the compiler detects this, a compile-error is given, otherwise a runtime-error occurs.</p>
+<p><u>Variables with the same underlying type can be converted into one another:</u></p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">a</span> <span class="nx">IZ</span> <span class="p">=</span> <span class="mi">5</span>
+<span class="nx">c</span> <span class="o">:=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span>
+<span class="nx">d</span> <span class="o">:=</span> <span class="nx">IZ</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span>
+</pre></div>
+
+
+<h4 id="naming">Naming</h4>
+<p>[TWTG p60]</p>
+<ul>
+<li><a href="https://golang.org/doc/effective_go.html#names">Names - Effective Go</a></li>
+</ul>
+<h4 id="constants">Constants</h4>
+<p>A constant (<code>const</code>) contains data which does not change. This data can only be of type boolean, number (integer, float or complex) or string. It is defined with the format <code>const identifier [type] = value</code> (type specifier <code>[type]</code> is optional, the compiler can implicitly derive the type from the value). For example:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">b</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&quot;abc&quot;</span>
+<span class="kd">const</span> <span class="nx">Pi</span> <span class="p">=</span> <span class="mf">3.14159</span>
+</pre></div>
+
+
+<p>A value derived from an untyped constant becomes typed when it is used within a context that requires a typed value. For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">n</span> <span class="kt">int</span>
+<span class="nx">f</span><span class="p">(</span><span class="nx">n</span> <span class="o">+</span> <span class="mi">5</span><span class="p">)</span> <span class="c1">// untyped numeric constant 5 becomes typed as int</span>
+</pre></div>
+
+
+<p>Constants must be evaluated at compile time; a const can be defined as a calculation, but all the values necessary for the calculation must be available at compile time. For example:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">c1</span> <span class="p">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span> <span class="c1">// ok</span>
+<span class="kd">const</span> <span class="nx">c2</span> <span class="p">=</span> <span class="nx">getNumber</span><span class="p">()</span> <span class="c1">// gives the build error: getNumber() used as value</span>
+</pre></div>
+
+
+<p>Constants can be used for <strong>enumerations</strong>:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">Unknown</span> <span class="p">=</span> <span class="mi">0</span>
+    <span class="nx">Female</span> <span class="p">=</span> <span class="mi">1</span>
+    <span class="nx">Male</span> <span class="p">=</span> <span class="mi">2</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>In such cases, the value <code>iota</code> can be used to enumerate the values:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="p">(</span>  <span class="c1">// iota is reset to 0</span>
+    <span class="nx">c0</span> <span class="p">=</span> <span class="kc">iota</span>  <span class="c1">// c0 == 0</span>
+    <span class="nx">c1</span> <span class="p">=</span> <span class="kc">iota</span>  <span class="c1">// c1 == 1</span>
+    <span class="nx">c2</span> <span class="p">=</span> <span class="kc">iota</span>  <span class="c1">// c2 == 2</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>This can be shortened to:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">c0</span> <span class="p">=</span> <span class="kc">iota</span>
+    <span class="nx">c1</span>
+    <span class="nx">c2</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>[TWTG p62-63]</p>
+<p>See <a href="https://golang.org/ref/spec#Constant_declarations">Constant declarations</a> and <a href="https://golang.org/ref/spec#Iota">iota</a>.</p>
+<h4 id="variables">Variables</h4>
+<p>The general form for declaring a variable is <code>var identifier type</code>. The type is written after the identifier of the variable, contrary to almost any other programming language. Why did the Go designers chose for this convention? It removes some ambiguity which can exist in C declarations, for example, in <code>int* a, b;</code>, only <code>a</code> is a pointer and <code>b</code> is not; in Go, they can both be declared pointers as follows: <code>var a, b *int</code>.</p>
 <h3 id="structs">Structs</h3>
 <h4 id="visibility">Visibility</h4>
 <p>The naming of the struct type and its fields adheres to the visibility rule. It is possible that an exported struct type has a mix of fields: some exported, others not.</p>
