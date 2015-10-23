@@ -313,7 +313,65 @@ A variable (constant, type, function) is only known in a certain range of the pr
 
 * Variables declared outside of any function (at the top level) have **global scope** (or **package scope**): they are visible and available in all source files of the package.
 * Variables declared in a function have **local scope**: they are only known in that function, the same goes for parameters and return-variables.
+* Variables defined inside such a construct (e.g. `if`, `for`) are only known within that construct (**construct scope**). Mostly you can think of a scope as the codeblock ( surrounded by `{ }` ) in which the variable is declared.
 
+Although identifiers have to be unique, an identifier declared in a block may be redeclared in an inner block: in this block (but only there) the redeclared variable takes priority and *shadows* the outer variable with the same name; if used, care must be taken to avoid subtle errors.
+
+Variables can get their value (which is called *assigning* and uses the assignment operator `=`) at compile time, but a value can also be computed or changed during runtime. For example:
+
+```go
+a = 15
+b = false
+```
+
+In general, `a` variable `b` can only be assigned to a variable `a` as in `a = b`, when `a` and `b` are of the same type.
+
+Declaration and assignment (initialization) can be combined, in the general format `var identifier [type] = value`. For example:
+
+```go
+var a int = 15
+var b bool = false
+```
+
+However, the Go compiler is intelligent enough to derive the type of a variable from its value (dynamically, also called **automatic type inference**, similar to Python and Ruby, but there it happens in run time), so the following forms (omitting the type) are also correct:
+
+```go
+var a = 15
+var b = false
+// Or, equivalently:
+var (
+	a = 15
+	b = false
+)
+```
+
+It can still be useful to include the type information in the case where you want the variable to be typed something different than what would be inferred, such as in: `var n int64 = 2`.
+
+However, an expression (declaration) like `var a` is not correct, because the compiler has no clue about the type of `a`.
+
+Variables could also be expressions computed at runtime, like:
+
+```go
+var (
+	HOME = os.Getenv("HOME")
+	USER = os.Getenv("USER")
+)
+```
+
+The `var` syntax is mainly used at a global, package level; in functions it is replaced by the short declaration syntax `:=`.
+
+#### Value types and reference types
+
+Memory in a computer is used in programs as a enormous number of **words**:
+
+* All words have the same length of 32 bits (4 bytes) or 64 bits (8 bytes), according to the processor and the operating system.
+* All words are identified by their memory address (represented as a hexadecimal number).
+
+All variables of elementary (primitive) types like int, float, bool, string are **value types**. They point directly to their value contained in memory.
+
+Composite types like arrays and structs are also value types.
+
+When assigning the value of a value type to another variable: `j = i`, a copy of the original value `i` is made in memory.
 
 ### Structs
 #### Visibility

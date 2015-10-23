@@ -671,6 +671,8 @@
         
             <li><a href="#variables">Variables</a></li>
         
+            <li><a href="#value-types-and-reference-types">Value types and reference types</a></li>
+        
     
         <li class="main "><a href="#structs">Structs</a></li>
         
@@ -1007,7 +1009,53 @@
 <ul>
 <li>Variables declared outside of any function (at the top level) have <strong>global scope</strong> (or <strong>package scope</strong>): they are visible and available in all source files of the package.</li>
 <li>Variables declared in a function have <strong>local scope</strong>: they are only known in that function, the same goes for parameters and return-variables.</li>
+<li>Variables defined inside such a construct (e.g. <code>if</code>, <code>for</code>) are only known within that construct (<strong>construct scope</strong>). Mostly you can think of a scope as the codeblock ( surrounded by <code>{ }</code> ) in which the variable is declared.</li>
 </ul>
+<p>Although identifiers have to be unique, an identifier declared in a block may be redeclared in an inner block: in this block (but only there) the redeclared variable takes priority and <em>shadows</em> the outer variable with the same name; if used, care must be taken to avoid subtle errors.</p>
+<p>Variables can get their value (which is called <em>assigning</em> and uses the assignment operator <code>=</code>) at compile time, but a value can also be computed or changed during runtime. For example:</p>
+<div class="codehilite"><pre><span class="nx">a</span> <span class="p">=</span> <span class="mi">15</span>
+<span class="nx">b</span> <span class="p">=</span> <span class="kc">false</span>
+</pre></div>
+
+
+<p>In general, <code>a</code> variable <code>b</code> can only be assigned to a variable <code>a</code> as in <code>a = b</code>, when <code>a</code> and <code>b</code> are of the same type.</p>
+<p>Declaration and assignment (initialization) can be combined, in the general format <code>var identifier [type] = value</code>. For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">a</span> <span class="kt">int</span> <span class="p">=</span> <span class="mi">15</span>
+<span class="kd">var</span> <span class="nx">b</span> <span class="kt">bool</span> <span class="p">=</span> <span class="kc">false</span>
+</pre></div>
+
+
+<p>However, the Go compiler is intelligent enough to derive the type of a variable from its value (dynamically, also called <strong>automatic type inference</strong>, similar to Python and Ruby, but there it happens in run time), so the following forms (omitting the type) are also correct:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">a</span> <span class="p">=</span> <span class="mi">15</span>
+<span class="kd">var</span> <span class="nx">b</span> <span class="p">=</span> <span class="kc">false</span>
+<span class="c1">// Or, equivalently:</span>
+<span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">a</span> <span class="p">=</span> <span class="mi">15</span>
+    <span class="nx">b</span> <span class="p">=</span> <span class="kc">false</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>It can still be useful to include the type information in the case where you want the variable to be typed something different than what would be inferred, such as in: <code>var n int64 = 2</code>.</p>
+<p>However, an expression (declaration) like <code>var a</code> is not correct, because the compiler has no clue about the type of <code>a</code>.</p>
+<p>Variables could also be expressions computed at runtime, like:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">HOME</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Getenv</span><span class="p">(</span><span class="s">&quot;HOME&quot;</span><span class="p">)</span>
+    <span class="nx">USER</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Getenv</span><span class="p">(</span><span class="s">&quot;USER&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>var</code> syntax is mainly used at a global, package level; in functions it is replaced by the short declaration syntax <code>:=</code>.</p>
+<h4 id="value-types-and-reference-types">Value types and reference types</h4>
+<p>Memory in a computer is used in programs as a enormous number of <strong>words</strong>:</p>
+<ul>
+<li>All words have the same length of 32 bits (4 bytes) or 64 bits (8 bytes), according to the processor and the operating system.</li>
+<li>All words are identified by their memory address (represented as a hexadecimal number).</li>
+</ul>
+<p>All variables of elementary (primitive) types like int, float, bool, string are <strong>value types</strong>. They point directly to their value contained in memory.</p>
+<p>Composite types like arrays and structs are also value types.</p>
+<p>When assigning the value of a value type to another variable: <code>j = i</code>, a copy of the original value <code>i</code> is made in memory.</p>
 <h3 id="structs">Structs</h3>
 <h4 id="visibility">Visibility</h4>
 <p>The naming of the struct type and its fields adheres to the visibility rule. It is possible that an exported struct type has a mix of fields: some exported, others not.</p>
