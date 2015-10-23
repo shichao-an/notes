@@ -289,6 +289,32 @@ See [Constant declarations](https://golang.org/ref/spec#Constant_declarations) a
 
 The general form for declaring a variable is `var identifier type`. The type is written after the identifier of the variable, contrary to almost any other programming language. Why did the Go designers chose for this convention? It removes some ambiguity which can exist in C declarations, for example, in `int* a, b;`, only `a` is a pointer and `b` is not; in Go, they can both be declared pointers as follows: `var a, b *int`.
 
+Variables can be declared using the following format:
+
+```go
+var a int
+var b bool
+var str string
+```
+
+This can be also written as (<u>mainly used to declare variables globally</u>):
+
+```go
+var (
+	a int
+	b bool
+	str string
+)
+```
+
+When a variable is declared it contains automatically the default [zero value](https://golang.org/ref/spec#The_zero_value) for its type: `false` for booleans, 0 for integers, 0.0 for floats, "" for strings, and `nil` for pointers, functions, interfaces, slices, channels, and maps. <u>All memory in Go is initialized.</u>
+
+A variable (constant, type, function) is only known in a certain range of the program, called the **scope**:
+
+* Variables declared outside of any function (at the top level) have **global scope** (or **package scope**): they are visible and available in all source files of the package.
+* Variables declared in a function have **local scope**: they are only known in that function, the same goes for parameters and return-variables.
+
+
 ### Structs
 #### Visibility
 
@@ -474,7 +500,7 @@ Example:
     * **Package scope**: lowercase
     * **Exported**: uppercase
 * Inheritance: embedding one or multiple types
-* Polymorphism: a variable of a type can be assigned to a variable of any interface it implements. Types and interfaces are loosely coupled; multiple inheritance is possible through implementing multiple interfaces
+* Polymorphism: a variable of a type can be assigned to a variable of any interface it implements. Types and interfaces are loosely coupled; multiple inheritance is possible through implementing multiple interfaces.
 
 #### Higher order functions
 [TWTG p306-309]
@@ -485,5 +511,6 @@ Example:
 
 * [TWTG] *The Way To Go: A Thorough Introduction To The Go Programming Language*
 * [DOC] [Documentation](https://golang.org/doc/)
+* [SPEC] [The Go Programming Language Specification](https://golang.org/ref/spec#The_zero_value)
 * [EG] [Effective Go](https://golang.org/doc/effective_go.html)
 * [TGB] [The Go Blog](https://blog.golang.org/)
