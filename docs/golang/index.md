@@ -371,7 +371,61 @@ All variables of elementary (primitive) types like int, float, bool, string are 
 
 Composite types like arrays and structs are also value types.
 
-When assigning the value of a value type to another variable: `j = i`, a copy of the original value `i` is made in memory.
+When assigning the value of a value type to another variable: `j = i`, a copy of the original value `i` is made in memory, as illustrated in the figure below:
+
+[![Fig 4.2: Assignment of value types](twtg_figure_4.2.png)](twtg_figure_4.2.png "Fig 4.2: Assignment of value types")
+
+The memory address of the word where variable `i` is stored is given by `&i`.
+
+A **reference type** variable `r1` contains the address of the memory location where the value of `r1` is stored (or at least the first word of it). This address, called a **pointer**, is also contained in a word.
+
+The different words a reference type points to could be sequential memory addresses (the memory layout is said to be contiguously) which is the most efficient storage for computation, or the words could be spread around, each pointing to the next.
+
+When assigning `r2 = r1`, only the reference (the address) is copied, as illustrated in the figure below:
+
+[![Fig 4.3: Reference types and assignment](twtg_figure_4.3.png)](twtg_figure_4.3.png "Fig 4.3: Reference types and assignment")
+
+If the value of `r1` is modified, all references of that value (like `r1` and `r2`) then point to the modified content.
+
+In Go, pointers are reference types, as well as slices, maps and channels. The variables that are referenced are stored in the heap, which is garbage collected and which is a much larger memory space than the stack.
+
+#### Printing
+
+* The function `fmt.Printf` is visible outside the `fmt` package because it starts with a `P`, and is used to print output to the console. It generally uses a format string as its first argument.
+    * This format string can contain one or more format-specifiers `%..`, where `..` denotes the type of the value to be inserted, e.g. `%s` stands for a string value, `%v` is the general default format specifier.
+* The function `fmt.Sprintf` behaves in exactly the same way as Printf, but simply returns the formatted string.
+* The functions `fmt.Print` and `fmt.Println` perform fully automatic formatting of their arguments using the format-specifier `%v`, adding spaces between arguments and the latter a newline at the end. For example:
+    * `fmt.Print("Hello:", 23)` produces as output: `Hello: 23`.
+
+#### Short forms of declaration and assignment
+
+##### **Initializing declaration with `:=`**
+
+With the type omitted, the keyword `var` is pretty superfluous (e.g. `var a = 50`), so it may be written as `a: = 50`, and the types of is inferred by the compiler.
+
+`a := 50` is the preferred form, but <u>it can only be used inside functions, not in package scope.</u> The `:=` operator effectively makes a new variable; it is also called an **initializing declaration**.
+
+If after the lines above in the same codeblock we declare `a := 20`, this is not allowed: the compiler gives the error "no new variables on left side of `:=`"; however `a = 20` is ok because then the same variable only gets a new value.
+
+##### **Undeclared and unused variables**
+
+* A variable a which is used, but not declared, gives a compiler error: "undefined: a".
+* Declaring a *local* variable, but not using it, is a compiler error: "a declared and not used". However, for global variables, this is allowed. [TWTG p69]
+
+##### **Multiple declaration and assignment**
+
+* Multiple declarations of variables of the same type on a single line, like: `var a, b, c int`. This is an important reason why the type is written after the identifier(s).
+* Multiple assignments of variables (parallel or simultaneous assignment):
+    * For already-declared variables: `a, b, c = 5, 7, "abc"`
+    * For undeclared variables: `a, b, c := 5, 7, "abc"`
+
+With two variables it can be used to perform a *swap* of the values: `a, b = b, a`.
+
+The blank identifier `_` can also be used to throw away values, like the value 5 in: `_, b = 5, 7`
+
+`_` is in effect a write-only variable, you cannot ask for its value. <u>It exists because a declared variable in Go must also be used, and sometimes you don’t need to use all return values from a function.</u>
+
+The multiple assignment is also used when a function returns more than 1 value, for example: `val, err = func1(var1)`.
 
 ### Structs
 #### Visibility
