@@ -53,9 +53,37 @@ If the "Flag" column does not contain a block dot, then the option is used to pa
 
 ### Socket States
 
+The following socket options are inherited by a connected TCP socket from the listening socket:
+
+* `SO_DEBUG`
+* `SO_DONTROUTE`
+* `SO_KEEPALIVE`
+* `SO_LINGER`
+* `SO_OOBINLINE`
+* `SO_RCVBUF`
+* `SO_RCVLOWAT`
+* `SO_SNDBUF`
+* `SO_SNDLOWAT`
+* `TCP_MAXSEG`
+* `TCP_NODELAY`
+
+This is important with TCP because the connected socket is not returned to a server by `accept` until the three-way handshake is completed by the TCP layer. <u>To ensure that one of these socket options is set for the connected socket when the three-way handshake completes, we must set that option for the listening socket.</u>
+
 ### Generic Socket Options
 
+Generic socket options are protocol-independent (they are handled by the protocol-independent code within the kernel, not by one particular protocol module such as IPv4), but some of the options apply to only certain types of sockets. For example, even though the `SO_BROADCAST` socket option is called "generic," it applies only to datagram sockets.
+
 ### IPv4 Socket Options
+
+#### `SO_BROADCAST` Socket Option
+
+This option enables or disables the ability of the process to send broadcast messages. Broadcasting is supported for only datagram sockets and only on networks that support the concept of a broadcast message (e.g., Ethernet, token ring, etc.). You cannot broadcast on a point-to-point link or any connection-based transport protocol such as SCTP or TCP.
+
+Since an application must set this socket option before sending a broadcast datagram, it prevents a process from sending a broadcast when the application was never designed to broadcast. For example, a UDP application might take the destination IP address as a command-line argument, but the application never intended for a user to type in a broadcast address. Rather than forcing the application to try to determine if a given address is a broadcast address or not, the test is in the kernel: If the destination address is a broadcast address and this socket option is not set, `EACCES` is returned.
+
+#### `SO_DEBUG` Socket Option
+
+This option is supported only by TCP. When enabled for a TCP socket, the kernel keeps track of detailed information about all the packets sent or received by TCP for the socket. These are kept in a circular buffer within the kernel that can be examined with the `trpt` program.
 
 ### ICMPv6 Socket Option
 
