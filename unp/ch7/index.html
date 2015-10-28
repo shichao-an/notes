@@ -667,6 +667,10 @@
         
             <li><a href="#so_debug-socket-option">SO_DEBUG Socket Option</a></li>
         
+            <li><a href="#so_dontroute-socket-option">SO_DONTROUTE Socket Option</a></li>
+        
+            <li><a href="#so_error-socket-option">SO_ERROR Socket Option</a></li>
+        
     
         <li class="main "><a href="#icmpv6-socket-option">ICMPv6 Socket Option</a></li>
         
@@ -747,7 +751,23 @@
 <p>This option enables or disables the ability of the process to send broadcast messages. Broadcasting is supported for only datagram sockets and only on networks that support the concept of a broadcast message (e.g., Ethernet, token ring, etc.). You cannot broadcast on a point-to-point link or any connection-based transport protocol such as SCTP or TCP.</p>
 <p>Since an application must set this socket option before sending a broadcast datagram, it prevents a process from sending a broadcast when the application was never designed to broadcast. For example, a UDP application might take the destination IP address as a command-line argument, but the application never intended for a user to type in a broadcast address. Rather than forcing the application to try to determine if a given address is a broadcast address or not, the test is in the kernel: If the destination address is a broadcast address and this socket option is not set, <code>EACCES</code> is returned.</p>
 <h4 id="so_debug-socket-option"><code>SO_DEBUG</code> Socket Option</h4>
-<p>This option is supported only by TCP. When enabled for a TCP socket, the kernel keeps track of detailed information about all the packets sent or received by TCP for the socket. These are kept in a circular buffer within the kernel that can be examined with the <code>trpt</code> program.</p>
+<p>This option is supported only by TCP. When enabled for a TCP socket, the kernel keeps track of detailed information about all the packets sent or received by TCP for the socket. These are kept in a <a href="https://en.wikipedia.org/wiki/Circular_buffer">circular buffer</a> within the kernel that can be examined with the <code>trpt</code> program.</p>
+<h4 id="so_dontroute-socket-option"><code>SO_DONTROUTE</code> Socket Option</h4>
+<p>This option specifies that outgoing packets are to bypass the normal routing mechanisms of the underlying protocol. The destination must be on a directly-connected network, and messages are directed to the appropriate network interface according to the destination address [<a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_16">Use of Options</a>]. For example, with IPv4, the packet is directed to the appropriate local interface, as specified by the network and subnet portions of the destination address. If the local interface cannot be determined from the destination address (e.g., the destination is not on the other end of a point-to-point link, or is not on a shared network), <code>ENETUNREACH</code> is returned.</p>
+<p>The equivalent of this option can also be applied to individual datagrams using the <code>MSG_DONTROUTE</code> flag with the <code>send</code>, <code>sendto</code>, or <code>sendmsg</code> functions.</p>
+<p>This option is often used by routing daemons (e.g., <code>routed</code> and <code>gated</code>) to bypass the routing table and force a packet to be sent out a particular interface.</p>
+<h4 id="so_error-socket-option"><code>SO_ERROR</code> Socket Option</h4>
+<p>This option is one that can be fetched but cannot be set.</p>
+<p>When an error occurs on a socket, the protocol module in a Berkeley-derived kernel sets a variable named <code>so_error</code> for that socket to one of the standard Unix <code>E</code>xxx values. This is called the <em>pending error</em> for the socket. The process can be immediately notified of the error in one of two ways:</p>
+<ol>
+<li>If the process is blocked in a call to <code>select</code> on the socket (<a href="../ch6/#select-function">Section 6.3</a>), for either readability or writability, <code>select</code> returns with either or both conditions set.</li>
+<li>If the process is using signal-driven I/O, the <code>SIGIO</code> signal is generated for either the process or the process group.</li>
+</ol>
+<p>The process can then obtain the value of <code>so_error</code> by fetching the <code>SO_ERROR</code> socket option. The integer value returned by <code>getsockopt</code> is the pending error for the socket. The value of <code>so_error</code> is then reset to 0 by the kernel.</p>
+<ul>
+<li>If <code>so_error</code> is nonzero when the process calls <code>read</code> and there is no data to return, <code>read</code> returns –1 with <code>errno</code> set to the value of <code>so_error</code>. The value of <code>so_error</code> is then reset to 0. If there is data queued for the socket, that data is returned by <code>read</code> instead of the error condition.</li>
+<li>If <code>so_error</code> is nonzero when the process calls <code>write</code>, –1 is returned with <code>errno</code> set to the value of <code>so_error</code> and <code>so_error</code> is reset to 0.</li>
+</ul>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>
