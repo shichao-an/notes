@@ -671,6 +671,10 @@
         
             <li><a href="#so_error-socket-option">SO_ERROR Socket Option</a></li>
         
+            <li><a href="#so_keepalive-socket-option">SO_KEEPALIVE Socket Option</a></li>
+        
+            <li><a href="#so_linger-socket-option">SO_LINGER Socket Option</a></li>
+        
     
         <li class="main "><a href="#icmpv6-socket-option">ICMPv6 Socket Option</a></li>
         
@@ -768,6 +772,14 @@
 <li>If <code>so_error</code> is nonzero when the process calls <code>read</code> and there is no data to return, <code>read</code> returns –1 with <code>errno</code> set to the value of <code>so_error</code>. The value of <code>so_error</code> is then reset to 0. If there is data queued for the socket, that data is returned by <code>read</code> instead of the error condition.</li>
 <li>If <code>so_error</code> is nonzero when the process calls <code>write</code>, –1 is returned with <code>errno</code> set to the value of <code>so_error</code> and <code>so_error</code> is reset to 0.</li>
 </ul>
+<h4 id="so_keepalive-socket-option"><code>SO_KEEPALIVE</code> Socket Option</h4>
+<p>When the keep-alive option is set for a TCP socket and no data has been exchanged across the socket in either direction for two hours, TCP automatically sends a <strong>keep-alive probe</strong> to the peer. This probe is a TCP segment to which the peer must respond. One of three scenarios results:</p>
+<ol>
+<li>The peer responds with the expected ACK. The application is not notified (since everything is okay). TCP will send another probe following another two hours of inactivity.</li>
+<li>The peer responds with an RST, which tells the local TCP that the peer host has crashed and rebooted. The socket's pending error is set to <code>ECONNRESET</code> and the socket is closed.</li>
+<li>There is no response from the peer to the keep-alive probe. Berkeley-derived TCPs send 8 additional probes, 75 seconds apart, trying to elicit a response. TCP will give up if there is no response within 11 minutes and 15 seconds after sending the first probe.</li>
+</ol>
+<h4 id="so_linger-socket-option"><code>SO_LINGER</code> Socket Option</h4>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>
