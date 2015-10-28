@@ -10,7 +10,7 @@ How can the processor work with hardware without impacting the machine’s overa
     * For example, as you type, the keyboard controller (the hardware device that manages the keyboard) issues an electrical signal to the processor to alert the operating system to newly available key presses. These electrical signals are interrupts. The processor receives the interrupt and signals the operating system to enable the operating system to respond to the new data.
 * **Hardware devices generate interrupts asynchronously** (with respect to the processor clock). Consequently, the kernel can be interrupted at any time to process interrupts.
 
-An interrupt is produced by electronic signals from hardware devices and directed into input pins on an interrupt controller (a simple chip that multi-plexes multiple interrupt lines into a single line to the processor):
+An interrupt is produced by electronic signals from hardware devices and directed into input pins on an interrupt controller (a simple chip that multiplexes multiple interrupt lines into a single line to the processor):
 
 1. Upon receiving an interrupt, the interrupt controller sends a signal to the processor.
 2. The processor detects this signal and interrupts its current execution to handle the interrupt.
