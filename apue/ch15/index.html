@@ -648,6 +648,12 @@
     
         <li class="main "><a href="#pipes">Pipes</a></li>
         
+            <li><a href="#example-creating-a-pipe-between-a-parent-and-its-child">Example: creating a pipe between a parent and its child</a></li>
+        
+            <li><a href="#example-pager">Example: pager</a></li>
+        
+            <li><a href="#implementation-of-the-tell-and-wait-functions-using-pipes">Implementation of the TELL and WAIT functions using pipes</a></li>
+        
     
         <li class="main "><a href="#popen-and-pclose-functions">popen and pclose Functions</a></li>
         
@@ -736,7 +742,7 @@
 <p><a href="../figure_15.2.png" title="Figure 15.2 Two ways to view a half-duplex pipe"><img alt="Figure 15.2 Two ways to view a half-duplex pipe" src="../figure_15.2.png" /></a></p>
 <p>The <code>fstat</code> function returns a file type of FIFO for the file descriptor of either end of a pipe. We can test for a pipe with the <code>S_ISFIFO</code> macro.</p>
 <p>POSIX.1 states that the <code>st_size</code> member of the stat structure is undefined for pipes. But when the <code>fstat</code> function is applied to the file descriptor for the read end of the pipe, many systems store in <code>st_size</code> the number of bytes available for reading in the pipe, which is nonportable.</p>
-<p>A pipe in a single process is next to useless. Normally, the process that calls pipe then calls <code>fork</code>, creating an IPC channel from the parent to the child, or vice versa. The following figure shows this scenario:</p>
+<p>A pipe in a single process is next to useless. Normally, the process that calls <code>pipe</code> then calls <code>fork</code>, creating an IPC channel from the parent to the child, or vice versa. The following figure shows this scenario:</p>
 <p><a href="../figure_15.3.png" title="Figure 15.3 Half-duplex pipe after a fork"><img alt="Figure 15.3 Half-duplex pipe after a fork" src="../figure_15.3.png" /></a></p>
 <p>What happens after the <code>fork</code> depends on which direction of data flow we want. For a pipe from the parent to the child, the parent closes the read end of the pipe (<em>fd[0]</em>), and the child closes the write end (<em>fd[1]</em>). The following figure shows the resulting arrangement of descriptors.</p>
 <p><a href="../figure_15.4.png" title="Figure 15.4 Pipe from parent to child"><img alt="Figure 15.4 Pipe from parent to child" src="../figure_15.4.png" /></a></p>
@@ -753,8 +759,170 @@ indicate an end of file after all the data has been read.<ul>
 <li>If we <code>write</code> to a pipe whose read end has been closed, the signal <code>SIGPIPE</code> is generated. If we either ignore the signal or catch it and return from the signal handler, <code>write</code> returns −1 with <code>errno</code> set to <code>EPIPE</code>.</li>
 </ol>
 <p>When we’re writing to a pipe (or FIFO), the constant <code>PIPE_BUF</code> specifies the kernel’s pipe buffer size. A write of <code>PIPE_BUF</code> bytes or less will not be interleaved with the writes from other processes to the same pipe (or FIFO). But if multiple processes are writing to a pipe (or FIFO), and if we write more than <code>PIPE_BUF</code> bytes, the data might be interleaved with the data from the other writers. We can determine the value of <code>PIPE_BUF</code> by using <code>pathconf</code> or <code>fpathconf</code>.</p>
-<p>Example</p>
-<p>[p537-541]</p>
+<h4 id="example-creating-a-pipe-between-a-parent-and-its-child">Example: creating a pipe between a parent and its child</h4>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/">ipc1/pipe1.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;pipe error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>       <span class="cm">/* parent */</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;hello world</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">12</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                    <span class="cm">/* child */</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">);</span>
+        <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The pipe direction in the code above matches the orientation shown in <a href="../figure_15.4.png">Figure 15.4</a></p>
+<h4 id="example-pager">Example: pager</h4>
+<p>To avoid writing all the data to a temporary file and calling system to display that file, we want to pipe the output directly to the pager. To do this, we create a pipe, <code>fork</code> a child process, <u>set up the child’s standard input to be the read end of the pipe</u>, and <code>exec</code> the user’s pager program, as shown in the program below. [p538]</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/pipe2.c">ipc1/pipe2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
+
+<span class="cp">#define DEF_PAGER   &quot;/bin/more&quot;     </span><span class="cm">/* default pager program */</span><span class="cp"></span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="o">*</span><span class="n">pager</span><span class="p">,</span> <span class="o">*</span><span class="n">argv0</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">FILE</span>    <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;usage: a.out &lt;pathname&gt;&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;r&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;can&#39;t open %s&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pipe</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;pipe error&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>                               <span class="cm">/* parent */</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>       <span class="cm">/* close read end */</span>
+
+        <span class="cm">/* parent copies argv[1] to pipe */</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">fgets</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">line</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error to pipe&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ferror</span><span class="p">(</span><span class="n">fp</span><span class="p">))</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fgets error&quot;</span><span class="p">);</span>
+
+        <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>   <span class="cm">/* close write end of pipe for reader */</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;waitpid error&quot;</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                                        <span class="cm">/* child */</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>   <span class="cm">/* close write end */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">STDIN_FILENO</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">dup2</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">STDIN_FILENO</span><span class="p">)</span> <span class="o">!=</span> <span class="n">STDIN_FILENO</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;dup2 error to stdin&quot;</span><span class="p">);</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>   <span class="cm">/* don&#39;t need this after dup2 */</span>
+        <span class="p">}</span>
+
+        <span class="cm">/* get arguments for execl() */</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">pager</span> <span class="o">=</span> <span class="n">getenv</span><span class="p">(</span><span class="s">&quot;PAGER&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="n">pager</span> <span class="o">=</span> <span class="n">DEF_PAGER</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">argv0</span> <span class="o">=</span> <span class="n">strrchr</span><span class="p">(</span><span class="n">pager</span><span class="p">,</span> <span class="sc">&#39;/&#39;</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="n">argv0</span><span class="o">++</span><span class="p">;</span>        <span class="cm">/* step past rightmost slash */</span>
+        <span class="k">else</span>
+            <span class="n">argv0</span> <span class="o">=</span> <span class="n">pager</span><span class="p">;</span>  <span class="cm">/* no slash in pager */</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">execl</span><span class="p">(</span><span class="n">pager</span><span class="p">,</span> <span class="n">argv0</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;execl error for %s&quot;</span><span class="p">,</span> <span class="n">pager</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program does the following:</p>
+<ol>
+<li>Before calling <code>fork</code>, we create a pipe.</li>
+<li>After the <code>fork</code>, the parent closes its read end, and the child closes its write end.</li>
+<li>The child then calls <code>dup2</code> to have its standard input be the read end of the pipe.</li>
+<li>When the pager program is executed, its standard input will be the read end of the pipe.</li>
+</ol>
+<p>When we duplicate one descriptor onto another (<code>fd[0]</code> onto standard input in the child), we have to be careful that the descriptor doesn’t already have the desired value. If the descriptor already had the desired value and we called <code>dup2</code> and <code>close</code>, the single copy of the descriptor would be closed. In this program, if standard input had not been opened by the shell, the <code>fopen</code> at the beginning of the program should have used descriptor 0, the lowest unused descriptor, so <code>fd[0]</code> should never equal standard input. Nevertheless, <u>whenever we call <code>dup2</code> and close to duplicate one descriptor onto another, we’ll always compare the descriptors first, as a defensive programming measure.</u></p>
+<h4 id="implementation-of-the-tell-and-wait-functions-using-pipes">Implementation of the <code>TELL</code> and <code>WAIT</code> functions using pipes</h4>
+<p>Recall the five functions <code>TELL_WAIT</code>, <code>TELL_PARENT</code>, <code>TELL_CHILD</code>, <code>WAIT_PARENT</code>, and <code>WAIT_CHILD</code> from <a href="../ch8/#race-conditions">Section 8.9</a>. Here is an implementation using pipes:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/tellwait.c">ipc1/tellwait.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">int</span>  <span class="n">pfd1</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">pfd2</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+
+<span class="kt">void</span>
+<span class="nf">TELL_WAIT</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pipe</span><span class="p">(</span><span class="n">pfd1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">pipe</span><span class="p">(</span><span class="n">pfd2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;pipe error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">TELL_PARENT</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">pfd2</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;c&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">WAIT_PARENT</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="n">c</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">pfd1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">!=</span> <span class="sc">&#39;p&#39;</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;WAIT_PARENT: incorrect data&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">TELL_CHILD</span><span class="p">(</span><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">pfd1</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;p&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">WAIT_CHILD</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="n">c</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">pfd2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">!=</span> <span class="sc">&#39;c&#39;</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;WAIT_CHILD: incorrect data&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program creates two pipes before the <code>fork</code>, as shown in the figure below. The parent writes the character "p" across the top pipe when <code>TELL_CHILD</code> is called, and the child writes the character "c" across the bottom pipe when <code>TELL_PARENT</code> is called. The corresponding <code>WAIT_xxx</code> functions do a blocking <code>read</code> for the single character.</p>
+<p><a href="../figure_15.8.png" title="Figure 15.8 Using two pipes for parent–child synchronization"><img alt="Figure 15.8 Using two pipes for parent–child synchronization" src="../figure_15.8.png" /></a></p>
+<p>Each pipe has an extra reader, which doesn’t matter. That is, in addition to the child reading from <code>pfd1[0]</code>, the parent has this end of the top pipe open for reading. This doesn’t affect us, since the parent doesn’t try to read from this pipe.</p>
 <h3 id="popen-and-pclose-functions"><code>popen</code> and <code>pclose</code> Functions</h3>
 <p>The standard I/O library has historically provided the <code>popen</code> and <code>pclose</code> functions. These two functions handle all the dirty work that we’ve been doing ourselves: creating a pipe, forking a child, closing the unused ends of the pipe, executing a shell to run the command, and waiting for the command to terminate.</p>
 <div class="codehilite"><pre><span class="cp">#include &lt;stdio.h&gt;</span>
