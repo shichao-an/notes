@@ -657,6 +657,14 @@
     
         <li class="main "><a href="#popen-and-pclose-functions">popen and pclose Functions</a></li>
         
+            <li><a href="#example-pager-using-popen">Example: pager using popen</a></li>
+        
+            <li><a href="#example-popen-and-pclose-functions">Example: popen and pclose Functions</a></li>
+        
+            <li><a href="#security-concerns-of-popen">Security concerns of popen</a></li>
+        
+            <li><a href="#example-transforming-input-using-popen">Example: transforming input using popen</a></li>
+        
     
         <li class="main "><a href="#coprocesses">Coprocesses</a></li>
         
@@ -924,7 +932,7 @@ indicate an end of file after all the data has been read.<ul>
 <p><a href="../figure_15.8.png" title="Figure 15.8 Using two pipes for parent–child synchronization"><img alt="Figure 15.8 Using two pipes for parent–child synchronization" src="../figure_15.8.png" /></a></p>
 <p>Each pipe has an extra reader, which doesn’t matter. That is, in addition to the child reading from <code>pfd1[0]</code>, the parent has this end of the top pipe open for reading. This doesn’t affect us, since the parent doesn’t try to read from this pipe.</p>
 <h3 id="popen-and-pclose-functions"><code>popen</code> and <code>pclose</code> Functions</h3>
-<p>The standard I/O library has historically provided the <code>popen</code> and <code>pclose</code> functions. These two functions handle all the dirty work that we’ve been doing ourselves: creating a pipe, forking a child, closing the unused ends of the pipe, executing a shell to run the command, and waiting for the command to terminate.</p>
+<p>The standard I/O library has historically provided the <code>popen</code> and <code>pclose</code> functions. These two functions handle all the dirty work that we’ve been doing ourselves: creating a pipe, <code>fork</code>ing a child, closing the unused ends of the pipe, executing a shell to run the command, and waiting for the command to terminate.</p>
 <div class="codehilite"><pre><span class="cp">#include &lt;stdio.h&gt;</span>
 
 <span class="kt">FILE</span> <span class="o">*</span><span class="nf">popen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmdstring</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">type</span><span class="p">);</span>
@@ -957,8 +965,240 @@ indicate an end of file after all the data has been read.<ul>
 </pre></div>
 
 
-<p>Example</p>
-<p>[p542-548]</p>
+<h4 id="example-pager-using-popen">Example: pager using <code>popen</code></h4>
+<p>The following program is an reimplementation of <a href="#example-pager">pager in the previous example</a> using <code>popen</code>:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/popen2.c">ipc1/popen2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
+
+<span class="cp">#define PAGER   &quot;${PAGER:-more}&quot; </span><span class="cm">/* environment variable, or default */</span><span class="cp"></span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">FILE</span>    <span class="o">*</span><span class="n">fpin</span><span class="p">,</span> <span class="o">*</span><span class="n">fpout</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;usage: a.out &lt;pathname&gt;&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">fpin</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;r&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;can&#39;t open %s&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fpout</span> <span class="o">=</span> <span class="n">popen</span><span class="p">(</span><span class="n">PAGER</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;popen error&quot;</span><span class="p">);</span>
+
+    <span class="cm">/* copy argv[1] to pager */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">fgets</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">fpin</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fputs</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">fpout</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fputs error to pipe&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ferror</span><span class="p">(</span><span class="n">fpin</span><span class="p">))</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fgets error&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pclose</span><span class="p">(</span><span class="n">fpout</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;pclose error&quot;</span><span class="p">);</span>
+
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Using <code>popen</code> reduces the amount of code we have to write. The shell command <code>${PAGER:-more}</code> means to use the value of the shell variable <code>PAGER</code> if it is defined and non-null; otherwise, use the string <code>more</code>.</p>
+<h4 id="example-popen-and-pclose-functions">Example: <code>popen</code> and <code>pclose</code> Functions</h4>
+<p>The following code shows our version of <code>popen</code> and <code>pclose</code>:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/popen.c">ipc1/popen.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Pointer to array allocated at run-time.</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kt">pid_t</span>    <span class="o">*</span><span class="n">childpid</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * From our open_max(), {Prog openmax}.</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kt">int</span>      <span class="n">maxfd</span><span class="p">;</span>
+
+<span class="kt">FILE</span> <span class="o">*</span>
+<span class="nf">popen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmdstring</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">type</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">i</span><span class="p">;</span>
+    <span class="kt">int</span>     <span class="n">pfd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">FILE</span>    <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="cm">/* only allow &quot;r&quot; or &quot;w&quot; */</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="sc">&#39;r&#39;</span> <span class="o">&amp;&amp;</span> <span class="n">type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="sc">&#39;w&#39;</span><span class="p">)</span> <span class="o">||</span> <span class="n">type</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">childpid</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>     <span class="cm">/* first time through */</span>
+        <span class="cm">/* allocate zeroed out array for child pids */</span>
+        <span class="n">maxfd</span> <span class="o">=</span> <span class="n">open_max</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">childpid</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="n">maxfd</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">pid_t</span><span class="p">)))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">pipe</span><span class="p">(</span><span class="n">pfd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>   <span class="cm">/* errno set by pipe() */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">maxfd</span> <span class="o">||</span> <span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">maxfd</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EMFILE</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>   <span class="cm">/* errno set by fork() */</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>                          <span class="cm">/* child */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">type</span> <span class="o">==</span> <span class="sc">&#39;r&#39;</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">STDOUT_FILENO</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">dup2</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">STDOUT_FILENO</span><span class="p">);</span>
+                <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">STDIN_FILENO</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">dup2</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">STDIN_FILENO</span><span class="p">);</span>
+                <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="cm">/* close all descriptors in childpid[] */</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">maxfd</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">childpid</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">close</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+
+        <span class="n">execl</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">,</span> <span class="s">&quot;sh&quot;</span><span class="p">,</span> <span class="s">&quot;-c&quot;</span><span class="p">,</span> <span class="n">cmdstring</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+        <span class="n">_exit</span><span class="p">(</span><span class="mi">127</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* parent continues... */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">type</span> <span class="o">==</span> <span class="sc">&#39;r&#39;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">type</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">pfd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">type</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">childpid</span><span class="p">[</span><span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pid</span><span class="p">;</span> <span class="cm">/* remember child pid for this fd */</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">pclose</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">fd</span><span class="p">,</span> <span class="n">stat</span><span class="p">;</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">childpid</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>     <span class="cm">/* popen() has never been called */</span>
+    <span class="p">}</span>
+
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">fileno</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="n">maxfd</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>     <span class="cm">/* invalid file descriptor */</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">childpid</span><span class="p">[</span><span class="n">fd</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>     <span class="cm">/* fp wasn&#39;t opened by popen() */</span>
+    <span class="p">}</span>
+
+    <span class="n">childpid</span><span class="p">[</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fclose</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">stat</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">EINTR</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span> <span class="cm">/* error other than EINTR from waitpid() */</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">stat</span><span class="p">);</span>   <span class="cm">/* return child&#39;s termination status */</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>From this code, we can see:</p>
+<ul>
+<li>Each time <code>popen</code> is called, we save the child’s process ID in the array <code>childpid</code>, which we index by the file descriptor. This way, when <code>pclose</code> is called with the <code>FILE</code> pointer as its argument, we call the standard I/O function <code>fileno</code> to get the file descriptor and then have the child process ID for the call to <code>waitpid</code>. Since it’s possible for a given process to call popen more than once, we dynamically allocate the <code>childpid</code> array (the first time popen is called), with room for as many children as there are file descriptors. [p545]</li>
+<li>POSIX.1 requires that popen close any streams that are still open in the child from previous calls to popen. To do this, we go through the <code>childpid</code> array in the child, closing any descriptors that are still open.</li>
+<li>What happens if the caller of <code>pclose</code> has established a signal handler for <code>SIGCHLD</code>? The call to <code>waitpid</code> from <code>pclose</code> would return an error of <code>EINTR</code>. Since the caller is allowed to catch this signal (or any other signal that might interrupt the call to <code>waitpid</code>), we simply call <code>waitpid</code> again if it is interrupted by a caught signal.</li>
+<li>If the application calls <code>waitpid</code> and obtains the exit status of the child created by <code>popen</code>, we will call <code>waitpid</code> when the application calls <code>pclose</code>, find that the child no longer exists, and return −1 with <code>errno</code> set to <code>ECHILD</code>. This is the behavior required by POSIX.1 in this situation.</li>
+</ul>
+<p>[p546]</p>
+<h4 id="security-concerns-of-popen">Security concerns of <code>popen</code></h4>
+<p><code>popen</code> should never be called by a set-user-ID or set-group-ID program.  When it executes the command, <code>popen</code> does the equivalent of:</p>
+<div class="codehilite"><pre><span class="n">execl</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">,</span> <span class="s">&quot;sh&quot;</span><span class="p">,</span> <span class="s">&quot;-c&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</pre></div>
+
+
+<p>which executes the shell and command with the environment inherited by the caller. A malicious user can manipulate the environment so that the shell executes commands other than those intended, with the elevated permissions granted by the set-ID file mode.</p>
+<h4 id="example-transforming-input-using-popen">Example: transforming input using <code>popen</code></h4>
+<p><u>One thing that <code>popen</code> is especially well suited for is executing simple filters to transform the input or output of the running command.</u> Such is the case when a command wants to build its own pipeline.</p>
+<p>Consider an application that writes a prompt to standard output and reads a line from standard input. With the popen function, we can interpose a program between the application and its input to transform the input. The following figure shows the arrangement of processes in this situation.</p>
+<p><a href="../figure_15.13.png" title="Figure 15.13 Transforming input using popen"><img alt="Figure 15.13 Transforming input using popen" src="../figure_15.13.png" /></a></p>
+<p>The following program is a simple filter to demonstrate this operation:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/myuclc.c">ipc1/myuclc.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;ctype.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">c</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">c</span> <span class="o">=</span> <span class="n">getchar</span><span class="p">())</span> <span class="o">!=</span> <span class="n">EOF</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">isupper</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">tolower</span><span class="p">(</span><span class="n">c</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">putchar</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;output error&quot;</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">&#39;\n&#39;</span><span class="p">)</span>
+            <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The filter copies standard input to standard output, converting any uppercase character to lowercase. The reason we’re careful to <code>fflush</code> standard output after writing a newline is discussed in the next section when we talk about coprocesses.</p>
+<p>We compile this filter into the executable file <code>myuclc</code>, which we then invoke from the program in the following code using <code>popen</code>:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/popen1.c">ipc1/popen1.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;sys/wait.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+    <span class="kt">FILE</span>    <span class="o">*</span><span class="n">fpin</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fpin</span> <span class="o">=</span> <span class="n">popen</span><span class="p">(</span><span class="s">&quot;myuclc&quot;</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;popen error&quot;</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">fputs</span><span class="p">(</span><span class="s">&quot;prompt&gt; &quot;</span><span class="p">,</span> <span class="n">stdout</span><span class="p">);</span>
+        <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fgets</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">fpin</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="cm">/* read from pipe */</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fputs</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">stdout</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fputs error to pipe&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pclose</span><span class="p">(</span><span class="n">fpin</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;pclose error&quot;</span><span class="p">);</span>
+    <span class="n">putchar</span><span class="p">(</span><span class="sc">&#39;\n&#39;</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We need to call <code>fflush</code> after writing the prompt, because the standard output is normally line buffered, and the prompt does not contain a newline.</p>
 <h3 id="coprocesses">Coprocesses</h3>
 <p>A UNIX system filter is a program that reads from standard input and writes to standard output. Filters are normally connected linearly in shell pipelines. A filter becomes a <strong>coprocess</strong> when the same program generates the filter’s input and reads the filter’s output.</p>
 <p>The Korn shell provides coprocesses. The Bourne shell, the Bourne-again shell, and the C shell don’t provide a way to connect processes together as coprocesses. A coprocess normally runs in the background from a shell, and its standard input and standard output are connected to another program using a pipe.  Although the shell syntax required to initiate a coprocess and connect its input and output to other processes is quite contorted, coprocesses are also useful from a C program.</p>
