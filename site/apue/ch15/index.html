@@ -668,6 +668,10 @@
     
         <li class="main "><a href="#coprocesses">Coprocesses</a></li>
         
+            <li><a href="#example-invoking-add2-as-a-coprocess">Example: invoking add2 as a coprocess</a></li>
+        
+            <li><a href="#example-invoking-add2-as-a-coprocess-using-standard-io">Example: invoking add2 as a coprocess using standard I/O</a></li>
+        
     
         <li class="main "><a href="#fifos">FIFOs</a></li>
         
@@ -1203,10 +1207,145 @@ indicate an end of file after all the data has been read.<ul>
 <p>A UNIX system filter is a program that reads from standard input and writes to standard output. Filters are normally connected linearly in shell pipelines. A filter becomes a <strong>coprocess</strong> when the same program generates the filter’s input and reads the filter’s output.</p>
 <p>The Korn shell provides coprocesses. The Bourne shell, the Bourne-again shell, and the C shell don’t provide a way to connect processes together as coprocesses. A coprocess normally runs in the background from a shell, and its standard input and standard output are connected to another program using a pipe.  Although the shell syntax required to initiate a coprocess and connect its input and output to other processes is quite contorted, coprocesses are also useful from a C program.</p>
 <p>Whereas <code>popen</code> gives us a one-way pipe to the standard input or from the standard output of another process, with a coprocess we have two one-way pipes to the other process: one to its standard input and one from its standard output. We want to write to its standard input, let it operate on the data, and then read from its standard output.</p>
-<p>Example</p>
+<h4 id="example-invoking-add2-as-a-coprocess">Example: invoking <code>add2</code> as a coprocess</h4>
 <p>For example, the process creates two pipes: one is the standard input of the coprocess and the other is the standard output of the coprocess. The figure below shows this arrangement:</p>
 <p><a href="../figure_15.16.png" title="Figure 15.16 Driving a coprocess by writing its standard input and reading its standard output"><img alt="Figure 15.16 Driving a coprocess by writing its standard input and reading its standard output" src="../figure_15.16.png" /></a></p>
-<p>[p549-552]</p>
+<p>The following program is a simple coprocess that reads two numbers from its standard input, computes their sum, and writes the sum to its standard output.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/add2.c">ipc1/add2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">,</span> <span class="n">int1</span><span class="p">,</span> <span class="n">int2</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">line</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>        <span class="cm">/* null terminate */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sscanf</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="s">&quot;%d%d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">int1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">int2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">sprintf</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">int1</span> <span class="o">+</span> <span class="n">int2</span><span class="p">);</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error&quot;</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">&quot;invalid args</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">13</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">13</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We compile this program and leave the executable in the file <code>add2</code>.</p>
+<p>The following program invokes the <code>add2</code> coprocess after reading two numbers from its standard input. The value from the coprocess is written to its standard output.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/pipe4.c">ipc1/pipe4.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">sig_pipe</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>      <span class="cm">/* our signal handler */</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">n</span><span class="p">,</span> <span class="n">fd1</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">fd2</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="kt">pid_t</span>   <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal</span><span class="p">(</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">sig_pipe</span><span class="p">)</span> <span class="o">==</span> <span class="n">SIG_ERR</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;signal error&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">pipe</span><span class="p">(</span><span class="n">fd1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">pipe</span><span class="p">(</span><span class="n">fd2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;pipe error&quot;</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fork error&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>                           <span class="cm">/* parent */</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd1</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd2</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+
+        <span class="k">while</span> <span class="p">(</span><span class="n">fgets</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">stdin</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">fd1</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">line</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;write error to pipe&quot;</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">n</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;read error from pipe&quot;</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">err_msg</span><span class="p">(</span><span class="s">&quot;child closed pipe&quot;</span><span class="p">);</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">line</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>    <span class="cm">/* null terminate */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">fputs</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">stdout</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fputs error&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">ferror</span><span class="p">(</span><span class="n">stdin</span><span class="p">))</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;fgets error on stdin&quot;</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                                    <span class="cm">/* child */</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd1</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">fd2</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fd1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">STDIN_FILENO</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">dup2</span><span class="p">(</span><span class="n">fd1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">STDIN_FILENO</span><span class="p">)</span> <span class="o">!=</span> <span class="n">STDIN_FILENO</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;dup2 error to stdin&quot;</span><span class="p">);</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">fd1</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">fd2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">STDOUT_FILENO</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">dup2</span><span class="p">(</span><span class="n">fd2</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">STDOUT_FILENO</span><span class="p">)</span> <span class="o">!=</span> <span class="n">STDOUT_FILENO</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;dup2 error to stdout&quot;</span><span class="p">);</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">fd2</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">execl</span><span class="p">(</span><span class="s">&quot;./add2&quot;</span><span class="p">,</span> <span class="s">&quot;add2&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;execl error&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">sig_pipe</span><span class="p">(</span><span class="kt">int</span> <span class="n">signo</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;SIGPIPE caught</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program creates two pipes, with the parent and the child closing the ends they don’t need. We have to use two pipes: one for the standard input of the coprocess and one for its standard output. <u>The child then calls <code>dup2</code> to move the pipe descriptors onto its standard input and standard output, before calling <code>execl</code>.</u> If we <code>kill</code> the add2 coprocess while the above program is waiting for our input and then enter two numbers, the signal handler is invoked when the program writes to the pipe that has no reader.</p>
+<h4 id="example-invoking-add2-as-a-coprocess-using-standard-io">Example: invoking <code>add2</code> as a coprocess using standard I/O</h4>
+<p>The previous example of coprocess <code>add2</code> purposely used low-level I/O (UNIX system calls): <code>read</code> and <code>write</code>. What happens if we rewrite this coprocess to use standard I/O? The following program is the new version:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/add2stdio.c">ipc1/add2stdio.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">int1</span><span class="p">,</span> <span class="n">int2</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">line</span><span class="p">[</span><span class="n">MAXLINE</span><span class="p">];</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="n">fgets</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">,</span> <span class="n">stdin</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sscanf</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="s">&quot;%d%d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">int1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">int2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">int1</span> <span class="o">+</span> <span class="n">int2</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;printf error&quot;</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;invalid args</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span>
+                <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;printf error&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If we invoke this new coprocess from the <a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/pipe4.c">parent program</a> from the previous example, it no longer works. The problem is the default standard I/O buffering. When the above program is invoked, the first <code>fgets</code> on the standard input causes the standard I/O library to allocate a buffer and choose the type of buffering. Since the standard input is a pipe, the standard I/O library defaults to fully buffered. The same thing happens with the standard output. While <code>add2</code> is blocked reading from its standard input, the parent program blocked reading from the pipe. We have a deadlock.</p>
+<p>We can change the <a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/add2stdio.c">above program</a> by adding the following four lines before the while loop:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="p">(</span><span class="n">setvbuf</span><span class="p">(</span><span class="n">stdin</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">_IOLBF</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;setvbuf error&quot;</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">setvbuf</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">_IOLBF</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">err_sys</span><span class="p">(</span><span class="s">&quot;setvbuf error&quot;</span><span class="p">);</span>
+</pre></div>
+
+
+<p>These lines cause <code>fgets</code> to return when a line is available and cause <code>printf</code> to do an <code>fflush</code> when a newline is output (refer to <a href="../ch5/#buffering">Section 5.4</a> for the details on standard I/O buffering). Making these explicit calls to <code>setvbuf</code> fixes the program.</p>
 <h3 id="fifos">FIFOs</h3>
 <p>FIFOs are sometimes called named pipes. Unnamed pipes can be used only between related processes when a common ancestor has created the pipe. With FIFOs, however, unrelated processes can exchange data.</p>
 <p>A FIFO is a type of file (<a href="../ch4/#file-types">Chapter 4</a>). One of the encodings of the <code>st_mode</code> member of the stat structure indicates that a file is a FIFO. We can test for this with the <code>S_ISFIFO</code> macro. Creating a FIFO is similar to creating a file; the <em>pathname</em> for a FIFO exists in the file system.</p>
@@ -1364,6 +1503,16 @@ process-shared mutex attribute.</p>
 <p>When we’re writing to a pipe (or FIFO), the constant <code>PIPE_BUF</code> specifies the kernel’s pipe buffer size. A write of <code>PIPE_BUF</code> bytes or less will not be interleaved with the writes from other processes to the same pipe (or FIFO). But if multiple processes are writing to a pipe (or FIFO), and if we write more than <code>PIPE_BUF</code> bytes, the data might be interleaved with the data from the other writers.</p>
 </blockquote>
 <p>What does "interleaved" mean here?</p>
+<p>p548 on coprocess.</p>
+<blockquote>
+<p>The Bourne shell, the Bourne-again shell, and the C shell don’t provide a way to connect processes together as coprocesses.</p>
+</blockquote>
+<p>The Bourne-again shell has no coprocess?</p>
+<p>Solution:</p>
+<p>Coprocess has been added to Bash 4.0 in 2009:</p>
+<ul>
+<li><a href="http://unix.stackexchange.com/questions/86270/how-do-you-use-the-command-coproc-in-bash">Stackoverflow</a></li>
+</ul>
             </div>
         </div>
 
