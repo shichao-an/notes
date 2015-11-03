@@ -1346,6 +1346,14 @@ indicate an end of file after all the data has been read.<ul>
 
 
 <p>These lines cause <code>fgets</code> to return when a line is available and cause <code>printf</code> to do an <code>fflush</code> when a newline is output (refer to <a href="../ch5/#buffering">Section 5.4</a> for the details on standard I/O buffering). Making these explicit calls to <code>setvbuf</code> fixes the program.</p>
+<p>If we aren’t able to modify the program that we’re piping the output into, other techniques are required. For example, if we use <code>awk(1)</code> as a coprocess from our program (instead of the <code>add2</code> program), the following won’t work:</p>
+<div class="codehilite"><pre><span class="c1">#! /bin/awk -f</span>
+<span class="p">{</span> <span class="kr">print</span> <span class="o">$</span><span class="mi">1</span> <span class="o">+</span> <span class="o">$</span><span class="mi">2</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The reason this won’t work is again the standard I/O buffering. But in this case, we cannot change the way <code>awk</code> works (unless we have the source code for it). We are unable to modify the executable of <code>awk</code> in any way to change the way the standard I/O buffering is handled.</p>
+<p>The solution for this general problem is to make the coprocess being invoked (<code>awk</code> in this case) think that its standard input and standard output are connected to a terminal. That causes the standard I/O routines in the coprocess to line buffer these two I/O streams, similar to what we did with the explicit calls to <code>setvbuf</code> previously. We use pseudo terminals to do this in Chapter 19.</p>
 <h3 id="fifos">FIFOs</h3>
 <p>FIFOs are sometimes called named pipes. Unnamed pipes can be used only between related processes when a common ancestor has created the pipe. With FIFOs, however, unrelated processes can exchange data.</p>
 <p>A FIFO is a type of file (<a href="../ch4/#file-types">Chapter 4</a>). One of the encodings of the <code>st_mode</code> member of the stat structure indicates that a file is a FIFO. We can test for this with the <code>S_ISFIFO</code> macro. Creating a FIFO is similar to creating a file; the <em>pathname</em> for a FIFO exists in the file system.</p>
