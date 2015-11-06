@@ -72,6 +72,12 @@ The Linux Programming Interface
 
 <small>by Michael Kerrisk</small>
 
+#### [GOPL](gopl/index.md)
+
+The Go Programming Language
+
+<small>by Alan A. A. Donovan and Brian W. Kernighan</small>
+
 #### [DevOps](devops/index.md)
 
 DevOps: A Software Architect's Perspective
