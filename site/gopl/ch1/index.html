@@ -679,6 +679,19 @@
         <li class="main "><a href="#hello-world">Hello, World</a></li>
         
     
+        <li class="main "><a href="#command-line-arguments">Command-Line Arguments</a></li>
+        
+            <li><a href="#slice-osargs">Slice os.Args *</a></li>
+        
+            <li><a href="#example-implementation-of-unix-echo-command">Example implementation of Unix echo command *</a></li>
+        
+            <li><a href="#comments-that-describe-the-program">Comments that describe the program *</a></li>
+        
+            <li><a href="#variables-declarations-and-assignment">Variables, declarations and assignment *</a></li>
+        
+            <li><a href="#for-loop">for loop</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -741,6 +754,62 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 
 
 <p>For most users, the usual way to download and build packages, run their tests, show their documentation, and so on, is with the go tool.</p>
+<h3 id="command-line-arguments">Command-Line Arguments</h3>
+<p>The <code>os</code> package provides functions and other values for dealing with the operating system in a platform-independent fashion. Command-line arguments are available to a program as the variable <code>os.Args</code>.</p>
+<h4 id="slice-osargs">Slice <code>os.Args</code> *</h4>
+<p>The variable <code>os.Args</code> is a slice of strings. Slices are a fundamental notion in Go. For now, think of a slice as a dynamically sized sequence <code>s</code> of array elements where:</p>
+<ul>
+<li>Individual elements can be accessed as <code>s[i]</code>;</li>
+<li>A contiguous subsequence can be accessed as <code>s[m:n]</code>.</li>
+<li>The number of elements is given by <code>len(s)</code>.</li>
+<li>As in most other programming languages, all indexing in Go uses half-open intervals that include the first index but exclude the last, because it simplifies logic. For example, the slice <code>s[m:n]</code>, where <code>0</code> ≤ <code>m</code> ≤ <code>n</code> ≤ <code>len(s)</code>, contains <code>n-m</code> elements.</li>
+</ul>
+<p>The first element of <code>os.Args</code>, <code>os.Args[0]</code>, is the name of the command itself; the other elements are the arguments that were presented to the program when it started execution. A slice expression of the form <code>s[m:n]</code> yields a slice that refers to elements <code>m</code> through <code>n-1</code>, so the elements we need for our next example are those in the slice <code>os.Args[1:len(os.Args)]</code>. If <code>m</code> or <code>n</code> is omitted, it defaults to 0 or <code>len(s)</code> respectively, so we can abbreviate the desired slice as <code>os.Args[1:]</code>.</p>
+<h4 id="example-implementation-of-unix-echo-command">Example implementation of Unix <code>echo</code> command *</h4>
+<p>The following is an implementation of the Unix <code>echo</code> command, which prints its command-line arguments on a single line. <u>It imports two packages, which are given as a parenthesized list rather than as individual import declarations. Either form is legal, but conventionally the list form is used. The order of imports doesn’t matter; the <code>gofmt</code> tool sorts the package names into alphabetical order.</u></p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/echo1/main.go">gopl.io/ch1/echo1/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Echo1 prints its command-line arguments.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="kt">string</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">s</span> <span class="o">+=</span> <span class="nx">sep</span> <span class="o">+</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+        <span class="nx">sep</span> <span class="p">=</span> <span class="s">&quot; &quot;</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="comments-that-describe-the-program">Comments that describe the program *</h4>
+<p>Comments begin with <code>//</code>. By convention, we describe each package in a comment immediately preceding its package declaration; for a <code>main</code> package, this comment is one or more complete sentences that describe the program as a whole.</p>
+<h4 id="variables-declarations-and-assignment">Variables, declarations and assignment *</h4>
+<p>The <code>var</code> declaration declares two variables <code>s</code> and <code>sep</code>, of type <code>string</code>. A variable can be initialized as part of its declaration. If it is not explicitly initialized, it is implicitly initialized to the <a href="https://golang.org/ref/spec#The_zero_value">zero value</a> for its type, which is 0 for numeric types and the empty string "" for strings. In this example, the declaration implicitly initializes <code>s</code> and <code>sep</code> to empty strings. Variables and declarations are detailed in <a href="../ch2/">Chapter 2</a>.</p>
+<p>The statement:</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">+=</span> <span class="nx">sep</span> <span class="o">+</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+</pre></div>
+
+
+<p>is an <strong>assignment statement</strong> that concatenates the old value of <code>s</code> with <code>sep</code> and <code>os.Args[i]</code> and assigns it back to <code>s</code>; it is equivalent to:</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="p">=</span> <span class="nx">s</span> <span class="o">+</span> <span class="nx">sep</span> <span class="o">+</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+</pre></div>
+
+
+<p>The operator <code>+=</code> is an <strong>assignment operator</strong>. Each arithmetic and logical operator like + or * has a corresponding assignment operator.</p>
+<p>A number of improved versions of <code>echo</code> will be shown in this chapter and the next that will deal with any real inefficiency.</p>
+<h4 id="for-loop"><code>for</code> loop</h4>
+<p>The loop index variable <code>i</code> is declared in the first part of the <code>for</code> loop. The <code>:=</code> symbol is part of a <strong>short variable declaration</strong>, a statement that declares one or more variables and gives them appropriate types based on the initializer values (detailed in the next chapter). The increment statement <code>i++</code> adds 1 to <code>i</code>; it’s equivalent to <code>i += 1</code> which is in turn equivalent to <code>i = i + 1</code>. There’s a corresponding decrement statement <code>i--</code> that subtracts 1. These are statements, not expressions as they are in most languages in the C family, so <code>j = i++</code> is illegal, and they are postfix only, so <code>--i</code> is not legal either.</p>
+<p>The <code>for</code> loop is the only loop statement in Go. It has a number of forms, one of which is illustrated here:</p>
+<div class="codehilite"><pre>for initialization; condition; post {
+    // zero or more statements
+}
+</pre></div>
             </div>
         </div>
 
