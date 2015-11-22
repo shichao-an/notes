@@ -136,7 +136,7 @@ The operator `+=` is an **assignment operator**. Each arithmetic and logical ope
 
 A number of improved versions of `echo` will be shown in this chapter and the next that will deal with any real inefficiency.
 
-#### `for` loop
+#### `for` loop *
 
 The loop index variable `i` is declared in the first part of the `for` loop. The `:=` symbol is part of a **short variable declaration**, a statement that declares one or more variables and gives them appropriate types based on the initializer values (detailed in the next chapter). The increment statement `i++` adds 1 to `i`; it’s equivalent to `i += 1` which is in turn equivalent to `i = i + 1`. There’s a corresponding decrement statement `i--` that subtracts 1. These are statements, not expressions as they are in most languages in the C family, so `j = i++` is illegal, and they are postfix only, so `--i` is not legal either.
 
@@ -148,3 +148,171 @@ for initialization; condition; post {
 }
 ```
 
+In the above form, parentheses are never used around the three components of a `for` loop. The braces are mandatory, and the opening brace must be on the same line as the *post* statement. The three statements are:
+
+* The optional *initialization* statement is executed before the loop starts. If it is present, it must be a **simple statement**, which is one of the following:
+    * A short variable declaration,
+    * An increment or assignment statement,
+    * A function call.
+* The *condition* is a boolean expression evaluated at the beginning of each iteration of the loop; if it evaluates to true, the statements controlled by the loop are executed.
+* The *post* statement is executed after the body of the loop, then the condition is evaluated again. The loop ends when the condition becomes false.  Any of these parts may be omitted. If there is no initialization and no post, the semicolons may also be omitted:
+
+If there is no *initialization* and no *post*, the semicolons may also be omitted:
+
+##### **`for` as a "while" loop** *
+
+```go
+// a traditional "while" loop
+for condition {
+	// ...
+}
+```
+
+If the *condition* is omitted entirely in any of these forms, for example in
+
+```go
+// a traditional infinite loop
+for {
+// ...
+}
+```
+
+This loop is infinite, though it may be terminated in some other way, like a `break` or `return` statement.
+
+##### **`for` as iteration** *
+
+Another form of the for loop iterates over a range of values from a data type like a string or a slice:
+
+<small>[gopl.io/ch1/echo2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/echo2/main.go)</small>
+
+```go
+// Echo2 prints its command-line arguments.
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	s, sep := "", ""
+	for _, arg := range os.Args[1:] {
+		s += sep + arg
+		sep = " "
+	}
+	fmt.Println(s)
+}
+```
+
+In each iteration, `range` produces a pair of values: the index and the value of the element at that index. Here, we don’t need the index, but the `range` loop requires that we deal with both the element and the index. Since Go does not permit unused local variables (which would result in a compilation error), the solution is to use the **blank identifier**, whose name is `_` (an underscore). The blank identifier may be used whenever syntax requires a variable name but program logic does not, for instance to discard an unwanted loop index when we require only the element value.
+
+##### **Equivalent ways of declaring string variables** *
+
+There are several ways to declare a string variable; these are all equivalent:
+
+```go
+s := ""
+var s string
+var s = ""
+var s string = ""
+```
+
+1. The first form is a short variable declaration and is the most compact, but it may be used only within a function, not for package-level variables.
+2. The second form relies on default initialization to the zero value for strings, which is "".
+3. The third form is rarely used except when declaring multiple variables.
+4. The fourth form is explicit about the variable’s type, which is redundant when it is the same as that of the initial value but necessary in other cases where they are not of the same type.
+
+In practice, you should generally use one of the first two forms, with explicit initialization to say that the initial value is important and implicit initialization to say that the initial value doesn’t matter.
+
+Each time around the loop, the string s gets completely new contents. The `+=` statement makes a new string by concatenating the old string, a space character, and the next argument, then assigns the new string to `s`. <u>The old contents of `s` are no longer in use, so they will be garbage-collected in due course.</u>
+
+##### **`strings.Join` function**
+
+If the amount of data involved is large, this could be costly. A simpler and more efficient solution would be to use the `Join` function from the `strings` package:
+
+<small>[gopl.io/ch1/echo3/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/echo3/main.go)</small>
+
+```go
+func main() {
+	fmt.Println(strings.Join(os.Args[1:], " "))
+}
+```
+If we don’t care about format but just want to see the values, perhaps for debugging, we can let `Println` format the results for us:
+
+```go
+fmt.Println(os.Args[1:])
+```
+
+### Finding Duplicate Lines
+
+This section shows three variants of a program called `dup`; it is partly inspired by the Unix `uniq` command, which looks for adjacent duplicate lines.
+
+The first version of `dup` prints each line that appears more than once in the standard input, preceded by its count. This program introduces the following:
+
+* `if` statement
+* `map` data type
+* `bufio` package
+
+<small>[gopl.io/ch1/dup1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/dup1/main.go)</small>
+
+```go
+// Dup1 prints the text of each line that appears more than
+// once in the standard input, preceded by its count.
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	counts := make(map[string]int)
+	input := bufio.NewScanner(os.Stdin)
+	for input.Scan() {
+		counts[input.Text()]++
+	}
+	// NOTE: ignoring potential errors from input.Err()
+	for line, n := range counts {
+		if n > 1 {
+			fmt.Printf("%d\t%s\n", n, line)
+		}
+	}
+}
+```
+
+#### `if` statement *
+
+As with `for`, parentheses are never used around the condition in an `if` statement, but braces are required for the body. There can be an optional `else` part that is executed if the condition is false.
+
+#### `map` that holds `counts` *
+
+A *map* holds a set of key/value pairs and provides constant-time operations to store, retrieve, or test for an item in the set.
+
+* The key may be of any type whose values can compared with `==`, strings being the most common example;
+* The value may be of any type at all.
+
+In this example, the keys are `string`s and the values are `int`s. The built-in function `make` creates a new empty map. Maps are detailed in [Section 4.3](ch4.md#maps).
+
+The statement `counts[input.Text()]++` is equivalent to these two statements:
+
+```go
+line := input.Text()
+counts[line] = counts[line] + 1
+```
+
+It’s not a problem if the map doesn’t yet contain that key. The first time a new line is seen, the expression `counts[line]` on the right-hand side evaluates to the zero value for its type, which is 0 for `int`.
+
+To print the results, we use another `range`-based `for` loop, this time over the `counts` map. Each iteration produces two results, a key and the value of the map element for that key. <u>The order of map iteration is not specified, but in practice it is random, varying from one run to another. This design is intentional, since it prevents programs from relying on any particular ordering where none is guaranteed.</u>
+
+#### `bufio.Scanner`
+
+The `bufio` package helps make input and output efficient and convenient. One of its most useful features is a type called `Scanner` that reads input and breaks it into lines or words; it’s often the easiest way to process input that comes naturally in lines.
+
+The program uses a short variable declaration to create a new variable `input` that refers to a `bufio.Scanner`:
+
+```go
+input := bufio.NewScanner(os.Stdin)
+```
+
+The scanner reads from the program’s standard input. Each call to `input.Scan()` reads the next line and removes the newline character from the end; the result can be retrieved by calling `input.Text()`. The `Scan` function returns `true` if there is a line and `false` when there is no more input.
