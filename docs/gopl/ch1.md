@@ -287,7 +287,7 @@ As with `for`, parentheses are never used around the condition in an `if` statem
 
 #### `map` that holds `counts` *
 
-A *map* holds a set of key/value pairs and provides constant-time operations to store, retrieve, or test for an item in the set.
+A **map** holds a set of key/value pairs and provides constant-time operations to store, retrieve, or test for an item in the set.
 
 * The key may be of any type whose values can compared with `==`, strings being the most common example;
 * The value may be of any type at all.
@@ -305,7 +305,7 @@ It’s not a problem if the map doesn’t yet contain that key. The first time a
 
 To print the results, we use another `range`-based `for` loop, this time over the `counts` map. Each iteration produces two results, a key and the value of the map element for that key. <u>The order of map iteration is not specified, but in practice it is random, varying from one run to another. This design is intentional, since it prevents programs from relying on any particular ordering where none is guaranteed.</u>
 
-#### `bufio.Scanner`
+#### `bufio.Scanner` function
 
 The `bufio` package helps make input and output efficient and convenient. One of its most useful features is a type called `Scanner` that reads input and breaks it into lines or words; it’s often the easiest way to process input that comes naturally in lines.
 
@@ -316,3 +316,86 @@ input := bufio.NewScanner(os.Stdin)
 ```
 
 The scanner reads from the program’s standard input. Each call to `input.Scan()` reads the next line and removes the newline character from the end; the result can be retrieved by calling `input.Text()`. The `Scan` function returns `true` if there is a line and `false` when there is no more input.
+
+#### `fmt.Printf` function
+
+The function `fmt.Printf` produces formatted output from a list of expressions. Its first argument is a format string that specifies how subsequent arguments should be formatted. The format of each argument is determined by a conversion character, a letter following a percent sign.
+
+ |
+-|-
+`%d` | decimal integer
+`%x`, `%o`, `%b` | integer in hexadecimal, octal, binary
+`%f`, `%g`, `%e` | floating-point number: `3.141593` `3.141592653589793` `3.141593e+00`
+`%t` | boolean: `true` or `false`
+`%c` | rune (Unicode code point)
+`%s` | string
+`%q` | quoted string `"abc"` or rune `'c'`
+`%v` | any value in a natural format
+`%T` | type of any value
+`%%` | literal percent sign (no operand)
+
+`\t` (tab) and `\n` (newline) are **escape sequences** for representing otherwise invisible characters. `Printf` does not write a newline by default. By convention:
+
+* Formatting functions whose names end in `f`, such as `log.Printf` and `fmt.Errorf`, use the formatting rules of `fmt.Printf`;
+* Formatting functions whose names end in `ln` use the formatting rules of `fmt.Println`, formatting their arguments as if by `%v`, followed by a newline.
+
+#### `os.Open` function
+
+The next version of `dup` can read from the standard input or handle a list of file names, using `os.Open` to open each one:
+
+<small>[gopl.io/ch1/dup2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/dup2/main.go)</small>
+
+```go
+// Dup2 prints the count and text of lines that appear more than once
+// in the input.  It reads from stdin or from a list of named files.
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	counts := make(map[string]int)
+	files := os.Args[1:]
+	if len(files) == 0 {
+		countLines(os.Stdin, counts)
+	} else {
+		for _, arg := range files {
+			f, err := os.Open(arg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "dup2: %v\n", err)
+				continue
+			}
+			countLines(f, counts)
+			f.Close()
+		}
+	}
+	for line, n := range counts {
+		if n > 1 {
+			fmt.Printf("%d\t%s\n", n, line)
+		}
+	}
+}
+
+func countLines(f *os.File, counts map[string]int) {
+	input := bufio.NewScanner(f)
+	for input.Scan() {
+		counts[input.Text()]++
+	}
+	// NOTE: ignoring potential errors from input.Err()
+}
+```
+
+The function `os.Open` returns two values:
+
+1. The first is an open file (`*os.File`) used in subsequent reads by the `Scanner`.
+2. The second result of `os.Open` is a value of the built-in error type:
+    * If `err` equals the special built-in value `nil`, the file was opened successfully. The file is read, and when the end of the input is reached, `Close` closes the file and releases any resources.
+    * If `err` is not `nil`, something went wrong; the error value describes the problem.
+
+In this program, the error handling prints a message on the standard error stream using `Fprintf` and
+the verb `%v`, which displays a value of any type in a default format. The details of error handling are in [Section 5.4](ch5.md#errors).
+
+<u>Notice that the call to `countLines` precedes its declaration. Functions and other package-level entities may be declared in any order.</u>
