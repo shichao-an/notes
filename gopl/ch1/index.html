@@ -698,7 +698,11 @@
         
             <li><a href="#map-that-holds-counts">map that holds counts *</a></li>
         
-            <li><a href="#bufioscanner">bufio.Scanner</a></li>
+            <li><a href="#bufioscanner-function">bufio.Scanner function</a></li>
+        
+            <li><a href="#fmtprintf-function">fmt.Printf function</a></li>
+        
+            <li><a href="#osopen-function">os.Open function</a></li>
         
     
     </ul>
@@ -942,7 +946,7 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 <h4 id="if-statement"><code>if</code> statement *</h4>
 <p>As with <code>for</code>, parentheses are never used around the condition in an <code>if</code> statement, but braces are required for the body. There can be an optional <code>else</code> part that is executed if the condition is false.</p>
 <h4 id="map-that-holds-counts"><code>map</code> that holds <code>counts</code> *</h4>
-<p>A <em>map</em> holds a set of key/value pairs and provides constant-time operations to store, retrieve, or test for an item in the set.</p>
+<p>A <strong>map</strong> holds a set of key/value pairs and provides constant-time operations to store, retrieve, or test for an item in the set.</p>
 <ul>
 <li>The key may be of any type whose values can compared with <code>==</code>, strings being the most common example;</li>
 <li>The value may be of any type at all.</li>
@@ -956,7 +960,7 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 
 <p>It’s not a problem if the map doesn’t yet contain that key. The first time a new line is seen, the expression <code>counts[line]</code> on the right-hand side evaluates to the zero value for its type, which is 0 for <code>int</code>.</p>
 <p>To print the results, we use another <code>range</code>-based <code>for</code> loop, this time over the <code>counts</code> map. Each iteration produces two results, a key and the value of the map element for that key. <u>The order of map iteration is not specified, but in practice it is random, varying from one run to another. This design is intentional, since it prevents programs from relying on any particular ordering where none is guaranteed.</u></p>
-<h4 id="bufioscanner"><code>bufio.Scanner</code></h4>
+<h4 id="bufioscanner-function"><code>bufio.Scanner</code> function</h4>
 <p>The <code>bufio</code> package helps make input and output efficient and convenient. One of its most useful features is a type called <code>Scanner</code> that reads input and breaks it into lines or words; it’s often the easiest way to process input that comes naturally in lines.</p>
 <p>The program uses a short variable declaration to create a new variable <code>input</code> that refers to a <code>bufio.Scanner</code>:</p>
 <div class="codehilite"><pre><span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
@@ -964,6 +968,121 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 
 
 <p>The scanner reads from the program’s standard input. Each call to <code>input.Scan()</code> reads the next line and removes the newline character from the end; the result can be retrieved by calling <code>input.Text()</code>. The <code>Scan</code> function returns <code>true</code> if there is a line and <code>false</code> when there is no more input.</p>
+<h4 id="fmtprintf-function"><code>fmt.Printf</code> function</h4>
+<p>The function <code>fmt.Printf</code> produces formatted output from a list of expressions. Its first argument is a format string that specifies how subsequent arguments should be formatted. The format of each argument is determined by a conversion character, a letter following a percent sign.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>%d</code></td>
+<td>decimal integer</td>
+</tr>
+<tr>
+<td><code>%x</code>, <code>%o</code>, <code>%b</code></td>
+<td>integer in hexadecimal, octal, binary</td>
+</tr>
+<tr>
+<td><code>%f</code>, <code>%g</code>, <code>%e</code></td>
+<td>floating-point number: <code>3.141593</code> <code>3.141592653589793</code> <code>3.141593e+00</code></td>
+</tr>
+<tr>
+<td><code>%t</code></td>
+<td>boolean: <code>true</code> or <code>false</code></td>
+</tr>
+<tr>
+<td><code>%c</code></td>
+<td>rune (Unicode code point)</td>
+</tr>
+<tr>
+<td><code>%s</code></td>
+<td>string</td>
+</tr>
+<tr>
+<td><code>%q</code></td>
+<td>quoted string <code>"abc"</code> or rune <code>'c'</code></td>
+</tr>
+<tr>
+<td><code>%v</code></td>
+<td>any value in a natural format</td>
+</tr>
+<tr>
+<td><code>%T</code></td>
+<td>type of any value</td>
+</tr>
+<tr>
+<td><code>%%</code></td>
+<td>literal percent sign (no operand)</td>
+</tr>
+</tbody>
+</table>
+<p><code>\t</code> (tab) and <code>\n</code> (newline) are <strong>escape sequences</strong> for representing otherwise invisible characters. <code>Printf</code> does not write a newline by default. By convention:</p>
+<ul>
+<li>Formatting functions whose names end in <code>f</code>, such as <code>log.Printf</code> and <code>fmt.Errorf</code>, use the formatting rules of <code>fmt.Printf</code>;</li>
+<li>Formatting functions whose names end in <code>ln</code> use the formatting rules of <code>fmt.Println</code>, formatting their arguments as if by <code>%v</code>, followed by a newline.</li>
+</ul>
+<h4 id="osopen-function"><code>os.Open</code> function</h4>
+<p>The next version of <code>dup</code> can read from the standard input or handle a list of file names, using <code>os.Open</code> to open each one:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/dup2/main.go">gopl.io/ch1/dup2/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Dup2 prints the count and text of lines that appear more than once</span>
+<span class="c1">// in the input.  It reads from stdin or from a list of named files.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;bufio&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">counts</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span>
+    <span class="nx">files</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">countLines</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">,</span> <span class="nx">counts</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">arg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">files</span> <span class="p">{</span>
+            <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">arg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;dup2: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="p">}</span>
+            <span class="nx">countLines</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">counts</span><span class="p">)</span>
+            <span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">line</span><span class="p">,</span> <span class="nx">n</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">counts</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">n</span> <span class="p">&gt;</span> <span class="mi">1</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d\t%s\n&quot;</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="nx">line</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">countLines</span><span class="p">(</span><span class="nx">f</span> <span class="o">*</span><span class="nx">os</span><span class="p">.</span><span class="nx">File</span><span class="p">,</span> <span class="nx">counts</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Scan</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">counts</span><span class="p">[</span><span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">()]</span><span class="o">++</span>
+    <span class="p">}</span>
+    <span class="c1">// NOTE: ignoring potential errors from input.Err()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The function <code>os.Open</code> returns two values:</p>
+<ol>
+<li>The first is an open file (<code>*os.File</code>) used in subsequent reads by the <code>Scanner</code>.</li>
+<li>The second result of <code>os.Open</code> is a value of the built-in error type:<ul>
+<li>If <code>err</code> equals the special built-in value <code>nil</code>, the file was opened successfully. The file is read, and when the end of the input is reached, <code>Close</code> closes the file and releases any resources.</li>
+<li>If <code>err</code> is not <code>nil</code>, something went wrong; the error value describes the problem.</li>
+</ul>
+</li>
+</ol>
+<p>In this program, the error handling prints a message on the standard error stream using <code>Fprintf</code> and
+the verb <code>%v</code>, which displays a value of any type in a default format. The details of error handling are in <a href="ch5.md#errors">Section 5.4</a>.</p>
+<p><u>Notice that the call to <code>countLines</code> precedes its declaration. Functions and other package-level entities may be declared in any order.</u></p>
             </div>
         </div>
 
