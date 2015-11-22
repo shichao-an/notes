@@ -689,7 +689,16 @@
         
             <li><a href="#variables-declarations-and-assignment">Variables, declarations and assignment *</a></li>
         
-            <li><a href="#for-loop">for loop</a></li>
+            <li><a href="#for-loop">for loop *</a></li>
+        
+    
+        <li class="main "><a href="#finding-duplicate-lines">Finding Duplicate Lines</a></li>
+        
+            <li><a href="#if-statement">if statement *</a></li>
+        
+            <li><a href="#map-that-holds-counts">map that holds counts *</a></li>
+        
+            <li><a href="#bufioscanner">bufio.Scanner</a></li>
         
     
     </ul>
@@ -803,13 +812,158 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 
 <p>The operator <code>+=</code> is an <strong>assignment operator</strong>. Each arithmetic and logical operator like + or * has a corresponding assignment operator.</p>
 <p>A number of improved versions of <code>echo</code> will be shown in this chapter and the next that will deal with any real inefficiency.</p>
-<h4 id="for-loop"><code>for</code> loop</h4>
+<h4 id="for-loop"><code>for</code> loop *</h4>
 <p>The loop index variable <code>i</code> is declared in the first part of the <code>for</code> loop. The <code>:=</code> symbol is part of a <strong>short variable declaration</strong>, a statement that declares one or more variables and gives them appropriate types based on the initializer values (detailed in the next chapter). The increment statement <code>i++</code> adds 1 to <code>i</code>; it’s equivalent to <code>i += 1</code> which is in turn equivalent to <code>i = i + 1</code>. There’s a corresponding decrement statement <code>i--</code> that subtracts 1. These are statements, not expressions as they are in most languages in the C family, so <code>j = i++</code> is illegal, and they are postfix only, so <code>--i</code> is not legal either.</p>
 <p>The <code>for</code> loop is the only loop statement in Go. It has a number of forms, one of which is illustrated here:</p>
 <div class="codehilite"><pre>for initialization; condition; post {
     // zero or more statements
 }
 </pre></div>
+
+
+<p>In the above form, parentheses are never used around the three components of a <code>for</code> loop. The braces are mandatory, and the opening brace must be on the same line as the <em>post</em> statement. The three statements are:</p>
+<ul>
+<li>The optional <em>initialization</em> statement is executed before the loop starts. If it is present, it must be a <strong>simple statement</strong>, which is one of the following:<ul>
+<li>A short variable declaration,</li>
+<li>An increment or assignment statement,</li>
+<li>A function call.</li>
+</ul>
+</li>
+<li>The <em>condition</em> is a boolean expression evaluated at the beginning of each iteration of the loop; if it evaluates to true, the statements controlled by the loop are executed.</li>
+<li>The <em>post</em> statement is executed after the body of the loop, then the condition is evaluated again. The loop ends when the condition becomes false.  Any of these parts may be omitted. If there is no initialization and no post, the semicolons may also be omitted:</li>
+</ul>
+<p>If there is no <em>initialization</em> and no <em>post</em>, the semicolons may also be omitted:</p>
+<h5 id="for-as-a-while-loop"><strong><code>for</code> as a "while" loop</strong> *</h5>
+<div class="codehilite"><pre><span class="c1">// a traditional &quot;while&quot; loop</span>
+<span class="k">for</span> <span class="nx">condition</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If the <em>condition</em> is omitted entirely in any of these forms, for example in</p>
+<div class="codehilite"><pre><span class="c1">// a traditional infinite loop</span>
+<span class="k">for</span> <span class="p">{</span>
+<span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This loop is infinite, though it may be terminated in some other way, like a <code>break</code> or <code>return</code> statement.</p>
+<h5 id="for-as-iteration"><strong><code>for</code> as iteration</strong> *</h5>
+<p>Another form of the for loop iterates over a range of values from a data type like a string or a slice:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/echo2/main.go">gopl.io/ch1/echo2/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Echo2 prints its command-line arguments.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="o">:=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">arg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">{</span>
+        <span class="nx">s</span> <span class="o">+=</span> <span class="nx">sep</span> <span class="o">+</span> <span class="nx">arg</span>
+        <span class="nx">sep</span> <span class="p">=</span> <span class="s">&quot; &quot;</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In each iteration, <code>range</code> produces a pair of values: the index and the value of the element at that index. Here, we don’t need the index, but the <code>range</code> loop requires that we deal with both the element and the index. Since Go does not permit unused local variables (which would result in a compilation error), the solution is to use the <strong>blank identifier</strong>, whose name is <code>_</code> (an underscore). The blank identifier may be used whenever syntax requires a variable name but program logic does not, for instance to discard an unwanted loop index when we require only the element value.</p>
+<h5 id="equivalent-ways-of-declaring-string-variables"><strong>Equivalent ways of declaring string variables</strong> *</h5>
+<p>There are several ways to declare a string variable; these are all equivalent:</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">:=</span> <span class="s">&quot;&quot;</span>
+<span class="kd">var</span> <span class="nx">s</span> <span class="kt">string</span>
+<span class="kd">var</span> <span class="nx">s</span> <span class="p">=</span> <span class="s">&quot;&quot;</span>
+<span class="kd">var</span> <span class="nx">s</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&quot;&quot;</span>
+</pre></div>
+
+
+<ol>
+<li>The first form is a short variable declaration and is the most compact, but it may be used only within a function, not for package-level variables.</li>
+<li>The second form relies on default initialization to the zero value for strings, which is "".</li>
+<li>The third form is rarely used except when declaring multiple variables.</li>
+<li>The fourth form is explicit about the variable’s type, which is redundant when it is the same as that of the initial value but necessary in other cases where they are not of the same type.</li>
+</ol>
+<p>In practice, you should generally use one of the first two forms, with explicit initialization to say that the initial value is important and implicit initialization to say that the initial value doesn’t matter.</p>
+<p>Each time around the loop, the string s gets completely new contents. The <code>+=</code> statement makes a new string by concatenating the old string, a space character, and the next argument, then assigns the new string to <code>s</code>. <u>The old contents of <code>s</code> are no longer in use, so they will be garbage-collected in due course.</u></p>
+<h5 id="stringsjoin-function"><strong><code>strings.Join</code> function</strong></h5>
+<p>If the amount of data involved is large, this could be costly. A simpler and more efficient solution would be to use the <code>Join</code> function from the <code>strings</code> package:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/echo3/main.go">gopl.io/ch1/echo3/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="s">&quot; &quot;</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If we don’t care about format but just want to see the values, perhaps for debugging, we can let <code>Println</code> format the results for us:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+</pre></div>
+
+
+<h3 id="finding-duplicate-lines">Finding Duplicate Lines</h3>
+<p>This section shows three variants of a program called <code>dup</code>; it is partly inspired by the Unix <code>uniq</code> command, which looks for adjacent duplicate lines.</p>
+<p>The first version of <code>dup</code> prints each line that appears more than once in the standard input, preceded by its count. This program introduces the following:</p>
+<ul>
+<li><code>if</code> statement</li>
+<li><code>map</code> data type</li>
+<li><code>bufio</code> package</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/dup1/main.go">gopl.io/ch1/dup1/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Dup1 prints the text of each line that appears more than</span>
+<span class="c1">// once in the standard input, preceded by its count.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;bufio&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">counts</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span>
+    <span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Scan</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">counts</span><span class="p">[</span><span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">()]</span><span class="o">++</span>
+    <span class="p">}</span>
+    <span class="c1">// NOTE: ignoring potential errors from input.Err()</span>
+    <span class="k">for</span> <span class="nx">line</span><span class="p">,</span> <span class="nx">n</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">counts</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">n</span> <span class="p">&gt;</span> <span class="mi">1</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d\t%s\n&quot;</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="nx">line</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="if-statement"><code>if</code> statement *</h4>
+<p>As with <code>for</code>, parentheses are never used around the condition in an <code>if</code> statement, but braces are required for the body. There can be an optional <code>else</code> part that is executed if the condition is false.</p>
+<h4 id="map-that-holds-counts"><code>map</code> that holds <code>counts</code> *</h4>
+<p>A <em>map</em> holds a set of key/value pairs and provides constant-time operations to store, retrieve, or test for an item in the set.</p>
+<ul>
+<li>The key may be of any type whose values can compared with <code>==</code>, strings being the most common example;</li>
+<li>The value may be of any type at all.</li>
+</ul>
+<p>In this example, the keys are <code>string</code>s and the values are <code>int</code>s. The built-in function <code>make</code> creates a new empty map. Maps are detailed in <a href="ch4.md#maps">Section 4.3</a>.</p>
+<p>The statement <code>counts[input.Text()]++</code> is equivalent to these two statements:</p>
+<div class="codehilite"><pre><span class="nx">line</span> <span class="o">:=</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">()</span>
+<span class="nx">counts</span><span class="p">[</span><span class="nx">line</span><span class="p">]</span> <span class="p">=</span> <span class="nx">counts</span><span class="p">[</span><span class="nx">line</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div>
+
+
+<p>It’s not a problem if the map doesn’t yet contain that key. The first time a new line is seen, the expression <code>counts[line]</code> on the right-hand side evaluates to the zero value for its type, which is 0 for <code>int</code>.</p>
+<p>To print the results, we use another <code>range</code>-based <code>for</code> loop, this time over the <code>counts</code> map. Each iteration produces two results, a key and the value of the map element for that key. <u>The order of map iteration is not specified, but in practice it is random, varying from one run to another. This design is intentional, since it prevents programs from relying on any particular ordering where none is guaranteed.</u></p>
+<h4 id="bufioscanner"><code>bufio.Scanner</code></h4>
+<p>The <code>bufio</code> package helps make input and output efficient and convenient. One of its most useful features is a type called <code>Scanner</code> that reads input and breaks it into lines or words; it’s often the easiest way to process input that comes naturally in lines.</p>
+<p>The program uses a short variable declaration to create a new variable <code>input</code> that refers to a <code>bufio.Scanner</code>:</p>
+<div class="codehilite"><pre><span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The scanner reads from the program’s standard input. Each call to <code>input.Scan()</code> reads the next line and removes the newline character from the end; the result can be retrieved by calling <code>input.Text()</code>. The <code>Scan</code> function returns <code>true</code> if there is a line and <code>false</code> when there is no more input.</p>
             </div>
         </div>
 
