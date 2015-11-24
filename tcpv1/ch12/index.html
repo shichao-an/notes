@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/tcpv1/ch12/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 12. TCP: The Transmission Control Protocol (Preliminaries) - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../apue/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lkd/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/tcpv1/ch12.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-12-tcp-the-transmission-control-protocol-preliminaries">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+            <li><a href="#information-theory-and-coding-theory">Information theory and coding theory</a></li>
+        
+            <li><a href="#arq-and-retransmission">ARQ and Retransmission</a></li>
+        
+            <li><a href="#windows-of-packets-and-sliding-windows">Windows of Packets and Sliding Windows</a></li>
+        
+            <li><a href="#variable-windows-flow-control-and-congestion-control">Variable Windows: Flow Control and Congestion Control</a></li>
+        
+            <li><a href="#setting-the-retransmission-timeout">Setting the Retransmission Timeout</a></li>
+        
+    
+        <li class="main "><a href="#introduction-to-tcp">Introduction to TCP</a></li>
+        
+            <li><a href="#the-tcp-service-model">The TCP Service Model</a></li>
+        
+            <li><a href="#reliability-in-tcp">Reliability in TCP</a></li>
+        
+    
+        <li class="main "><a href="#tcp-header-and-encapsulation">TCP Header and Encapsulation</a></li>
+        
+            <li><a href="#sequence-number-and-acknowledgment-number-fields">Sequence Number and Acknowledgment Number fields *</a></li>
+        
+            <li><a href="#other-fields-in-the-tcp-header">Other fields in the TCP header *</a></li>
+        
+            <li><a href="#tcp-segments-without-data">TCP segments without data *</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-12-tcp-the-transmission-control-protocol-preliminaries"><strong>Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>[p579]</p>
+<p>The protocols discussed so far do not include mechanisms for delivering data reliably; they may detect that erroneous data has been received, using a checksum or CRC, but they do not try very hard to repair errors:</p>
+<ul>
+<li>With IP and UDP, no error repair is done at all.</li>
+<li>With Ethernet and other protocols based on it, the protocol provides some number of retries and then gives up if it cannot succeed.</li>
+</ul>
+<h5 id="information-theory-and-coding-theory"><strong>Information theory and coding theory</strong></h5>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Error_detection_and_correction#Error-correcting_code"><strong>Error-correcting codes</strong></a> (adding redundant bits so that the real information can be retrieved even if some bits are damaged) is one way to correct communications problems is one very important method for handling errors.</li>
+<li><a href="https://en.wikipedia.org/wiki/Error_detection_and_correction#Automatic_repeat_request_.28ARQ.29"><strong>Automatic Repeat Request</strong></a> (ARQ): which means "try sending again" until the information is finally received. This approach forms the basis for many communications protocols, including TCP.</li>
+</ul>
+<h4 id="arq-and-retransmission">ARQ and Retransmission</h4>
+<p>For a multihop communications channel, there are other problems besides packet bit errors:</p>
+<ul>
+<li>Problems that arise at an intermediate router</li>
+<li>Packet reordering</li>
+<li>Packet duplication</li>
+<li>Packet erasures (drops)</li>
+</ul>
+<p>An error-correcting protocol designed for use over a multihop communications channel (such as IP) must cope with all of these problems.</p>
+<h5 id="packet-drops-and-bit-errors"><strong>Packet drops and bit errors</strong></h5>
+<p>A straightforward method dealing with packet drops (and bit errors) is to resend the packet until it is received properly. This requires a way to determine:</p>
+<ol>
+<li><strong>Whether the receiver has received the packet.</strong></li>
+<li><strong>Whether the packet it received was the same one the sender sent.</strong></li>
+</ol>
+<p>This is solved by using acknowledgment (ACK): the sender sends a packet and awaits an ACK. When the receiver receives
+the packet, it sends the ACK. When the sender receives the ACK, it sends another
+packet, and the process continues. Interesting questions to ask here are:</p>
+<ol>
+<li><strong>How long should the sender (expect to) wait for an ACK?</strong><ul>
+<li>This is discussed in <a href="../ch14/">Chapter 14</a>.</li>
+</ul>
+</li>
+<li><strong>What if the ACK is lost?</strong><ul>
+<li>If an ACK is dropped, the sender cannot distinguish this case from the case in which the original packet is dropped, so it simply sends the packet again. The receiver may receive two or more copies in that case, so it must be prepared to handle that situation</li>
+</ul>
+</li>
+<li><strong>What if the packet was received but had errors in it?</strong><ul>
+<li>Detecting errors is easiter than correcting errors. By using a form of checksum. When a receiver receives a packet containing an error, it refrains from sending an ACK. Eventually, the sender resends the packet, which ideally arrives undamaged.</li>
+</ul>
+</li>
+</ol>
+<h5 id="packet-duplication"><strong>Packet duplication</strong></h5>
+<p>The receiver might receive duplicate copies of the packet. This problem is addressed using a <strong>sequence number</strong>. Every unique packet gets a new sequence number when it is sent at the source, and this sequence number is carried along in the packet itself. The receiver can use this number to determine whether it has already seen the packet and if so, discard it.</p>
+<h5 id="efficiency"><strong>Efficiency</strong></h5>
+<p>The protocol described so far is reliable but not very efficient. The sender injects a single packet into the communications path but then must stop until it hears the ACK. This protocol is therefore called "<strong>stop and wait</strong>". Its throughput performance (data sent on the network per unit time) is proportional to <em>M/R</em> where <em>M</em> is the packet size and <em>R</em> is the round-trip time (RTT), assuming no packets are lost or irreparably damaged in transit. For a fixed-size packet, as <em>R</em> goes up, the throughput goes down. If packets are lost or damaged, the situation is even worse: the "<a href="https://en.wikipedia.org/wiki/Goodput">goodput</a>" (useful amount of data transferred per unit time) can be considerably less than the throughput.</p>
+<p>For a network that doesn’t damage or drop many packets, the cause for low throughput is usually that the network is not being kept busy. The situation is similar to using an assembly line where new work cannot enter the line until a complete product emerges. Most of the line goes idle. We could have more than one work unit in the line at a time. This is same for networks: if we could have more than one packet in the network, we would keep it "more busy", leading to higher throughput.</p>
+<p>Allowing more than one packet to be in the network at a time:</p>
+<ul>
+<li>The sender must decide not only when to inject a packet into the network, but also how many. It also must figure out how to keep the timers when waiting for ACKs, and it must keep a copy of each packet not yet acknowledged in case retransmissions are necessary.</li>
+<li>The receiver needs to have a more sophisticated ACK mechanism: one that can distinguish which packets have been received and which have not.</li>
+<li>The receiver may need a more sophisticated buffering (packet storage) mechanism: one that allows it to hold "out-of-sequence" packets (those packets that have arrived earlier than those expected because of loss or reordering).</li>
+</ul>
+<p>There are other issues:</p>
+<ul>
+<li>What if the receiver is slower than the sender? If the sender simply injects many packets at a very high rate, the receiver might just drop them because of processing or memory limitations. The same question can be asked about the routers in the middle.</li>
+<li>What if the network infrastructure cannot handle the rate of data the sender and receiver wish to use?</li>
+</ul>
+<h4 id="windows-of-packets-and-sliding-windows">Windows of Packets and Sliding Windows</h4>
+<p>Assume each unique packet has a sequence number. We define a <strong>window</strong> of packets as the collection of packets (or their sequence numbers) that have been injected by the sender but not yet completely acknowledged (the sender has not received an ACK for them). We refer to the <strong>window size</strong> as the number of packets in the window.</p>
+<p><a href="../figure_12-1.png" title=" The sender’s window, showing which packets are eligible to be sent (or have already been sent), which are not yet eligible, and which have already been sent and acknowledged.  In this example, the window size is fixed at three packets."><img alt="The sender’s window, showing which packets are eligible to be sent (or have already been sent), which are not yet eligible, and which have already been sent and acknowledged. In this example, the window size is fixed at three packets." src="../figure_12-1_600.png" /></a></p>
+<p>In the figure:</p>
+<ul>
+<li>Packet number 3 has already been sent and acknowledged, so the copy of it that the sender was keeping can now be released.</li>
+<li>Packet 7 is ready at the sender but not yet able to be sent because it is not yet "in" the window.</li>
+<li>When the sender receives an ACK for packet 4, the window "slides" to the right by one packet, meaning that the copy of packet 4 can be released and packet 7 can be sent.</li>
+</ul>
+<p>This movement of the window gives rise to another name for this type of protocol, a <strong>sliding window</strong> protocol.</p>
+<p>Typically, this window structure is kept at both the sender and the receiver.</p>
+<ul>
+<li>At the sender, it keeps track of what packets can be released, awaiting ACKs, and cannot yet be sent.</li>
+<li>At the receiver, it keeps track of:<ul>
+<li>What packets have already been received and acknowledged,</li>
+<li>What packets are expected (and how much memory has been allocated to hold them),</li>
+<li>Which packets (even if received) will not be kept because of limited memory.</li>
+</ul>
+</li>
+</ul>
+<p>Although the window structure is convenient for keeping track of data as it flows between sender and receiver, it does not provide guidance as to how large the window should be, or what happens if the receiver or network cannot handle the sender’s data rate.</p>
+<h4 id="variable-windows-flow-control-and-congestion-control">Variable Windows: Flow Control and Congestion Control</h4>
+<p><strong>Flow control</strong> can handle problem that arises when a receiver is too slow relative to a sender, by forcing the sender to slow down when the receiver cannot keep up. It is usually handled in one of two ways:</p>
+<ul>
+<li><strong>Rate-based flow control</strong> gives the sender a certain data rate allocation and ensures that data is never allowed to be sent at a rate that exceeds the allocation. This type of flow control is most appropriate for streaming applications and can be used with broadcast and multicast delivery (Chapter 9).</li>
+<li><strong>Window-based flow control</strong> is the most popular approach when sliding windows are being used. In this approach, the window size is not fixed but is instead allowed to vary over time.<ul>
+<li><strong>Window advertisement</strong>, or simply a <strong>window update</strong> is a method for the receiver to signal the sender how large a window to use. This value is used by the sender (the receiver of the window advertisement) to adjust its window size.</li>
+<li>Logically, window update is separate from the ACKs we discussed previously, but in practice the window update and ACK are carried in a single packet, meaning that the sender tends to adjust the size of its window at the same time it slides it to the right.</li>
+</ul>
+</li>
+</ul>
+<p>If we consider the effect of changing the window size at the sender, it becomes clear how this achieves flow control. The sender is allowed to inject <em>W</em> packets into the network before it hears an ACK for any of them. If the sender and receiver are sufficiently fast, and the network loses no packets and has an infinite capacity, this means that the transfer rate is proportional to (<em>SW/R</em>) bits/s, where <em>W</em> is the window size, <em>S</em> is the packet size in bits, and <em>R</em> is the RTT. When the window advertisement from the receiver clamps the value of <em>W</em> at the sender, the sender’s overall rate can be limited so as to not overwhelm the receiver.</p>
+<p>This approach works fine for protecting the receiver, but what about the network in between? We may have routers with limited memory between the sender and the receiver that have to contend with slow network links. When this happens, it is possible for the sender’s rate to exceed a router’s ability to keep up, leading to packet loss. This is addressed with a special form of flow control called <strong>congestion control</strong>.</p>
+<p>Congestion control involves the sender slowing down so as to not overwhelm the network between itself and the receiver.</p>
+<ul>
+<li><strong>Explicit signaling</strong> uses a window advertisement to signal the sender to slow down for the receiver.</li>
+<li><strong>Implicit signaling</strong>: the sender guesses that it needs to slow down. It would involve deciding to slow down based on some other evidence.</li>
+</ul>
+<p>The problem of congestion control in datagram-style networks, and more generally <strong>queuing theory</strong> to which it is closely related, has remained a major research topic for years, and it is unlikely to ever be solved completely for all circumstances. It is also not practical to discuss all the options and methods of performing flow control here. In Chapter 16 we will explore the particular congestion control technique used with TCP in more detail, along with a number of variants that have arisen over the years.</p>
+<h4 id="setting-the-retransmission-timeout">Setting the Retransmission Timeout</h4>
+<p>One of the most important performance issues is how long to wait before concluding that a packet has been lost and should be resent. That is, <strong>What should the retransmission timeout be?</strong> Intuitively, the amount of time the sender should wait before
+resending a packet is about the sum of the following times:</p>
+<ol>
+<li>The time to send the packet,</li>
+<li>The time for the receiver to process it and send an ACK,</li>
+<li>The time for the ACK to travel back to the sender,</li>
+<li>The time for the sender to process the ACK.</li>
+</ol>
+<p>In practice, none of these times are known with certainty and any or all of them vary over time as additional load is added to or removed from the end hosts or routers.</p>
+<p>Because it is not practical for the user to estimate all the times, a better strategy is to have the protocol implementation try to estimate them. This is called <strong>round-trip-time estimation</strong> and is a statistical process. The true RTT is likely to be close to the sample mean of a collection of samples of RTTs. This average naturally changes over time (it is not stationary), as the paths taken through the network may change.</p>
+<p>[p584]</p>
+<p>It would not be sensible to set the retransmission timer to be exactly equal to the mean estimator, as it is likely that many actual RTTs will be larger, thereby inducing unwanted retransmissions.</p>
+<ul>
+<li>The timeout should be set to something larger than the mean, but exactly what this relationship is (or even if the mean should be directly used) is not yet clear.</li>
+<li>Setting the timeout too large is also undesirable, as this leads back to letting the network go idle, reducing throughput.</li>
+</ul>
+<p>This is further explored in Chapter 14.</p>
+<h3 id="introduction-to-tcp">Introduction to TCP</h3>
+<p>Our description of TCP starts in this chapter and continues in the next five chapters:</p>
+<ul>
+<li>Chapter 13: how a TCP connection is established and terminated.</li>
+<li>Chapter 14:<ul>
+<li>How TCP estimates the per-connection RTT.</li>
+<li>How the retransmission timeout is set based on the above estimate.</li>
+</ul>
+</li>
+<li>Chapter 15:<ul>
+<li>Normal transfer of data (starting with "interactive" applications, such as chat).</li>
+<li>Window management and flow control, which apply to both interactive and "bulk" data flow applications (such as file transfer).</li>
+<li><strong>Urgent mechanism</strong> of TCP, which allows a sender to mark certain data in the data stream as special.</li>
+</ul>
+</li>
+<li>Chapter 16:<ul>
+<li>Congestion control algorithms in TCP that help to reduce packet loss when the network is very busy.</li>
+<li>Modifications that have been proposed to increase throughput on fast networks or improve resiliency on lossy (e.g., wireless) networks.</li>
+</ul>
+</li>
+<li>Chapter 17: how TCP keeps connections active even when no data is flowing.</li>
+</ul>
+<h4 id="the-tcp-service-model">The TCP Service Model</h4>
+<p>Even though TCP and UDP use the same network layer (IPv4 or IPv6), TCP provides a totally different service to the application layer from what UDP does. <u>TCP provides a <strong>connection-oriented</strong>, reliable, byte stream service.</u> The term connection-oriented means that the two applications using TCP must establish a TCP connection by contacting each other before they can exchange data. There are exactly two endpoints communicating with each other on a TCP connection; concepts such as broadcasting and multicasting (Chapter 9) are not applicable to TCP.</p>
+<p>TCP provides a byte stream abstraction to applications that use it. Its consequence is that no record markers or message boundaries are automatically inserted by TCP (<a href="../ch1/#message-boundaries">Chapter 1</a>). A record marker corresponds to an indication of an application’s write extent. If the application on one end writes 10 bytes, followed by a write of 20 bytes, followed by a write of 50 bytes, the application at the other end of the connection cannot tell what size the individual writes were. For example, the other end may read the 80 bytes in four reads of 20 bytes at a time or in some other way. One end puts a stream of bytes into TCP, and the identical stream of bytes appears at the other end. Each endpoint individually chooses its read and write sizes.</p>
+<p>TCP does not interpret the contents of the bytes in the byte stream at all. It has no idea if the data bytes being exchanged are binary data, ASCII characters, <a href="https://en.wikipedia.org/wiki/EBCDIC">EBCDIC</a> characters, or something else. The interpretation of this byte stream is up to the applications on each end of the connection. TCP supports the urgent mechanism mentioned before, although it is no longer recommended for use.</p>
+<h4 id="reliability-in-tcp">Reliability in TCP</h4>
+<p>TCP provides reliability using specific variations on the techniques just described.</p>
+<ul>
+<li><strong>Packetization</strong>: TCP must convert a sending application’s stream of bytes into a set of packets that IP can carry, since it provides a byte stream interface.</li>
+<li><strong>Repacketization</strong>: these packets contain sequence numbers, which in TCP actually represent the byte offsets of the first byte in each packet in the overall data stream rather than packet numbers. This allows packets to be of variable size during a transfer and may also allow them to be combined.</li>
+</ul>
+<p>The application data is broken into what TCP considers the best-size chunks to send, typically fitting each segment into a single IP-layer datagram that will not be fragmented.  This is different from UDP, where each write by the application usually generates a UDP datagram of that size (plus headers). The chunk passed by TCP to IP is called a <strong>segment</strong>. Chapter 15 discusses how TCP decides what size a segment should be.</p>
+<h3 id="tcp-header-and-encapsulation">TCP Header and Encapsulation</h3>
+<p>TCP is encapsulated in IP datagrams as shown the figure below:</p>
+<p><a href="../figure_12-2.png" title="Figure 12-2 The TCP header appears immediately following the IP header or last IPv6 extension header and is often 20 bytes long (with no TCP options). With options, the TCP header can be as large as 60 bytes. Common options include Maximum Segment Size, Timestamps, Window Scaling, and Selective ACKs."><img alt="Figure 12-2 The TCP header appears immediately following the IP header or last IPv6 extension header and is often 20 bytes long (with no TCP options). With options, the TCP header can be as large as 60 bytes. Common options include Maximum Segment Size, Timestamps, Window Scaling, and Selective ACKs." src="../figure_12-2_600.png" /></a></p>
+<p>The TCP header (show in the figure below) is considerably more complicated than the UDP header (<a href="../ch10/">Chapter 10</a>). This is not very surprising, as TCP is a significantly more complicated protocol that must keep each end of the connection informed (synchronized) about the current state.</p>
+<p><a href="../figure_12-3.png" title="Figure 12-3 The TCP header. Its normal size is 20 bytes, unless options are present. The Header Length field gives the size of the header in 32-bit words (minimum value is 5). The shaded fields (Acknowledgment Number, Window Size, plus ECE and ACK bits) refer to the data flowing in the opposite direction relative to the sender of this segment."><img alt="Figure 12-3 The TCP header. Its normal size is 20 bytes, unless options are present. The Header Length field gives the size of the header in 32-bit words (minimum value is 5). The shaded fields (Acknowledgment Number, Window Size, plus ECE and ACK bits) refer to the data flowing in the opposite direction relative to the sender of this segment." src="../figure_12-3_600.png" /></a></p>
+<p>Each TCP header contains the source and destination port number. <u>The source and destination port number, along with the source and destination IP addresses in the IP header, uniquely identify each connection.</u></p>
+<p>The combination of an IP address and a port number is sometimes called an <strong>endpoint</strong> or <strong>socket</strong> in the TCP literature. The term "socket" appeared in [RFC0793] and was ultimately adopted as the name of the Berkeley-derived programming interface for network communications (called "Berkeley sockets"). It is a <em>pair</em> of sockets or endpoints (<u>the 4-tuple consisting of the client IP address, client port number, server IP address, and server port number) that uniquely identifies each TCP connection</u>. This fact will become important when we look at how a TCP server can communicate with multiple clients (<a href="../ch13/">Chapter 13</a>).</p>
+<h4 id="sequence-number-and-acknowledgment-number-fields">Sequence Number and Acknowledgment Number fields *</h4>
+<ul>
+<li><u>The <strong>Sequence Number</strong> field identifies the byte in the stream of data from the sending TCP to the receiving TCP that the first byte of data in the containing segment represents.</u><ul>
+<li>If we consider the stream of bytes flowing in one direction between two applications, TCP numbers each byte with a sequence number.</li>
+<li>This sequence number is a 32-bit unsigned number that wraps back around to 0 after reaching (2<sup>32</sup>) − 1.</li>
+</ul>
+</li>
+<li>The <strong>Acknowledgment Number</strong> field (also called the <strong>ACK Number</strong> or ACK field for short) contains the next sequence number that the sender of the acknowledgment expects to receive. <u>This is therefore the sequence number of the last successfully received byte of data plus 1.</u><ul>
+<li><u>This field is valid only if the <strong>ACK</strong> bit field is on</u>, which it usually is for all but initial and closing segments.</li>
+<li>Sending an ACK costs nothing more than sending any other TCP segment because the 32-bit ACK Number field is always part of the header, as is the ACK bit field.</li>
+</ul>
+</li>
+</ul>
+<p>When a new connection is being established, the <strong>SYN</strong> bit field is turned on in the first segment sent from client to server. Such segments are called <strong>SYN segments</strong>, or simply <strong>SYNs</strong>. The Sequence Number field contains the first sequence number to be used on that direction of the connection for subsequent sequence numbers and in returning ACK numbers. This number is not 0 or 1 but instead is another number, often randomly chosen, called the <strong>initial sequence number</strong> (ISN). The reason for the ISN not being 0 or 1 is a security measure and will be discussed in <a href="../ch13/">Chapter 13</a>. The sequence number of the first byte of data sent on this direction of the connection is the ISN plus 1 because the SYN bit field consumes one sequence number. Consuming a sequence number also implies reliable delivery using retransmission (discussed later). Thus, SYNs and application bytes (and FINs) are reliably delivered. ACKs, which do not consume sequence numbers, are not.</p>
+<p>TCP can be described as "a sliding window protocol with cumulative positive acknowledgments". The <strong>ACK Number</strong> field is constructed to indicate <u>the largest byte received in order at the receiver (plus 1)</u>. For example, if bytes 1–1024 are received OK, and the next segment contains bytes 2049–3072, the receiver cannot use the regular ACK Number field to signal the sender that it received this new segment. Modern TCPs, however, have a <strong>selective acknowledgment</strong> (SACK) option that allows the receiver to indicate to the sender out-of-order data it has received correctly. When paired with a TCP sender capable of <strong>selective repeat</strong>, a significant performance benefit may be realized [FF96]. <a href="../ch14/">Chapter 14</a> discusses how TCP uses <strong>duplicate acknowledgments</strong> (multiple segments with the same ACK field) to help with its congestion control and error control procedures</p>
+<h4 id="other-fields-in-the-tcp-header">Other fields in the TCP header *</h4>
+<ul>
+<li>The <strong>Header Length</strong> field gives the length of the header in 32-bit words. This is required because the length of the <strong>Options</strong> field is variable.<ul>
+<li>With a 4-bit field, TCP is limited to a 60-byte header.</li>
+<li>Without options, the size is 20 bytes.</li>
+</ul>
+</li>
+</ul>
+<p>Currently eight bit fields are defined for the TCP header, although some older implementations understand only the last six of them ([RFC3540], an experimental RFC, also defines the least significant of the Resv bits as a nonce sum (NS)). One or more of them can be turned on at the same time. Their use are briefly mentioned here and detailed in later chapters:</p>
+<ol>
+<li><strong>CWR</strong>. Congestion Window Reduced (the sender reduced its sending rate); see <a href="../ch16/">Chapter 16</a>.</li>
+<li><strong>ECE</strong>. ECN Echo (the sender received an earlier congestion notification); see Chapter 16.</li>
+<li><strong>URG</strong>. Urgent (the <strong>Urgent Pointer</strong> field is valid; rarely used); see <a href="../ch15/">Chapter 15</a>.</li>
+<li><strong>ACK</strong>. Acknowledgment (the <strong>Acknowledgment Number</strong> field is valid; always on after a connection is established); see <a href="../ch13/">Chapters 13</a> and 15.</li>
+<li><strong>PSH</strong>. Push (the receiver should pass this data to the application as soon as possible; not reliably implemented or used); see Chapter 15.</li>
+<li><strong>RST</strong>. Reset the connection (connection abort, usually because of an error); see Chapter 13.</li>
+<li><strong>SYN</strong>. Synchronize sequence numbers to initiate a connection; see Chapter 13.</li>
+<li><strong>FIN</strong>. The sender of the segment is finished sending data to its peer; see Chapter 13.</li>
+</ol>
+<p>Remaining fields:</p>
+<ul>
+<li><strong>Window Size</strong> field. TCP’s flow control is provided by each end advertising a window size using the Window Size field. This is the number of bytes, starting with the one specified by the ACK number, that the receiver is willing to accept. This is a 16-bit field, limiting the window to 65,535 bytes, and thereby limiting TCP’s throughput performance. <a href="../ch15/">Chapter 15</a> discusses the Window Scale option that allows this value to be scaled, providing much larger windows and improved performance for high-speed and long-delay networks.</li>
+<li>The <strong>TCP Checksum</strong> field covers the TCP header and data and some fields in the IP header, using a pseudo-header computation similar to the one used with ICMPv6 and UDP discussed in <a href="../ch8/">Chapters 8</a> and <a href="../ch10/">Chapter 10</a>. It is mandatory for this field to be calculated and stored by the sender, and then verified by the receiver.  The TCP checksum is calculated with the same algorithm as the IP, ICMP, and UDP ("Internet") checksums.</li>
+<li>The <strong>Urgent Pointer</strong> field is valid only if the <strong>URG</strong> bit field is set. This "pointer" is a positive offset that must be added to the Sequence Number field of the segment to yield the sequence number of the last byte of urgent data. TCP’s urgent mechanism is a way for the sender to provide specially marked data to the other end.</li>
+<li>The most common <strong>Option</strong> field is the <a href="https://en.wikipedia.org/wiki/Maximum_segment_size">Maximum Segment Size</a> option, called the MSS. Each end of a connection normally specifies this option on the first segment it sends (the ones with the SYN bit field set to establish the connection). <u>The MSS option specifies the maximum-size segment that the sender of the option is willing to receive in the reverse direction.</u> The MSS option is detailed in <a href="../ch13/">Chapter 13</a> and some of the other TCP options in <a href="../ch14/">Chapters 14</a> and <a href="../ch15/">Chapter 15</a>.<ul>
+<li>Other common options include SACK, Timestamp, and Window Scale.</li>
+</ul>
+</li>
+</ul>
+<h4 id="tcp-segments-without-data">TCP segments without data *</h4>
+<p>In <a href="../figure_12-2.png">Figure 12-2</a>, the data portion of the TCP segment is optional. The TCP segment without data may be one of the following cases:</p>
+<ul>
+<li><strong>Connection establishment and termination</strong>. <u>When a connection is established, and when a connection is terminated, segments are exchanged that contain only the TCP header (with or without options) but no data</u>.</li>
+<li><strong>Acknowledgment</strong>. A header without any data is also used to acknowledge received data, if there is no data to be transmitted in that direction (called a pure ACK)</li>
+<li><strong>Window update</strong> notifies the communication peer of a change in the window size.</li>
+<li>There are also some cases resulting from timeouts when a segment can be sent without any data.</li>
+</ul>
+<h3 id="summary">Summary</h3>
+<p>The problem of providing reliable communications over lossy communication channels has been studied for years. The two primary methods for dealing with errors include error-correcting codes and data retransmission. The protocols using retransmissions must also handle data loss, usually by setting a timer, and must also arrange some way for the receiver to signal the sender what it has received.  Deciding how long to wait for an ACK can be tricky, as the appropriate time may change as network routing or load on the end systems varies. Modern protocols estimate the round-trip time and set the retransmission timer based on some function of these measurements.</p>
+<p>Except for setting the retransmission timer, retransmission protocols are simple when only one packet may be in the network at one time, but they perform poorly for networks where the delay is high. To be more efficient, multiple packets must be injected into the network before an ACK is received. This approach is more efficient but also more complex. A typical approach to managing the complexity is to use sliding windows, whereby packets are marked with sequence numbers, and the window size bounds the number of such packets. When the window size varies based on either feedback from the receiver or other signals (such as dropped packets), both flow control and congestion control can be achieved.</p>
+<p>TCP provides a reliable, connection-oriented, byte stream, transport-layer service built using many of these techniques. We looked briefly at all of the fields in the TCP header, noting that most of them are directly related to these abstract concepts in reliable delivery. We will examine them in detail in the chapters that follow. TCP packetizes the application data into segments, sets a timeout anytime it sends data, acknowledges data received by the other end, reorders out-of-order data, discards duplicate data, provides end-to-end flow control, and calculates and verifies a mandatory end-to-end checksum. It is the most widely used protocol on the Internet. It is used by most of the popular applications, such as HTTP, SSH/TLS, <a href="https://en.wikipedia.org/wiki/NetBIOS">NetBIOS</a> (NBT—NetBIOS over TCP), Telnet, FTP, and electronic mail (SMTP). Many distributed file-sharing applications (e.g., BitTorrent, Shareaza) also use TCP.</p>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p589 on SYN segments:</p>
+<blockquote>
+<p>Consuming a sequence number also implies reliable delivery using retransmission (discussed later). Thus, SYNs and application bytes (and FINs) are reliably delivered. ACKs, which do not consume sequence numbers, are not.</p>
+</blockquote>
+<p>Why?</p>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/lkd/ch15/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 15. The Process Address Space - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../apue/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch15.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-15-the-process-address-space">Chapter 15. The Process Address Space</a></li>
+        
+    
+        <li class="main "><a href="#address-spaces">Address Spaces</a></li>
+        
+            <li><a href="#flat-and-segmented-address-space">Flat and segmented address space *</a></li>
+        
+            <li><a href="#memory-areas">Memory areas*</a></li>
+        
+    
+        <li class="main "><a href="#the-memory-descriptor">The Memory Descriptor</a></li>
+        
+            <li><a href="#allocating-a-memory-descriptor">Allocating a Memory Descriptor</a></li>
+        
+            <li><a href="#destroying-a-memory-descriptor">Destroying a Memory Descriptor</a></li>
+        
+            <li><a href="#the-mm_struct-and-kernel-threads">The mm_struct and Kernel Threads</a></li>
+        
+    
+        <li class="main "><a href="#virtual-memory-areas">Virtual Memory Areas</a></li>
+        
+            <li><a href="#vma-flags">VMA Flags</a></li>
+        
+            <li><a href="#vma-operations">VMA Operations</a></li>
+        
+            <li><a href="#lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas</a></li>
+        
+            <li><a href="#memory-areas-in-real-life">Memory Areas in Real Life</a></li>
+        
+    
+        <li class="main "><a href="#manipulating-memory-areas">Manipulating Memory Areas</a></li>
+        
+            <li><a href="#find_vma">find_vma()</a></li>
+        
+            <li><a href="#find_vma_prev">find_vma_prev()</a></li>
+        
+            <li><a href="#find_vma_intersection">find_vma_intersection()</a></li>
+        
+    
+        <li class="main "><a href="#mmap-and-do_mmap-creating-an-address-interval">mmap() and do_mmap(): Creating an Address Interval</a></li>
+        
+    
+        <li class="main "><a href="#munmap-and-do_munmap-removing-an-address-interval">munmap() and do_munmap(): Removing an Address Interval</a></li>
+        
+    
+        <li class="main "><a href="#page-tables">Page Tables</a></li>
+        
+            <li><a href="#translation-lookaside-buffer">Translation Lookaside Buffer *</a></li>
+        
+            <li><a href="#future-work-of-page-tables">Future work of page tables *</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-15-the-process-address-space"><strong>Chapter 15. The Process Address Space</strong></h3>
+<p><a href="../ch12/">Chapter 12 Memory Management</a> covers how the kernel manages physical memory.  In addition to managing its own memory, the kernel also has to manage the memory of user-space processes. This memory is called the <strong>process address space</strong>, which is the representation of memory given to each user-space process on the system.</p>
+<p>Linux is a virtual memory operating system:</p>
+<ul>
+<li>The memory is virtualized among the processes on the system. An individual process’s view of memory is as if it alone has full access to the system’s physical memory.</li>
+<li>More important, the address space of even a single process can be much larger than physical memory.</li>
+</ul>
+<p>This chapter discusses how the kernel manages the process address space.</p>
+<h3 id="address-spaces">Address Spaces</h3>
+<h4 id="flat-and-segmented-address-space">Flat and segmented address space *</h4>
+<p>The process address space consists of the virtual memory addressable by a process and the addresses within the virtual memory that the process is allowed to use. Each process is given a flat 32- or 64-bit address space, with the size depending on the architecture. The term <em>flat</em> denotes that the address space exists in a single range. (For example, a 32-bit address space extends from the address 0 to 4294967295.)</p>
+<p>Some operating systems provide a <strong>segmented address space</strong>, with addresses existing not in a single linear range, but instead in multiple segments. Modern virtual memory operating systems generally have a flat memory model and not a segmented one.</p>
+<p>In the flat memory model, the flat address space is unique to each process. A memory address in one process’s address space is completely unrelated to that same memory address in another process’s address space. Both processes can have different data at the same address in their respective address spaces.Alternatively, processes can elect to share their address space with other processes; these processes are known as as <strong>threads</strong>.</p>
+<h4 id="memory-areas">Memory areas*</h4>
+<p>A memory address is a given value within the address space, such as <code>4021f000</code>. This particular value identifies a specific byte in a process’s 32-bit address space. Although a process can address up to 4GB of memory (with a 32-bit address space), it doesn’t have permission to access all of it.</p>
+<p>These intervals of legal addresses (the process has permission to access), such as <code>08048000-0804c000</code> are called <strong>memory areas</strong>. The process, through the kernel, can dynamically add and remove memory areas to its address space.</p>
+<p>The process can access a memory address only in a valid memory area. Memory areas have associated permissions, such as readable, writable, and executable, that the associated process must respect. If a process accesses a memory address not in a valid memory area, or if it accesses a valid area in an invalid manner, the kernel kills the process with the dreaded "Segmentation Fault" message.</p>
+<p>Memory areas can contain the following things:</p>
+<ul>
+<li>A memory map of the executable file’s code, called the <strong>text section</strong>.</li>
+<li>A memory map of the executable file’s initialized global variables, called the <strong>data section</strong>.</li>
+<li>A memory map of the zero page (a page consisting of all zeros, used for purposes such as this) containing uninitialized global variables, called the <strong>bss section</strong>.<ul>
+<li>The term "BSS" is historical and stands for <strong>b</strong>lock <strong>s</strong>tarted by <strong>s</strong>ymbol.</li>
+<li>Uninitialized variables are not stored in the executable object because they do not have any associated value. But the C standard decrees that uninitialized global variables are assigned certain default values (all zeros), so the kernel loads the variables (without value) from the executable into memory and maps the zero page over the area, thereby giving the variables the value zero, without having to waste space in the object file with explicit initializations.</li>
+</ul>
+</li>
+<li>A memory map of the zero page used for the process’s user-space stack. (Do not confuse this with the process’s <a href="../ch12/#statically-allocating-on-the-stack">kernel stack</a>, which is separate and maintained and used by the kernel.)</li>
+<li>An additional text, data, and bss section for each shared library, such as the C library and dynamic linker, loaded into the process’s address space.</li>
+<li>Any memory mapped files.</li>
+<li>Any shared memory segments.</li>
+<li>Any anonymous memory mappings, such as those associated with <code>malloc()</code> (newer versions of glibc implement <code>malloc()</code> via <code>mmap()</code>, in addition to <code>brk()</code>).</li>
+</ul>
+<h3 id="the-memory-descriptor">The Memory Descriptor</h3>
+<p>The kernel represents a process’s address space with a data structure called the <strong>memory descriptor</strong>. This structure contains all the information related to the process address space.</p>
+<p>The memory descriptor is represented by <code>struct mm_struct</code> and defined in <code>&lt;linux/mm_types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h">include/linux/mm_types.h</a>):</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h#L222">include/linux/mm_types.h#L222</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">mm_struct</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">mmap</span><span class="p">;</span> <span class="cm">/* list of memory areas */</span>
+    <span class="k">struct</span> <span class="n">rb_root</span> <span class="n">mm_rb</span><span class="p">;</span> <span class="cm">/* red-black tree of VMAs */</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">mmap_cache</span><span class="p">;</span> <span class="cm">/* last used memory area */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">free_area_cache</span><span class="p">;</span> <span class="cm">/* 1st address space hole */</span>
+    <span class="kt">pgd_t</span> <span class="o">*</span><span class="n">pgd</span><span class="p">;</span> <span class="cm">/* page global directory */</span>
+    <span class="kt">atomic_t</span> <span class="n">mm_users</span><span class="p">;</span> <span class="cm">/* address space users */</span>
+    <span class="kt">atomic_t</span> <span class="n">mm_count</span><span class="p">;</span> <span class="cm">/* primary usage counter */</span>
+    <span class="kt">int</span> <span class="n">map_count</span><span class="p">;</span> <span class="cm">/* number of memory areas */</span>
+    <span class="k">struct</span> <span class="n">rw_semaphore</span> <span class="n">mmap_sem</span><span class="p">;</span> <span class="cm">/* memory area semaphore */</span>
+    <span class="kt">spinlock_t</span> <span class="n">page_table_lock</span><span class="p">;</span> <span class="cm">/* page table lock */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">mmlist</span><span class="p">;</span> <span class="cm">/* list of all mm_structs */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_code</span><span class="p">;</span> <span class="cm">/* start address of code */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">end_code</span><span class="p">;</span> <span class="cm">/* final address of code */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_data</span><span class="p">;</span> <span class="cm">/* start address of data */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">end_data</span><span class="p">;</span> <span class="cm">/* final address of data */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_brk</span><span class="p">;</span> <span class="cm">/* start address of heap */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">brk</span><span class="p">;</span> <span class="cm">/* final address of heap */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_stack</span><span class="p">;</span> <span class="cm">/* start address of stack */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg_start</span><span class="p">;</span> <span class="cm">/* start of arguments */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg_end</span><span class="p">;</span> <span class="cm">/* end of arguments */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">env_start</span><span class="p">;</span> <span class="cm">/* start of environment */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">env_end</span><span class="p">;</span> <span class="cm">/* end of environment */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">rss</span><span class="p">;</span> <span class="cm">/* pages allocated */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">total_vm</span><span class="p">;</span> <span class="cm">/* total number of pages */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">locked_vm</span><span class="p">;</span> <span class="cm">/* number of locked pages */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">saved_auxv</span><span class="p">[</span><span class="n">AT_VECTOR_SIZE</span><span class="p">];</span> <span class="cm">/* saved auxv */</span>
+    <span class="kt">cpumask_t</span> <span class="n">cpu_vm_mask</span><span class="p">;</span> <span class="cm">/* lazy TLB switch mask */</span>
+    <span class="kt">mm_context_t</span> <span class="n">context</span><span class="p">;</span> <span class="cm">/* arch-specific data */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">;</span> <span class="cm">/* status flags */</span>
+    <span class="kt">int</span> <span class="n">core_waiters</span><span class="p">;</span> <span class="cm">/* thread core dump waiters */</span>
+    <span class="k">struct</span> <span class="n">core_state</span> <span class="o">*</span><span class="n">core_state</span><span class="p">;</span> <span class="cm">/* core dump support */</span>
+    <span class="kt">spinlock_t</span> <span class="n">ioctx_lock</span><span class="p">;</span> <span class="cm">/* AIO I/O list lock */</span>
+    <span class="k">struct</span> <span class="n">hlist_head</span> <span class="n">ioctx_list</span><span class="p">;</span> <span class="cm">/* AIO I/O list */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>mm_users</code> field is the number of processes using this address space.<ul>
+<li>For example, if two threads share this address space, <code>mm_users</code> is equal to two.</li>
+</ul>
+</li>
+<li>The <code>mm_count</code> field is the primary reference count for the <code>mm_struct</code>.<ul>
+<li>All <code>mm_users</code> equate to one increment of <code>mm_count</code>. In the previous example, <code>mm_count</code> is only one. If nine threads shared an address space, <code>mm_users</code> would be nine, but again <code>mm_count</code> would be only one. Only when <code>mm_users</code> reaches zero (when all threads using an address space exit) is mm_count decremented. When <code>mm_count</code> finally reaches zero, there are no remaining references to this <code>mm_struct</code>, and it is freed.</li>
+<li>When the kernel operates on an address space and needs to bump its associated reference count, the kernel increments <code>mm_count</code>.</li>
+</ul>
+</li>
+</ul>
+<p>Having two counters enables the kernel to differentiate between the main usage counter (<code>mm_count</code>) and the number of processes using the address space (<code>mm_users</code>).</p>
+<ul>
+<li>The <code>mmap</code> and <code>mm_rb</code> fields are different data structures that contain the same thing: all the memory areas in this address space.<ul>
+<li><code>mmap</code> stores them in a linked list.</li>
+<li><code>mm_rb</code> stores them in a red-black tree. A red-black tree is a type of binary tree; like all binary trees, searching for a given element is an O(log <em>n</em>) operation.</li>
+</ul>
+</li>
+</ul>
+<p>This redundancy (two <code>mmap</code> and <code>mm_rb</code> data structures on the same data) are handy:</p>
+<ul>
+<li>The <code>mmap</code> data structure, as a linked list, allows for simple and efficient traversing of all elements.</li>
+<li>The <code>mm_rb</code> data structure, as a red-black tree, is more suitable to searching for a given element.</li>
+</ul>
+<p>The kernel isn’t duplicating the <code>mm_struct</code> structures; just the containing objects. Overlaying a linked list onto a tree, and using both to access the same set of data, is sometimes called a <a href="https://en.wikipedia.org/wiki/Threaded_binary_tree"><strong>threaded tree</strong></a>.</p>
+<p>All of the <code>mm_struct</code> structures are strung together in a doubly linked list via the <code>mmlist</code> field. The initial element in the list is the <code>init_mm</code> memory descriptor, which describes the address space of the <code>init</code> process. The list is protected from concurrent access via the <code>mmlist_lock</code>, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/fork.c">kernel/fork.c</a>.</p>
+<h4 id="allocating-a-memory-descriptor">Allocating a Memory Descriptor</h4>
+<p>The memory descriptor associated with a given task is stored in the <code>mm</code> field of the task’s process descriptor:</p>
+<ul>
+<li>The process descriptor is represented by the <code>task_struct</code> structure, defined in <code>&lt;linux/sched.h&gt;</code>. Thus, <code>current-&gt;mm</code> is the current process’s memory descriptor.</li>
+<li>The <code>copy_mm()</code> function copies a parent’s memory descriptor to its child during <code>fork()</code>.</li>
+<li>The <code>mm_struct</code> structure is allocated from the <code>mm_cachep</code> slab cache via the <code>allocate_mm()</code> macro in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/fork.c">kernel/fork.c</a>.</li>
+<li>Each process receives a unique <code>mm_struct</code> and thus a unique process address space.</li>
+</ul>
+<p>Processes may share their address spaces with their children via the <code>CLONE_VM</code> flag to <code>clone()</code>. The process is then called a <em>thread</em>. <u>This is essentially the only difference between normal processes and so-called threads in Linux (<a href="../ch3/">Chapter 3</a>); the Linux kernel does not otherwise differentiate between them. Threads are regular processes to the kernel that merely share certain resources.</u></p>
+<p>When <code>CLONE_VM</code> is specified, <code>allocate_mm()</code> is not called, and the process’s <code>mm</code> field is set to point to the memory descriptor of its parent via this logic in <code>copy_mm()</code>:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="p">(</span><span class="n">clone_flags</span> <span class="o">&amp;</span> <span class="n">CLONE_VM</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">    * current is the parent process and</span>
+<span class="cm">    * tsk is the child process during a fork()</span>
+<span class="cm">    */</span>
+    <span class="n">atomic_inc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">current</span><span class="o">-&gt;</span><span class="n">mm</span><span class="o">-&gt;</span><span class="n">mm_users</span><span class="p">);</span>
+    <span class="n">tsk</span><span class="o">-&gt;</span><span class="n">mm</span> <span class="o">=</span> <span class="n">current</span><span class="o">-&gt;</span><span class="n">mm</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="destroying-a-memory-descriptor">Destroying a Memory Descriptor</h4>
+<p>When the process associated with a specific address space exits, <code>exit_mm()</code>, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/exit.c">kernel/exit.c</a>, is invoked. This function performs some housekeeping and updates some statistics. It then calls <code>mmput()</code>, which decrements the memory descriptor’s <code>mm_users</code> user counter. If the user count reaches zero, <code>mmdrop()</code> is called to decrement the <code>mm_count</code> usage counter. If that counter is finally zero, the <code>free_mm()</code> macro is invoked to return the <code>mm_struct</code> to the <code>mm_cachep</code> slab cache via <code>kmem_cache_free()</code>, because the memory descriptor does not have any users.</p>
+<h4 id="the-mm_struct-and-kernel-threads">The <code>mm_struct</code> and Kernel Threads</h4>
+<p><u>Kernel threads do not have a process address space and therefore do not have an associated memory descriptor.</u> Thus, the <code>mm</code> field of a kernel thread’s process descriptor is <code>NULL</code>.  This is the definition of a kernel thread: processes that have no user context.</p>
+<p>Kernel threads do not ever access any userspace memory. Because kernel threads do not have any pages in user-space, they do not deserve their own memory descriptor and <a href="#page-tables">page tables</a> (discussed later in the chapter). However, kernel threads need some of the data, such as the page tables, even to access kernel memory. To provide kernel threads the needed data, without wasting memory on a memory descriptor and page tables, or wasting processor cycles to switch to a new address space whenever a kernel thread begins running, kernel threads use the memory descriptor of whatever task ran previously:</p>
+<ul>
+<li>Whenever a process is scheduled, the process address space referenced by the process’s <code>mm</code> field is loaded. The <code>active_mm</code> field in the process descriptor is then updated to refer to the new address space.</li>
+<li>Kernel threads do not have an address space and <code>mm</code> is <code>NULL</code>. Therefore, when a kernel thread is scheduled, the kernel notices that <code>mm</code> is <code>NULL</code> and keeps the previous process’s address space loaded. The kernel then updates the <code>active_mm</code> field of the kernel thread’s process descriptor to refer to the previous process’s memory descriptor.</li>
+<li>The kernel thread can then use the previous process’s page tables as needed. Because kernel threads do not access user-space memory, they make use of only the information in the address space pertaining to kernel memory, which is the same for all processes.</li>
+</ul>
+<h3 id="virtual-memory-areas">Virtual Memory Areas</h3>
+<p>The memory area structure <code>vm_area_struct</code> represents memory areas, defined in <code>&lt;linux/mm_types.h&gt;</code>. In the Linux kernel, memory areas are often called <strong>virtual memory areas</strong> (<strong>VMA</strong>s).</p>
+<p>The <code>vm_area_struct</code> structure describes a single memory area over a contiguous interval in a given address space:</p>
+<ul>
+<li>The kernel treats each memory area as a unique memory object.</li>
+<li>Each memory area possesses certain properties, such as permissions and a set of associated operations.</li>
+</ul>
+<p>In this manner, each VMA structure can represent different types of memory areas, e.g. memory-mapped files or the process’s user-space stack. This is similar to the object-oriented approach taken by the VFS layer (<a href="../ch13/">Chapter 13</a>).</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h#L130">include/linux/mm_types.h#L130</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">vm_mm</span><span class="p">;</span> <span class="cm">/* associated mm_struct */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_start</span><span class="p">;</span> <span class="cm">/* VMA start, inclusive */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_end</span><span class="p">;</span> <span class="cm">/* VMA end , exclusive */</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vm_next</span><span class="p">;</span> <span class="cm">/* list of VMA’s */</span>
+    <span class="kt">pgprot_t</span> <span class="n">vm_page_prot</span><span class="p">;</span> <span class="cm">/* access permissions */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_flags</span><span class="p">;</span> <span class="cm">/* flags */</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="n">vm_rb</span><span class="p">;</span> <span class="cm">/* VMA’s node in the tree */</span>
+    <span class="k">union</span> <span class="p">{</span> <span class="cm">/* links to address_space-&gt;i_mmap or i_mmap_nonlinear */</span>
+    <span class="k">struct</span> <span class="p">{</span>
+            <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span>
+            <span class="kt">void</span> <span class="o">*</span><span class="n">parent</span><span class="p">;</span>
+            <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">head</span><span class="p">;</span>
+        <span class="p">}</span> <span class="n">vm_set</span><span class="p">;</span>
+        <span class="k">struct</span> <span class="n">prio_tree_node</span> <span class="n">prio_tree_node</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">shared</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">anon_vma_node</span><span class="p">;</span> <span class="cm">/* anon_vma entry */</span>
+    <span class="k">struct</span> <span class="n">anon_vma</span> <span class="o">*</span><span class="n">anon_vma</span><span class="p">;</span> <span class="cm">/* anonymous VMA object */</span>
+    <span class="k">struct</span> <span class="n">vm_operations_struct</span> <span class="o">*</span><span class="n">vm_ops</span><span class="p">;</span> <span class="cm">/* associated ops */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vm_pgoff</span><span class="p">;</span> <span class="cm">/* offset within file */</span>
+    <span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">vm_file</span><span class="p">;</span> <span class="cm">/* mapped file, if any */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">vm_private_data</span><span class="p">;</span> <span class="cm">/* private data */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Each memory descriptor is associated with a unique interval in the process’s address space.</p>
+<ul>
+<li>The <code>vm_start</code> field is the initial (lowest) address in the interval. (inclusive start)</li>
+<li>The <code>vm_end</code> field is the first byte after the final (highest) address in the interval. (exclusive end)</li>
+</ul>
+<p><code>vm_end - vm_start</code> is the length in bytes of the memory area, which exists over the interval <code>[vm_start, vm_end)</code>. Intervals in different memory areas in the same address space cannot overlap.</p>
+<p>The <code>vm_mm</code> field points to this VMA’s associated <code>mm_struct</code>. Each VMA is unique to the <code>mm_struct</code> with which it is associated:</p>
+<ul>
+<li>Therefore, even if two separate processes map the same file into their respective address spaces, each has a unique <code>vm_area_struct</code> to identify its unique memory area.</li>
+<li>Conversely, two threads that share an address space also share all the <code>vm_area_struct</code> structures therein.</li>
+</ul>
+<h4 id="vma-flags">VMA Flags</h4>
+<p>The <code>vm_flags</code> field contains bit flags, defined in <code>&lt;linux/mm.h&gt;</code>, that specify the behavior of and provide information about the pages contained in the memory area. Unlike permissions associated with a specific physical page, the VMA flags specify behavior for which the kernel is responsible, not the hardware. <code>vm_flags</code> contains information that relates to the memory area as a whole (each page), not specific individual pages.</p>
+<p>The following table is a listing of the possible <code>vm_flags</code> values.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect on the VMA and Its Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VM_READ</code></td>
+<td>Pages can be read from.</td>
+</tr>
+<tr>
+<td><code>VM_WRITE</code></td>
+<td>Pages can be written to.</td>
+</tr>
+<tr>
+<td><code>VM_EXEC</code></td>
+<td>Pages can be executed.</td>
+</tr>
+<tr>
+<td><code>VM_SHARED</code></td>
+<td>Pages are shared.</td>
+</tr>
+<tr>
+<td><code>VM_MAYREAD</code></td>
+<td>The <code>VM_READ</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_MAYWRITE</code></td>
+<td>The <code>VM_WRITE</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_MAYEXEC</code></td>
+<td>The <code>VM_EXEC</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_MAYSHARE</code></td>
+<td>The <code>VM_SHARE</code> flag can be set.</td>
+</tr>
+<tr>
+<td><code>VM_GROWSDOWN</code></td>
+<td>The area can grow downward.</td>
+</tr>
+<tr>
+<td><code>VM_GROWSUP</code></td>
+<td>The area can grow upward.</td>
+</tr>
+<tr>
+<td><code>VM_SHM</code></td>
+<td>The area is used for shared memory.</td>
+</tr>
+<tr>
+<td><code>VM_DENYWRITE</code></td>
+<td>The area maps an unwritable file.</td>
+</tr>
+<tr>
+<td><code>VM_EXECUTABLE</code></td>
+<td>The area maps an executable file.</td>
+</tr>
+<tr>
+<td><code>VM_LOCKED</code></td>
+<td>The pages in this area are locked.</td>
+</tr>
+<tr>
+<td><code>VM_IO</code></td>
+<td>The area maps a device’s I/O space.</td>
+</tr>
+<tr>
+<td><code>VM_SEQ_READ</code></td>
+<td>The pages seem to be accessed sequentially.</td>
+</tr>
+<tr>
+<td><code>VM_RAND_READ</code></td>
+<td>The pages seem to be accessed randomly.</td>
+</tr>
+<tr>
+<td><code>VM_DONTCOPY</code></td>
+<td>This area must not be copied on <code>fork()</code>.</td>
+</tr>
+<tr>
+<td><code>VM_DONTEXPAND</code></td>
+<td>This area cannot grow via <code>mremap()</code>.</td>
+</tr>
+<tr>
+<td><code>VM_RESERVED</code></td>
+<td>This area must not be swapped out.</td>
+</tr>
+<tr>
+<td><code>VM_ACCOUNT</code></td>
+<td>This area is an accounted VM object.</td>
+</tr>
+<tr>
+<td><code>VM_HUGETLB</code></td>
+<td>This area uses hugetlb pages.</td>
+</tr>
+<tr>
+<td><code>VM_NONLINEAR</code></td>
+<td>This area is a nonlinear mapping.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>VM_READ</code>, <code>VM_WRITE</code>, and <code>VM_EXEC</code> flags specify the usual read, write, and execute permissions for the pages in this particular memory area. They are combined as needed to form the appropriate access permissions that a process accessing this VMA must respect. For example:<ul>
+<li>The object code for a process might be mapped with <code>VM_READ</code> and <code>VM_EXEC</code> but not <code>VM_WRITE</code>.</li>
+<li>The data section from an executable object would be mapped <code>VM_READ</code> and <code>VM_WRITE</code>, but <code>VM_EXEC</code> would make little sense.</li>
+<li>A read-only memory mapped data file would be mapped with only the <code>VM_READ</code> flag.</li>
+</ul>
+</li>
+<li>The <code>VM_SHARED</code> flag specifies whether the memory area contains a mapping that is shared among multiple processes.<ul>
+<li>If the flag is set, it is intuitively called a <strong>shared mapping</strong>.</li>
+<li>If the flag is not set, only a single process can view this particular mapping, and it is called a <strong>private mapping</strong>.</li>
+</ul>
+</li>
+<li>The <code>VM_IO</code> flag specifies that this memory area is a mapping of a device’s I/O space. This field is typically set by device drivers when <code>mmap()</code> is called on their I/O space. It specifies, among other things, that the memory area must not be included in any process’s core dump.</li>
+<li>The <code>VM_RESERVED</code> flag specifies that the memory region must not be swapped out. It is also used by device driver mappings.</li>
+<li>The <code>VM_SEQ_READ</code> flag indicates that the application is performing sequential (i.e. linear and contiguous) reads in this mapping. <u>The kernel can then opt to increase the read-ahead performed on the backing file.</u></li>
+<li>The <code>VM_RAND_READ</code> flag specifies that the application is performing relatively random (i.e. not sequential) reads in this mapping. The kernel can then opt to decrease or disable read-ahead on the backing file.</li>
+</ul>
+<p>These flags (<code>VM_SEQ_READ</code> and <code>VM_RAND_READ</code> flags) are set via the <code>madvise()</code> system call with the <code>MADV_SEQUENTIAL</code> and <code>MADV_RANDOM</code> flags, respectively:</p>
+<ul>
+<li>Read-ahead is the act of reading sequentially ahead of requested data, in hopes that the additional data will be needed soon. This is beneficial if applications are reading data sequentially.</li>
+<li>If data access patterns are random, however, read-ahead is not effective.</li>
+</ul>
+<h4 id="vma-operations">VMA Operations</h4>
+<p>The <code>vm_ops</code> field in the <code>vm_area_struct</code> structure points to the table of operations associated with a given memory area, which the kernel can invoke to manipulate the VMA. The <code>vm_area_struct</code> acts as a generic object for representing any type of memory area, and the operations table describes the specific methods that can operate on this particular instance of the object.</p>
+<p>The operations table is represented by struct <code>vm_operations_struct</code> and is defined in <code>&lt;linux/mm.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L185">include/linux/mm.h#L185</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_operations_struct</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">open</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">close</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">fault</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">,</span> <span class="k">struct</span> <span class="n">vm_fault</span> <span class="o">*</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">page_mkwrite</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vma</span><span class="p">,</span> <span class="k">struct</span> <span class="n">vm_fault</span> <span class="o">*</span><span class="n">vmf</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">access</span><span class="p">)</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="p">,</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<ul>
+<li><code>void open(struct vm_area_struct *area)</code>. This function is invoked when the given memory area is added to an address space.</li>
+<li><code>void close(struct vm_area_struct *area)</code>. This function is invoked when the given memory area is removed from an
+address space.</li>
+<li><code>int fault(struct vm_area_sruct *area, struct vm_fault *vmf)</code>. This function is invoked by the page fault handler when a page that is not present in physical memory is accessed.</li>
+<li><code>int page_mkwrite(struct vm_area_sruct *area, struct vm_fault *vmf)</code>. This function is invoked by the page fault handler when a page that was read-only is being made writable.</li>
+<li><code>int access(struct vm_area_struct *vma, unsigned long address, void *buf, int len, int write)</code>. This function is invoked by <code>access_process_vm()</code> when <code>get_user_pages()</code> fails.</li>
+</ul>
+<h4 id="lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas</h4>
+<p>As discussed earlier, memory areas are accessed via both the <code>mmap</code> and the <code>mm_rb</code> fields of the memory descriptor. These two data structures independently point to all the memory area objects associated with the memory descriptor. They both contain pointers to the same <code>vm_area_struct</code> structures, represented in different ways.</p>
+<p>The first field, <code>mmap</code>, links together all the memory area objects in a singly linked list:</p>
+<ul>
+<li>Each <code>vm_area_struct</code> structure is linked into the list via its <code>vm_next</code> field.</li>
+<li>The areas are sorted by ascending address.</li>
+<li>The first memory area is the <code>vm_area_struct</code> structure to which mmap points.</li>
+<li>The last structure points to <code>NULL</code>.</li>
+</ul>
+<p>The second field, <code>mm_rb</code>, links together all the memory area objects in a red-black tree.</p>
+<ul>
+<li>The root of the red-black tree is <code>mm_rb</code></li>
+<li>Each <code>vm_area_struct</code> structure in this address space is linked to the tree via its <code>vm_rb</code> field.</li>
+</ul>
+<p>A <a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree"><strong>red-black tree</strong></a> is a type of balanced binary tree.</p>
+<ul>
+<li>Each element in a red-black tree is called a node.</li>
+<li>The initial node is called the root of the tree.</li>
+<li>Most nodes have two children: a left child and a right child. Some nodes have only one child, and the final nodes, called leaves, have no children. For any node, the elements to the left are smaller in value, whereas the elements to the right are larger in value. Furthermore, each node is assigned a color (red or black) according to two rules: The children of a red node are black, and every path through the tree from a node to a leaf must contain the same number of black nodes. The root node is always red.</li>
+<li>Searching of, insertion to, and deletion from the tree is an O(log(<em>n</em>)) operation.</li>
+</ul>
+<p>The kernel uses the redundant data structures to provide optimal performance regardless of the operation performed on the memory areas:</p>
+<ul>
+<li>The linked list is used when every node needs to be traversed.</li>
+<li>The red-black tree is used when locating a specific memory area in the address space.</li>
+</ul>
+<h4 id="memory-areas-in-real-life">Memory Areas in Real Life</h4>
+<p>This section discusses a particular process’s address space and the memory areas inside, with the useful <code>/proc</code> filesystem and the <code>pmap(1)</code> utility. The example is a simple userspace program which does nothing:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Memory areas in this process's address space include:</p>
+<ul>
+<li>The text section, data section, and bss.</li>
+<li>Assuming this process is dynamically linked with the C library, these three memory areas also exist for <code>libc.so</code> and again for <code>ld.so</code>.</li>
+<li>The process’s stack.</li>
+</ul>
+<p>The output from <code>/proc/&lt;pid&gt;/maps</code> lists the memory areas in this process’s address space:</p>
+<div class="codehilite"><pre>$ cat /proc/1426/maps
+00e80000-00faf000 r-xp 00000000 03:01 208530 /lib/tls/libc-2.5.1.so
+00faf000-00fb2000 rw-p 0012f000 03:01 208530 /lib/tls/libc-2.5.1.so
+00fb2000-00fb4000 rw-p 00000000 00:00 0
+08048000-08049000 r-xp 00000000 03:03 439029 /home/rlove/src/example
+08049000-0804a000 rw-p 00000000 03:03 439029 /home/rlove/src/example
+40000000-40015000 r-xp 00000000 03:01 80276 /lib/ld-2.5.1.so
+40015000-40016000 rw-p 00015000 03:01 80276 /lib/ld-2.5.1.so
+4001e000-4001f000 rw-p 00000000 00:00 0
+bfffe000-c0000000 rwxp fffff000 00:00 0
+</pre></div>
+
+
+<p>The data is in the form:</p>
+<div class="codehilite"><pre>start-end permission offset major:minor inode file
+</pre></div>
+
+
+<p>The <code>pmap(1)</code> utility (of the <code>procps</code> package) formats this information in a bit more readable manner:</p>
+<div class="codehilite"><pre>$ pmap 1426
+example[1426]
+00e80000    (1212 KB)   r-xp    (03:01 208530)  /lib/tls/libc-2.5.1.so
+00faf000    (12 KB)     rw-p    (03:01 208530)  /lib/tls/libc-2.5.1.so
+00fb2000    (8 KB)      rw-p    (00:00 0)
+08048000    (4 KB)      r-xp    (03:03 439029)  /home/rlove/src/example
+08049000    (4 KB)      rw-p    (03:03 439029)  /home/rlove/src/example
+40000000    (84 KB)     r-xp    (03:01 80276)   /lib/ld-2.5.1.so
+40015000    (4 KB)      rw-p    (03:01 80276)   /lib/ld-2.5.1.so
+4001e000    (4 KB)      rw-p    (00:00 0)
+bfffe000    (8 KB)      rwxp        (00:00 0)       [ stack ]
+mapped: 1340 KB writable/private: 40 KB shared: 0 KB
+</pre></div>
+
+
+<p>Description of the above output:</p>
+<ul>
+<li>The first three rows are the text section, data section, and bss of <a href="http://man7.org/linux/man-pages/man7/libc.7.html"><code>libc.so</code></a>, the C library.</li>
+<li>The next two rows are the text and data section of our executable object.</li>
+<li>The following three rows are the text section, data section, and bss for <a href="http://man7.org/linux/man-pages/man8/ld.so.8.html"><code>ld.so</code></a>, the <a href="https://en.wikipedia.org/wiki/Dynamic_linker">dynamic linker</a>.</li>
+<li>The last row is the process’s stack.</li>
+</ul>
+<p>Permissions:</p>
+<ul>
+<li>The text sections are all readable and executable, which is what you expect for object code.</li>
+<li>The data section and bss (which both contain global variables) are marked readable and writable, but not executable.</li>
+<li>The stack is readable, writable, and executable.</li>
+</ul>
+<p>Sizes:</p>
+<p>The entire address space takes up about 1340KB, but only 40KB are writable and private. If a memory region is shared or nonwritable, the kernel keeps only one copy of the backing file in memory. Since a nonwritable mapping can never be changed (the mapping is only read from), it is safe to load the image only once into memory. Therefore, the C library needs to occupy only 1212KB in physical memory (not 1212KB multiplied by every process using the library). Because this process has access to about 1340KB worth of data and code, yet consumes only about 40KB of physical memory, the space savings from such sharing is substantial.</p>
+<p>The memory areas without a mapped file on device 00:00 and inode zere are the zero pages, each of which is a mapping that consists of all zeros. By mapping the zero page over a writable memory area, the area is in effect "initialized" to all zeros. This is important in that it provides a zeroed memory area, which is expected by the bss and stack. Because the mapping is not shared, as soon as the process writes to this data, a copy is made (à la <a href="https://en.wikipedia.org/wiki/Copy-on-write">copy-on-write</a>) and the value updated from zero.</p>
+<p>Each of the memory areas associated with the process corresponds to a <code>vm_area_struct</code> structure. Because the process was not a thread, it has a unique <code>mm_struct</code> structure referenced from its <code>task_struct</code>.</p>
+<h3 id="manipulating-memory-areas">Manipulating Memory Areas</h3>
+<p>The kernel often has to perform operations on a memory area, e.g. checking whether a given address exists in a given VMA. These operations are frequent and form the basis of the <code>mmap()</code> routine (discussed later). Helper functions are defined to assist these jobs.</p>
+<p>These functions are all declared in <code>&lt;linux/mm.h&gt;</code>.</p>
+<h4 id="find_vma"><code>find_vma()</code></h4>
+<p>The kernel provides a function <code>find_vma()</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1335">include/linux/mm.h#L1335</a>) for searching for the VMA in which a given memory address resides. It is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="nf">find_vma</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">);</span>
+</pre></div>
+
+
+<ul>
+<li>This function searches the given address space for the first memory area whose <code>vm_end</code> field is greater than <code>addr</code>. In other words, this function finds the first memory area that contains <code>addr</code> or begins at an address greater than <code>addr</code>.</li>
+<li>If no such memory area exists, the function returns <code>NULL</code>. Otherwise, a pointer to the <code>vm_area_struct</code> structure is returned.</li>
+<li>Because the returned VMA may start at an address greater than <code>addr</code>, the given address does not necessarily lie inside the returned VMA.</li>
+<li>The result of the <code>find_vma()</code> function is cached in the <code>mmap_cache</code> field of the memory descriptor.</li>
+<li>Because of the probability of an operation on one VMA being followed by more operations on that same VMA, the cached results have a decent hit rate (about 30–40% in practice).  Checking the cached result is quick. If the given address is not in the cache, you must search the memory areas associated with this memory descriptor for a match, which is done via the red-black tree:</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c#L1569">mm/mmap.c#L1569</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="nf">find_vma</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vma</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">mm</span><span class="p">)</span> <span class="p">{</span>
+        <span class="cm">/* Check the cache first. */</span>
+        <span class="cm">/* (Cache hit rate is typically around 35%.) */</span>
+        <span class="n">vma</span> <span class="o">=</span> <span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_cache</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">vma</span> <span class="o">&amp;&amp;</span> <span class="n">vma</span><span class="o">-&gt;</span><span class="n">vm_end</span> <span class="o">&gt;</span> <span class="n">addr</span> <span class="o">&amp;&amp;</span> <span class="n">vma</span><span class="o">-&gt;</span><span class="n">vm_start</span> <span class="o">&lt;=</span> <span class="n">addr</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span> <span class="n">rb_node</span><span class="p">;</span>
+
+            <span class="n">rb_node</span> <span class="o">=</span> <span class="n">mm</span><span class="o">-&gt;</span><span class="n">mm_rb</span><span class="p">.</span><span class="n">rb_node</span><span class="p">;</span>
+            <span class="n">vma</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+            <span class="k">while</span> <span class="p">(</span><span class="n">rb_node</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="n">vma_tmp</span><span class="p">;</span>
+
+                <span class="n">vma_tmp</span> <span class="o">=</span> <span class="n">rb_entry</span><span class="p">(</span><span class="n">rb_node</span><span class="p">,</span>
+                        <span class="k">struct</span> <span class="n">vm_area_struct</span><span class="p">,</span> <span class="n">vm_rb</span><span class="p">);</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">vma_tmp</span><span class="o">-&gt;</span><span class="n">vm_end</span> <span class="o">&gt;</span> <span class="n">addr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">vma</span> <span class="o">=</span> <span class="n">vma_tmp</span><span class="p">;</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">vma_tmp</span><span class="o">-&gt;</span><span class="n">vm_start</span> <span class="o">&lt;=</span> <span class="n">addr</span><span class="p">)</span>
+                        <span class="k">break</span><span class="p">;</span>
+                    <span class="n">rb_node</span> <span class="o">=</span> <span class="n">rb_node</span><span class="o">-&gt;</span><span class="n">rb_left</span><span class="p">;</span>
+                <span class="p">}</span> <span class="k">else</span>
+                    <span class="n">rb_node</span> <span class="o">=</span> <span class="n">rb_node</span><span class="o">-&gt;</span><span class="n">rb_right</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">vma</span><span class="p">)</span>
+                <span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_cache</span> <span class="o">=</span> <span class="n">vma</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">vma</span><span class="p">;</span>
+</pre></div>
+
+
+<ul>
+<li>The initial check of <code>mmap_cache</code> tests whether the cached VMA contains the desired address. Note that simply checking whether the VMA’s <code>vm_end</code> field is bigger than <code>addr</code> would not ensure that this is the first such VMA that is larger than <code>addr</code>. Thus, for the cache to be useful here, the given <code>addr</code> must lie in (<code>vma-&gt;vm_end &gt; addr &amp;&amp; vma-&gt;vm_start &lt;= addr</code>) the VMA.</li>
+<li>If the cache does not contain the desired VMA, the function must search the red-black tree:<ul>
+<li>If the current VMA’s <code>vm_end</code> is larger than <code>addr</code>, the function follows the left child; otherwise, it follows the right child.</li>
+<li>The function terminates as soon as a VMA is found that contains <code>addr</code>.</li>
+<li>If such a VMA is not found, the function continues traversing the tree and returns the first VMA it found that starts after <code>addr</code>. If no VMA is ever found, <code>NULL</code> is returned.</li>
+</ul>
+</li>
+</ul>
+<h4 id="find_vma_prev"><code>find_vma_prev()</code></h4>
+<p>The <code>find_vma_prev()</code> function works the same as <code>find_vma()</code>, but it also returns the last VMA before addr. The function is also defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a> and declared in <code>&lt;linux/mm.h&gt;</code>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="n">find_vma_prev</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+                                      <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">**</span><span class="n">pprev</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>pprev</code> argument stores a pointer to the VMA preceding <code>addr</code>.</p>
+<h4 id="find_vma_intersection"><code>find_vma_intersection()</code></h4>
+<p>The <code>find_vma_intersection()</code> function returns the first VMA that overlaps a given address interval. The function is defined in <code>&lt;linux/mm.h&gt;</code> because it is inline:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span>
+<span class="nf">find_vma_intersection</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start_addr</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">end_addr</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span><span class="n">vma</span><span class="p">;</span>
+
+    <span class="n">vma</span> <span class="o">=</span> <span class="n">find_vma</span><span class="p">(</span><span class="n">mm</span><span class="p">,</span> <span class="n">start_addr</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">vma</span> <span class="o">&amp;&amp;</span> <span class="n">end_addr</span> <span class="o">&lt;=</span> <span class="n">vma</span><span class="o">-&gt;</span><span class="n">vm_start</span><span class="p">)</span>
+    <span class="n">vma</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">vma</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The first parameter is the address space to search, <code>start_addr</code> is the start of the interval, and <code>end_addr</code> is the end of the interval.</p>
+<p>If <code>find_vma()</code> returns <code>NULL</code>, so would <code>find_vma_intersection()</code>. If <code>find_vma()</code> returns a valid VMA, however, <code>find_vma_intersection()</code> returns the same VMA only if it does not start after the end of the given address range. If the returned memory area does start after the end of the given address range, the function returns <code>NULL</code>.</p>
+<h3 id="mmap-and-do_mmap-creating-an-address-interval"><code>mmap()</code> and <code>do_mmap()</code>: Creating an Address Interval</h3>
+<p>The <code>do_mmap()</code> function creates a new linear address interval. This function does not technically create a new VMA, because:</p>
+<ul>
+<li>If the created address interval is adjacent to an existing address interval, and if they share the same permissions, the two intervals are merged into one.</li>
+<li>If this is not possible, a new VMA is created.</li>
+</ul>
+<p>In any case, <code>do_mmap()</code> is the function used to add an address interval to a process’s address space, whether that means expanding an existing memory area or creating a new one.</p>
+<p>The <code>do_mmap()</code> function is declared in <code>&lt;linux/mm.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1271">include/linux/mm.h#L1271</a></small></p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">do_mmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">len</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">prot</span><span class="p">,</span>
+                      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flag</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">offset</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>This function maps the file specified by <code>file</code> at offset <code>offset</code> for length <code>len</code>.<ul>
+<li>The <code>file</code> parameter can be <code>NULL</code> and <code>offset</code> can be zero, in which case the mapping will not be backed by a file. In that case, this is called an <strong>anonymous mapping</strong>.</li>
+<li>If a <code>file</code> and <code>offset</code> are provided, the mapping is called a <strong>file-backed mapping</strong>.</li>
+</ul>
+</li>
+<li>The <code>addr</code> function optionally specifies the initial address from which to start the search for a free interval.</li>
+<li>The <code>prot</code> parameter specifies the access permissions for pages in the memory area.The possible permission flags are defined in <code>&lt;asm/mman.h&gt;</code> and are unique to each supported architecture, although in practice each architecture defines the flags listed in the following table:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect on the Pages in the New Interval</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROT_READ</code></td>
+<td>Corresponds to <code>VM_READ</code></td>
+</tr>
+<tr>
+<td><code>PROT_WRITE</code></td>
+<td>Corresponds to <code>VM_WRITE</code></td>
+</tr>
+<tr>
+<td><code>PROT_EXEC</code></td>
+<td>Corresponds to <code>VM_EXEC</code></td>
+</tr>
+<tr>
+<td><code>PROT_NONE</code></td>
+<td>Cannot access page</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>flags</code> parameter specifies flags that correspond to the remaining VMA flags. These flags specify the type and change the behavior of the mapping. They are also defined in <code>&lt;asm/mman.h&gt;</code>:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect on the New Interval</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MAP_SHARED</code></td>
+<td>The mapping can be shared.</td>
+</tr>
+<tr>
+<td><code>MAP_PRIVATE</code></td>
+<td>The mapping cannot be shared.</td>
+</tr>
+<tr>
+<td><code>MAP_FIXED</code></td>
+<td>The new interval must start at the given address <code>addr</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_ANONYMOUS</code></td>
+<td>The mapping is not file-backed, but is anonymous.</td>
+</tr>
+<tr>
+<td><code>MAP_GROWSDOWN</code></td>
+<td>Corresponds to <code>VM_GROWSDOWN</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_DENYWRITE</code></td>
+<td>Corresponds to <code>VM_DENYWRITE</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_EXECUTABLE</code></td>
+<td>Corresponds to <code>VM_EXECUTABLE</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_LOCKED</code></td>
+<td>Corresponds to <code>VM_LOCKED</code>.</td>
+</tr>
+<tr>
+<td><code>MAP_NORESERVE</code></td>
+<td>No need to reserve space for the mapping.</td>
+</tr>
+<tr>
+<td><code>MAP_POPULATE</code></td>
+<td>Populate (prefault) page tables.</td>
+</tr>
+<tr>
+<td><code>MAP_NONBLOCK</code></td>
+<td>Do not block on I/O.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>If any of the parameters are invalid, <code>do_mmap()</code> returns a negative value. Otherwise, a suitable interval in virtual memory is located.</li>
+<li>If possible, the interval is merged with an adjacent memory area. Otherwise:<ul>
+<li>A new <code>vm_area_struct</code> structure is allocated from the <code>vm_area_cachep</code> slab cache, and the new memory area is added to the address space’s
+linked list and red-black tree of memory areas via the <code>vma_link()</code> function.</li>
+<li>Next, the <code>total_vm</code> field in the memory descriptor is updated.</li>
+<li>Finally, the function returns the initial address of the newly created address interval.</li>
+</ul>
+</li>
+</ul>
+<p>The <code>do_mmap()</code> functionality is exported to user-space via the <code>mmap()</code> system call, defined as:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span> <span class="n">mmap2</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">start</span><span class="p">,</span>
+             <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>
+             <span class="kt">int</span> <span class="n">prot</span><span class="p">,</span>
+             <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span>
+             <span class="kt">int</span> <span class="n">fd</span><span class="p">,</span>
+             <span class="kt">off_t</span> <span class="n">pgoff</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This system call is named <code>mmap2()</code> because it is the second variant of<code>mmap()</code>:</p>
+<ul>
+<li>The original <code>mmap()</code> took an offset in bytes as the last parameter; the current <code>mmap2()</code> receives the offset in pages. This enables larger files with larger offsets to be mapped.</li>
+<li>The original <code>mmap()</code>, as specified by POSIX, is available from the C library as <code>mmap()</code>, but is no longer implemented in the kernel proper, whereas the new version is available as <code>mmap2()</code>. Both library calls use the <code>mmap2()</code> system call, with the original <code>mmap()</code> converting the offset from bytes to pages.</li>
+</ul>
+<h3 id="munmap-and-do_munmap-removing-an-address-interval"><code>munmap()</code> and <code>do_munmap()</code>: Removing an Address Interval</h3>
+<p>The <code>do_munmap()</code> function removes an address interval from a specified process address space. The function is declared in <code>&lt;linux/mm.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1284">include/linux/mm.h#L1284</a></small></p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">do_munmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The first parameter <code>mm</code> specifies the address space from which the interval starting at address <code>start</code> of length <code>len</code> bytes is removed. On success, zero is returned. Otherwise, a negative error code is returned.</p>
+<p>As the complement of the <code>mmap()</code>, the <code>munmap()</code> system call is exported to user-space as a means to enable processes to remove address intervals from their address space:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">munmap</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">start</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The system call is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a> and acts as a simple wrapper to <code>do_munmap()</code>:</p>
+<div class="codehilite"><pre><span class="n">asmlinkage</span> <span class="kt">long</span> <span class="nf">sys_munmap</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">;</span>
+    <span class="n">mm</span> <span class="o">=</span> <span class="n">current</span><span class="o">-&gt;</span><span class="n">mm</span><span class="p">;</span>
+    <span class="n">down_write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_sem</span><span class="p">);</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">do_munmap</span><span class="p">(</span><span class="n">mm</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+    <span class="n">up_write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mm</span><span class="o">-&gt;</span><span class="n">mmap_sem</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="page-tables">Page Tables</h3>
+<p>Although applications operate on virtual memory mapped to physical addresses, processors operate directly on those physical addresses. Consequently, when an application accesses a virtual memory address, it must first be converted to a physical address before the processor can resolve the request. Performing this lookup is done via <strong>page tables</strong>. Page tables work by splitting the virtual address into chunks. Each chunk is used as an index into a table. The table points to either another table or the associated physical page.</p>
+<p>In Linux, the page tables consist of three levels. The multiple levels enable a sparsely populated address space, even on 64-bit machines. If the page tables were implemented as a single static array, their size on even 32-bit architectures would be enormous. Linux uses three levels of page tables even on architectures that do not support three levels in hardware. (For example, some hardware uses only two levels or implements a hash in hardware.) Using three levels is a sort of "greatest common denominator": architectures with a less complicated implementation can simplify the kernel page tables as needed with compiler optimizations.</p>
+<ul>
+<li>The top-level page table is the <strong>page global directory</strong> (PGD), which consists of an array of <code>pgd_t</code> types. On most architectures, the <code>pgd_t</code> type is an <code>unsigned long</code>.The entries in the PGD point to entries in the second-level directory, the PMD.</li>
+<li>The second-level page table is the <strong>page middle directory</strong> (PMD), which is an array of <code>pmd_t</code> types. The entries in the PMD point to entries in the PTE.</li>
+<li>The final level is called simply the <strong>page table</strong> and consists of page table entries of type <code>pte_t</code>. Page table entries point to physical pages.<ul>
+<li>In most architectures, page table lookups are handled (at least to some degree) by hardware.</li>
+<li>In normal operation, hardware can handle much of the responsibility of using the page tables. [p321]</li>
+</ul>
+</li>
+</ul>
+<p>The following figure diagrams the flow of a virtual to physical address lookup using page tables.</p>
+<p><a href="../figure_15.1.png" title="Figure 15.1 Virtual-to-physical address lookup"><img alt="Figure 15.1 Virtual-to-physical address lookup" src="../figure_15.1_600.png" /></a></p>
+<hr />
+<p>[UTLK p57-58]</p>
+<p>Up to version 2.6.10, the Linux paging model consisted of three paging levels. Starting with version 2.6.11, a four-level paging model has been adopted. The four types of page tables illustrated in the figure below:</p>
+<p><a href="../../utlk/figure_2-12.png" title="Figure 2-12. The Linux paging model (UTLK"><img alt="Figure 2-12. The Linux paging model (UTLK)" src="../../utlk/figure_2-12_600.png" /></a></p>
+<hr />
+<ul>
+<li>Each process has its own page tables (threads share them).The <code>pgd</code> field of the memory descriptor points to the process’s page global directory. Manipulating and traversing page tables requires the <code>page_table_lock</code>, which is located inside the associated memory descriptor.</li>
+<li>Page table data structures are quite architecture-dependent and thus are defined in <code>&lt;asm/page.h&gt;</code>.</li>
+</ul>
+<h4 id="translation-lookaside-buffer">Translation Lookaside Buffer *</h4>
+<p>Because nearly every access of a page in virtual memory must be resolved to its corresponding address in physical memory, the performance of the page tables is very critical. Unfortunately, looking up all these addresses in memory can not be done so quickly. To facilitate this, most processors implement a <a href="https://en.wikipedia.org/wiki/Translation_lookaside_buffer">translation lookaside buffer</a> (TLB), which acts as a hardware cache of virtual-to-physical mappings. When accessing a virtual address, the processor first checks whether the mapping is cached in the TLB:</p>
+<ul>
+<li>If there is a hit, the physical address is immediately returned.</li>
+<li>If there is a miss, the page tables are consulted for the corresponding physical address.</li>
+</ul>
+<h4 id="future-work-of-page-tables">Future work of page tables *</h4>
+<p>Page table management is still a critical and evolving—part of the kernel. Changes to this area in 2.6 include allocating parts of the page table out of high memory. Future possibilities include shared page tables with copy-on-write semantics. In that scheme, page tables would be shared between parent and child across a <code>fork()</code>. When the parent or the child attempted to modify a particular page table entry, a copy would be created, and the two processes would no longer share that entry. Sharing page tables would remove the overhead of copying the page table entries on <code>fork()</code>.</p>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

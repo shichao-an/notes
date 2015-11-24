@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/tcpv1/ch13/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 13. TCP Connection Management - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../apue/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lkd/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/tcpv1/ch13.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-13-tcp-connection-management">Chapter 13. TCP Connection Management</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#tcp-connection-establishment-and-termination">TCP Connection Establishment and Termination</a></li>
+        
+            <li><a href="#connection-establishment">Connection Establishment *</a></li>
+        
+            <li><a href="#connection-termination">Connection Termination *</a></li>
+        
+            <li><a href="#tcp-half-close">TCP Half-Close</a></li>
+        
+            <li><a href="#simultaneous-open-and-close">Simultaneous Open and Close</a></li>
+        
+            <li><a href="#initial-sequence-number-isn">Initial Sequence Number (ISN)</a></li>
+        
+            <li><a href="#example">Example</a></li>
+        
+            <li><a href="#timeout-of-connection-establishment">Timeout of Connection Establishment</a></li>
+        
+            <li><a href="#connections-and-translators">Connections and Translators</a></li>
+        
+    
+        <li class="main "><a href="#tcp-options">TCP Options</a></li>
+        
+            <li><a href="#maximum-segment-size-mss-option">Maximum Segment Size (MSS) Option</a></li>
+        
+            <li><a href="#selective-acknowledgment-sack-options">Selective Acknowledgment (SACK) Options</a></li>
+        
+            <li><a href="#window-scale-wscale-or-wsopt-option">Window Scale (WSCALE or WSOPT) Option</a></li>
+        
+            <li><a href="#timestamps-option-and-protection-against-wrapped-sequence-numbers-paws">Timestamps Option and Protection against Wrapped Sequence Numbers (PAWS)</a></li>
+        
+            <li><a href="#user-timeout-uto-option">User Timeout (UTO) Option</a></li>
+        
+            <li><a href="#authentication-option-tcp-ao">Authentication Option (TCP-AO)</a></li>
+        
+    
+        <li class="main "><a href="#path-mtu-discovery-with-tcp">Path MTU Discovery with TCP</a></li>
+        
+    
+        <li class="main "><a href="#tcp-state-transitions">TCP State Transitions</a></li>
+        
+    
+        <li class="main "><a href="#reset-segments">Reset Segments</a></li>
+        
+    
+        <li class="main "><a href="#tcp-server-operation">TCP Server Operation</a></li>
+        
+    
+        <li class="main "><a href="#attacks-involving-tcp-connection-management">Attacks Involving TCP Connection Management</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-13-tcp-connection-management"><strong>Chapter 13. TCP Connection Management</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>TCP is a unicast <strong>connection-oriented</strong> protocol. Before either end can send data to the other, a connection must be established between them. TCP detects and repairs essentially all the data transfer problems that may be introduced by packet loss, duplication, or errors at the IP layer (or below).</p>
+<p>Because of its management of <strong>connection state</strong> (information about the connection kept by both endpoints), TCP is a considerably more complicated protocol than UDP (<a href="../ch10/">Chapter 10</a>). UDP is a connectionless protocol that involves no connection establishment or termination. One of the major differences between the two is the amount of detail required to handle the various TCP states properly: when connections are created, terminated normally, and reset without warning. Other chapters discuss what happens once the connection is established and data is transferred.</p>
+<p>During connection establishment, several options can be exchanged between the two endpoints regarding the parameters of the connection. Some options are allowed to be sent only when the connection is established, and others can be sent later. The TCP header has a limited space for holding options (40 bytes). (<a href="../ch12/">Chapter 12</a>)</p>
+<h3 id="tcp-connection-establishment-and-termination">TCP Connection Establishment and Termination</h3>
+<p>A TCP connection is defined to be a 4-tuple consisting of two IP addresses and two port numbers. It is a pair of <strong>endpoints</strong> or <strong>sockets</strong> where each endpoint is identified by an (IP address, port number) pair.</p>
+<p>A connection typically goes through three phases:</p>
+<ol>
+<li>Setup</li>
+<li>Data transfer (called <em>established</em>)</li>
+<li>Teardown (<em>closing</em>).</li>
+</ol>
+<p>Some of the difficulty in creating a robust TCP implementation is handling all of the transitions between and among these phases correctly.</p>
+<p>A typical TCP connection establishment and close (without any data transfer) is shown below:</p>
+<p><a href="../figure_13-1.png" title="A normal TCP connection establishment and termination. Usually, the client initiates a three-way handshake to exchange initial sequence numbers carried on SYN segments for the client and server (ISN(c) and ISN(s), respectively). The connection terminates after each side has sent a FIN and received an acknowledgment for it."><img alt="A normal TCP connection establishment and termination. Usually, the client initiates a three-way handshake to exchange initial sequence numbers carried on SYN segments for the client and server (ISN(c) and ISN(s), respectively). The connection terminates after each side has sent a FIN and received an acknowledgment for it." src="../figure_13-1_600.png" /></a></p>
+<h4 id="connection-establishment">Connection Establishment *</h4>
+<p>To establish a TCP connection, the following events usually take place:</p>
+<ol>
+<li>The <strong>active opener</strong> (normally called the client) sends a SYN segment (a TCP/IP packet with the SYN bit field turned on in the TCP header) specifying the port number of the peer to which it wants to connect and the client’s initial sequence number or ISN(c) (<a href="#initial-sequence-number-isn">Section 13.2.3</a>). It typically sends one or more options at this point (<a href="#tcp-options">Section 13.3</a>). This is segment 1.</li>
+<li>The server responds with its own SYN segment containing its initial sequence number (ISN(s)). This is segment 2. The server also acknowledges the client’s SYN by ACKing ISN(c) plus 1. A SYN consumes one sequence number and is retransmitted if lost.</li>
+<li>The client must acknowledge this SYN from the server by ACKing ISN(s) plus 1. This is segment 3.</li>
+</ol>
+<p>These three segments complete the connection establishment. <u>This is often called the <strong>three-way handshake</strong>. Its main purposes are to let each end of the connection know that a connection is starting and the special details that are carried as options, and to exchange the ISNs.</u></p>
+<p>The side that sends the first SYN is said to perform an <strong>active open</strong>. This is typically a client. The other side, which receives this SYN and sends
+the next SYN, performs a <strong>passive open</strong>. It is most commonly called the server. (<a href="#simultaneous-open-and-close">Section 13.2.2</a> describes a supported but unusual <strong>simultaneous open</strong> when both sides can do an active open at the same time and become both clients and servers.</p>
+<p>TCP supports the capability of carrying application data on SYN segments. This is rarely used, however, because the Berkeley sockets API does not support it.</p>
+<h4 id="connection-termination">Connection Termination *</h4>
+<p>The <a href="../figure_13-1.png">figure above</a> also shows how a TCP connection is closed (also called cleared or terminated). Either end can initiate a close operation, and simultaneous closes are also supported but are rare. Traditionally, it was most common for the client to initiate a close. However, other servers (e.g., Web servers) initiate a close after they have completed a request. Usually a close operation starts with an application indicating its desire to terminate its connection (e.g., using the <code>close()</code> system call). The closing TCP initiates the close operation by sending a FIN segment (a TCP segment with the FIN bit field set). The complete close operation occurs after both sides have completed the close:</p>
+<ol>
+<li>The <strong>active closer</strong> sends a FIN segment specifying the current sequence number the receiver expects to see (<em>K</em> in <a href="../(figure_13-1.png)">Figure 13-1</a>). The FIN also includes an ACK for the last data sent in the other direction (labeled <em>L</em> in <a href="../figure_13-1.png">Figure 13-1</a>).</li>
+<li>The <strong>passive closer</strong> responds by ACKing value <em>K</em> + 1 to indicate its successful receipt of the active closer’s FIN. At this point, the application is notified that the other end of its connection has performed a close. Typically this results in the application initiating its own close operation. <u>The passive closer then effectively becomes another active closer and sends its own FIN.  The sequence number is equal to <em>L</em>.</u></li>
+<li>To complete the close, the final segment contains an ACK for the last FIN. Note that if a FIN is lost, it is retransmitted until an ACK for it is received.</li>
+</ol>
+<p>While it takes three segments to establish a connection, it takes four to terminate one. It is also possible for the connection to be in a half-open state, although this is not common. This reason is that TCP’s data communications model is bidirectional, meaning it is possible to have only one of the two directions operating. <u>The <strong>half-close</strong> operation in TCP closes only a single direction of the data flow. Two half-close operations together close the entire connection.</u> The rule is that either end can send a FIN when it is done sending data. When a TCP receives a FIN, it must notify the application that the other end has terminated that direction of data flow. The sending of a FIN is normally the result of the application issuing a close operation, which typically causes both directions to close.</p>
+<p>The seven segments discussed are baseline overheads for any TCP connection that is established and cleared "gracefully". (There are more abrupt ways to tear down a TCP connection using special reset segments, which are covered later.) When a small amount of data needs to be exchanged, it is now apparent why some applications prefer to use UDP because of its ability to send and receive data without establishing connections. However, such applications are then faced with handling their own error repair features, congestion management, and flow control.</p>
+<h4 id="tcp-half-close">TCP Half-Close</h4>
+<p>TCP supports a half-close operation. Few applications require this capability, so it is not common. To use this feature, the API must provide a way for the application to say, "I am done sending data, so send a FIN to the other end, but I still want to receive data from the other end, until it sends me a FIN."</p>
+<p>The Berkeley sockets API supports half-close, if the application calls the <code>shutdown()</code> function instead of calling the more typical <code>close()</code> function.  Most applications, however, terminate both directions of the connection by calling close. The figure below shows an example of a half-close being used. It shows the client on the left side initiating the half-close, but either end can do this.</p>
+<p><a href="../figure_13-2.png" title="Figure 13-2 With the TCP half-close operation, one direction of the connection can terminate while the other continues until it is closed. Few applications use this feature."><img alt="Figure 13-2 With the TCP half-close operation, one direction of the connection can terminate while the other continues until it is closed. Few applications use this feature." src="../figure_13-2_600.png" /></a></p>
+<p>The first two segments are the same as for a regular close: a FIN by the initiator, followed by an ACK of the FIN by the recipient. The operation then differs from <a href="../figure_13-1.png">Figure 13-1</a>, because the side that receives the half-close can still send data.  We show only one data segment, followed by an ACK, but any number of data segments can be sent. (The exchange of data segments and acknowledgments is detailed in <a href="../ch15/">Chapter 15</a>.) When the end that received the half-close is done sending data, it closes its end of the connection, causing a FIN to be sent, and this delivers an end-of-file indication to the application that initiated the half-close.  When this second FIN is acknowledged, the connection is completely closed.</p>
+<h4 id="simultaneous-open-and-close">Simultaneous Open and Close</h4>
+<h4 id="initial-sequence-number-isn">Initial Sequence Number (ISN)</h4>
+<h4 id="example">Example</h4>
+<h4 id="timeout-of-connection-establishment">Timeout of Connection Establishment</h4>
+<h4 id="connections-and-translators">Connections and Translators</h4>
+<h3 id="tcp-options">TCP Options</h3>
+<h4 id="maximum-segment-size-mss-option">Maximum Segment Size (MSS) Option</h4>
+<h4 id="selective-acknowledgment-sack-options">Selective Acknowledgment (SACK) Options</h4>
+<h4 id="window-scale-wscale-or-wsopt-option">Window Scale (WSCALE or WSOPT) Option</h4>
+<h4 id="timestamps-option-and-protection-against-wrapped-sequence-numbers-paws">Timestamps Option and Protection against Wrapped Sequence Numbers (PAWS)</h4>
+<h4 id="user-timeout-uto-option">User Timeout (UTO) Option</h4>
+<h4 id="authentication-option-tcp-ao">Authentication Option (TCP-AO)</h4>
+<h3 id="path-mtu-discovery-with-tcp">Path MTU Discovery with TCP</h3>
+<h3 id="tcp-state-transitions">TCP State Transitions</h3>
+<h3 id="reset-segments">Reset Segments</h3>
+<h3 id="tcp-server-operation">TCP Server Operation</h3>
+<h3 id="attacks-involving-tcp-connection-management">Attacks Involving TCP Connection Management</h3>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/lkd/ch4/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 4. Process Scheduling - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../apue/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch4.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-4-process-scheduling">Chapter 4. Process Scheduling</a></li>
+        
+    
+        <li class="main "><a href="#multitasking">Multitasking</a></li>
+        
+            <li><a href="#preemptive-multitasking">Preemptive multitasking</a></li>
+        
+            <li><a href="#cooperative-multitasking">Cooperative multitasking</a></li>
+        
+    
+        <li class="main "><a href="#linuxs-process-scheduler">Linux’s Process Scheduler</a></li>
+        
+    
+        <li class="main "><a href="#policy">Policy</a></li>
+        
+            <li><a href="#io-bound-versus-processor-bound-processes">I/O-Bound Versus Processor-Bound Processes</a></li>
+        
+            <li><a href="#process-priority">Process Priority</a></li>
+        
+            <li><a href="#timeslice">Timeslice</a></li>
+        
+            <li><a href="#the-scheduling-policy-in-action">The Scheduling Policy in Action</a></li>
+        
+    
+        <li class="main "><a href="#the-linux-scheduling-algorithm">The Linux Scheduling Algorithm</a></li>
+        
+            <li><a href="#scheduler-classes">Scheduler Classes</a></li>
+        
+            <li><a href="#process-scheduling-in-unix-systems">Process Scheduling in Unix Systems</a></li>
+        
+            <li><a href="#fair-scheduling">Fair Scheduling</a></li>
+        
+    
+        <li class="main "><a href="#the-linux-scheduling-implementation">The Linux Scheduling Implementation</a></li>
+        
+            <li><a href="#time-accounting">Time Accounting</a></li>
+        
+            <li><a href="#process-selection">Process Selection</a></li>
+        
+            <li><a href="#the-scheduler-entry-point">The Scheduler Entry Point</a></li>
+        
+            <li><a href="#sleeping-and-waking-up">Sleeping and Waking Up</a></li>
+        
+    
+        <li class="main "><a href="#preemption-and-context-switching">Preemption and Context Switching</a></li>
+        
+            <li><a href="#the-need_resched-flag">The need_resched flag *</a></li>
+        
+            <li><a href="#user-preemption">User Preemption</a></li>
+        
+            <li><a href="#kernel-preemption">Kernel Preemption</a></li>
+        
+    
+        <li class="main "><a href="#real-time-scheduling-policies">Real-Time Scheduling Policies</a></li>
+        
+            <li><a href="#the-sched_fifo-policy">The SCHED_FIFO policy *</a></li>
+        
+            <li><a href="#the-sched_rr-policy">The SCHED_RR policy *</a></li>
+        
+            <li><a href="#hard-real-time-and-soft-real-time">Hard real-time and soft real-time</a></li>
+        
+    
+        <li class="main "><a href="#scheduler-related-system-calls">Scheduler-Related System Calls</a></li>
+        
+            <li><a href="#scheduling-policy-and-priority-related-system-calls">Scheduling Policy and Priority-Related System Calls</a></li>
+        
+            <li><a href="#processor-affinity-system-calls">Processor Affinity System Calls</a></li>
+        
+            <li><a href="#yielding-processor-time">Yielding Processor Time</a></li>
+        
+    
+        <li class="main "><a href="#conclusion">Conclusion</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-4-process-scheduling"><strong>Chapter 4. Process Scheduling</strong></h3>
+<p>This chapter discusses the <strong>process scheduler</strong>, the kernel subsystem that puts those processes to work.</p>
+<p>The process scheduler (or simply the scheduler) divides the finite resource of processor time between the runnable processes on a system. It is responsible for best utilizing the system and giving users the impression that multiple processes are executing simultaneously. [p41]</p>
+<p>To best utilize processor time, assuming there are runnable processes, a process should always be running. If there are more <em>runnable</em> processes than processors in a system, some processes will not be running at a given moment. These processes are <em>waiting to run</em>. Deciding which process runs next, given a set of runnable processes, is the fundamental decision that the scheduler must make.</p>
+<h3 id="multitasking">Multitasking</h3>
+<p>A <strong>multitasking</strong> operating system is one that can simultaneously interleave execution of more than one process.</p>
+<ul>
+<li>On single processor machines, this gives the illusion of multiple processes running concurrently.</li>
+<li>On multiprocessor machines, this enables processes to actually run concurrently, in parallel, on different processors.</li>
+</ul>
+<p>On either type of machine, it also enables many processes to <em>block</em> or <em>sleep</em>. Although these processes are in memory, they are not <em>runnable</em>. These processes utilize the kernel to wait until some event (keyboard input, network data, passage of time, and so on) occurs. [p41]</p>
+<p>Multitasking operating systems come in two flavors:</p>
+<ul>
+<li><strong>Cooperative multitasking</strong></li>
+<li><strong>Preemptive multitasking</strong></li>
+</ul>
+<h4 id="preemptive-multitasking">Preemptive multitasking</h4>
+<p>Linux, like all Unix variants and most modern operating systems, implements preemptive multitasking. In preemptive multitasking, the scheduler decides
+when a process is to cease running and a new process is to begin running.</p>
+<ul>
+<li><strong>Preemption</strong>: the act of involuntarily suspending a running process.</li>
+<li><strong>Timeslice</strong> of a process: the time the process runs before it is preempted is usually predetermined.<ul>
+<li>Managing the timeslice enables the scheduler to make global scheduling decisions for the system and prevents any one process from monopolizing the processor.</li>
+<li>On many modern operating systems, the timeslice is dynamically calculated as a function of process behavior and configurable system policy.</li>
+<li>Linux’s unique "fair" scheduler does not employ timeslices <em>per se</em>, to interesting effect.</li>
+</ul>
+</li>
+</ul>
+<h4 id="cooperative-multitasking">Cooperative multitasking</h4>
+<p>In cooperative multitasking, a process does not stop running until it voluntarily decides to do so. The act of a process voluntarily suspending itself is called <strong>yielding</strong>, but the operating system cannot enforce this.</p>
+<p>The shortcomings of this approach are manifest:</p>
+<ul>
+<li>The scheduler cannot make global decisions regarding how long processes run;</li>
+<li>Processes can monopolize the processor for longer than the user desires;</li>
+<li>A hung process that never yields can potentially bring down the entire system.</li>
+</ul>
+<p>[p42]</p>
+<h3 id="linuxs-process-scheduler">Linux’s Process Scheduler</h3>
+<p>From Linux’s first version in 1991 through the 2.4 kernel series, the Linux scheduler was simple in design. It was easy to understand, but scaled poorly in light of many runnable processes or many processors.</p>
+<p>During the 2.5 kernel development series, the <strong>O(1) scheduler</strong> solved the shortcomings of the previous Linux scheduler and introduced powerful new features and performance characteristics. By introducing a constant-time algorithm for timeslice calculation and per-processor runqueues, it rectified the design limitations of the earlier scheduler.</p>
+<p>However, the O(1) scheduler had several pathological failures related to scheduling latency-sensitive applications (interactive processes). Thus, although the O(1) scheduler was ideal for large server workloads, which lack interactive processes, it performed below par on desktop systems, where interactive applications are the <em>raison d’être</em>.</p>
+<p>Beginning in the 2.6 kernel series, developers introduced new process schedulers aimed at improving the interactive performance of the O(1) scheduler. The most notable of these was the <strong>Rotating Staircase Deadline</strong> scheduler, which introduced the concept of <strong>fair scheduling</strong>, borrowed from queuing theory, to Linux’s process scheduler. This concept was the inspiration for the O(1) scheduler’s eventual replacement in kernel version 2.6.23, the <strong>Completely Fair Scheduler</strong> (CFS).</p>
+<p>This chapter discusses the fundamentals of scheduler design and how they apply to the Completely Fair Scheduler and its goals, design, implementation, algorithms, and related system calls. We also discuss the O(1) scheduler because its implementation is a more "classic" Unix process scheduler model.</p>
+<h3 id="policy">Policy</h3>
+<p>Policy is the behavior of the scheduler that determines what runs when.</p>
+<h4 id="io-bound-versus-processor-bound-processes">I/O-Bound Versus Processor-Bound Processes</h4>
+<p>Processes can be classified as either <strong>I/O-bound</strong> or <strong>processor-bound</strong>.</p>
+<ul>
+<li>An <strong>I/O-bound process</strong> spends much of its time submitting and waiting on I/O requests. Such a process is runnable for only short durations, because it eventually blocks waiting on more I/O.<ul>
+<li>"I/O" means any type of blockable resource, such as keyboard input or network I/O, and not just disk I/O. Most graphical user interface (GUI) applications are I/O-bound, even if they never read from or write to the disk, because they spend most of their time waiting on user interaction via the keyboard and mouse.</li>
+</ul>
+</li>
+<li><strong>Processor-bound processes</strong> spend much of their time executing code. Thet tend to run until they are preempted because they do not block on I/O requests very often. System response does not dictate that the scheduler run them often. A scheduler policy for processor-bound processes tends to run such processes less frequently but for longer durations.<ul>
+<li>Examples of processor-bound processes include: a program executing an infinite loop, <em>ssh-keygen</em>, <em>MATLAB</em>.</li>
+</ul>
+</li>
+</ul>
+<p>These classifications are not mutually exclusive. Processes can exhibit both behaviors simultaneously:</p>
+<ul>
+<li>The X Window server is both processor and I/O intense.</li>
+<li>A word processor can be I/O-bound but dive into periods of intense processor action.</li>
+</ul>
+<p>The scheduling policy in a system must attempt to satisfy two conflicting goals:</p>
+<ul>
+<li>Fast process response time (low latency)</li>
+<li>Maximal system utilization (high throughput)</li>
+</ul>
+<h5 id="favoring-io-bound-over-processor-bound"><strong>Favoring I/O-bound over processor-bound</strong></h5>
+<p>Schedulers often employ complex algorithms to determine the most worthwhile process to run while not compromising fairness to other processes with lower priority. [p43-44]</p>
+<ul>
+<li>The scheduler policy in Unix systems tends to explicitly favor I/O-bound processes, thus providing good process response time.</li>
+<li>Linux, aiming to provide good interactive response and desktop performance, optimizes for process response (low latency), thus favoring I/O-bound processes over processor-bound processes. This is done in a creative manner that does not neglect processor-bound processes.</li>
+</ul>
+<h4 id="process-priority">Process Priority</h4>
+<p>The <strong>priority-based</strong> scheduling is a common type of scheduling algorithm, which isn’t exactly implemented on Linux. It means that processes with a higher priority run before those with a lower priority, whereas processes with the same priority are scheduled <em>round-robin</em> (one after the next, repeating). On some systems, processes with a higher priority also receive a longer timeslice. The runnable process with timeslice remaining and the highest priority always runs. [p44]</p>
+<h5 id="nice-value-and-real-time-priority"><strong>nice value and real-time priority</strong></h5>
+<p>The Linux kernel implements two separate priority ranges:</p>
+<ul>
+<li><strong>nice value</strong> (a number from –20 to +19 with a default of 0) is the standard priority range used in all Unix systems:<ul>
+<li>Processes with a lower nice value (higher priority) receive a larger proportion of the system’s processor, and vice versa.</li>
+<li>In Linux, the nice value is a control over the <em>proportion</em> of timeslice. In other Unix-based systems, such as Mac OS X, the nice value is a control over the <em>absolute</em> timeslice allotted to a process;</li>
+<li>The <code>ps -el</code> command lists processes with their nice values.</li>
+</ul>
+</li>
+<li><strong>Real-time priority</strong> (configurable values that by default range from 0 to 99)<ul>
+<li>Higher real-time priority values correspond to a greater priority.</li>
+<li>All real-time processes are at a higher priority than normal processes.</li>
+<li>Linux implements real-time priorities in accordance with the relevant Unix standards, specifically POSIX.1b.</li>
+<li>The <code>ps -eo state,uid,pid,ppid,rtprio,time,comm</code> command lists processes and their real-time priority. A value of “-” means the process is not real-time.</li>
+</ul>
+</li>
+</ul>
+<h4 id="timeslice">Timeslice</h4>
+<p>The <em>timeslice</em> is the numeric value that represents how long a task can run until it is preempted.</p>
+<ul>
+<li>Too long a timeslice causes the system to have poor interactive performance.</li>
+<li>Too short a timeslice causes significant amounts of processor time to be wasted on the overhead of switching processes.</li>
+</ul>
+<p>The conflicting goals of I/O bound versus processor-bound processes:</p>
+<ul>
+<li>I/O-bound processes do not need longer timeslices (although they do like to run often)</li>
+<li>Processor-bound processes crave long timeslices (to keep their caches hot).</li>
+</ul>
+<h5 id="timeslice-on-linux"><strong>Timeslice on Linux</strong></h5>
+<p>Linux’s CFS scheduler does not directly assign timeslices to processes, but assigns processes a <em>proportion</em> of the processor. The amount of processor time that a process receives is a function of the load of the system. This assigned proportion is further affected by each process’s nice value. The nice value acts as a weight, changing the proportion of the processor time each process receives. Processes with higher nice values (a lower priority) receive a deflationary weight, yielding them a smaller proportion of the processor, and vice versa.</p>
+<p>With the CFS scheduler, whether the process runs immediately (preempting the currently running process) is a function of how much of a proportion of the processor the newly runnable processor has consumed. If it has consumed a smaller proportion of the processor than the currently executing process, it runs immediately</p>
+<h4 id="the-scheduling-policy-in-action">The Scheduling Policy in Action</h4>
+<p>Consider a system with two runnable tasks: a text editor (I/O-bound) and a video encoder (processor-bound). [p45-46]</p>
+<p>Ideally, the scheduler gives the text editor a larger proportion of the available processor than the video encoder, because the text editor is interactive. We have two goals for the text editor:</p>
+<ol>
+<li>We want the text editor to have a large amount of processor time available to it; not because it needs a lot of processor (it does not) but because we want it to always have processor time available the moment it needs it.</li>
+<li>We want the text editor to preempt the video encoder the moment it wakes up (say, when the user presses a key). This can ensure the text editor has good <em>interactive performance</em> and is responsive to user input.</li>
+</ol>
+<p><strong>How the above two goals achieved</strong></p>
+<ol>
+<li>Instead of assigning the text editor a specific priority and timeslice, the Linux guarantees the text editor a specific proportion of the processor. If the two are the only processes with same nice values, each would be guaranteed half of the processor’s time (the proportion is 50%). Because the text editor spends most of its time blocked, waiting for user key presses, it does not use anywhere near 50% of the processor. Conversely, the video encoder is free to use more than its allotted 50%, enabling it to finish the encoding quickly.</li>
+<li>When the editor wakes up, CFS notes that it is allotted 50% of the processor but has used considerably less, and thus determines that the text editor has run for <em>less time</em> than the video encoder. Attempting to give all processes a fair share of the processor, it then preempts the video encoder and enables the text editor to run. [p46]</li>
+</ol>
+<h3 id="the-linux-scheduling-algorithm">The Linux Scheduling Algorithm</h3>
+<h4 id="scheduler-classes">Scheduler Classes</h4>
+<p>The Linux scheduler is modular, enabling different algorithms to schedule different types of processes.This modularity is called <strong>scheduler classes</strong>. The base scheduler code, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c"><code>kernel/sched.c</code></a>, iterates over each scheduler class in order of priority.The highest priority scheduler class that has a runnable process wins, selecting who runs next.</p>
+<p>The Completely Fair Scheduler (CFS) is the registered scheduler class for normal processes, called <code>SCHED_NORMAL</code> in Linux (and <code>SCHED_OTHER</code> in POSIX).  CFS is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c"><code>kernel/sched_fair.c</code></a>. The rest of this section discusses the CFS algorithm.</p>
+<h4 id="process-scheduling-in-unix-systems">Process Scheduling in Unix Systems</h4>
+<p>To discuss fair scheduling, we must first describe how traditional Unix systems schedule processes.</p>
+<p>Modern process schedulers have two common concepts: process priority and timeslice. Processes with a higher priority run more frequently and (on many systems) receive a higher timeslice. On Unix, the priority is exported to user-space in the form of nice values. This in practice leads to several problems:</p>
+<ol>
+<li>Mapping nice values onto timeslices requires a decision about what absolute timeslice to allot each nice value, which leads to suboptimal switching behavior. [p47]</li>
+<li>Nicing (down) a process by a relative nice value has wildly different effects depending on the starting nice value. [p47-48]</li>
+<li>Absolute timeslice timeslice must be some integer multiple of the timer tick, which introduces several problems. [p48]</li>
+<li>Handling process wake up in a priority-based scheduler that wants to optimize for interactive tasks may cause the scheduler providing one process an unfair amount of processor time, at the expense of the rest of the system. [p48]</li>
+</ol>
+<p>The approach taken by CFS is a radical (for process schedulers) rethinking of timeslice allotment: Do away with timeslices completely and assign each process a proportion of the processor. CFS thus yields constant fairness but a variable switching rate.</p>
+<h4 id="fair-scheduling">Fair Scheduling</h4>
+<p>CFS is based on a simple concept: Model process scheduling as if the system had an ideal, perfectly multitasking processor. In such a system, each process would receive 1/<em>n</em> of the processor’s time, where <em>n</em> is the number of runnable processes, and we’d schedule them for infinitely small durations, so that in any measurable period we’d have run all <em>n</em> processes for the same amount of time. [p48]</p>
+<p>It is not efficient to run processes for infinitely small durations; there is a switching cost to preempting one process for another: the overhead of swapping one process for another and the effects on caches. CFS will run each process for some amount of time, round-robin, selecting next the process that has run the least. Rather than assign each process a timeslice, CFS calculates how long a process should run as a function of the total number of runnable processes. Instead of using the nice value to calculate a timeslice, CFS uses the nice value to weight the proportion of processor a process is to receive. [p49]</p>
+<p><u>Each process runs for a "timeslice" proportional to its weight divided by the total weight of all runnable threads.</u> CFS sets a target for its
+approximation of the "infinitely small" scheduling duration in perfect multitasking. This target is called the <strong>targeted latency</strong>. Smaller targets yield better interactivity and a closer approximation to perfect multitasking, at the expense of higher switching costs and thus worse overall throughput.  CFS imposes a floor on the timeslice assigned to each process, called the <strong>minimum granularity</strong> (by default 1 millisecond). Even as the number of runnable processes approaches infinity, each will run for at least 1 millisecond, to ensure there is a ceiling on the incurred switching costs</p>
+<p>For the nice value on weighting the proportion, consider the case of two runnable processes with disimilar nice values. One with the default nice value (zero) and one with a nice value of 5. In this case, the weights work out to about a 1⁄3 penalty for the nice-5 process. If our target latency is again 20 milliseconds, our two processes will receive 15 milliseconds and 5 milliseconds each of processor time, respectively. Put generally, the proportion of processor time that any process receives is determined only by the relative difference in niceness between it and the other runnable processes.  The nice values, instead of yielding additive increases to timeslices, yield geometric differences. [p49-50]</p>
+<h3 id="the-linux-scheduling-implementation">The Linux Scheduling Implementation</h3>
+<p>CFS’s actual implementation lives in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c">kernel/sched_fair.c</a>. Specifically,
+this sections discusses four components of CFS:</p>
+<ul>
+<li>Time Accounting</li>
+<li>Process Selection</li>
+<li>The Scheduler Entry Point</li>
+<li>Sleeping and Waking Up</li>
+</ul>
+<h4 id="time-accounting">Time Accounting</h4>
+<p>All process schedulers must account for the time that a process runs. On each tick of the system clock, the timeslice is decremented by the tick period.When the timeslice reaches zero, the process is preempted in favor of another runnable process with a nonzero timeslice.</p>
+<h5 id="the-scheduler-entity-structure"><strong>The Scheduler Entity Structure</strong></h5>
+<p>CFS does not have the notion of a timeslice, but it must still keep account for the time that each process runs. [p50]</p>
+<p>CFS uses the <strong>scheduler entity structure</strong>, <code>struct sched_entity</code>, defined in <code>&lt;linux/sched.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1090">include/linux/sched.h#L1090</a>), to keep track of process accounting:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">sched_entity</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">load_weight</span> <span class="n">load</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="n">run_node</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">group_node</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">on_rq</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">exec_start</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">sum_exec_runtime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">vruntime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">prev_sum_exec_runtime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">last_wakeup</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">avg_overlap</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">nr_migrations</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">start_runtime</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">avg_wakeup</span><span class="p">;</span>
+
+<span class="cm">/* many stat variables elided, enabled only if CONFIG_SCHEDSTATS is set */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The scheduler entity structure is embedded in the process descriptor, <code>struct task_stuct</code>, as a member variable named <code>se</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1188">include/linux/sched.h#L1188</a>).</p>
+<h5 id="mapping-of-nice-value-to-weight"><strong>Mapping of nice value to weight</strong> *</h5>
+<p>The mapping of nice to weight is defined in the <code>prio_to_weight</code> constant array (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L1356">kernel/sched.c#L1362</a>). The weight is roughly equivalent to <code>1024/(1.25)^(nice)</code>.</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">prio_to_weight</span><span class="p">[</span><span class="mi">40</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+ <span class="cm">/* -20 */</span>     <span class="mi">88761</span><span class="p">,</span>     <span class="mi">71755</span><span class="p">,</span>     <span class="mi">56483</span><span class="p">,</span>     <span class="mi">46273</span><span class="p">,</span>     <span class="mi">36291</span><span class="p">,</span>
+ <span class="cm">/* -15 */</span>     <span class="mi">29154</span><span class="p">,</span>     <span class="mi">23254</span><span class="p">,</span>     <span class="mi">18705</span><span class="p">,</span>     <span class="mi">14949</span><span class="p">,</span>     <span class="mi">11916</span><span class="p">,</span>
+ <span class="cm">/* -10 */</span>      <span class="mi">9548</span><span class="p">,</span>      <span class="mi">7620</span><span class="p">,</span>      <span class="mi">6100</span><span class="p">,</span>      <span class="mi">4904</span><span class="p">,</span>      <span class="mi">3906</span><span class="p">,</span>
+ <span class="cm">/*  -5 */</span>      <span class="mi">3121</span><span class="p">,</span>      <span class="mi">2501</span><span class="p">,</span>      <span class="mi">1991</span><span class="p">,</span>      <span class="mi">1586</span><span class="p">,</span>      <span class="mi">1277</span><span class="p">,</span>
+ <span class="cm">/*   0 */</span>      <span class="mi">1024</span><span class="p">,</span>       <span class="mi">820</span><span class="p">,</span>       <span class="mi">655</span><span class="p">,</span>       <span class="mi">526</span><span class="p">,</span>       <span class="mi">423</span><span class="p">,</span>
+ <span class="cm">/*   5 */</span>       <span class="mi">335</span><span class="p">,</span>       <span class="mi">272</span><span class="p">,</span>       <span class="mi">215</span><span class="p">,</span>       <span class="mi">172</span><span class="p">,</span>       <span class="mi">137</span><span class="p">,</span>
+ <span class="cm">/*  10 */</span>       <span class="mi">110</span><span class="p">,</span>        <span class="mi">87</span><span class="p">,</span>        <span class="mi">70</span><span class="p">,</span>        <span class="mi">56</span><span class="p">,</span>        <span class="mi">45</span><span class="p">,</span>
+ <span class="cm">/*  15 */</span>        <span class="mi">36</span><span class="p">,</span>        <span class="mi">29</span><span class="p">,</span>        <span class="mi">23</span><span class="p">,</span>        <span class="mi">18</span><span class="p">,</span>        <span class="mi">15</span><span class="p">,</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<h5 id="the-virtual-runtime"><strong>The Virtual Runtime</strong></h5>
+<p>The <code>vruntime</code> variable stores the <strong>virtual runtime</strong> of a process, which is the actual runtime (the amount of time spent running) normalized (or weighted) by the number of runnable processes. The virtual runtime’s units are nanoseconds and therefore <code>vruntime</code> is decoupled from the timer tick. Because processors are not capable of perfect multitasking and we must run each process in succession, CFS uses vruntime to account for how long a process has run and thus how much longer it ought to run.</p>
+<p>The function <code>update_curr()</code>, defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L518">kernel/sched_fair.c#L518</a>), manages this accounting:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">update_curr</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">;</span>
+    <span class="n">u64</span> <span class="n">now</span> <span class="o">=</span> <span class="n">rq_of</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">clock</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="o">!</span><span class="n">curr</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Get the amount of time the current task was running</span>
+<span class="cm">     * since the last time we changed load (this cannot</span>
+<span class="cm">     * overflow on 32 bits):</span>
+<span class="cm">     */</span>
+    <span class="n">delta_exec</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)(</span><span class="n">now</span> <span class="o">-</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_start</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">delta_exec</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">;</span>
+
+    <span class="n">__update_curr</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">curr</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+    <span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_start</span> <span class="o">=</span> <span class="n">now</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">entity_is_task</span><span class="p">(</span><span class="n">curr</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">curtask</span> <span class="o">=</span> <span class="n">task_of</span><span class="p">(</span><span class="n">curr</span><span class="p">);</span>
+
+        <span class="n">trace_sched_stat_runtime</span><span class="p">(</span><span class="n">curtask</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">,</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">vruntime</span><span class="p">);</span>
+        <span class="n">cpuacct_charge</span><span class="p">(</span><span class="n">curtask</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+        <span class="n">account_group_exec_runtime</span><span class="p">(</span><span class="n">curtask</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>update_curr()</code> calculates the execution time of the current process and stores that value in <code>delta_exec</code>. It then passes that runtime to <code>__update_curr()</code>, which weights the time by the number of runnable processes. The current process’s vruntime is then incremented by the weighted value:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Update the current task&#39;s runtime statistics. Skip current tasks that</span>
+<span class="cm"> * are not in our scheduling class.</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span>
+<span class="nf">__update_curr</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">curr</span><span class="p">,</span>
+          <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec_weighted</span><span class="p">;</span>
+
+    <span class="n">schedstat_set</span><span class="p">(</span><span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_max</span><span class="p">,</span> <span class="n">max</span><span class="p">((</span><span class="n">u64</span><span class="p">)</span><span class="n">delta_exec</span><span class="p">,</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">exec_max</span><span class="p">));</span>
+
+    <span class="n">curr</span><span class="o">-&gt;</span><span class="n">sum_exec_runtime</span> <span class="o">+=</span> <span class="n">delta_exec</span><span class="p">;</span>
+    <span class="n">schedstat_add</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">exec_clock</span><span class="p">,</span> <span class="n">delta_exec</span><span class="p">);</span>
+    <span class="n">delta_exec_weighted</span> <span class="o">=</span> <span class="n">calc_delta_fair</span><span class="p">(</span><span class="n">delta_exec</span><span class="p">,</span> <span class="n">curr</span><span class="p">);</span>
+
+    <span class="n">curr</span><span class="o">-&gt;</span><span class="n">vruntime</span> <span class="o">+=</span> <span class="n">delta_exec_weighted</span><span class="p">;</span>
+    <span class="n">update_min_vruntime</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>update_curr()</code> is invoked periodically by the system timer and also whenever a process becomes runnable or blocks, becoming unrunnable. In this manner, vruntime is an accurate measure of the runtime of a given process and an indicator of what process should run next.</p>
+<h5 id="the-calc_delta_fair-function"><strong>The <code>calc_delta_fair()</code> function</strong></h5>
+<p><code>__update_curr()</code> calls <code>calc_delta_fair()</code>, which in turn calls <code>calc_delta_mine()</code> (if <code>se-&gt;load.weight</code> does not equal <code>NICE_0_LOAD</code>) to calculate the weighted value:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L431">kernel/sched_fair.c#L431</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * delta /= w</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">unsigned</span> <span class="kt">long</span>
+<span class="nf">calc_delta_fair</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">load</span><span class="p">.</span><span class="n">weight</span> <span class="o">!=</span> <span class="n">NICE_0_LOAD</span><span class="p">))</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">calc_delta_mine</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">NICE_0_LOAD</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">load</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">delta</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L1294">kernel/sched.c#L1300</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * delta *= weight / lw</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kt">unsigned</span> <span class="kt">long</span>
+<span class="nf">calc_delta_mine</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delta_exec</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">,</span>
+        <span class="k">struct</span> <span class="n">load_weight</span> <span class="o">*</span><span class="n">lw</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">u64</span> <span class="n">tmp</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">BITS_PER_LONG</span> <span class="o">&gt;</span> <span class="mi">32</span> <span class="o">&amp;&amp;</span> <span class="n">unlikely</span><span class="p">(</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">weight</span> <span class="o">&gt;=</span> <span class="n">WMULT_CONST</span><span class="p">))</span>
+            <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="k">else</span>
+            <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">WMULT_CONST</span><span class="o">-</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">weight</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                <span class="o">/</span> <span class="p">(</span><span class="n">lw</span><span class="o">-&gt;</span><span class="n">weight</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">tmp</span> <span class="o">=</span> <span class="p">(</span><span class="n">u64</span><span class="p">)</span><span class="n">delta_exec</span> <span class="o">*</span> <span class="n">weight</span><span class="p">;</span>
+    <span class="cm">/*</span>
+<span class="cm">     * Check whether we&#39;d overflow the 64-bit multiplication:</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">tmp</span> <span class="o">&gt;</span> <span class="n">WMULT_CONST</span><span class="p">))</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">SRR</span><span class="p">(</span><span class="n">SRR</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">WMULT_SHIFT</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span><span class="p">,</span>
+            <span class="n">WMULT_SHIFT</span><span class="o">/</span><span class="mi">2</span><span class="p">);</span>
+    <span class="k">else</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">SRR</span><span class="p">(</span><span class="n">tmp</span> <span class="o">*</span> <span class="n">lw</span><span class="o">-&gt;</span><span class="n">inv_weight</span><span class="p">,</span> <span class="n">WMULT_SHIFT</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">min</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="p">(</span><span class="n">u64</span><span class="p">)(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">LONG_MAX</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This can be summarized as:</p>
+<div class="codehilite"><pre>delta_exec_weighted = delta_exec * NICE_0_LOAD / se-&gt;load
+</pre></div>
+
+
+<p>For division details, see <a href="http://stackoverflow.com/questions/17776451">Explanation of the calc_delta_mine function</a>.</p>
+<h4 id="process-selection">Process Selection</h4>
+<p>CFS attempts to balance a process’s virtual runtime with a simple rule: <u>when deciding what process to run next, it picks the process with the smallest <code>vruntime</code>.</u></p>
+<p>CFS uses a <a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">red-black tree</a> to manage the list of runnable processes and efficiently find the process with the smallest <code>vruntime</code>. A red-black tree, called an <em>rbtree</em> in Linux (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/rbtree.h">include/linux/rbtree.h</a>, <a href="https://github.com/shichao-an/linux/blob/v2.6.34/lib/rbtree.c">lib/rbtree.c</a>), is a type of <a href="https://en.wikipedia.org/wiki/Self-balancing_binary_search_tree">self-balancing binary search tree</a>. It is a data structure that store nodes of arbitrary data, identified by a specific key, and that they enable efficient search for a given key. Specifically, obtaining a node identified by a given key is logarithmic in time as a function of total nodes in the tree.</p>
+<h5 id="picking-the-next-task"><strong>Picking the Next Task</strong></h5>
+<p>The process that CFS wants to run next, which is the process with the smallest <code>vruntime</code>, is the leftmost node in the tree. If you follow the tree from the root down through the left child, and continue moving to the left until you reach a leaf node, you find the process with the smallest <code>vruntime</code>. CFS’s process selection algorithm is thus summed up as "run the process represented by the leftmost node in the rbtree." [p53]</p>
+<p>The function that performs this selection is <code>__pick_next_entity()</code>, defined in <code>kernel/sched_fair.c</code>(<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L377">kernel/sched_fair.c#L377</a>):</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="nf">__pick_next_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">left</span> <span class="o">=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">left</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="n">rb_entry</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span><span class="p">,</span> <span class="n">run_node</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that <code>__pick_next_entity()</code> does not actually traverse the tree to find the leftmost node, because the value is cached by <code>rb_leftmost</code>, though it is efficient to walk the tree to find the leftmost node (<code>O(height of tree)</code>, which is <code>O(log N)</code> for <code>N</code> nodes if the tree is balanced).</p>
+<p>The return value from this function is the process that CFS next runs. If the function returns NULL, there is no leftmost node, and thus no nodes in the tree. In that case, there are no runnable processes, and CFS schedules the idle task.</p>
+<h5 id="adding-processes-to-the-tree"><strong>Adding Processes to the Tree</strong></h5>
+<p>CFS adds processes to the rbtree and caches the leftmost node, when a process becomes runnable (wakes up) or is first created via <code>fork()</code>. Adding processes to the tree is performed by <code>enqueue_entity()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L773">kernel/sched_fair.c#L773</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">enqueue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">     * Update the normalized vruntime before updating min_vruntime</span>
+<span class="cm">     * through callig update_curr().</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ENQUEUE_WAKEUP</span><span class="p">)</span> <span class="o">||</span> <span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ENQUEUE_MIGRATE</span><span class="p">))</span>
+        <span class="n">se</span><span class="o">-&gt;</span><span class="n">vruntime</span> <span class="o">+=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">min_vruntime</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Update run-time statistics of the &#39;current&#39;.</span>
+<span class="cm">     */</span>
+    <span class="n">update_curr</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+    <span class="n">account_entity_enqueue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ENQUEUE_WAKEUP</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">place_entity</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="n">enqueue_sleeper</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">update_stats_enqueue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">check_spread</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">se</span> <span class="o">!=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">)</span>
+        <span class="n">__enqueue_entity</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function updates the runtime and other statistics and then invokes <code>__enqueue_entity()</code> to perform the actual heavy lifting of inserting the entry into the red-black tree.</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L328">kernel/sched_fair.c#L328</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Enqueue an entity into the rb-tree:</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">__enqueue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">**</span><span class="n">link</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">tasks_timeline</span><span class="p">.</span><span class="n">rb_node</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">parent</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">entry</span><span class="p">;</span>
+    <span class="n">s64</span> <span class="n">key</span> <span class="o">=</span> <span class="n">entity_key</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">leftmost</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Find the right place in the rbtree:</span>
+<span class="cm">     */</span>
+    <span class="k">while</span> <span class="p">(</span><span class="o">*</span><span class="n">link</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">parent</span> <span class="o">=</span> <span class="o">*</span><span class="n">link</span><span class="p">;</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">rb_entry</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span><span class="p">,</span> <span class="n">run_node</span><span class="p">);</span>
+        <span class="cm">/*</span>
+<span class="cm">         * We dont care about collisions. Nodes with</span>
+<span class="cm">         * the same key stay together.</span>
+<span class="cm">         */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">key</span> <span class="o">&lt;</span> <span class="n">entity_key</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">entry</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">link</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">parent</span><span class="o">-&gt;</span><span class="n">rb_left</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">link</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">parent</span><span class="o">-&gt;</span><span class="n">rb_right</span><span class="p">;</span>
+            <span class="n">leftmost</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Maintain a cache of leftmost tree entries (it is frequently</span>
+<span class="cm">     * used):</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">leftmost</span><span class="p">)</span>
+        <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">;</span>
+
+    <span class="n">rb_link_node</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">link</span><span class="p">);</span>
+    <span class="n">rb_insert_color</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">tasks_timeline</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function traverses the tree in the <code>while()</code> loop to search for a matching key (inserted process’s <code>vruntime</code>). It moves to the left child if the key is smaller than the current node’s key and to the right child if the key is larger.  If it ever moves to the right, even once, it knows the inserted process cannot be the new leftmost node, and it sets leftmost to zero. If it moves only to the left, <code>leftmost</code> remains one, and we have a new leftmost node and can update the cache by setting <code>rb_leftmost</code> to the inserted process. When out of the loop, the function calls <code>rb_link_node()</code> on the parent node, making the inserted process the new child. The function <code>rb_insert_color()</code> updates the self-balancing properties of the tree.</p>
+<h5 id="removing-processes-from-the-tree"><strong>Removing Processes from the Tree</strong></h5>
+<p>CFS removes processes from the red-black tree when a process blocks (becomes unrunnable) or terminates (ceases to exist):</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L815">kernel/sched_fair.c#L815</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span>
+<span class="nf">dequeue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sleep</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">     * Update run-time statistics of the &#39;current&#39;.</span>
+<span class="cm">     */</span>
+    <span class="n">update_curr</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+
+    <span class="n">update_stats_dequeue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">clear_buddies</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">se</span> <span class="o">!=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">curr</span><span class="p">)</span>
+        <span class="n">__dequeue_entity</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">account_entity_dequeue</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="n">se</span><span class="p">);</span>
+    <span class="n">update_min_vruntime</span><span class="p">(</span><span class="n">cfs_rq</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Normalize the entity after updating the min_vruntime because the</span>
+<span class="cm">     * update can refer to the -&gt;curr item and we need to reflect this</span>
+<span class="cm">     * movement in our normalized position.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">sleep</span><span class="p">)</span>
+        <span class="n">se</span><span class="o">-&gt;</span><span class="n">vruntime</span> <span class="o">-=</span> <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">min_vruntime</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Similarly, the real work is performed by a helper function, <code>__dequeue_entity()</code>:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">__dequeue_entity</span><span class="p">(</span><span class="k">struct</span> <span class="n">cfs_rq</span> <span class="o">*</span><span class="n">cfs_rq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">sched_entity</span> <span class="o">*</span><span class="n">se</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">rb_node</span> <span class="o">*</span><span class="n">next_node</span><span class="p">;</span>
+
+        <span class="n">next_node</span> <span class="o">=</span> <span class="n">rb_next</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">);</span>
+        <span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">rb_leftmost</span> <span class="o">=</span> <span class="n">next_node</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">rb_erase</span><span class="p">(</span><span class="o">&amp;</span><span class="n">se</span><span class="o">-&gt;</span><span class="n">run_node</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cfs_rq</span><span class="o">-&gt;</span><span class="n">tasks_timeline</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Removing a process from the tree is much simpler because the rbtree implementation provides the <code>rb_erase()</code> function that performs all the work. The rest of this function updates the <code>rb_leftmost</code> cache. If the process-to-remove is the leftmost node, the function invokes <code>rb_next()</code> to find what would be the next node in an in-order traversal. This is what will be the leftmost node when the current leftmost node is removed.</p>
+<h4 id="the-scheduler-entry-point">The Scheduler Entry Point</h4>
+<p>The main entry point into the process schedule is the function <code>schedule()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L3698">kernel/sched.c#L3701</a>). This is the function that the rest of the kernel uses to invoke the process scheduler, deciding which process to run and then running it.</p>
+<p><u><code>schedule()</code> is generic to scheduler classes. It finds the highest priority scheduler class with a runnable process and asks it what to run next.</u> Thus, <code>schedule()</code> is simple. The only important part of the function is its invocation of <code>pick_next_task()</code>, defined in <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L3667">kernel/sched.c#L3670</a>), which goes through each scheduler class, starting with the highest priority, and selects the highest priority process in the highest priority class:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * Pick up the highest-prio task:</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span>
+<span class="nf">pick_next_task</span><span class="p">(</span><span class="k">struct</span> <span class="n">rq</span> <span class="o">*</span><span class="n">rq</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">const</span> <span class="k">struct</span> <span class="n">sched_class</span> <span class="o">*</span><span class="n">class</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">task_struct</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Optimization: we know that if all tasks are in</span>
+<span class="cm">     * the fair class we can call that function directly:</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="n">rq</span><span class="o">-&gt;</span><span class="n">nr_running</span> <span class="o">==</span> <span class="n">rq</span><span class="o">-&gt;</span><span class="n">cfs</span><span class="p">.</span><span class="n">nr_running</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">fair_sched_class</span><span class="p">.</span><span class="n">pick_next_task</span><span class="p">(</span><span class="n">rq</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">class</span> <span class="o">=</span> <span class="n">sched_class_highest</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="p">;</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">class</span><span class="o">-&gt;</span><span class="n">pick_next_task</span><span class="p">(</span><span class="n">rq</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+        <span class="cm">/*</span>
+<span class="cm">         * Will never be NULL as the idle class always</span>
+<span class="cm">         * returns a non-NULL p:</span>
+<span class="cm">         */</span>
+        <span class="n">class</span> <span class="o">=</span> <span class="n">class</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note the optimization at the beginning of the function. CFS is the scheduler class for normal processes, and most systems run mostly normal processes, there is a small hack to quickly select the next CFS-provided process if the number of runnable processes is equal to the number of CFS runnable processes (which suggests that all runnable processes are provided by CFS).</p>
+<p>The core of the function is the <code>for()</code> loop, which iterates over each class in priority order, starting with the highest priority class. Each class implements the <code>pick_next_task()</code> function, which returns a pointer to its next runnable process or, if there is not one, <code>NULL</code>.The first class to return a non-<code>NULL</code> value has selected the next runnable process. CFS’s implementation of <code>pick_next_task()</code> calls <code>pick_next_entity()</code>, which in turn calls the <code>__pick_next_entity()</code> function (see <a href="#picking-the-next-task">Picking the Next Task</a> in the previous section).</p>
+<h5 id="fair_sched_class-scheduler-class"><strong><code>fair_sched_class</code> scheduler class</strong> *</h5>
+<p><code>fair_sched_class</code> is a <code>struct sched_class</code> (defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1029">include/linux/sched.h</a>) structure defined in <code>kernel/sched_fair.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L3688">kernel/sched_fair.c#L3688</a>). <code>kernel/sched_fair.c</code> is included by <code>kernel/sched.c</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L1933">kernel/sched.c#L1936</a>), so <code>fair_sched_class</code> is avaialble to the <code>pick_next_task</code> function in <code>/kernel/sched.c</code>.</p>
+<h4 id="sleeping-and-waking-up">Sleeping and Waking Up</h4>
+<p>Tasks that are sleeping (blocked) are in a special non-runnable state. [p58]</p>
+<p>A task sleeps while it is waiting for some event, which may be:</p>
+<ul>
+<li>a specified amount of time;</li>
+<li>more data from a file I/O;</li>
+<li>another hardware event</li>
+</ul>
+<p>A task can also involuntarily go to sleep when it tries to obtain a contended semaphore in the kernel.</p>
+<p>Whatever the case, the kernel behavior is the same. The task does the following in turn:</p>
+<ul>
+<li>marks itself as sleeping,</li>
+<li>puts itself on a wait queue,</li>
+<li>removes itself from the red-black tree of runnable,</li>
+<li>and calls <code>schedule()</code> to select a new process to execute.</li>
+</ul>
+<p>Waking back up is the inverse: The task is set as runnable, removed from the wait queue, and added back to the red-black tree.</p>
+<p>Two states are associated with sleeping:</p>
+<ul>
+<li><code>TASK_INTERRUPTIBLE</code></li>
+<li><code>TASK_UNINTERRUPTIBLE</code></li>
+</ul>
+<p>They differ only in that tasks in the <code>TASK_UNINTERRUPTIBLE</code> state ignore signals, whereas tasks in the <code>TASK_INTERRUPTIBLE</code> state wake up prematurely and respond to a signal if one is issued. Both types of sleeping tasks sit on a wait queue, waiting for an event to occur, and are not runnable.</p>
+<h5 id="wait-queues"><strong>Wait Queues</strong></h5>
+<p>Sleeping is handled via wait queues. A wait queue is a simple list of processes waiting for an event to occur.</p>
+<p>Wait queues are represented in the kernel by <code>wake_queue_head_t</code>. They are created statically via <code>DECLARE_WAITQUEUE()</code> or dynamically via <code>init_waitqueue_head()</code>. Processes put themselves on a wait queue and mark themselves not runnable. When the event associated with the wait queue occurs, the processes on the queue are awakened.</p>
+<p>It is important to implement sleeping and waking correctly, to avoid race conditions. Otherwise, it is possible to go to sleep after the condition becomes true, in which case the task might sleep indefinitely. Therefore, the recommended method for sleeping in the kernel is a bit more complicated:</p>
+<div class="codehilite"><pre><span class="cm">/* `q&#39; is the wait queue we wish to sleep on */</span>
+<span class="n">DEFINE_WAIT</span><span class="p">(</span><span class="n">wait</span><span class="p">);</span>
+
+<span class="n">add_wait_queue</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+<span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">condition</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* condition is the event that we are waiting for */</span>
+    <span class="n">prepare_to_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">q</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">,</span> <span class="n">TASK_INTERRUPTIBLE</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">signal_pending</span><span class="p">(</span><span class="n">current</span><span class="p">))</span>
+        <span class="cm">/* handle signal */</span>
+    <span class="n">schedule</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="n">finish_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">q</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The task performs the following steps to add itself to a wait queue:</p>
+<ol>
+<li>Creates a wait queue entry via the macro <code>DEFINE_WAIT()</code>.</li>
+<li>Adds itself to a wait queue via <code>add_wait_queue()</code>. This wait queue awakens the process when the condition for which it is waiting occurs. Of course, there needs to be code elsewhere that calls wake_up() on the queue when the event actually does occur.</li>
+<li>Calls <code>prepare_to_wait()</code> to change the process state to either <code>TASK_INTERRUPTIBLE</code> or <code>TASK_UNINTERRUPTIBLE</code>. This function also adds the task back to the wait queue if necessary, which is needed on subsequent iterations of the loop.</li>
+<li>If the state is set to <code>TASK_INTERRUPTIBLE</code>, a signal wakes the process up. This is called a <strong>spurious wake up</strong> (a wake-up not caused by the occurrence of the event). So check and handle signals.</li>
+<li>When the task awakens, it again checks whether the condition is true. If it is, it exits the loop. Otherwise, it again calls <code>schedule()</code> and repeats.</li>
+<li>After the condition is true, the task sets itself to <code>TASK_RUNNING</code> and removes itself from the wait queue via <code>finish_wait()</code>.</li>
+</ol>
+<p>If the condition occurs before the task goes to sleep, the loop terminates, and the task does not erroneously go to sleep. Note that kernel code often has to perform various other tasks in the body of the loop. For example, it might need to release locks before calling <code>schedule()</code> and reacquire them after or react to other events.</p>
+<p>The function <code>inotify_read()</code> in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/fs/notify/inotify/inotify_user.c#L229">fs/notify/inotify/inotify_user.c</a>, which handles reading from the inotify file descriptor, is a straightforward example of using wait queues:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">inotify_read</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
+                <span class="kt">size_t</span> <span class="n">count</span><span class="p">,</span> <span class="kt">loff_t</span> <span class="o">*</span><span class="n">pos</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">fsnotify_group</span> <span class="o">*</span><span class="n">group</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">fsnotify_event</span> <span class="o">*</span><span class="n">kevent</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span><span class="n">start</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="n">DEFINE_WAIT</span><span class="p">(</span><span class="n">wait</span><span class="p">);</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="n">buf</span><span class="p">;</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">file</span><span class="o">-&gt;</span><span class="n">private_data</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">prepare_to_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_waitq</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">,</span> <span class="n">TASK_INTERRUPTIBLE</span><span class="p">);</span>
+
+        <span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_mutex</span><span class="p">);</span>
+        <span class="n">kevent</span> <span class="o">=</span> <span class="n">get_one_event</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">count</span><span class="p">);</span>
+        <span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_mutex</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">kevent</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">PTR_ERR</span><span class="p">(</span><span class="n">kevent</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">IS_ERR</span><span class="p">(</span><span class="n">kevent</span><span class="p">))</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">copy_event_to_user</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">kevent</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+            <span class="n">fsnotify_put_event</span><span class="p">(</span><span class="n">kevent</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="n">buf</span> <span class="o">+=</span> <span class="n">ret</span><span class="p">;</span>
+            <span class="n">count</span> <span class="o">-=</span> <span class="n">ret</span><span class="p">;</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="n">EAGAIN</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">file</span><span class="o">-&gt;</span><span class="n">f_flags</span> <span class="o">&amp;</span> <span class="n">O_NONBLOCK</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="n">EINTR</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">signal_pending</span><span class="p">(</span><span class="n">current</span><span class="p">))</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">start</span> <span class="o">!=</span> <span class="n">buf</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="n">schedule</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="n">finish_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">group</span><span class="o">-&gt;</span><span class="n">notification_waitq</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">start</span> <span class="o">!=</span> <span class="n">buf</span> <span class="o">&amp;&amp;</span> <span class="n">ret</span> <span class="o">!=</span> <span class="o">-</span><span class="n">EFAULT</span><span class="p">)</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">buf</span> <span class="o">-</span> <span class="n">start</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Some notes of the function above:</p>
+<ul>
+<li>It checks for the condition in the body of the <code>while()</code> loop, instead of in the <code>while()</code> statement itself, since checking the condition is complicated and requires grabbing locks.</li>
+<li>The loop is terminated via <code>break</code>.</li>
+</ul>
+<h5 id="waking-up"><strong>Waking Up</strong></h5>
+<p><code>wake_up()</code> wakes up all the tasks waiting on the given wait queue. It does the following:</p>
+<ul>
+<li>Calls <code>try_to_wake_up()</code>, which sets the task’s state to <code>TASK_RUNNING</code></li>
+<li>Calls <code>enqueue_task()</code> to add the task to the red-black tree</li>
+<li>Sets <code>need_resched</code> if the awakened task’s priority is higher than the priority of the current task. <u>The code that causes the event to occur typically calls <code>wake_up()</code> itself</u>.<ul>
+<li>For example, when data arrives from the hard disk, the VFS calls <code>wake_up()</code> on the wait queue that holds the processes waiting for the data.</li>
+</ul>
+</li>
+</ul>
+<p>Since there are spurious wake-ups, just because a task is awakened does not mean that the event for which the task is waiting has occurred. Sleeping should always be handled in a loop that ensures that the condition for which the task is waiting has indeed occurred.
+The figure below depicts the relationship between each scheduler state.</p>
+<p><a href="../figure_4.1.png" title="Figure 4.1 Sleeping and waking up."><img alt="Figure 4.1 Sleeping and waking up." src="../figure_4.1_600.png" /></a></p>
+<h3 id="preemption-and-context-switching">Preemption and Context Switching</h3>
+<p>Context switching, the switching from one runnable task to another, is handled by the <code>context_switch()</code> function defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L2905">kernel/sched.c</a>. It is called by <code>schedule()</code> when a new process has been selected to run. It does two basic jobs:</p>
+<ul>
+<li>Calls <code>switch_mm()</code>, declared in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/mmu_context.h"><code>&lt;asm/mmu_context.h&gt;</code></a>, to switch the virtual memory mapping from the previous process’s to that of the new process.</li>
+<li>Calls <code>switch_to()</code>, declared in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/system.h"><code>&lt;asm/system.h&gt;</code></a>, to switch the processor state from the previous process’s to the current’s. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.</li>
+</ul>
+<h4 id="the-need_resched-flag">The <code>need_resched</code> flag *</h4>
+<p>The kernel must know when to call <code>schedule()</code>. If it called <code>schedule()</code> only when code explicitly did so, user-space programs could run indefinitely.</p>
+<p>The kernel provides the <code>need_resched</code> flag to signify whether a reschedule should be performed.</p>
+<ul>
+<li>This flag is set by <code>scheduler_tick()</code> (in timer interrupt handler, see <a href="../ch11/#the-timer-interrupt-handler">The Timer Interrupt Handler</a>) when a process should be preempted.</li>
+<li>This flag is set by <code>try_to_wake_up()</code> when a process that has a higher priority than the currently running process is awakened.</li>
+</ul>
+<p><u>The kernel checks the flag, sees that it is set, and calls <code>schedule()</code> to switch to a new process. The flag is a message to the kernel that the scheduler should be invoked as soon as possible because another process deserves to run.</u></p>
+<p><u>Upon returning to user-space or returning from an interrupt, the <code>need_resched</code> flag is checked. If it is set, the kernel invokes the scheduler before continuing.</u></p>
+<p>The table below lists functions for accessing and manipulating <code>need_resched</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_tsk_need_resched()</code></td>
+<td>Set the <code>need_resched</code> flag in the given process.</td>
+</tr>
+<tr>
+<td><code>clear_tsk_need_resched()</code></td>
+<td>Clear the <code>need_resched</code> flag in the given process.</td>
+</tr>
+<tr>
+<td><code>need_resched()</code></td>
+<td>Test the value of the <code>need_resched</code> flag; return true if set and false otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p>The flag is per-process, and not simply global, because it is faster to access a value in the process descriptor (because of the speed of current and high probability of it being cache hot) than a global variable. Historically, the flag was global before the 2.2 kernel. In 2.2 and 2.4, the flag was an int inside the <code>task_struct</code>. In 2.6, it was moved into a single bit of a special flag variable inside the <code>thread_info</code> structure (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h#L26</a>).</p>
+<h4 id="user-preemption">User Preemption</h4>
+<p>User preemption occurs when the kernel is about to return to user-space, <code>need_resched</code> is set, and therefore, the scheduler is invoked. If the kernel is returning to user-space, it knows it is in a safe quiescent state. In other words, if it is safe to continue executing the current task, it is also safe to pick a new task to execute.</p>
+<p>Whenever the kernel is preparing to return to user-space either on return from an interrupt or after a system call, the value of <code>need_resched</code> is checked. If it is set, the scheduler is invoked to select a new (more fit) process to execute. Both the return paths for return from interrupt and return from system call are architecture-dependent and typically implemented in assembly in <code>entry.S</code> (which, aside from kernel entry code, also contains kernel exit code).</p>
+<p>In conclusion, user preemption can occur:</p>
+<ul>
+<li>When returning to user-space from a system call</li>
+<li>When returning to user-space from an interrupt handler</li>
+</ul>
+<h4 id="kernel-preemption">Kernel Preemption</h4>
+<p>In non-preemptive kernels, kernel code runs until completion. That is, the scheduler cannot reschedule a task while it is in the kernel: kernel code is
+scheduled cooperatively, not preemptively. Kernel code runs until it finishes (returns to user-space) or explicitly blocks.</p>
+<p>The Linux kernel (since 2.6), unlike most other Unix variants and many other operating systems, is a fully preemptive kernel. It is possible to preempt a task at any point, so long as the kernel is in a state in which it is safe to reschedule.</p>
+<p>The kernel can preempt a task running in the kernel so long as it does not hold a lock. Locks are used as markers of regions of non-preemptibility. <u>Because the kernel is SMP-safe, if a lock is not held, the current code is reentrant and capable of being preempted.</u></p>
+<h5 id="the-preemption-counter-preempt_count"><strong>The preemption counter <code>preempt_count</code></strong> *</h5>
+<p>To support kernel preemption, preemption counter, <code>preempt_count</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26">arch/x86/include/asm/thread_info.h#L32</a>), was added to each process’s <code>thread_info</code>. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released.When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of <code>need_resched</code> and <code>preempt_count</code>:</p>
+<ul>
+<li>If <code>need_resched</code> is set and <code>preempt_count</code> is zero, then a more important task is runnable, and it is safe to preempt. Thus, the scheduler is invoked.</li>
+<li>If <code>preempt_count</code> is nonzero, a lock is held, and it is unsafe to reschedule. In that case, the interrupt returns as usual to the currently executing task.</li>
+</ul>
+<p>Enabling and disabling kernel preemption is sometimes required in kernel code (discussed in <a href="../ch9/">Chapter 9</a>).</p>
+<h5 id="explicit-kernel-preemption"><strong>Explicit kernel preemption</strong> *</h5>
+<p>Kernel preemption can also occur explicitly, when a task in ther kernel does either of the following:</p>
+<ul>
+<li>Blocks,</li>
+<li>Explicitly calls <code>schedule()</code>.</li>
+</ul>
+<p><u>This form of kernel preemption has always been supported because no additional logic is required to ensure that the kernel is in a state that is safe to preempt. It is assumed that the code that explicitly calls <code>schedule()</code> knows it is safe to reschedule.</u></p>
+<p>In conclusion, kernel preemption can occur:</p>
+<ul>
+<li>When an interrupt handler exits, before returning to kernel-space</li>
+<li>When kernel code becomes preemptible again</li>
+<li>If a task in the kernel explicitly calls <code>schedule()</code></li>
+<li>If a task in the kernel blocks (which results in a call to <code>schedule()</code>)</li>
+</ul>
+<h3 id="real-time-scheduling-policies">Real-Time Scheduling Policies</h3>
+<p>Linux provides two real-time scheduling policies:</p>
+<ul>
+<li><code>SCHED_FIFO</code></li>
+<li><code>SCHED_RR</code>
+The normal, not real-time scheduling policy is <code>SCHED_NORMAL</code>.</li>
+</ul>
+<p>Via the <strong>scheduling classes</strong> framework, these real-time policies are managed not by the Completely Fair Scheduler, but by a special real-time scheduler, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_rt.c">kernel/sched_rt.c</a>.</p>
+<h4 id="the-sched_fifo-policy">The <code>SCHED_FIFO</code> policy *</h4>
+<p><code>SCHED_FIFO</code> implements a simple first-in, first-out scheduling algorithm without timeslices.</p>
+<ul>
+<li>A runnable <code>SCHED_FIFO</code> task is always scheduled over any <code>SCHED_NORMAL</code> tasks.</li>
+<li>When a <code>SCHED_FIFO</code> task becomes runnable, it continues to run until it blocks or explicitly yields the processor; it has no timeslice and can run indefinitely</li>
+<li>Only a higher priority <code>SCHED_FIFO</code> or <code>SCHED_RR</code> task can preempt a <code>SCHED_FIFO</code> task.</li>
+<li>Two or more <code>SCHED_FIFO</code> tasks at the same priority run round-robin, but only yielding the processor when they explicitly choose to do so.</li>
+<li>If a <code>SCHED_FIFO</code> task is runnable, all other tasks at a lower priority cannot run until the <code>SCHED_FIFO</code> task becomes unrunnable.</li>
+</ul>
+<h4 id="the-sched_rr-policy">The <code>SCHED_RR</code> policy *</h4>
+<p><code>SCHED_RR</code> is identical to <code>SCHED_FIFO</code> except that each process can run only until it exhausts a predetermined timeslice. In other words, <code>SCHED_RR</code> is <code>SCHED_FIFO</code> with timeslices. It is a real-time, round-robin scheduling algorithm.</p>
+<ul>
+<li>When a <code>SCHED_RR</code> task exhausts its timeslice, any other real-time processes at its priority are scheduled round-robin. The timeslice is used to allow only rescheduling of same-priority processes.</li>
+<li>As with <code>SCHED_FIFO</code>, a higher-priority process always immediately preempts a lower-priority one, and a lower-priority process can never preempt a <code>SCHED_RR</code> task, even if its timeslice is exhausted.</li>
+</ul>
+<p>Both real-time scheduling policies implement static priorities. The kernel does not calculate dynamic priority values for real-time tasks.This ensures that a real-time process at a given priority always preempts a process at a lower priority.</p>
+<h4 id="hard-real-time-and-soft-real-time">Hard real-time and soft real-time</h4>
+<ul>
+<li><strong>Soft real-time</strong> means that the kernel tries to schedule applications within timing deadlines, but the kernel does not promise to always achieve these goals.</li>
+<li><strong>Hard real-time</strong> systems are guaranteed to meet any scheduling requirements within certain limits.</li>
+</ul>
+<p>The real-time scheduling policies in Linux provide soft real-time behavior. Linux makes no guarantees on the capability to schedule real-time tasks. Despite not having a design that guarantees hard real-time behavior, the real-time scheduling performance in Linux is quite good. The 2.6 Linux kernel is capable of meeting stringent timing requirements.</p>
+<p>Real-time priorities range inclusively from 0 to <code>MAX_RT_PRIO</code> - 1. By default, this range is 0 to 99, since <code>MAX_RT_PRIO</code> is 100. This priority space is shared with the nice values of <code>SCHED_NORMAL</code> tasks: They use the space from <code>MAX_RT_PRIO</code> to (<code>MAX_RT_PRIO</code> + 40).  By default, this means the –20 to +19 nice range maps directly onto the priority space from 100 to 139.</p>
+<p>Default priority ranges:</p>
+<ul>
+<li>0 to 99: real-time priorities</li>
+<li>100 to 139: normal priorities</li>
+</ul>
+<h3 id="scheduler-related-system-calls">Scheduler-Related System Calls</h3>
+<p>Linux provides a family of system calls for the management of scheduler parameters, which allow manipulation of process priority, scheduling policy, and processor affinity, <em>yielding</em> the processor to other tasks.</p>
+<p>The table below lists the system calls with brief descriptions. Their implementation in the kernel is discussed in <a href="../ch5/">Chapter 5</a>.</p>
+<table>
+<thead>
+<tr>
+<th>System Call</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nice()</code></td>
+<td>Sets a process’s nice value</td>
+</tr>
+<tr>
+<td><code>sched_setscheduler()</code></td>
+<td>Sets a process’s scheduling policy</td>
+</tr>
+<tr>
+<td><code>sched_getscheduler()</code></td>
+<td>Gets a process’s scheduling policy</td>
+</tr>
+<tr>
+<td><code>sched_setparam()</code></td>
+<td>Sets a process’s real-time priority</td>
+</tr>
+<tr>
+<td><code>sched_getparam()</code></td>
+<td>Gets a process’s real-time priority</td>
+</tr>
+<tr>
+<td><code>sched_get_priority_max()</code></td>
+<td>Gets the maximum real-time priority</td>
+</tr>
+<tr>
+<td><code>sched_get_priority_min()</code></td>
+<td>Gets the minimum real-time priority</td>
+</tr>
+<tr>
+<td><code>sched_rr_get_interval()</code></td>
+<td>Gets a process’s timeslice value</td>
+</tr>
+<tr>
+<td><code>sched_setaffinity()</code></td>
+<td>Sets a process’s processor affinity</td>
+</tr>
+<tr>
+<td><code>sched_getaffinity()</code></td>
+<td>Gets a process’s processor affinity</td>
+</tr>
+<tr>
+<td><code>sched_yield()</code></td>
+<td>Temporarily yields the processor</td>
+</tr>
+</tbody>
+</table>
+<h4 id="scheduling-policy-and-priority-related-system-calls">Scheduling Policy and Priority-Related System Calls</h4>
+<ul>
+<li>The <code>sched_setscheduler()</code> and <code>sched_getscheduler()</code> system calls set and get a given process’s scheduling policy and real-time priority. The major work  of these functions is merely to read or write the <code>policy</code> and <code>rt_priority</code> values in the process’s <code>task_struct</code>. [p66]</li>
+<li>The <code>sched_setparam()</code> and <code>sched_getparam()</code> system calls set and get a process’s real-time priority. These calls merely encode <code>rt_priority</code> in a special <code>sched_param</code> structure (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L46">include/linux/sched.h#L46</a>).</li>
+<li>The calls <code>sched_get_priority_max()</code> and <code>sched_get_priority_min()</code> return the maximum and minimum priorities, respectively, for a given scheduling policy. The maximum priority for the real-time policies is <code>MAX_USER_RT_PRIO</code> minus one; the minimum is one.</li>
+<li>For normal tasks, the <code>nice()</code> function increments the given process’s static priority by the given amount.<ul>
+<li>Only root can provide a negative value, which lowers the nice value and increase the priority.</li>
+<li>The <code>nice()</code> function calls the kernel’s <code>set_user_nice()</code> function, which sets the <code>static_prio</code> and prio values in the task’s <code>task_struct</code>.</li>
+</ul>
+</li>
+</ul>
+<h4 id="processor-affinity-system-calls">Processor Affinity System Calls</h4>
+<p>The Linux scheduler enforces hard processor affinity, which means that, aside from providing soft or natural affinity by attempting to keep processes on the same processor, the scheduler enables a user to enforce "a task must remain on this subset of the available processors no matter what".</p>
+<p>TThe hard affinity is stored as a bitmask in the task’s <code>task_struct</code> as <code>cpus_allowed</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1210">include/linux/sched.h#L1210</a>). The bitmask contains one bit per possible processor on the system. By default, all bits are set and, therefore, a process is potentially runnable on any processor. The following system calls set and get the bitmask:</p>
+<ul>
+<li><code>sched_setaffinity()</code> sets a different bitmask of any combination of one or more bits.</li>
+<li><code>sched_getaffinity()</code> returns the current <code>cpus_allowed</code> bitmask.</li>
+</ul>
+<p>The kernel enforces hard affinity in a simple manner:</p>
+<ol>
+<li>When a process is initially created, it inherits its parent’s affinity mask. Because the parent is running on an allowed processor, the child thus runs on an allowed processor.</li>
+<li>When a processor’s affinity is changed, the kernel uses the <strong>migration threads</strong> to push the task onto a legal processor. (See <a href="#doubts-and-solutions">Doubts and Solutions</a>)</li>
+<li>The load balancer pulls tasks to only an allowed processor</li>
+</ol>
+<p>Therefore, a process only ever runs on a processor whose bit is set in the <code>cpus_allowed</code> field of its process descriptor.</p>
+<h4 id="yielding-processor-time">Yielding Processor Time</h4>
+<p>Linux provides the <code>sched_yield()</code> system call as a mechanism for a process to explicitly yield the processor to other waiting processes.</p>
+<ul>
+<li><code>sched_yield()</code> removes the process from the active array (where it currently is, because it is running) and inserting it into the expired array. This has the effect of not only preempting the process and putting it at the end of its priority list, but also putting it on the expired list, which guarantees it will not run for a while.<ul>
+<li>For real-time tasks, which never expire, <code>sched_yield()</code> merely move them to the end of their priority list (and not insert them into the expired array).</li>
+</ul>
+</li>
+</ul>
+<p>Applications and even kernel code should be certain they truly want to give up the processor before calling <code>sched_yield()</code>.</p>
+<p>Kernel code, as a convenience, can call <code>yield()</code>, which ensures that the task’s state is <code>TASK_RUNNING</code> and then call <code>sched_yield()</code>. User-space applications use the <code>sched_yield()</code> system call.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>Meeting the demands of process scheduling is nontrivial. A large number of runnable processes, scalability concerns, trade-offs between latency and throughput, and the demands of various workloads make a one-size-fits-all algorithm hard to achieve. Linux kernel’s new CFS process scheduler, comes close to appeasing all parties and providing an optimal solution for most use cases with good scalability. [p67]</p>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p66 on Processor Affinity. "migration threads" and "load balancer" is not detailed.</p>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

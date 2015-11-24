@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/lkd/ch6/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 6. Kernel Data Structures - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../apue/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/lkd/ch6.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-6-kernel-data-structures">Chapter 6. Kernel Data Structures</a></li>
+        
+    
+        <li class="main "><a href="#linked-lists">Linked Lists</a></li>
+        
+            <li><a href="#singly-and-doubly-linked-lists">Singly and Doubly Linked Lists</a></li>
+        
+            <li><a href="#circular-linked-lists">Circular Linked Lists</a></li>
+        
+            <li><a href="#moving-through-a-linked-list">Moving Through a Linked List</a></li>
+        
+            <li><a href="#the-linux-kernels-implementation">The Linux Kernel’s Implementation</a></li>
+        
+            <li><a href="#manipulating-linked-lists">Manipulating Linked Lists</a></li>
+        
+    
+        <li class="main "><a href="#queues">Queues</a></li>
+        
+    
+        <li class="main "><a href="#maps">Maps</a></li>
+        
+    
+        <li class="main "><a href="#binary-trees">Binary Trees</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-6-kernel-data-structures"><strong>Chapter 6. Kernel Data Structures</strong></h3>
+<p>This chapter introduces several built-in data structures for use in Linux kernel code: [p85]</p>
+<ul>
+<li>Linked lists</li>
+<li>Queues</li>
+<li>Maps</li>
+<li>Binary trees</li>
+</ul>
+<p>These generic data structures are provided to encourage code reuse. Kernel developers should use these data structures whenever possible and not "roll your own" solutions.</p>
+<h3 id="linked-lists">Linked Lists</h3>
+<p>As the simplest and most common data structure in the Linux kernel, a <strong>linked list</strong> is a data structure that allows the storage and manipulation of a variable number of <em>elements</em>, called the <em>nodes</em> of the list.</p>
+<p>Unlike in a static array, the elements in a linked list are dynamically created and inserted into the list, which enables the management of a varying number of elements unknown at compile time. The elements do not necessarily occupy contiguous regions in memory and thus need to be linked together (each element in the list contains a pointer to the <em>next</em> element).</p>
+<h4 id="singly-and-doubly-linked-lists">Singly and Doubly Linked Lists</h4>
+<p>The simplest data structure for a linked list is like:</p>
+<div class="codehilite"><pre><span class="cm">/* an element in a linked list */</span>
+<span class="k">struct</span> <span class="n">list_element</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span> <span class="cm">/* the payload */</span>
+    <span class="k">struct</span> <span class="n">list_element</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="cm">/* pointer to the next element */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The following figure shows a linked list:</p>
+<p><a href="../figure_6.1.png" title="Figure 6.1 A singly linked list."><img alt="Figure 6.1 A singly linked list." src="../figure_6.1.png" /></a></p>
+<ul>
+<li>A <strong>singly linked lists</strong>: each element does not have a pointer to the <em>previous</em> element.</li>
+<li>A <strong>doubly linked lists</strong>: each element also contains a pointer to the <em>previous</em> element (linked both forward and backward).</li>
+</ul>
+<p>A data structure representing a doubly linked list would look similar to this:</p>
+<div class="codehilite"><pre><span class="cm">/* an element in a linked list */</span>
+<span class="k">struct</span> <span class="n">list_element</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span> <span class="cm">/* the payload */</span>
+    <span class="k">struct</span> <span class="n">list_element</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="cm">/* pointer to the next element */</span>
+    <span class="k">struct</span> <span class="n">list_element</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="cm">/* pointer to the previous element */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The following figure shows doubly linked list:</p>
+<p><a href="../figure_6.2.png" title="Figure 6.2 A doubly linked list."><img alt="Figure 6.2 A doubly linked list." src="../figure_6.2.png" /></a></p>
+<h4 id="circular-linked-lists">Circular Linked Lists</h4>
+<p>Normally, the last element in a linked list has no next element, so it is set to point to a special value, such as <code>NULL</code>. In a <strong>circular linked list</strong>, last element does not point to a special value, but points back to the first value.</p>
+<p><u>Circular linked lists can come in both doubly and singly linked versions. In a circular doubly linked list, the first node’s "previous" pointer points at the last node.</u></p>
+<p>The following two figures are singly and doubly circular linked lists, respectively:</p>
+<p><a href="../figure_6.3.png" title="Figure 6.3 A circular singly linked list."><img alt="Figure 6.3 A circular singly linked list." src="../figure_6.3.png" /></a>
+<a href="../figure_6.4.png" title="Figure 6.4 A circular doubly linked list."><img alt="Figure 6.4 A circular doubly linked list." src="../figure_6.4.png" /></a></p>
+<h4 id="moving-through-a-linked-list">Moving Through a Linked List</h4>
+<p>To move through a linked list, simply follow the next pointer of an element, and visit the next element. This is linear movement.</p>
+<p><u>Linked lists are ill-suited for use cases where random access is an important operation.</u> Instead, you use linked lists when iterating over the whole list is important and the dynamic addition and removal of elements is required.</p>
+<p>In linked list implementations:</p>
+<ul>
+<li>The first element is often represented by a special pointer, <em>head</em>, that enables easy access to the "start" of the list.</li>
+<li>In a noncircular-linked list, the last element is delineated by its next pointer being <code>NULL</code>.</li>
+<li>In a circular-linked list, the last element is delineated because it points to the <em>head</em> element.</li>
+</ul>
+<p>[p87-88]</p>
+<h4 id="the-linux-kernels-implementation">The Linux Kernel’s Implementation</h4>
+<p>The Linux kernel’s implementation is unique, in comparison to most linked list implementations including those described in the previous sections.</p>
+<p>The common pattern for storing this structure in a linked list is to embed the list pointer in the structure. For example, to describe that member of the <a href="https://en.wikipedia.org/wiki/Canidae"><em>Canidae</em></a> family:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">;</span> <span class="cm">/* weight in kilograms */</span>
+    <span class="kt">bool</span> <span class="n">is_fantastic</span><span class="p">;</span> <span class="cm">/* is this fox fantastic? */</span>
+    <span class="k">struct</span> <span class="n">fox</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="cm">/* next fox in linked list */</span>
+    <span class="k">struct</span> <span class="n">fox</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="cm">/* previous fox in linked list */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The Linux kernel approach is different. Instead of turning the structure into a linked list, the Linux approach is to "<u>embed a linked list node in the structure</u>".</p>
+<h5 id="the-linked-list-structure"><strong>The Linked List Structure</strong></h5>
+<p>The linked-list code is declared in the header file <code>&lt;linux/list.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h#L19">include/linux/list.h#L19</a>) and the data structure is simple:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">next</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The utility is in <em>how</em> the <code>list_head</code> structure is used:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">;</span> <span class="cm">/* weight in kilograms */</span>
+    <span class="kt">bool</span> <span class="n">is_fantastic</span><span class="p">;</span> <span class="cm">/* is this fox fantastic? */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span> <span class="cm">/* list of all fox structures */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>With this, <code>list.next</code> in fox points to the next element, and <code>list.prev</code> in fox points to the previous.</p>
+<p>The kernel provides a family of routines to manipulate linked lists (for example, the <code>list_add()</code> method adds a new node to an existing linked list). These methods accept only <code>list_head</code> structures. <u>Using the macro <code>container_of()</code>, we can easily find the parent structure containing any given member variable. In C, the offset of a given variable into a structure is fixed by the ABI at compile time.</u></p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/kernel.h#L709">include/linux/kernel.h#L709</a></small></p>
+<div class="codehilite"><pre><span class="cp">#define container_of(ptr, type, member) ({ \</span>
+<span class="cp">        const typeof( ((type *)0)-&gt;member ) *__mptr = (ptr); \</span>
+<span class="cp">        (type *)( (char *)__mptr - offsetof(type,member) );})</span>
+</pre></div>
+
+
+<p>Using <code>container_of()</code>, we can define a simple function to return the parent structure containing any <code>list_head</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h#L348">include/linux/list.h#L348</a></small></p>
+<div class="codehilite"><pre><span class="cp">#define list_entry(ptr, type, member) \</span>
+<span class="cp">        container_of(ptr, type, member)</span>
+</pre></div>
+
+
+<p>With <code>list_entry()</code>, the kernel provides routines manipulate linked lists without knowing anything about the structures that the <code>list_head</code> resides within.</p>
+<h5 id="defining-a-linked-list"><strong>Defining a Linked List</strong></h5>
+<p>A <code>list_head</code> is normally embedded inside your own structure:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">weight</span><span class="p">;</span> <span class="cm">/* weight in kilograms */</span>
+    <span class="kt">bool</span> <span class="n">is_fantastic</span><span class="p">;</span> <span class="cm">/* is this fox fantastic? */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">list</span><span class="p">;</span> <span class="cm">/* list of all fox structures */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The list needs to be initialized before it can be used. Because most of the elements of the linked list are created dynamically, the most common way of initializing the linked list is at runtime using <code>INIT_LIST_HEAD</code>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="o">*</span><span class="n">red_fox</span><span class="p">;</span>
+<span class="n">red_fox</span> <span class="o">=</span> <span class="n">kmalloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">red_fox</span><span class="p">),</span> <span class="n">GFP_KERNEL</span><span class="p">);</span>
+<span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">tail_length</span> <span class="o">=</span> <span class="mi">40</span><span class="p">;</span>
+<span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">weight</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">is_fantastic</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+<span class="n">INIT_LIST_HEAD</span><span class="p">(</span><span class="o">&amp;</span><span class="n">red_fox</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>If the structure is statically created at compile time, and you have a direct reference to it, you can simply do this (using <code>LIST_HEAD_INIT</code>):</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="n">red_fox</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">.</span><span class="n">tail_length</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">weight</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="p">.</span><span class="n">list</span> <span class="o">=</span> <span class="n">LIST_HEAD_INIT</span><span class="p">(</span><span class="n">red_fox</span><span class="p">.</span><span class="n">list</span><span class="p">),</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<h5 id="list-heads"><strong>List Heads</strong></h5>
+<p>But before we can use kernel’s linked list routines to manage our structure, we need a canonical pointer to refer to the list as a whole: a <em>head</em> pointer.</p>
+<p>Since each contains a <code>list_head</code>, and we can iterate from any one node to the next. We need a special pointer that refers to your linked list, without being a list node itself. This special node is in fact a normal <code>list_head</code>: [p90]</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="nf">LIST_HEAD</span><span class="p">(</span><span class="n">fox_list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This defines and initializes a <code>list_head</code> named <code>fox_list</code>. The majority of the linked list routines accept one or two parameters: the <code>head</code> node or the <code>head</code> node plus an actual list node.</p>
+<h4 id="manipulating-linked-lists">Manipulating Linked Lists</h4>
+<p>The kernel provides a family of functions to manipulate linked lists. They all take pointers to one or more <code>list_head</code> structures. The functions are implemented as inline functions in generic C and can be found in <code>&lt;linux/list.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h">include/linux/list.h</a>).</p>
+<p>All these functions are <code>O(1)</code>. This means they execute in constant time, regardless of the size of the list or any other inputs</p>
+<h5 id="adding-a-node-to-a-linked-list"><strong>Adding a Node to a Linked List</strong></h5>
+<p>To add a node to a linked list:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L64">include/linux/list.h#L64</a></small></p>
+<div class="codehilite"><pre><span class="n">list_add</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">new</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function adds the new node to the given list immediately after the <code>head</code> node. Because the list is circular and generally has no concept of first or last nodes, you can pass any element for head. If you pass the "last" element as <code>head</code>, this function can be used to implement a stack.</p>
+<p>For example, assume we had a new <code>struct fox</code> to add to the <code>fox_list</code> list. We can do this:</p>
+<div class="codehilite"><pre><span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fox_list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>To add a node to the end of a linked list:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L78">include/linux/list.h#L78</a></small></p>
+<div class="codehilite"><pre><span class="n">list_add_tail</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">new</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>If you pass the "first" element as <code>head</code>, this function can be used to implement a stack.</p>
+<h5 id="deleting-a-node-from-a-linked-list"><strong>Deleting a Node from a Linked List</strong></h5>
+<p>To delete a node from a linked list, use <code>list_del()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L103">include/linux/list.h#L103</a></small></p>
+<div class="codehilite"><pre><span class="n">list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function removes the element entry from the list. Note that <u><code>list_del</code> does not free any memory belonging to <code>entry</code> or the data structure in which it is embedded;</u> this function merely removes the element from the list. After calling this, you would typically destroy your data structure and the <code>list_head</code> inside it.</p>
+<p>For example, to delete the fox node we previous added to <code>fox_list</code>:</p>
+<div class="codehilite"><pre><span class="n">list_del</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="o">-&gt;</span><span class="n">list</span><span class="p">);</span>
+</pre></div>
+
+
+<p>It simply receives a specific node and modifies the pointers of the previous and subsequent nodes such that the given node is no longer part of the list. The implementation is instructive:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L90">include/linux/list.h#L90</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">__list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="p">;</span>
+    <span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">next</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">__list_del</span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span> <span class="n">entry</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To delete a node from a linked list and reinitialize it, the kernel provides <code>list_del_init()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L140">include/linux/list.h#L140</a></small></p>
+<div class="codehilite"><pre><span class="n">list_del_init</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function behaves the same as <code>list_del()</code>, except it also reinitializes the given <code>list_head</code> with the rationale that you no longer want the entry in the list, but you can reuse the data structure itself.</p>
+<h5 id="moving-and-splicing-linked-list-nodes"><strong>Moving and Splicing Linked List Nodes</strong></h5>
+<p>To move a node from one list to another:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L151">include/linux/list.h#L151</a></small></p>
+<div class="codehilite"><pre><span class="n">list_move</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function removes the list entry from its linked list and adds it to the given list after the <code>head</code> element.</p>
+<p>To move a node from one list to the end of another:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L162">include/linux/list.h#L162</a></small></p>
+<div class="codehilite"><pre><span class="n">list_move_tail</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function does the same as <code>list_move()</code>, but inserts the list element before the head entry.</p>
+<p>To check whether a list is empty:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L184">include/linux/list.h#L184</a></small></p>
+<div class="codehilite"><pre><span class="n">list_empty</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This returns nonzero if the given list is empty; otherwise, it returns zero.</p>
+<p>To splice two unconnected lists together;</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L290">include/linux/list.h#L290</a></small></p>
+<div class="codehilite"><pre><span class="n">list_splice</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function splices together two lists by inserting the list pointed to by <code>list</code> to the given list after the element <code>head</code>.</p>
+<p>To splice two unconnected lists together and reinitialize the old list:</p>
+<p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L302">include/linux/list.h#L302</a></small></p>
+<div class="codehilite"><pre><span class="n">list_splice_init</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function works the same as <code>list_splice()</code>, except that the emptied list pointed to by <code>list</code> is reinitialized.</p>
+<p>If you already have the <code>next</code> and <code>prev</code> pointers available, you can save a couple cycles (specifically, the dereferences to get the pointers) by calling the internal list functions directly. For example, rather than call <code>list_del(list)</code>, you can call <code>__list_del(prev, next)</code>. [p92]</p>
+<h3 id="queues">Queues</h3>
+<h3 id="maps">Maps</h3>
+<h3 id="binary-trees">Binary Trees</h3>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p91 on <code>list_add</code> and <code>list_add_tail</code>:</p>
+<blockquote>
+<p>If you do pass the "last" element, however, this function (<code>list_add</code>) can be used to implement a stack
+...
+This function (<code>list_add_tail</code>) can be used to implement a queue, however, if you pass the "first" element.</p>
+</blockquote>
+<p>Implementation details are required to understand this.</p>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

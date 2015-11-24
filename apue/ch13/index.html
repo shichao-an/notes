@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/apue/ch13/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 13. Daemon Processes - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lkd/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/apue/ch13.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-13-daemon-processes">Chapter 13. Daemon Processes</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#daemon-characteristics">Daemon Characteristics</a></li>
+        
+    
+        <li class="main "><a href="#coding-rules">Coding Rules</a></li>
+        
+    
+        <li class="main "><a href="#error-logging">Error Logging</a></li>
+        
+            <li><a href="#example-of-syslog">Example of syslog</a></li>
+        
+    
+        <li class="main "><a href="#single-instance-daemons">Single-Instance Daemons</a></li>
+        
+            <li><a href="#example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon</a></li>
+        
+    
+        <li class="main "><a href="#daemon-conventions">Daemon Conventions</a></li>
+        
+    
+        <li class="main "><a href="#clientserver-model">Client–Server Model</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-13-daemon-processes"><strong>Chapter 13. Daemon Processes</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>Daemons are processes that are often started when the system is bootstrapped and terminate only when the system is shut down. Because they don’t
+have a controlling terminal, they run in the background. UNIX systems have numerous daemons that perform day-to-day activities.</p>
+<p>This chapter details the process structure of daemons and explores how to write a daemon. Since a daemon does not have a controlling terminal, we need to see how a daemon can report error conditions when something goes wrong.</p>
+<h3 id="daemon-characteristics">Daemon Characteristics</h3>
+<p>This section describes some common system daemons with the concepts of process groups, controlling terminals, and sessions as described in <a href="../ch9/">Chapter 9</a>.</p>
+<div class="codehilite"><pre>ps -axj
+</pre></div>
+
+
+<ul>
+<li>The <code>-a</code> option shows the status of processes owned by others.</li>
+<li>The <code>-x</code> option shows processes that don’t have a controlling terminal.</li>
+<li>The <code>-j</code> option displays the job-related information:<ul>
+<li>Session ID</li>
+<li>Process group ID</li>
+<li>Controlling terminal</li>
+<li><a href="../ch9/#terminal-process-group-id-tpgid-option-of-the-ps1-command">Terminal process group ID</a></li>
+</ul>
+</li>
+</ul>
+<p>The output from <code>ps</code> on Linux 3.2.0 looks like:</p>
+<div class="codehilite"><pre>UID PID PPID    PGID    SID TTY CMD
+root    1   0   1   1   ?   /sbin/init
+root    2   0   0   0   ?   [kthreadd]
+root    3   2   0   0   ?   [ksoftirqd/0]
+root    6   2   0   0   ?   [migration/0]
+root    7   2   0   0   ?   [watchdog/0]
+root    21  2   0   0   ?   [cpuset]
+root    22  2   0   0   ?   [khelper]
+root    26  2   0   0   ?   [sync_supers]
+root    27  2   0   0   ?   [bdi-default]
+root    29  2   0   0   ?   [kblockd]
+root    35  2   0   0   ?   [kswapd0]
+root    49  2   0   0   ?   [scsi_eh_0]
+root    256 2   0   0   ?   [jbd2/sda5-8]
+root    257 2   0   0   ?   [ext4-dio-unwrit]
+syslog  847 1   843 843 ?   rsyslogd -c5
+root    906 1   906 906 ?   /usr/sbin/cupsd -F
+root    1037    1   1037    1037    ?   /usr/sbin/inetd
+root    1067    1   1067    1067    ?   cron
+daemon  1068    1   1068    1068    ?   atd
+root    8196    1   8196    8196    ?   /usr/sbin/sshd -D
+root    13047   2   0   0   ?   [kworker/1:0]
+root    14596   2   0   0   ?   [flush-8:0]
+root    26464   1   26464   26464   ?   rpcbind -w
+statd   28490   1   28490   28490   ?   rpc.statd -L
+root    28553   2   0   0   ?   [rpciod]
+root    28554   2   0   0   ?   [nfsiod]
+root    28561   1   28561   28561   ?   rpc.idmapd
+root    28761   2   0   0   ?   [lockd]
+root    28764   2   0   0   ?   [nfsd]
+root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
+</pre></div>
+
+
+<p>The column headings, in order, are:</p>
+<ul>
+<li>User ID</li>
+<li>Process ID</li>
+<li>Parent process ID</li>
+<li>Process group ID</li>
+<li>Session ID</li>
+<li>Terminal name</li>
+<li>Command string</li>
+</ul>
+<p>The system processes in this output depend on the operating system implementation. Anything with a parent process ID of 0 is usually a kernel process (started as part of the system bootstrap procedure), except <code>init</code>, which is a user-level command started by the kernel at boot time. Kernel processes are special and generally exist for the entire lifetime of the system. They run with superuser privileges and have no controlling terminal and no command line.</p>
+<p>In the (above) sample <code>ps</code> output, kernel daemons has their names in square brackets.</p>
+<ul>
+<li><code>kthreadd</code> is a special kernel process on Linux that creates other kernel process, and thus appears as the parent of other kernel daemons. A kernel component, which need to run in a process context but isn't invoked from the context of a user-level process, will usually have its own kernel daemon. For example:<ul>
+<li><code>kswapd</code>: pageout daemon. It supports the virtual memory subsystem by writing dirty pages to disk slowly over time, so the pages can be reclaimed.</li>
+<li><code>flush</code>.<ul>
+<li>This daemon flushes dirty pages to disk when available memory reaches a configured minimum threshold.</li>
+<li>It also flushes dirty pages back to disk at regular intervals to decrease data loss in the event of a system failure.</li>
+<li>Several flush daemons can exist with one for each backing device. The sample output <code>flush-8:0</code> means the backing device is identified by its major device number (8) and its minor device number (0).</li>
+</ul>
+</li>
+<li>The <code>sync_supers</code> daemon periodically flushes file system metadata to disk.</li>
+<li>The <code>jbd</code> daemon helps implement the journal in the <code>ext4</code> file system</li>
+</ul>
+</li>
+<li><code>init</code> (<code>launchd</code> on Mac OS X), usually Process 1, is a system daemon responsible for, among other things, starting system services specific to various run levels.</li>
+<li><code>rpcbind</code> provides the service of <a href="https://en.wikipedia.org/wiki/Portmap">mapping RPC</a> (Remote Procedure Call) program numbers to network port numbers.</li>
+<li>The <code>nfsd</code>, <code>nfsiod</code>, <code>lockd</code>, <code>rpciod</code>, <code>rpc.idmapd</code>, <code>rpc.statd</code>, and <code>rpc.mountd</code> daemons provide support for the <a href="https://en.wikipedia.org/wiki/Network_File_System">Network File System</a> (NFS). Note that the first four are kernel daemons, while the last three are user-level daemons.</li>
+<li><code>rsyslogd</code> can log system messages of any program. The messages may be printed on a console device and/or written to a file.</li>
+<li><code>cron</code> executes commands at regularly scheduled dates and times. Numerous system administration tasks are handled by cron running programs at regularly intervals.</li>
+<li><code>atd</code>, similar to <code>cron</code>, allows users to execute jobs at specified times, only once.</li>
+<li><code>cupsd</code> is a print spooler that handles print requests on the system.</li>
+<li><code>sshd</code> provides secure remote login and execution facilities.</li>
+</ul>
+<p>Some notes:</p>
+<ul>
+<li>Most of the daemons run with superuser (root) privileges.</li>
+<li>None of the daemons has a controlling terminal: the terminal name is set to a question mark. The kernel daemons are started without a controlling terminal. The lack of a controlling terminal in the user-level daemons is probably the result of the daemons having called <code>setsid</code>. Most of the user-level daemons are process group leaders and session leaders, and are the only processes in their process group and session. (The one exception is <code>rsyslogd</code>.)</li>
+<li>The parent of the user-level daemons is the <code>init</code> process.</li>
+</ul>
+<h3 id="coding-rules">Coding Rules</h3>
+<p>This section states basic rules to coding a daemon prevent unwanted interactions from happening, followed by a function <code>daemonize</code>, that implements these rules.</p>
+<ol>
+<li><strong>Call <code>umask</code> to set the file mode creation mask</strong> to a known value, usually 0.<ul>
+<li>If the daemon process creates files, it may want to set specific permissions.</li>
+<li>On the other hand, if the daemon calls library functions that result in files being created, then it might make sense to set the file mode create mask to a more restrictive value (such as 007), since the library functions might not allow the caller to specify the permissions through an explicit argument.</li>
+</ul>
+</li>
+<li><strong>Call <code>fork</code> and have the parent <code>exit</code></strong>. This does several things:<ul>
+<li>If the daemon was started as a simple shell command, having the parent terminate makes the shell think that the command is done</li>
+<li>The child inherits the process group ID of the parent but gets a new process ID, so we’re guaranteed that the child is not a process group leader. This is a prerequisite for the call to <code>setsid</code> that is done next. (See <a href="../ch9/#ensuring-the-successful-call-of-setsid">Ensuring the successful call of setsid</a> in Chapter 9)</li>
+</ul>
+</li>
+<li>
+<p><strong>Call <code>setsid</code> to create a new session</strong>. The three steps listed in <a href="../ch9/#sessions">Section 9.5</a> occur. The process:</p>
+<ul>
+<li>becomes the leader of a new session,</li>
+<li>becomes the leader of a new process group,</li>
+<li>and is disassociated from its controlling terminal.</li>
+</ul>
+<p>Under System V–based systems, some people recommend calling <code>fork</code> again at this point, terminating the parent, and continuing the daemon in the child. This guarantees that the daemon is not a session leader, which prevents it from acquiring a controlling terminal under the System V rules (<a href="../ch9/#controlling-terminal">Section 9.6</a>). Alternatively, to avoid acquiring a controlling terminal, be sure to specify <code>O_NOCTTY</code> whenever opening a terminal device.</p>
+</li>
+<li>
+<p><strong>Change the current working directory to the root directory.</strong> The current working directory inherited from the parent could be on a mounted file system.  Since daemons normally exist until the system is rebooted, if the daemon stays on a mounted file system, that file system cannot be unmounted.</p>
+<p>Alternatively, some daemons might change the current working directory to a specific location where they will do all their work. For example, a line printer spooling daemon might change its working directory to its spool directory.</p>
+</li>
+<li>
+<p><strong>Unneeded file descriptors should be closed.</strong> This prevents the daemon from holding open any descriptors that it may have inherited from its parent (which could be a shell or some other process). We can use our <code>open_max</code> function or the <code>getrlimit</code> function (<a href="../ch7/#getrlimit-and-setrlimit-functions">Section 7.11</a>) to determine the highest descriptor and close all descriptors up to that value.</p>
+</li>
+<li><strong>Some daemons open file descriptors 0, 1, and 2 to <code>/dev/null</code></strong> so that any library routines that try to read from standard input or write to standard output or standard error will have no effect. [p466-467]</li>
+</ol>
+<p>The code below shows the <code>daemonize</code> function that can be called from a program that wants to initialize itself as a daemon.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/init.c">daemons/init.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;syslog.h&gt;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+<span class="cp">#include &lt;sys/resource.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">daemonize</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">fd0</span><span class="p">,</span> <span class="n">fd1</span><span class="p">,</span> <span class="n">fd2</span><span class="p">;</span>
+    <span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">rlimit</span> <span class="n">rl</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">sigaction</span> <span class="n">sa</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Clear file creation mask.</span>
+<span class="cm">     */</span>
+    <span class="n">umask</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Get maximum number of file descriptors.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">getrlimit</span><span class="p">(</span><span class="n">RLIMIT_NOFILE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rl</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t get file limit&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Become a session leader to lose controlling TTY.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t fork&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="cm">/* parent */</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">setsid</span><span class="p">();</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Ensure future opens won&#39;t allocate controlling TTYs.</span>
+<span class="cm">     */</span>
+    <span class="n">sa</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_IGN</span><span class="p">;</span>
+    <span class="n">sigemptyset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sa</span><span class="p">.</span><span class="n">sa_mask</span><span class="p">);</span>
+    <span class="n">sa</span><span class="p">.</span><span class="n">sa_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sigaction</span><span class="p">(</span><span class="n">SIGHUP</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sa</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t ignore SIGHUP&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">pid</span> <span class="o">=</span> <span class="n">fork</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t fork&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="cm">/* parent */</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Change the current working directory to the root so</span>
+<span class="cm">     * we won&#39;t prevent file systems from being unmounted.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">chdir</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_quit</span><span class="p">(</span><span class="s">&quot;%s: can&#39;t change directory to /&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Close all open file descriptors.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">rl</span><span class="p">.</span><span class="n">rlim_max</span> <span class="o">==</span> <span class="n">RLIM_INFINITY</span><span class="p">)</span>
+        <span class="n">rl</span><span class="p">.</span><span class="n">rlim_max</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">rl</span><span class="p">.</span><span class="n">rlim_max</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">close</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Attach file descriptors 0, 1, and 2 to /dev/null.</span>
+<span class="cm">     */</span>
+    <span class="n">fd0</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;/dev/null&quot;</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="n">fd1</span> <span class="o">=</span> <span class="n">dup</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">fd2</span> <span class="o">=</span> <span class="n">dup</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Initialize the log file.</span>
+<span class="cm">     */</span>
+    <span class="n">openlog</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">LOG_CONS</span><span class="p">,</span> <span class="n">LOG_DAEMON</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd0</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">fd1</span> <span class="o">!=</span> <span class="mi">1</span> <span class="o">||</span> <span class="n">fd2</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;unexpected file descriptors %d %d %d&quot;</span><span class="p">,</span>
+          <span class="n">fd0</span><span class="p">,</span> <span class="n">fd1</span><span class="p">,</span> <span class="n">fd2</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If the <code>daemonize</code> function is called from a <code>main</code> program that then goes to sleep, we can check the status of the daemon with the <code>ps</code> command:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">$ ps -efj</span>
+<span class="go">UID PID PPID PGID SID TTY CMD</span>
+<span class="go">sar 13800 1 13799 13799 ? ./a.out</span>
+<span class="go">$ ps -efj | grep 13799</span>
+<span class="go">sar 13800 1 13799 13799 ? ./a.out</span>
+</pre></div>
+
+
+<p>We can also use ps to verify that no active process exists with ID 13799. This means that our daemon is in an orphaned process group and is not a session leader and, therefore, has no chance of allocating a controlling terminal. This is a result of performing the second <code>fork</code> in the <code>daemonize</code> function. We can see that our daemon has been initialized correctly.</p>
+<h3 id="error-logging">Error Logging</h3>
+<p>One problem a daemon has is how to handle error messages. It cannot (simply) write to:</p>
+<ul>
+<li>Standard error: it shouldn't have a controlling terminal.</li>
+<li>Console device: on many workstations the console device runs a windowing system.</li>
+<li>Separate files: it's a headache to keep up which daemon writes to which log file and to check these files on a regular basis.</li>
+</ul>
+<p>A central daemon error-logging facility is required. The BSD <code>syslog</code> facility has been widely used since 4.2BSD. Most daemons use this facility. The following figure illustrates its structure:</p>
+<p><a href="../figure_13.2.png" title="Figure 13.2 The BSD syslog facility"><img alt="Figure 13.2 The BSD syslog facility" src="../figure_13.2.png" /></a></p>
+<p>There are three ways to generate log messages:</p>
+<ol>
+<li>Kernel routines can call the <code>log</code> function. These messages can be read by any user process that <code>open</code>s and <code>read</code>s the <code>/dev/klog</code> device.</li>
+<li>Most user processes (daemons) call the <code>syslog(3)</code> function to generate log messages. This causes the message to be sent to the UNIX domain datagram socket <code>/dev/log</code>.</li>
+<li>A user process on this host or some other host that is connected to this host by a TCP/IP network, can send log messages to UDP port 514. Note that the <code>syslog</code> function never generates these UDP datagrams: they require explicit network programming by the process generating the log message.</li>
+</ol>
+<p>The <code>syslogd</code> daemon reads all three forms of log messages. On start-up, this daemon reads a configuration file, usually <code>/etc/syslog.conf</code>, which determines where different classes of messages are to be sent. For example, urgent messages can be sent to the system administrator (if logged in) and printed on the console, whereas warnings may be logged to a file.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;syslog.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">openlog</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">ident</span><span class="p">,</span> <span class="kt">int</span> <span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">facility</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">syslog</span><span class="p">(</span><span class="kt">int</span> <span class="n">priority</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span> <span class="p">...);</span>
+<span class="kt">void</span> <span class="nf">closelog</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">setlogmask</span><span class="p">(</span><span class="kt">int</span> <span class="n">maskpri</span><span class="p">);</span>
+
+<span class="cm">/* Returns: previous log priority mask value */</span>
+</pre></div>
+
+
+<ul>
+<li>Calling <code>openlog</code> is optional. If it’s not called, the first time syslog is called, openlog is called automatically.</li>
+<li>
+<p>Calling <code>closelog</code> is also optional. It closes the descriptor being used to communicate with the syslogd daemon.</p>
+</li>
+<li>
+<p>The <code>openlog</code> function:</p>
+<ul>
+<li><em>indent</em> argument is the name of the program.</li>
+<li><em>option</em> argument is a bitmask specifying various options. (see the table below)</li>
+<li><em>facility</em> argument lets the configuration file specify that messages from different facilities are to be handled differently. If we don’t call <code>openlog</code>, or if we call it with a facility of 0, we can still specify the facility as part of the priority argument to syslog.  (see the table below)</li>
+</ul>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><em>option</em></th>
+<th>XSI</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOG_CONS</code></td>
+<td>x</td>
+<td>If the log message can’t be sent to <code>syslogd</code> via the UNIX domain datagram, the message is written to the console instead.</td>
+</tr>
+<tr>
+<td><code>LOG_NDELAY</code></td>
+<td>x</td>
+<td>Open the UNIX domain datagram socket to the <code>syslogd</code> daemon immediately; don’t wait until the first message is logged. Normally, the socket is not opened until the first message is logged.</td>
+</tr>
+<tr>
+<td><code>LOG_NOWAIT</code></td>
+<td>x</td>
+<td>Do not wait for child processes that might have been created in the process of logging the message. This prevents conflicts with applications that catch <code>SIGCHLD</code>, since the application might have retrieved the child’s status by the time that syslog calls wait.</td>
+</tr>
+<tr>
+<td><code>LOG_ODELAY</code></td>
+<td>x</td>
+<td>Delay the opening of the connection to the <code>syslogd</code> daemon until the first message is logged.</td>
+</tr>
+<tr>
+<td><code>LOG_PERROR</code></td>
+<td></td>
+<td>Write the log message to standard error in addition to sending it to <code>syslogd</code>.  (Unavailable on Solaris.)</td>
+</tr>
+<tr>
+<td><code>LOG_PID</code></td>
+<td>x</td>
+<td>Log the process ID with each message. This is intended for daemons that fork a child process to handle different requests (as compared to daemons, such as <code>syslogd</code>, that never call <code>fork</code>).</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><em>facility</em></th>
+<th>XSI</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOG_AUDIT</code></td>
+<td></td>
+<td>the audit facility</td>
+</tr>
+<tr>
+<td><code>LOG_AUTH</code></td>
+<td></td>
+<td>authorization programs: <code>login</code>, <code>su</code>, <code>getty</code>, ...</td>
+</tr>
+<tr>
+<td><code>LOG_AUTHPRIV</code></td>
+<td></td>
+<td>same as <code>LOG_AUTH</code>, but logged to file with restricted permissions</td>
+</tr>
+<tr>
+<td><code>LOG_CONSOLE</code></td>
+<td></td>
+<td>messages written to <code>/dev/console</code></td>
+</tr>
+<tr>
+<td><code>LOG_CRON</code></td>
+<td></td>
+<td>cron and at</td>
+</tr>
+<tr>
+<td><code>LOG_DAEMON</code></td>
+<td></td>
+<td>system daemons: <code>inetd</code>, <code>routed</code>, ...</td>
+</tr>
+<tr>
+<td><code>LOG_FTP</code></td>
+<td></td>
+<td>the FTP daemon (<code>ftpd</code>)</td>
+</tr>
+<tr>
+<td><code>LOG_KERN</code></td>
+<td></td>
+<td>messages generated by the kernel</td>
+</tr>
+<tr>
+<td><code>LOG_LOCAL0</code> ~ <code>LOG_LOCAL7</code></td>
+<td>x</td>
+<td>reserved for local use</td>
+</tr>
+<tr>
+<td><code>LOG_LPR</code></td>
+<td></td>
+<td>line printer system: <code>lpd</code>, <code>lpc</code>, ...</td>
+</tr>
+<tr>
+<td><code>LOG_MAIL</code></td>
+<td></td>
+<td>the mail system</td>
+</tr>
+<tr>
+<td><code>LOG_NEWS</code></td>
+<td></td>
+<td>the Usenet network news system</td>
+</tr>
+<tr>
+<td><code>LOG_NTP</code></td>
+<td></td>
+<td>the network time protocol system</td>
+</tr>
+<tr>
+<td><code>LOG_SECURITY</code></td>
+<td></td>
+<td>the security subsystem</td>
+</tr>
+<tr>
+<td><code>LOG_SYSLOG</code></td>
+<td></td>
+<td>the syslogd daemon itself</td>
+</tr>
+<tr>
+<td><code>LOG_USER</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>LOG_UUCP</code></td>
+<td></td>
+<td>the UUCP system</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>syslog</code> function:<ul>
+<li>The <em>priority</em> argument is a combination of the <em>facility</em> and a <em>level</em> (shown in the table below). These <em>level</em>s are ordered by priority, from highest to lowest.</li>
+<li>The <em>format</em> argument and any remaining arguments are passed to the <code>vsprintf</code> function for formatting. Any occurrences of the characters <code>%m</code> are first replaced with the error message string (<code>strerror</code>) corresponding to the value of <code>errno</code>.</li>
+</ul>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><em>level</em></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOG_EMERG</code></td>
+<td>emergency (system is unusable) (highest priority)</td>
+</tr>
+<tr>
+<td><code>LOG_ALERT</code></td>
+<td>condition that must be fixed immediately</td>
+</tr>
+<tr>
+<td><code>LOG_CRIT</code></td>
+<td>critical condition (e.g., hard device error)</td>
+</tr>
+<tr>
+<td><code>LOG_ERR</code></td>
+<td>error condition</td>
+</tr>
+<tr>
+<td><code>LOG_WARNING</code></td>
+<td>warning condition</td>
+</tr>
+<tr>
+<td><code>LOG_NOTICE</code></td>
+<td>normal, but significant condition</td>
+</tr>
+<tr>
+<td><code>LOG_INFO</code></td>
+<td>informational message</td>
+</tr>
+<tr>
+<td><code>LOG_DEBUG</code></td>
+<td>debug message (lowest priority)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The <code>setlogmask</code> function sets the log priority mask ("logmask") for the process and returns the previous mask. When the log priority mask is set, messages are not logged unless their priority is set in the log priority mask.</li>
+</ul>
+<p>The <code>logger(1)</code> program is also provided by many systems as a way to send log messages to the <code>syslog</code> facility. The <code>logger</code> command is intended for a shell script running noninteractively that needs to generate log messages.</p>
+<p>In addition to <code>syslog</code>, many platforms provide a variant that handles variable argument lists.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;syslog.h&gt;</span>
+<span class="cp">#include &lt;stdarg.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">vsyslog</span><span class="p">(</span><span class="kt">int</span> <span class="n">priority</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span> <span class="kt">va_list</span> <span class="n">arg</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Most <code>syslogd</code> implementations will queue messages for a short time. If a duplicate message arrives during this period, the syslog daemon will not write it to the log. Instead, the daemon prints a message similar to "last message repeated N times".</p>
+<h4 id="example-of-syslog">Example of <code>syslog</code></h4>
+<p>In a line printer spooler daemon, you might encounter the sequence:</p>
+<div class="codehilite"><pre><span class="n">openlog</span><span class="p">(</span><span class="s">&quot;lpd&quot;</span><span class="p">,</span> <span class="n">LOG_PID</span><span class="p">,</span> <span class="n">LOG_LPR</span><span class="p">);</span>
+<span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;open error for %s: %m&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The first call to <code>openlog</code> sets the <em>ident</em> string to the program name, specifies that the process ID should always be printed, and sets the default facility to the line printer system. The call to <code>syslog</code> specifies an error condition and a message string. If we had not called <code>openlog</code>, the second call could have been:</p>
+<div class="codehilite"><pre><span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span> <span class="o">|</span> <span class="n">LOG_LPR</span><span class="p">,</span> <span class="s">&quot;open error for %s: %m&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Here, we specify the <em>priority</em> argument as a combination of a <em>level</em> and a <em>facility</em>.</p>
+<h3 id="single-instance-daemons">Single-Instance Daemons</h3>
+<p>Some daemons are implemented so that only a single copy of the daemon should be running at a time for proper operation. This kind of daemon might need exclusive access to a device. For example of the <code>cron</code> daemon, if multiple instances were running, each copy might try to start a single scheduled operation, resulting in duplicate operations and probably an error.</p>
+<p>The file- and record-locking mechanism (<a href="../ch14/#record-locking">Section 14.3</a>) is a way to ensure that only one copy of a daemon is running. If each daemon creates a file with a fixed name and places a write lock on the entire file, only one such write lock will be allowed to be created. Successive attempts to create write locks will fail, serving as an indication to successive copies of the daemon that another instance is already running.</p>
+<p>[p473]</p>
+<h4 id="example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon</h4>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/single.c">daemons/single.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+<span class="cp">#include &lt;syslog.h&gt;</span>
+<span class="cp">#include &lt;string.h&gt;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;sys/stat.h&gt;</span>
+
+<span class="cp">#define LOCKFILE &quot;/var/run/daemon.pid&quot;</span>
+<span class="cp">#define LOCKMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)</span>
+
+<span class="k">extern</span> <span class="kt">int</span> <span class="nf">lockfile</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="kt">int</span>
+<span class="nf">already_running</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">fd</span><span class="p">;</span>
+    <span class="kt">char</span>    <span class="n">buf</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>
+
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">LOCKFILE</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="o">|</span><span class="n">O_CREAT</span><span class="p">,</span> <span class="n">LOCKMODE</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;can&#39;t open %s: %s&quot;</span><span class="p">,</span> <span class="n">LOCKFILE</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">lockfile</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">errno</span> <span class="o">==</span> <span class="n">EACCES</span> <span class="o">||</span> <span class="n">errno</span> <span class="o">==</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;can&#39;t lock %s: %s&quot;</span><span class="p">,</span> <span class="n">LOCKFILE</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">ftruncate</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">&quot;%ld&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">getpid</span><span class="p">());</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each copy of the daemon will try to create a file and write its process ID in the file.  This will allow administrators to identify the process easily. If the file is already locked, the lockfile function will fail with <code>errno</code> set to <code>EACCES</code> or <code>EAGAIN</code>, so we return 1, indicating that the daemon is already running. Otherwise, we truncate the file, write our process ID to it, and return 0.</p>
+<p>[p474]</p>
+<h3 id="daemon-conventions">Daemon Conventions</h3>
+<p>Common conventions are followed by daemons in the UNIX System.</p>
+<ul>
+<li>The lock file is usually stored in <code>/var/run</code>.<ul>
+<li>Creating a file in this directory requires superuser permissions;</li>
+<li>The name of the file is usually <em>name</em><code>.pid</code>, where name is the name of the daemon or the service. For example, the name of the Linux <code>cron</code> daemon’s lock file is <code>/var/run/crond.pid</code>.</li>
+</ul>
+</li>
+<li>The configuration options are usually stored in <code>/etc</code>.<ul>
+<li>The configuration file is named <em>name</em><code>.conf</code>, where name is the name of the daemon or the service. For example, the configuration for the <code>syslogd</code> daemon is usually <code>/etc/syslog.conf</code>.</li>
+</ul>
+</li>
+<li>Daemons can be started from the command line, but they are usually started from one of the system initialization scripts (<code>/etc/rc*</code> or <code>/etc/init.d/*</code>).<ul>
+<li>If the daemon should be restarted automatically when it exits, we can arrange for init to restart it if we include a respawn entry for it in<code>/etc/inittab</code> (assuming the system uses a System V style <code>init</code> command).</li>
+</ul>
+</li>
+<li>If a daemon has a configuration file, the daemon reads the file when it starts and won’t look at it again. If an administrator changes the configuration, the daemon would need to be stopped and restarted to account for the configuration changes. <u>To avoid this, some daemons will catch <code>SIGHUP</code> and reread their configuration files when they receive the signal.</u> Since they aren’t associated with terminals and are either session leaders without controlling terminals or members of orphaned process groups, daemons have no reason to expect to receive <code>SIGHUP</code>. Thus they can safely reuse it.</li>
+</ul>
+<p>Examples:</p>
+<ul>
+<li><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread.c">daemons/reread.c</a></small></li>
+<li><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread2.c">daemons/reread2.c</a></small></li>
+</ul>
+<h3 id="clientserver-model">Client–Server Model</h3>
+<p>A common use for a daemon process is as a server process. syslogd process (<a href="../figure_13.2.png">Figure 13.2</a>) is a server that has messages sent to it by user processes (clients) using a UNIX domain datagram socket.</p>
+<p>A <strong>server</strong> is a process that waits for a <strong>client</strong> to contact it, requesting some type of service. The service provided by the <code>syslogd</code> server is the logging of an error message.</p>
+<p>Servers usually <code>fork</code> and <code>exec</code> another program to provide service to a client. These servers often manage multiple file descriptors (e.g. communication endpoints, configuration files, log files). It would be careless to leave these file descriptors open in the child process, because they probably won’t be used in the program executed by the child, especially if the program is unrelated to the server. At worst, leaving them open could pose a security problem: the program executed could do something malicious, such as change the server’s configuration file or trick the client into thinking it is communicating with the server, thereby gaining access to unauthorized information.</p>
+<p>An easy solution to this problem is to set the close-on-exec flag for all file descriptors that the executed program won’t need. The following function does that:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/setfd.c">lib/setfd.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">set_cloexec</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">val</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">val</span> <span class="o">=</span> <span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">F_GETFD</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="n">val</span> <span class="o">|=</span> <span class="n">FD_CLOEXEC</span><span class="p">;</span>      <span class="cm">/* enable close-on-exec */</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">F_SETFD</span><span class="p">,</span> <span class="n">val</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

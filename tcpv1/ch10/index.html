@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/tcpv1/ch10/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../apue/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch11/">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../apue/ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lkd/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/tcpv1/ch10.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-10-user-datagram-protocol-udp-and-ip-fragmentation">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+            <li><a href="#advantages-of-udp">Advantages of UDP *</a></li>
+        
+            <li><a href="#encapsulation-of-a-udp-datagram">Encapsulation of a UDP datagram *</a></li>
+        
+    
+        <li class="main "><a href="#udp-header">UDP Header</a></li>
+        
+    
+        <li class="main "><a href="#udp-checksum">UDP Checksum</a></li>
+        
+    
+        <li class="main "><a href="#examples">Examples</a></li>
+        
+    
+        <li class="main "><a href="#udp-and-ipv6">UDP and IPv6</a></li>
+        
+    
+        <li class="main "><a href="#udp-lite">UDP-Lite</a></li>
+        
+    
+        <li class="main "><a href="#ip-fragmentation">IP Fragmentation</a></li>
+        
+            <li><a href="#example-udpipv4-fragmentation">Example: UDP/IPv4 Fragmentation</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-10-user-datagram-protocol-udp-and-ip-fragmentation"><strong>Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>UDP is a simple, datagram-oriented, transport-layer protocol that preserves message boundaries:</p>
+<ul>
+<li>It does not provide error correction, sequencing, duplicate elimination, flow control, or congestion control.</li>
+<li>It can provide error detection, and it includes the true <em>end-to-end</em> checksum at the transport layer.<ul>
+<li>The <strong>Checksum</strong> field (<a href="../figure_10-2.png">figure_10-2.png</a>) is end-to-end and is computed over the UDP pseudo-header, which includes the Source and Destination IP Address fields from the IP header. Thus, any modification made to those fields (e.g., by NAT) requires a modification to the UDP checksum.</li>
+</ul>
+</li>
+<li>It provides minimal functionality itself, so applications using it have a great deal of control over how packets are sent and processed. Applications wishing to ensure that their data is reliably delivered or sequenced must implement these protections themselves.</li>
+<li><u>Each UDP output operation requested by an application produces exactly one UDP datagram, which causes one IP datagram to be sent.</u><ul>
+<li>This is in contrast to a stream-oriented protocol such as TCP (<a href="../ch15/">Chapter 15</a>), where the amount of data written by an application may have little relationship to what actually gets sent in a single IP datagram or what is consumed at the receiver.</li>
+</ul>
+</li>
+</ul>
+<p>[<a href="https://tools.ietf.org/html/rfc768">RFC0768</a>] is the official specification of UDP, and it has remained as a standard without significant revisions for more than 30 years.</p>
+<ul>
+<li>UDP provides no error correction as mentioned: it sends the datagrams that the application writes to the IP layer, but there is no guarantee that they ever reach their destination.</li>
+<li>There is no protocol mechanism to prevent high-rate UDP traffic from negatively impacting other network users.</li>
+</ul>
+<h4 id="advantages-of-udp">Advantages of UDP *</h4>
+<p>Given this lack of reliability and protection, we might be tempted to conclude that there are no benefits to using UDP at all. This is not true, however. UDP has the following advantages:</p>
+<ul>
+<li><u>Because of its connectionless character, it has less overhead than other transport protocols.</u></li>
+<li>Broadcast and multicast operations (<a href="../ch9/">Chapter 9</a>) are much more straightforward using a connectionless transport such as UDP.</li>
+<li>The ability of an application to choose its own unit of retransmission can be an important consideration.</li>
+</ul>
+<h4 id="encapsulation-of-a-udp-datagram">Encapsulation of a UDP datagram *</h4>
+<p>The following figure shows the encapsulation of a UDP datagram as a single IPv4 datagram.</p>
+<ul>
+<li>The IPv6 encapsulation is similar, but other details differ slightly (<a href="#udp-and-ipv6">Section 10.5</a>).</li>
+<li>The IPv4 <strong>Protocol</strong> field has the value 17 to indicate UDP.</li>
+<li>IPv6 uses the same value (17) in the <strong>Next Header</strong> field.</li>
+<li><a href="#ip-fragmentation">Later in this chapter</a> describes what happens when the size of the UDP datagram exceeds the MTU size and the datagram must be fragmented into more than one IP-layer packet.</li>
+</ul>
+<p><a href="../figure_10-1.png" title="Figure 10-1 Encapsulation of a UDP datagram in a single IPv4 datagram (the typical case with no IPv4 options). The IPv6 encapsulation is similar; the UDP header follows the header chain."><img alt="Figure 10-1 Encapsulation of a UDP datagram in a single IPv4 datagram (the typical case with no IPv4 options). The IPv6 encapsulation is similar; the UDP header follows the header chain." src="../figure_10-1_600.png" /></a></p>
+<h3 id="udp-header">UDP Header</h3>
+<p>THe following figure shows UDP datagram, including the payload and UDP header (which is always 8 bytes in size):</p>
+<p><a href="../figure_10-2.png" title="Figure 10-2 The UDP header and payload (data) area. The Checksum field is end-to-end and is computed over the UDP pseudo-header, which includes the Source and Destination IP Address fields from the IP header. Thus, any modification made to those fields (e.g., by NAT) requires a modification to the UDP checksum"><img alt="Figure 10-2 The UDP header and payload (data) area. The Checksum field is end-to-end and is computed over the UDP pseudo-header, which includes the Source and Destination IP Address fields from the IP header. Thus, any modification made to those fields (e.g., by NAT) requires a modification to the UDP checksum" src="../figure_10-2_600.png" /></a></p>
+<ul>
+<li>Port numbers act as mailboxes and help a protocol implementation identify the sending and receiving processes (<a href="../ch1/">Chapter 1</a>). They are purely <em>abstract</em>: they do not correspond to any physical entity on a host. In UDP port numbers are positive 16-bit numbers:<ul>
+<li><u>The source port number is optional; it may be set to 0 if the sender of the datagram never requires a reply.</u></li>
+</ul>
+</li>
+</ul>
+<p>Transport protocols such as TCP and UDP, and SCTP [RFC4960] use the destination port number to help demultiplex incoming data from IP. <u>Because IP demultiplexes the incoming IP datagram to a particular transport protocol based on the value of the <strong>Protocol</strong> field in the IPv4 header or <strong>Next Header</strong> field in the IPv6 header, this means that the port numbers can be made independent among the transport protocols. That is, TCP port numbers are used only by TCP, and the UDP port numbers only by UDP, and so on.</u> A straightforward consequence of this separation is that two completely distinct servers can use the same port number and IP address, as long as they use different transport protocols.</p>
+<p>Despite this independence, if a well-known service is provided (or can conceivably be provided) by both TCP and UDP, the port number is normally allocated to be the same for both transport protocols. This is purely for convenience and is not required by the protocols. See [<a href="http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml">IPORT</a>] for details on how port numbers are formally assigned.</p>
+<ul>
+<li>The UDP <strong>Length</strong> field is the length of the UDP header and the UDP data in bytes. The minimum value for this field is 8 except when UDP is used with IPv6 jumbograms (see Section 10.5). Sending a UDP datagram with 0 bytes of data is acceptable, although rare.<ul>
+<li>The UDP Length field is redundant; the IPv4 header contains the datagram’s total length (<a href="../ch5/">Chapter 5</a>), and the IPv6 header contains the payload length. The length of a UDP/IPv4 datagram is then the total length of the IPv4 datagram minus the length of the IPv4 header. A UDP/IPv6 datagram’s length is the value of the Payload Length field contained in the IPv6 header minus the lengths of any extension headers (unless jumbograms are being used). In either case, the UDP Length field should match the length computed from the IP-layer information.</li>
+</ul>
+</li>
+</ul>
+<h3 id="udp-checksum">UDP Checksum</h3>
+<h3 id="examples">Examples</h3>
+<h3 id="udp-and-ipv6">UDP and IPv6</h3>
+<h3 id="udp-lite">UDP-Lite</h3>
+<h3 id="ip-fragmentation">IP Fragmentation</h3>
+<p>IP employs <strong>fragmentation</strong> and <strong>reassembly</strong>. Fragmentation in IPv4 can take place at the original sending host and at any intermediate routers along the end-to-end path. Note that datagram fragments can themselves be fragmented. Fragmentation in IPv6 is somewhat different because <u>only the source is permitted to perform fragmentation</u>.</p>
+<p>When an IP datagram is fragmented, it is not reassembled until it reaches its final destination, because:</p>
+<ol>
+<li>Not performing reassembly within the network alleviates the forwarding software (or hardware) in routers from implementing this feature</li>
+<li>Different fragments of the same datagram may follow different paths to their common destination</li>
+</ol>
+<h4 id="example-udpipv4-fragmentation">Example: UDP/IPv4 Fragmentation</h4>
+<p>An UDP application may wish to avoid IP fragmentation, because when the size of the resulting datagram exceeds the link’s MTU, the IP datagram is split across multiple IP packets, which can lead to performance issues because <u>if any fragment is lost, the entire datagram is lost.</u></p>
+<p><a href="../figure_10-9.png" title="A single UDP datagram with 2992 UDP payload bytes is fragmented into three UDP/ IPv4 packets (no options)."><img alt="A single UDP datagram with 2992 UDP payload bytes is fragmented into three UDP/ IPv4 packets (no options)." src="../figure_10-9.png" /></a></p>
+<p>A single UDP datagram with 2992 UDP payload bytes is fragmented into three UDP/ IPv4 packets (no options). The UDP header that contains the source and destination port numbers appears only in the first fragment (a complicating factor for firewalls and NATs). Fragmentation is controlled by the <strong>Identification</strong>, <strong>Fragment Offset</strong>, and <strong>More Fragments</strong> (MF) fields in the IPv4 header.</p>
+<p>The original UDP datagram included 2992 bytes of application (UDP payload) data and 8 bytes of UDP header, resulting in an IPv4 Total Length field value of 3020 bytes (IP header is 20-byte). When this datagram was fragmented into three packets, 40 extra bytes were created (20 bytes for each of the newly created IPv4 fragment headers). Thus, the total number of bytes sent is 3060. [p489]</p>
+<p>Fields:</p>
+<ul>
+<li><strong>Identification</strong>: its value (set by the original sender) is copied to each fragment and is used to group them together when they arrive</li>
+<li><strong>Fragment Offset</strong>: the offset of the first byte of the fragment payload byte in the original IPv4 datagram (in 8-byte units)</li>
+<li><strong>MF</strong>: indicates whether more fragments in the datagram should be expected and is 0 only in the final fragment</li>
+</ul>
+<p>If one fragment is lost, the entire datagram is lost, since IP itself has no error correction mechanism of its own. Mechanisms such as timeout and retransmission are left as the responsibility of the higher layers. <u>For this reason, fragmentation is often avoided.</u></p>
+<p>We can use our <code>sock</code> program and increase the size of the datagram until fragmentation occurs. On an Ethernet, the maximum amount of data in a frame is ordinarily 1500 bytes, which leaves at most 1472 bytes for application data to avoid fragmentation, assuming 20 bytes for the IPv4 header and 8 bytes for the UDP header.</p>
+<p>We will run our sock program with data sizes of 1471, 1472, 1473, and 1474 bytes. We expect the last two to cause fragmentation:</p>
+<p>[p490-492]</p>
+<div class="codehilite"><pre>Linux% sock -u -i -n1 -w1471 10.0.0.3 discard
+Linux% sock -u -i -n1 -w1472 10.0.0.3 discard
+Linux% sock -u -i -n1 -w1473 10.0.0.3 discard
+Linux% sock -u -i -n1 -w1474 10.0.0.3 discard
+</pre></div>
+
+
+<div class="codehilite"><pre>1 23:42:43.562452 10.0.0.5.46530 &gt; 10.0.0.3.9:
+        udp 1471 (DF) (ttl 64, id 61350, len 1499)
+2 23:42:50.267424 10.0.0.5.46531 &gt; 10.0.0.3.9:
+        udp 1472 (DF) (ttl 64, id 62020, len 1500)
+3 23:42:57.814555 10.0.0.5 &gt; 10.0.0.3:
+        udp (frag 37671:1@1480) (ttl 64, len 21)
+4 23:42:57.814715 10.0.0.5.46532 &gt; 10.0.0.3.9:
+        udp 1473 (frag 37671:1480@0+) (ttl 64, len 1500)
+5 23:43:04.368677 10.0.0.5 &gt; 10.0.0.3:
+        udp (frag 37672:2@1480) (ttl 64, len 22)
+6 23:43:04.368838 10.0.0.5.46535 &gt; 10.0.0.3.9:
+        udp 1474 (frag 37672:1480@0+) (ttl 64, len 1500)
+</pre></div>
+
+
+<p>One observation that may be surprising is that the fragments with larger offsets are delivered <em>prior</em> to the first fragments. In effect, <u>the sender has intentionally reordered the fragments.</u> This behavior can be beneficial. If the last fragment is delivered first, the receiving host is able to ascertain the maximum amount of buffer space it will require in order to reassemble the entire datagram.</p>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>

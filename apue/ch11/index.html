@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://notes.shichao.io/apue/ch11/">
+        <link rel="shortcut icon" href="../../toki_32.png">
+        
+
+	<title>Chapter 11. Threads - Shichao's Notes</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
+        <link href="../../custom.css" rel="stylesheet">
+        <link href="../../github.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">Shichao's Notes</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">APUE <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch1/">Chapter 1. UNIX System Overview</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch2/">Chapter 2. UNIX Standardization and Implementations</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch3/">Chapter 3. File I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. Files and Directories</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch5/">Chapter 5. Standard I/O Library</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch6/">Chapter 6. System Data Files and Information</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch7/">Chapter 7. Process Environment</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch8/">Chapter 8. Process Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch9/">Chapter 9. Process Relationships</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. Signals</a>
+                        </li>
+                      
+                    
+                      
+                        <li class="active">
+                            <a href="./">Chapter 11. Threads</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch12/">Chapter 12. Thread Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch13/">Chapter 13. Daemon Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch14/">Chapter 14. Advanced I/O</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch15/">Chapter 15. Interprocess Communication</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch16/">Chapter 16. Network IPC: Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../ch17/">Chapter 17. Advanced IPC</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LKD <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lkd/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch1/">Chapter 1. Introduction to the Linux Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch2/">Chapter 2. Getting Started with the Kernel</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch3/">Chapter 3. Process Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch4/">Chapter 4. Process Scheduling</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch5/">Chapter 5. System Calls</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch6/">Chapter 6. Kernel Data Structures</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch7/">Chapter 7. Interrupts and Interrupt Handlers</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch8/">Chapter 8. Bottom Halves and Deferring Work</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch9/">Chapter 9. An Introduction to Kernel Synchronization</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch10/">Chapter 10. Kernel Synchronization Methods</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch11/">Chapter 11. Timers and Time Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch12/">Chapter 12. Memory Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch13/">Chapter 13. The Virtual Filesystem</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch14/">Chapter 14. The Block I/O Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lkd/ch15/">Chapter 15. The Process Address Space</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../unp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TCPv1 <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch1/">Chapter 1. Introduction</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch2/">Chapter 2. The Internet Address Architecture</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch3/">Chapter 3. Link Layer</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch5/">Chapter 5. The Internet Protocol (IP)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch6/">Chapter 6. System Configuration: DHCP and Autoconfiguration</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch7/">Chapter 7. Firewalls and Network Address Translation (NAT)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch8/">Chapter 8. ICMPv4 and ICMPv6: Internet Control Message Protocol</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch10/">Chapter 10. User Datagram Protocol (UDP) and IP Fragmentation</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch11/">Chapter 11. Name Resolution and the Domain Name System (DNS)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch12/">Chapter 12. TCP: The Transmission Control Protocol (Preliminaries)</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch13/">Chapter 13. TCP Connection Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch14/">Chapter 14. TCP Timeout and Retransmission</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch15/">Chapter 15. TCP Data Flow and Window Management</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch16/">Chapter 16. TCP Congestion Control</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch17/">Chapter 17. TCP Keepalive</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/ch18/">Chapter 18. Security: EAP, IPsec, TLS, DNSSEC, and DKIM</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tcpv1/headers/">Headers</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">LSP <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../lsp/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../lsp/ch9/">Chapter 9. Memory Management</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">TLPI <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch6/">Chapter 6. Processes</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../tlpi/ch7/">Chapter 7. Memory Allocation</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                        <li >
+                            <a href="../../gopl/">Contents</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+            <!-- Hide pages from the navigation -->
+            
+            
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Others <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    
+                      
+                    
+                      
+                        <li >
+                            <a href="../../htae/">HTAE</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../bash/">Bash</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../golang/">Go</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../c/">C</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../ruby/">Ruby</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../python/">Python</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../asm/">x86 assembly</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../iptables/">iptables</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../nginx/">Nginx</a>
+                        </li>
+                      
+                    
+                      
+                        <li >
+                            <a href="../../vim/">Vim</a>
+                        </li>
+                      
+                    
+                    </ul>
+                </li>
+            
+            
+            
+            </ul>
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                <li>
+                    
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/apue/ch11.md">
+                    
+                        
+                            <i class="fa fa-github"></i>
+                        
+                        GitHub
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#chapter-11-threads">Chapter 11. Threads</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#thread-concepts">Thread Concepts</a></li>
+        
+    
+        <li class="main "><a href="#thread-identification">Thread Identification</a></li>
+        
+    
+        <li class="main "><a href="#thread-creation">Thread Creation</a></li>
+        
+    
+        <li class="main "><a href="#thread-termination">Thread Termination</a></li>
+        
+            <li><a href="#the-pthread_exit-and-pthread_join-functions">The pthread_exit and pthread_join functions</a></li>
+        
+            <li><a href="#the-pthread_cancel-function">The pthread_cancel function</a></li>
+        
+            <li><a href="#the-pthread_cleanup_push-and-pthread_cleanup_pop-functions">The pthread_cleanup_push and pthread_cleanup_pop functions</a></li>
+        
+            <li><a href="#the-pthread_detach-function">The pthread_detach function</a></li>
+        
+    
+        <li class="main "><a href="#thread-synchronization">Thread Synchronization</a></li>
+        
+            <li><a href="#mutexes">Mutexes</a></li>
+        
+    
+        <li class="main "><a href="#deadlock-avoidance">Deadlock Avoidance</a></li>
+        
+            <li><a href="#example-of-two-mutexes">Example of two mutexes</a></li>
+        
+            <li><a href="#example-of-two-mutexes-simplified">Example of two mutexes (simplified)</a></li>
+        
+            <li><a href="#pthread_mutex_timedlock-function">pthread_mutex_timedlock Function</a></li>
+        
+            <li><a href="#readerwriter-locks">Reader–Writer Locks</a></li>
+        
+            <li><a href="#readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts</a></li>
+        
+            <li><a href="#condition-variables">Condition Variables</a></li>
+        
+            <li><a href="#spin-locks">Spin Locks</a></li>
+        
+            <li><a href="#barriers">Barriers</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+              
+
+<h3 id="chapter-11-threads"><strong>Chapter 11. Threads</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<p>Processes are discussed in earlier chapters. A limited amount of sharing can occur between related processes.</p>
+<p>This chapter looks inside a process further to see how to use multiple threads of control (or simply threads) to perform multiple tasks within the environment of a single process. All threads within a single process have access to the same process components, such as file descriptors and memory.</p>
+<p>This chapter is concluded with synchronization mechanisms available to prevent multiple threads from viewing inconsistencies in their shared resources.</p>
+<h3 id="thread-concepts">Thread Concepts</h3>
+<p>With multiple threads of control, the programs can more than one thing at a time within a single process, with each thread handling a separate task. This approach can have several benefits:</p>
+<ul>
+<li>We can simplify code that deals with asynchronous events by assigning a separate thread to handle each event type, while each thread can then handle its event using a synchronous programming model. A synchronous programming model is much simpler than an asynchronous one.</li>
+<li>Multiple processes have to use complex mechanisms provided by the operating system to share memory and file descriptors. Threads, in contrast, automatically have access to the same memory address space and file descriptors</li>
+<li>The processing of independent tasks can be interleaved by assigning a separate thread per task (only if they don’t depend on the processing performed by each other), so that overall program throughput can be improved. (A single-threaded process has to implicitly serializes those tasks.)</li>
+<li>Interactive programs can be improved in response time by using multiple threads to separate the portions of the program that deal with user input and output from the other parts of the program.</li>
+</ul>
+<p>The benefits of a multithreaded programming model can be realized on multiprocessor or multicore systems, and even on uniprocessor systems. A program can be simplified using threads regardless of the number of processors, since that doesn’t affect the program structure. As long as your program has to block when serializing tasks, there are improvements in response time and throughput when running on a uniprocessor, because some threads might be able to run while others are blocked.</p>
+<p>A thread consists of the information necessary to represent an execution context within a process:</p>
+<ul>
+<li><strong>Thread ID</strong>: identifies the thread within a process</li>
+<li>Set of register values</li>
+<li>Stack</li>
+<li>Scheduling priority and policy,</li>
+<li>Signal mask</li>
+<li>An errno variable (<a href="../ch1/#error-handling">Section 1.7</a>)</li>
+<li>Thread-specific data (<a href="../ch12/#thread-specific-data">Section 12.6</a>).</li>
+</ul>
+<p>Everything within a process is sharable among the threads in a process:</p>
+<ul>
+<li>Text of the executable program</li>
+<li>The program’s global and heap memory</li>
+<li>Stacks</li>
+<li>File descriptors.</li>
+</ul>
+<p>The threads interfaces of this chapter are from POSIX.1-2001, known as <strong>pthreads</strong> for "POSIX threads". The feature test macro for POSIX threads is <code>_POSIX_THREADS</code>. Applications can either use this in an <code>#ifdef</code> test to determine at compile time whether threads are supported or call <code>sysconf</code> with the <code>_SC_THREADS</code> constant to determine this at runtime. [p384]</p>
+<h3 id="thread-identification">Thread Identification</h3>
+<p>Unlike the process ID, which is unique in the system, the thread ID has significance only within the context of the process to which it belongs.</p>
+<p>A thread ID is represented by the <code>pthread_t</code> data type. Implementations are allowed to use a structure to represent the <code>pthread_t</code> data type, so portable implementations can’t treat them as integers (process ID's <code>pid_t</code> data type is a non-negative integer). The <code>pthread_equal</code> function (below) must be used to compare two thread IDs. A consequence of allowing the <code>pthread_t</code> data type to be a structure is that there is no portable way to print its value. Linux 3.2.0 uses an unsigned long integer for the <code>pthread_t</code> data type. FreeBSD 8.0 and Mac OS X 10.6.8 use a pointer to the <code>pthread</code> structure for the <code>pthread_t</code> data type.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_equal</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="n">tid1</span><span class="p">,</span> <span class="kt">pthread_t</span> <span class="n">tid2</span><span class="p">);</span>
+
+<span class="cm">/* Returns: nonzero if equal, 0 otherwise */</span>
+</pre></div>
+
+
+<p>A thread can obtain its own thread ID by calling the pthread_self function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">pthread_t</span> <span class="nf">pthread_self</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="nl">Returns</span><span class="p">:</span> <span class="n">the</span> <span class="kr">thread</span> <span class="n">ID</span> <span class="n">of</span> <span class="n">the</span> <span class="n">calling</span> <span class="kr">thread</span>
+</pre></div>
+
+
+<p>This function can be used with <code>pthread_equal</code> when a thread needs to identify data structures that are tagged with its thread ID. For example, a single master thread places new jobs on a work queue. A pool of three worker threads removes jobs from the queue. Instead of allowing each thread to process whichever job is at the head of the queue, the master thread controls job assignment by placing the ID of the thread that should process the job in each job structure. Each worker thread then removes only jobs that are tagged with its own thread ID. This situation is illustrated below:</p>
+<p><a href="../figure_11.1.png" title="Figure 11.1 Work queue example"><img alt="Figure 11.1 Work queue example" src="../figure_11.1.png" /></a></p>
+<h3 id="thread-creation">Thread Creation</h3>
+<p>The traditional UNIX process model (one thread of control per process) is conceptually the same as a threads-based model whereby each process is made up of only one thread. As the program runs, its behavior should be indistinguishable from the traditional process, until it creates more threads of control. [p385] Additional threads can be created by calling the <code>pthread_create</code> function:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_create</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tidp</span><span class="p">,</span>
+                   <span class="k">const</span> <span class="kt">pthread_attr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
+                   <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">start_rtn</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">arg</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>The memory location pointed to by <em>tidp</em> is set to the thread ID of the newly created thread when <code>pthread_create</code> returns successfully.</li>
+<li>The <em>attr</em> argument is used to customize various thread attributes (detailed in <a href="../ch12/#thread-attributes">Section 12.3</a>). This chapter sets this to <code>NULL</code> to create a thread with the default attributes.</li>
+<li>The newly created thread starts running at the address of the <em>start_rtn</em> function.</li>
+<li>The <em>arg</em> is a pointer to the single argument passed to the <em>start_rtn</em>. If you need to pass more than one argument to the <code>start_rtn</code> function, then you need to store them in a structure and pass the address of the structure in <em>arg</em>.</li>
+</ul>
+<p>When a thread is created, there is no guarantee whether the newly created thread or the calling thread. <u>The newly created thread has access to the process address space and inherits the calling thread’s floating-point environment (<a href="http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/fenv.h.html"><code>fenv.h</code></a>) and signal mask; however, the set of pending signals for the thread is cleared.</u></p>
+<p>The following example creates one thread and prints the process and thread IDs of the new thread and the initial thread:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/threadid.c">threads/threadid.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">pthread_t</span> <span class="n">ntid</span><span class="p">;</span>
+
+<span class="kt">void</span>
+<span class="nf">printids</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">pid_t</span>       <span class="n">pid</span><span class="p">;</span>
+    <span class="kt">pthread_t</span>   <span class="n">tid</span><span class="p">;</span>
+
+    <span class="n">pid</span> <span class="o">=</span> <span class="n">getpid</span><span class="p">();</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">pthread_self</span><span class="p">();</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s pid %lu tid %lu (0x%lx)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">pid</span><span class="p">,</span>
+      <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">tid</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">tid</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printids</span><span class="p">(</span><span class="s">&quot;new thread: &quot;</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>     <span class="n">err</span><span class="p">;</span>
+
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ntid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread&quot;</span><span class="p">);</span>
+    <span class="n">printids</span><span class="p">(</span><span class="s">&quot;main thread:&quot;</span><span class="p">);</span>
+    <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This example handles the races between the main thread and the new thread as follows:</p>
+<ul>
+<li>First is the need to sleep in the main thread. Without sleep, the main thread might exit, thereby terminating the entire process before the new thread
+gets a chance to run. This behavior is dependent on the operating system’s threads implementation and scheduling algorithms</li>
+<li>Second, the new thread obtains its thread ID by calling <code>pthread_self</code> instead of reading it out of shared memory or receiving it as an argument to its thread-start routine. If the new thread runs before the main thread returns from calling <code>pthread_create</code>, then the new thread will see the uninitialized contents of <em>ntid</em> instead of the thread ID. [p387-388]</li>
+</ul>
+<h3 id="thread-termination">Thread Termination</h3>
+<p>If any thread within a process calls <code>exit</code>, <code>_Exit</code>, or <code>_exit</code>, then the entire process terminates. Similarly, when the default action is to terminate the process, a signal sent to a thread will terminate the entire process.</p>
+<p>A single thread can exit in three ways, without terminating the entire process:</p>
+<ol>
+<li>The thread can simply return from the start routine. The return value is the thread’s exit code.</li>
+<li>The thread can be canceled by another thread in the same process.</li>
+<li>The thread can call <code>pthread_exit</code>.</li>
+</ol>
+<h4 id="the-pthread_exit-and-pthread_join-functions">The <code>pthread_exit</code> and <code>pthread_join</code> functions</h4>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">pthread_exit</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">rval_ptr</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The <em>rval_ptr</em> argument is a typeless pointer is available to other threads in the process by calling the <code>pthread_join</code> function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_join</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="kr">thread</span><span class="p">,</span> <span class="kt">void</span> <span class="o">**</span><span class="n">rval_ptr</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The thread that calls <code>pthread_join</code> will block until the specified thread calls <code>pthread_exit</code>, returns from its start routine, or is canceled. If the thread simply returned from its start routine, <em>rval_ptr</em> will contain the return code. If the thread was canceled, the memory location specified by <em>rval_ptr</em> is set to <code>PTHREAD_CANCELED</code>.</p>
+<p><u>By calling <code>pthread_join</code>, we automatically place the thread with which we’re joining in the detached state so that its resources can be recovered.  If the thread was already in the detached state, <code>pthread_join</code> can fail, returning <code>EINVAL</code>.</u></p>
+<p>If we’re not interested in a thread’s return value, we can set <em>rval_ptr</em> to <code>NULL</code>.</p>
+<p>The following example shows how to fetch the exit code from a thread that has terminated:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/exitstatus.c">threads/exitstatus.c</a></small></p>
+<p>[p389-390]</p>
+<p>The typeless pointer passed to <code>pthread_create</code> and <code>pthread_exit</code> can be used to pass the address of a structure containing more complex information.</p>
+<p>If the structure was allocated on the caller’s stack, the memory contents might have changed by the time the structure is used. If a thread allocates a structure on its stack and passes a pointer to this structure to <code>pthread_exit</code>, then the stack might be destroyed and its memory reused for something else by the time the caller of <code>pthread_join</code> tries to use it.</p>
+<p>The following example shows the problem with using an automatic variable (allocated on the stack) as the argument to <code>pthread_exit</code>:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/badexit2.c">threads/badexit2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">void</span>
+<span class="nf">printfoo</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;  structure at 0x%lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">fp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;  foo.a = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">a</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;  foo.b = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">b</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;  foo.c = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">c</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;  foo.d = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">d</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn1</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="n">foo</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">};</span>
+
+    <span class="n">printfoo</span><span class="p">(</span><span class="s">&quot;thread 1:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foo</span><span class="p">);</span>
+    <span class="n">pthread_exit</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">foo</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn2</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 2: ID is %lu</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">pthread_self</span><span class="p">());</span>
+    <span class="n">pthread_exit</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>         <span class="n">err</span><span class="p">;</span>
+    <span class="kt">pthread_t</span>   <span class="n">tid1</span><span class="p">,</span> <span class="n">tid2</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread 1&quot;</span><span class="p">);</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_join</span><span class="p">(</span><span class="n">tid1</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">fp</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t join with thread 1&quot;</span><span class="p">);</span>
+    <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;parent starting second thread</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid2</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn2</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread 2&quot;</span><span class="p">);</span>
+    <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="n">printfoo</span><span class="p">(</span><span class="s">&quot;parent:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fp</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When we run this program on Linux, we get:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">thread 1:</span>
+<span class="go">structure at 0x7f2c83682ed0</span>
+<span class="go">foo.a = 1</span>
+<span class="go">foo.b = 2</span>
+<span class="go">foo.c = 3</span>
+<span class="go">foo.d = 4</span>
+<span class="go">parent starting second thread</span>
+<span class="go">thread 2: ID is 139829159933696</span>
+<span class="go">parent:</span>
+<span class="go">structure at 0x7f2c83682ed0</span>
+<span class="go">foo.a = -2090321472</span>
+<span class="go">foo.b = 32556</span>
+<span class="go">foo.c = 1</span>
+<span class="go">foo.d = 0</span>
+</pre></div>
+
+
+<p>The contents of the structure (allocated on the stack of thread <em>tid1</em>) have changed by the time the main thread can access the structure. Note how the stack of the second thread (<em>tid2</em>) has overwritten the first thread’s stack. To solve this problem, we can either use a global structure or allocate the structure using <code>malloc</code>.</p>
+<h4 id="the-pthread_cancel-function">The <code>pthread_cancel</code> function</h4>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cancel</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>By default, <code>pthread_cancel</code> will cause the thread specified by <em>tid</em> to behave as if it had called <code>pthread_exit</code> with an argument of <code>PTHREAD_CANCELED</code>, though a thread can ignore or otherwise control how it is canceled.</li>
+<li><code>pthread_cancel</code> doesn’t wait for the thread to terminate; it merely makes the request.</li>
+</ul>
+<h4 id="the-pthread_cleanup_push-and-pthread_cleanup_pop-functions">The <code>pthread_cleanup_push</code> and <code>pthread_cleanup_pop</code> functions</h4>
+<p>A thread can arrange for functions to be called when it exits, similar to the way that the <code>atexit</code> function (<a href="../ch7/#atexit-function">Section 7.3</a>). The functions are known as <strong>thread cleanup handlers</strong>. More than one cleanup handler can be established for a thread. The handlers are recorded in a stack, which means that they are executed in the reverse order from that with which they were registered.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">void</span> <span class="nf">pthread_cleanup_push</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">rtn</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">pthread_cleanup_pop</span><span class="p">(</span><span class="kt">int</span> <span class="n">execute</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The <code>pthread_cleanup_push</code> function schedules the cleanup function, <em>rtn</em>, to be called with the single argument, <em>arg</em>, when the thread performs one of the following actions:</p>
+<ul>
+<li>Makes a call to <code>pthread_exit</code></li>
+<li>Responds to a cancellation request</li>
+<li>Makes a call to <code>pthread_cleanup_pop</code> with a nonzero execute argument</li>
+</ul>
+<p>If the <em>execute</em> argument is set to zero, the cleanup function is not called.</p>
+<p><code>pthread_cleanup_pop</code> removes the cleanup handler established by the last call to <code>pthread_cleanup_push</code>.</p>
+<p>Because they can be implemented as macros, they must be used in matched pairs within the same scope in a thread. The macro definition of <code>pthread_cleanup_push</code> can include a <code>{</code> character, in which case the matching <code>}</code> character is in the <code>pthread_cleanup_pop</code> definition.</p>
+<p>The following example shows how to use thread cleanup handlers. We need to match calls to <code>pthread_cleanup_pop</code> with the calls to <code>pthread_cleanup_push</code>; otherwise, the program might not compile. [p394]</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/cleanup.c">threads/cleanup.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">cleanup</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;cleanup: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">arg</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn1</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 1 start</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_push</span><span class="p">(</span><span class="n">cleanup</span><span class="p">,</span> <span class="s">&quot;thread 1 first handler&quot;</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_push</span><span class="p">(</span><span class="n">cleanup</span><span class="p">,</span> <span class="s">&quot;thread 1 second handler&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 1 push complete</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">1</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_pop</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_pop</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn2</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 2 start</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_push</span><span class="p">(</span><span class="n">cleanup</span><span class="p">,</span> <span class="s">&quot;thread 2 first handler&quot;</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_push</span><span class="p">(</span><span class="n">cleanup</span><span class="p">,</span> <span class="s">&quot;thread 2 second handler&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 2 push complete</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="n">pthread_exit</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">2</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_pop</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">pthread_cleanup_pop</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">pthread_exit</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">2</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span>         <span class="n">err</span><span class="p">;</span>
+    <span class="kt">pthread_t</span>   <span class="n">tid1</span><span class="p">,</span> <span class="n">tid2</span><span class="p">;</span>
+    <span class="kt">void</span>        <span class="o">*</span><span class="n">tret</span><span class="p">;</span>
+
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn1</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread 1&quot;</span><span class="p">);</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid2</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn2</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread 2&quot;</span><span class="p">);</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_join</span><span class="p">(</span><span class="n">tid1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tret</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t join with thread 1&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 1 exit code %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">tret</span><span class="p">);</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_join</span><span class="p">(</span><span class="n">tid2</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tret</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t join with thread 2&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;thread 2 exit code %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">tret</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Running the program  on Linux gives us:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">thread 1 start</span>
+<span class="go">thread 1 push complete</span>
+<span class="go">thread 2 start</span>
+<span class="go">thread 2 push complete</span>
+<span class="go">cleanup: thread 2 second handler</span>
+<span class="go">cleanup: thread 2 first handler</span>
+<span class="go">thread 1 exit code 1</span>
+<span class="go">thread 2 exit code 2</span>
+</pre></div>
+
+
+<p>Note that if the thread terminates by returning from its start routine, its cleanup handlers are not called. [p396]</p>
+<p>The table below summarize similarities between the thread functions and the process functions.</p>
+<table>
+<thead>
+<tr>
+<th>Process primitive</th>
+<th>Thread primitive</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fork</code></td>
+<td><code>pthread_create</code></td>
+<td>create a new flow of control</td>
+</tr>
+<tr>
+<td><code>exit</code></td>
+<td><code>pthread_exit</code></td>
+<td>exit from an existing flow of control</td>
+</tr>
+<tr>
+<td><code>waitpid</code></td>
+<td><code>pthread_join</code></td>
+<td>get exit status from flow of control</td>
+</tr>
+<tr>
+<td><code>atexit</code></td>
+<td><code>pthread_cleanup_push</code></td>
+<td>register function to be called at exit from flow of control</td>
+</tr>
+<tr>
+<td><code>getpid</code></td>
+<td><code>pthread_self</code></td>
+<td>get ID for flow of control</td>
+</tr>
+<tr>
+<td><code>abort</code></td>
+<td><code>pthread_cancel</code></td>
+<td>request abnormal termination of flow of control</td>
+</tr>
+</tbody>
+</table>
+<h4 id="the-pthread_detach-function">The <code>pthread_detach</code> function</h4>
+<p>By default, a thread’s termination status is retained until we call <code>pthread_join</code> for that thread. A thread’s underlying storage can be reclaimed immediately on termination if the thread has been detached. After a thread is detached, we can’t use the <code>pthread_join</code> function to wait for its termination status, because calling <code>pthread_join</code> for a detached thread results in undefined behavior. We can detach a thread by calling <code>pthread_detach</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_detach</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>We can create a thread that is already in the detached state by modifying the thread attributes we pass to <code>pthread_create</code>. This is detailed in the next chapter.</p>
+<h3 id="thread-synchronization">Thread Synchronization</h3>
+<p>When multiple threads of control share the same memory, one thread can modify a variable that other threads can read or modify, thus we need to synchronize the threads to ensure that they don’t use an invalid value when accessing the variable’s memory contents.</p>
+<p>When one thread modifies a variable, other threads can potentially see inconsistencies when reading the value of that variable. On processor architectures in which the modification takes more than one memory cycle, this can happen when the memory read is interleaved between the memory write cycles.</p>
+<p>In the following figure, thread A reads the variable and then writes a new value to it, but the write operation takes two memory cycles.  If thread B reads the same variable between the two write cycles, it will see an inconsistent value:</p>
+<p><a href="../figure_11.7.png" title="Figure 11.7 Interleaved memory cycles with two threads"><img alt="Figure 11.7 Interleaved memory cycles with two threads" src="../figure_11.7.png" /></a></p>
+<p>To solve this problem, the threads have to use a lock that will allow only one thread to access the variable at a time, as show in the following figure:</p>
+<p><a href="../figure_11.8.png" title="Figure 11.8 Two threads synchronizing memory access"><img alt="Figure 11.8 Two threads synchronizing memory access" src="../figure_11.8.png" /></a></p>
+<ul>
+<li>If thread B wants to read the variable, it acquires a lock.</li>
+<li>When thread A updates the variable, it acquires the same lock. Thus thread B will be unable to read the variable until thread A releases the lock.</li>
+</ul>
+<p>We also need to synchronize two or more threads that might try to modify the same variable at the same time.</p>
+<p>For example (as in the following figure), the increment operation is usually broken down into three steps.</p>
+<ol>
+<li>Read the memory location into a register.</li>
+<li>Increment the value in the register.</li>
+<li>Write the new value back to the memory location.</li>
+</ol>
+<p><a href="../figure_11.9.png" title="Figure 11.9 Two unsynchronized threads incrementing the same variable"><img alt="Figure 11.9 Two unsynchronized threads incrementing the same variable" src="../figure_11.9.png" /></a></p>
+<p>If two threads try to increment the same variable at almost the same time without synchronizing with each other, the results can be inconsistent. [p398]</p>
+<p>There is no race if one of the following (assumed) condition occurs:</p>
+<ul>
+<li>The modification is atomic.</li>
+<li>(In the previous example) The increment takes only one memory cycle.</li>
+<li>Data always appears to be <a href="https://en.wikipedia.org/wiki/Sequential_consistency"><strong>sequentially consistent</strong></a>.</li>
+</ul>
+<p>Our operations are sequentially consistent when multiple threads can’t observe inconsistencies in our data. In modern computer systems, memory accesses take multiple bus cycles, and multiprocessors generally interleave bus cycles among multiple processors, so we aren’t guaranteed that our data is sequentially consistent.</p>
+<p>[p399]</p>
+<p>Besides the computer architecture, races can arise from the ways in which our programs use variables, creating places where it is possible to view inconsistencies. For example, we might increment a variable and then make a decision based on its value. The combination of the increment step and the decision-making step isn’t atomic, which opens a window where inconsistencies can arise.</p>
+<h4 id="mutexes">Mutexes</h4>
+<p>We can protect our data and ensure access by only one thread at a time by using the pthreads mutual-exclusion interfaces. A <a href="https://en.wikipedia.org/wiki/Mutual_exclusion"><strong>mutex</strong></a> is basically a lock that we set (lock) before accessing a shared resource and release (unlock) when we’re done.</p>
+<ul>
+<li>While it is set, any other thread that tries to set it will block until we release it.</li>
+<li>If more than one thread is blocked when we unlock the mutex, then all threads blocked on the lock will be made runnable, and the first one to run will be able to set the lock. The others will see that the mutex is still locked and go back to waiting for it to become available again.</li>
+</ul>
+<p>In this way, only one thread will proceed at a time.</p>
+<p>[p400]</p>
+<p>A mutex variable is represented by the <code>pthread_mutex_t</code> data type. Before we can use a mutex variable, we must first initialize it by either setting it to the constant <code>PTHREAD_MUTEX_INITIALIZER</code> (for statically allocated mutexes only) or calling <code>pthread_mutex_init</code>. If we allocate the mutex dynamically (by calling <code>malloc</code>, for example), then we need to call <code>pthread_mutex_destroy</code> before freeing the memory.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_init</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                       <span class="k">const</span> <span class="kt">pthread_mutexattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_destroy</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="../ch12/#synchronization-attributes">Section 12.4</a>).</p>
+<p>To lock a mutex, we call <code>pthread_mutex_lock</code>. If the mutex is already locked, the calling thread will block until the mutex is unlocked. To unlock a mutex, we call <code>pthread_mutex_unlock</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_lock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_trylock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_unlock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+
+<span class="cm">/* All return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>If a thread can’t afford to block, it can use <code>pthread_mutex_trylock</code> to lock the mutex conditionally. If the mutex is unlocked at the time <code>pthread_mutex_trylock</code> is called, then <code>pthread_mutex_trylock</code> will lock the mutex without blocking and return 0. Otherwise, <code>pthread_mutex_trylock</code> will fail, returning <code>EBUSY</code> without locking the mutex.</p>
+<p>The following example illustrates a mutex used to protect a data structure. When more than one thread needs to access a dynamically allocated object, we can embed a reference count in the object to ensure that we don’t free its memory before all threads are done using it.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex1.c">threads/mutex1.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_alloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* allocate the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span><span class="p">)))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">=</span> <span class="n">id</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_mutex_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="cm">/* ... continue initialization ... */</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_hold</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* add a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_rele</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* release a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* last reference */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_destroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>We lock the mutex before incrementing the reference count, decrementing the reference count, and checking whether the reference count reaches zero.</li>
+<li><u>No locking is necessary when we initialize the reference count to 1 in the <code>foo_alloc</code> function, because the allocating thread is the only reference to it so far.</u> If we were to place the structure on a list at this point, it could be found by other threads, so we would need to lock it first.</li>
+</ul>
+<p>Before using the object, threads are expected to add a reference to it by calling <code>foo_hold</code>. When they are done, they must call <code>foo_rele</code> to release the reference. When the last reference is released, the object’s memory is freed.</p>
+<p>In this example, we have ignored how threads find an object before calling <code>foo_hold</code>. Even though the reference count is zero, it would be a mistake for <code>foo_rele</code> to free the object’s memory if another thread is blocked on the mutex in a call to <code>foo_hold</code>. We can avoid this problem by ensuring that the object can’t be found before freeing its memory. We’ll see how to do this in the examples that follow.</p>
+<h3 id="deadlock-avoidance">Deadlock Avoidance</h3>
+<p>A thread will deadlock itself if it tries to lock the same mutex twice. There are less obvious ways to create deadlocks with mutexes. For example, when we use more than one mutex in our programs, a deadlock can occur if we allow one thread to hold a mutex and block while trying to lock a second mutex at the same time that another thread holding the second mutex tries to lock the first mutex. Neither thread can proceed, because each needs a resource that is held by the other.</p>
+<p>Deadlocks can be avoided by carefully controlling the order in which mutexes are locked. For example, assume that you have two mutexes, A and B, that you need to lock at the same time. If all threads always lock mutex A before mutex B (vice versa), no deadlock can occur from the use of the two mutexes (but you can still deadlock on other resources). You’ll have the potential for a deadlock only when one thread attempts to lock the mutexes in the opposite order from another thread.</p>
+<p>Another approach when many locks and data structures are involved (it is difficult to apply the previous approach) is that you might be able to release your locks and try again at a later time. You can use the <code>pthread_mutex_trylock</code> interface to avoid deadlocking in this case. If you are already holding locks and <code>pthread_mutex_trylock</code> is successful, then you can proceed. If it can’t acquire the lock, however, you can release the locks you already hold, clean up, and try again later.</p>
+<h4 id="example-of-two-mutexes">Example of two mutexes</h4>
+<p>In the following example which shows the use of two mutexes, we avoid deadlocks by ensuring that when we need to acquire two mutexes at the same time, we always lock them in the same order. The second mutex protects a hash list that we use to keep track of the foo data structures. Thus the hashlock mutex protects both the fh hash table and the <code>f_next</code> hash link field in the foo structure. The <code>f_lock</code> mutex in the foo structure protects access to the remainder of the foo structure’s fields.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex2.c">threads/mutex2.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="cp">#define NHASH 29</span>
+<span class="cp">#define HASH(id) (((unsigned long)id)%NHASH)</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fh</span><span class="p">[</span><span class="n">NHASH</span><span class="p">];</span>
+
+<span class="kt">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">foo</span>     <span class="o">*</span><span class="n">f_next</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_alloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* allocate the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span><span class="p">)))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">=</span> <span class="n">id</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_mutex_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="p">;</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="cm">/* ... continue initialization ... */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_hold</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* add a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_find</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* find an existing object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">)];</span> <span class="n">fp</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="n">fp</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">==</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">foo_hold</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_rele</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* release a reference to the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">tfp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* last reference */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="cm">/* need to recheck the condition */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">--</span><span class="p">;</span>
+            <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+            <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="cm">/* remove from list */</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span><span class="p">);</span>
+        <span class="n">tfp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tfp</span> <span class="o">==</span> <span class="n">fp</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">!=</span> <span class="n">fp</span><span class="p">)</span>
+                <span class="n">tfp</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+            <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_destroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">--</span><span class="p">;</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Comparing <a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex2.c">threads/mutex2.c</a> with <a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex1.c">threads/mutex1.c</a>, we can see;</p>
+<ul>
+<li>The allocation function <code>foo_alloc</code> now locks the hash list lock, adds the new structure to a hash bucket, and <u>before unlocking the hash list lock, locks the mutex in the new structure.</u> Since the new structure is placed on a global list, other threads can find it, so we need to block them if they try to access the new structure, until we are done initializing it.</li>
+<li>The <code>foo_find</code> function locks the hash list lock and searches for the requested structure. If it is found, we increase the reference count and return a pointer to the structure. This follows the lock ordering by locking the hash list lock in <code>foo_find</code> before <code>foo_hold</code> locks the foo structure’s f_lock mutex.</li>
+<li>With two locks, the <code>foo_rele</code> function is more complicated. If this is the last reference, we need to unlock the structure mutex so that we can acquire the hash list lock, since we’ll need to remove the structure from the hash list. Then we reacquire the structure mutex. Because we could have blocked since the last time we held the structure mutex, we need to recheck the condition to see whether we still need to free the structure. If another thread found the structure and added a reference to it while we blocked to honor the lock ordering, we simply need to decrement the reference count, unlock everything, and return.</li>
+</ul>
+<h4 id="example-of-two-mutexes-simplified">Example of two mutexes (simplified)</h4>
+<p>We can simplify the previous example considerably by using the hash list lock to protect the structure reference count. The structure mutex can be used to protect everything else in the <code>foo</code> structure.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex3.c">threads/mutex3.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="cp">#define NHASH 29</span>
+<span class="cp">#define HASH(id) (((unsigned long)id)%NHASH)</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fh</span><span class="p">[</span><span class="n">NHASH</span><span class="p">];</span>
+<span class="kt">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
+    <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">foo</span>     <span class="o">*</span><span class="n">f_next</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_alloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* allocate the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fp</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span><span class="p">)))</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">=</span> <span class="n">id</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_mutex_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="p">;</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="cm">/* ... continue initialization ... */</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_hold</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* add a reference to the object */</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span>
+<span class="nf">foo_find</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="cm">/* find an existing object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">HASH</span><span class="p">(</span><span class="n">id</span><span class="p">)];</span> <span class="n">fp</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="n">fp</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span> <span class="o">==</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span><span class="o">++</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">foo_rele</span><span class="p">(</span><span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fp</span><span class="p">)</span> <span class="cm">/* release a reference to the object */</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">tfp</span><span class="p">;</span>
+    <span class="kt">int</span>         <span class="n">idx</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* last reference, remove from list */</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">HASH</span><span class="p">(</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_id</span><span class="p">);</span>
+        <span class="n">tfp</span> <span class="o">=</span> <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tfp</span> <span class="o">==</span> <span class="n">fp</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fh</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">!=</span> <span class="n">fp</span><span class="p">)</span>
+                <span class="n">tfp</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+            <span class="n">tfp</span><span class="o">-&gt;</span><span class="n">f_next</span> <span class="o">=</span> <span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_next</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+        <span class="n">pthread_mutex_destroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fp</span><span class="o">-&gt;</span><span class="n">f_lock</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hashlock</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example, we solved the lock-ordering issues surrounding the hash list and the reference count when we use the same lock for both purposes. Multithreaded software design involves these types of trade-offs:</p>
+<ul>
+<li>If the locking granularity is too coarse, you end up with too many threads blocking behind the same locks, with little improvement possible from concurrency.</li>
+<li>If the locking granularity is too fine, then you suffer bad performance from excess locking overhead, and you end up with complex code.</li>
+</ul>
+<p>As a programmer, you need to find the correct balance between code complexity and performance, while still satisfying your locking requirements.</p>
+<h4 id="pthread_mutex_timedlock-function"><code>pthread_mutex_timedlock</code> Function</h4>
+<p>The <code>pthread_mutex_timedlock</code> function allows us to bound the time that a thread blocks when a mutex it is trying to acquire is already locked is equivalent to <code>pthread_mutex_lock</code>, but if the timeout value is reached, <code>pthread_mutex_timedlock</code> will return the error code <code>ETIMEDOUT</code> without locking the mutex:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_mutex_timedlock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The timeout is represented by the <code>timespec</code> structure (seconds and nanoseconds) and is <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_timedlock.html">absolute time</a>.</p>
+<p>The following example uses <code>pthread_mutex_timedlock</code> to avoid blocking indefinitely:</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/timedlock.c">threads/timedlock.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">err</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">timespec</span> <span class="n">tout</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">tm</span> <span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">64</span><span class="p">];</span>
+    <span class="kt">pthread_mutex_t</span> <span class="n">lock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;mutex is locked</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">clock_gettime</span><span class="p">(</span><span class="n">CLOCK_REALTIME</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tout</span><span class="p">);</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">localtime</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tout</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">);</span>
+    <span class="n">strftime</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&quot;%r&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;current time is %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+    <span class="n">tout</span><span class="p">.</span><span class="n">tv_sec</span> <span class="o">+=</span> <span class="mi">10</span><span class="p">;</span>  <span class="cm">/* 10 seconds from now */</span>
+    <span class="cm">/* caution: this could lead to deadlock */</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_mutex_timedlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tout</span><span class="p">);</span>
+    <span class="n">clock_gettime</span><span class="p">(</span><span class="n">CLOCK_REALTIME</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tout</span><span class="p">);</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">localtime</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tout</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">);</span>
+    <span class="n">strftime</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&quot;%r&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;the time is now %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;mutex locked again!</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">else</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;can&#39;t lock mutex again: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">err</span><span class="p">));</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following is the output:</p>
+<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<span class="go">mutex is locked</span>
+<span class="go">current time is 11:41:58 AM</span>
+<span class="go">the time is now 11:42:08 AM</span>
+<span class="go">can’t lock mutex again: Connection timed out</span>
+</pre></div>
+
+
+<p>This strategy is not recommended in practice, because it can lead to deadlock.</p>
+<p>Mac OS X 10.6.8 doesn’t support <code>pthread_mutex_timedlock</code> yet, but FreeBSD 8.0, Linux 3.2.0, and Solaris 10 do support it.</p>
+<h4 id="readerwriter-locks">Reader–Writer Locks</h4>
+<p>The state of a mutex is either locked or unlocked, and only one thread can lock it at a time. A reader–writer lock (also called shared–exclusive lock) has three possible states:</p>
+<ul>
+<li>Locked in read mode (also called locked in shared mode)</li>
+<li>Locked in write mode (also called locked in exclusive mode)</li>
+<li>Unlocked
+Only one thread at a time can hold a reader–writer lock in write mode, but multiple threads can hold a reader–writer lock in read mode at the same time.</li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_init</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                        <span class="k">const</span> <span class="kt">pthread_rwlockattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_destroy</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>A reader–writer lock is initialized by <code>pthread_rwlock_init</code>. A <code>NULL</code> value of <em>attr</em> indicates default attributes.</p>
+<p>Before freeing the memory backing a reader–writer lock, we need to call <code>pthread_rwlock_destroy</code> to clean it up. If <code>pthread_rwlock_init</code> allocated any resources for the reader–writer lock, <code>pthread_rwlock_destroy</code> frees those resources. If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost (see <a href="#doubts-and-solutions">Doubts and Solutions</a>).</p>
+<p>A reader–writer lock can be read locked, write locked and unlocked with the following functions:</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_rdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_wrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_unlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+
+<span class="cm">/* All return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>Implementations might limit the number of times a reader–writer lock can be locked in shared mode, so we need to check the return value of <code>pthread_rwlock_rdlock</code>.</li>
+<li><code>pthread_rwlock_wrlock</code> and <code>pthread_rwlock_unlock</code> have error returns and technically we should always check for errors when we call functions that can potentially fail. However, if we design our locking properly, we don’t need to check for errors. [p410]</li>
+</ul>
+<p>The SUS also defines conditional versions of the reader–writer locking primitives.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_tryrdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_trywrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>When the lock can be acquired, these functions return 0. Otherwise, they return the error <code>EBUSY</code>. These functions can be used to avoid deadlocks in situations where conforming to a lock hierarchy is difficult.</p>
+<p>The program below illustrates the use of reader–writer locks. A queue of job requests is protected by a single reader–writer lock. This example shows a possible implementation of <a href="../figure_11.1.png">Figure 11.1</a>, whereby multiple worker threads obtain jobs assigned to them by a single master thread.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/rwlock.c">threads/rwlock.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">job</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">j_next</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">j_prev</span><span class="p">;</span>
+    <span class="kt">pthread_t</span>   <span class="n">j_id</span><span class="p">;</span>   <span class="cm">/* tells which thread handles this job */</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">queue</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">job</span>      <span class="o">*</span><span class="n">q_head</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">job</span>      <span class="o">*</span><span class="n">q_tail</span><span class="p">;</span>
+    <span class="kt">pthread_rwlock_t</span> <span class="n">q_lock</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Initialize a queue.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span>
+<span class="nf">queue_init</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">err</span><span class="p">;</span>
+
+    <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_rwlock_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">err</span><span class="p">);</span>
+    <span class="cm">/* ... continue initialization ... */</span>
+    <span class="k">return</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Insert a job at the head of the queue.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span>
+<span class="nf">job_insert</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">,</span> <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">jp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pthread_rwlock_wrlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+    <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span> <span class="o">=</span> <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span><span class="p">;</span>
+    <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span><span class="o">-&gt;</span><span class="n">j_prev</span> <span class="o">=</span> <span class="n">jp</span><span class="p">;</span>
+    <span class="k">else</span>
+        <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">=</span> <span class="n">jp</span><span class="p">;</span>    <span class="cm">/* list was empty */</span>
+    <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span> <span class="o">=</span> <span class="n">jp</span><span class="p">;</span>
+    <span class="n">pthread_rwlock_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Append a job on the tail of the queue.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span>
+<span class="nf">job_append</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">,</span> <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">jp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pthread_rwlock_wrlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+    <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span> <span class="o">=</span> <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span><span class="o">-&gt;</span><span class="n">j_next</span> <span class="o">=</span> <span class="n">jp</span><span class="p">;</span>
+    <span class="k">else</span>
+        <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span> <span class="o">=</span> <span class="n">jp</span><span class="p">;</span>    <span class="cm">/* list was empty */</span>
+    <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">=</span> <span class="n">jp</span><span class="p">;</span>
+    <span class="n">pthread_rwlock_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Remove the given job from a queue.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span>
+<span class="nf">job_remove</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">,</span> <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">jp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pthread_rwlock_wrlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">jp</span> <span class="o">==</span> <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">==</span> <span class="n">jp</span><span class="p">)</span>
+            <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">else</span>
+            <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span><span class="o">-&gt;</span><span class="n">j_prev</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">jp</span> <span class="o">==</span> <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_tail</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span><span class="p">;</span>
+        <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span><span class="o">-&gt;</span><span class="n">j_next</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span><span class="o">-&gt;</span><span class="n">j_next</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span><span class="p">;</span>
+        <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span><span class="o">-&gt;</span><span class="n">j_prev</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_prev</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">pthread_rwlock_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Find a job for the given thread ID.</span>
+<span class="cm"> */</span>
+<span class="k">struct</span> <span class="n">job</span> <span class="o">*</span>
+<span class="nf">job_find</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">,</span> <span class="kt">pthread_t</span> <span class="n">id</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">jp</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">pthread_rwlock_rdlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">jp</span> <span class="o">=</span> <span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_head</span><span class="p">;</span> <span class="n">jp</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="n">jp</span> <span class="o">=</span> <span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_next</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pthread_equal</span><span class="p">(</span><span class="n">jp</span><span class="o">-&gt;</span><span class="n">j_id</span><span class="p">,</span> <span class="n">id</span><span class="p">))</span>
+            <span class="k">break</span><span class="p">;</span>
+
+    <span class="n">pthread_rwlock_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qp</span><span class="o">-&gt;</span><span class="n">q_lock</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">jp</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example, we lock the queue’s reader–writer lock in write mode whenever we need to add a job to the queue or remove a job from the queue. Whenever we search the queue, we grab the lock in read mode, allowing all the worker threads to search the queue concurrently. Using a reader–writer lock will improve performance in this case only if threads search the queue much more frequently than they add or remove jobs. The worker threads take only those jobs that match their thread ID off the queue. Since the job structures are used only by one thread at a time, they don’t need any extra locking.</p>
+<h4 id="readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts</h4>
+<p>As with mutexes, the SUS provides functions to lock reader–writer locks with a timeout to give applications a way to avoid blocking
+indefinitely while trying to acquire a reader–writer lock.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<span class="cp">#include &lt;time.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_rwlock_timedrdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_timedwrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The <em>tsptr</em> argument points to a <code>timespec</code> structure specifying the time at which the thread should stop blocking. If they can’t acquire the lock, these functions return the <code>ETIMEDOUT</code> error when the timeout expires. Like the <code>pthread_mutex_timedlock</code> function, the timeout specifies an absolute time, not a relative one.</p>
+<h4 id="condition-variables">Condition Variables</h4>
+<p>Condition variables are another synchronization mechanism available to threads. These synchronization objects provide a place for threads to rendezvous. When used with mutexes, condition variables allow threads to wait in a race-free way for arbitrary conditions to occur.</p>
+<p>The condition itself is protected by a mutex. A thread must first lock the mutex to change the condition state. Other threads will not notice the change until they acquire the mutex, because the mutex must be locked to be able to evaluate the condition.</p>
+<p>A condition variable, represented by the pthread_cond_t data type, must be initialized and can be initialized in two ways:</p>
+<ul>
+<li>Assign the constant <code>PTHREAD_COND_INITIALIZER</code> to a statically allocated condition</li>
+<li>Use the <code>pthread_cond_init</code> function to initialize a dynamically allocated condition</li>
+</ul>
+<p><code>pthread_cond_destroy</code> deinitializes a condition variable before freeing its underlying memory.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_init</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                      <span class="k">const</span> <span class="kt">pthread_condattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_destroy</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>Unless using nondefault attributes, the <em>attr</em> argument to <code>pthread_cond_init</code> can be set to <code>NULL</code>.</p>
+<p>We use <code>pthread_cond_wait</code> to wait for a condition to be true. A variant <code>pthread_cond_timedwait</code> is provided to return an error code if the condition hasn’t been satisfied in the specified amount of time.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_wait</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                      <span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_timedwait</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                           <span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The mutex passed to <code>pthread_cond_wait</code> protects the condition. <u>The caller passes the locked mutex to the function, which then atomically places the calling thread on the list of threads waiting for the condition and unlocks the mutex. This closes the window between the time that the condition is checked and the time that the thread goes to sleep waiting for the condition to change, so that the thread doesn’t miss a change in the condition. When <code>pthread_cond_wait</code> returns, the mutex is again locked.</u></p>
+<p>The <code>pthread_cond_timedwait</code> function provides the same functionality as the <code>pthread_cond_wait</code> function with the addition of the timeout (<em>tsptr</em>). The timeout value specifies how long we are willing to wait expressed as a <em>timespec</em> structure, as an absolute time instead of a relative time, as in the <a href="#pthread_mutex_timedlock-function">example</a> of <code>pthread_mutex_timedlock</code>.</p>
+<p>Alternatively to the <code>clock_gettime</code> function, we can use the <code>gettimeofday</code> function to get the current time expressed as a timeval structure and translate it into a <code>timespec</code> structure. The following function can be used to obtain the absolute time for the timeout value</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/maketimeout.c">threads/maketimeout.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;sys/time.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">void</span>
+<span class="nf">maketimeout</span><span class="p">(</span><span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">tsp</span><span class="p">,</span> <span class="kt">long</span> <span class="n">minutes</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">timeval</span> <span class="n">now</span><span class="p">;</span>
+
+    <span class="cm">/* get the current time */</span>
+    <span class="n">gettimeofday</span><span class="p">(</span><span class="o">&amp;</span><span class="n">now</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">tsp</span><span class="o">-&gt;</span><span class="n">tv_sec</span> <span class="o">=</span> <span class="n">now</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">;</span>
+    <span class="n">tsp</span><span class="o">-&gt;</span><span class="n">tv_nsec</span> <span class="o">=</span> <span class="n">now</span><span class="p">.</span><span class="n">tv_usec</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">;</span> <span class="cm">/* usec to nsec */</span>
+    <span class="cm">/* add the offset to get timeout value */</span>
+    <span class="n">tsp</span><span class="o">-&gt;</span><span class="n">tv_sec</span> <span class="o">+=</span> <span class="n">minutes</span> <span class="o">*</span> <span class="mi">60</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If the timeout expires without the condition occurring, <code>pthread_cond_timedwait</code> will reacquire the mutex and return the error <code>ETIMEDOUT</code>. When it returns from a successful call to <code>pthread_cond_wait</code> or <code>pthread_cond_timedwait</code>, a thread needs to reevaluate the condition, since another thread might have run and already changed the condition.</p>
+<p>There are two functions to notify threads that a condition has been satisfied. The <code>pthread_cond_signal</code> function will wake up at least one thread waiting on a condition (The POSIX specification allows for implementations of <code>pthread_cond_signal</code> to wake up more than one thread, to make the implementation simpler.), whereas the <code>pthread_cond_broadcast</code> function will wake up all threads waiting on a condition.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_cond_signal</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_broadcast</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>When we call <code>pthread_cond_signal</code> or <code>pthread_cond_broadcast</code>, we are said to be signaling the thread or condition. We have to be careful to signal the threads only after changing the state of the condition.</p>
+<p>The following example shows how to use a condition variable and a mutex together to synchronize threads.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/condvar.c">threads/condvar.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">msg</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">m_next</span><span class="p">;</span>
+    <span class="cm">/* ... more stuff here ... */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">workq</span><span class="p">;</span>
+
+<span class="kt">pthread_cond_t</span> <span class="n">qready</span> <span class="o">=</span> <span class="n">PTHREAD_COND_INITIALIZER</span><span class="p">;</span>
+
+<span class="kt">pthread_mutex_t</span> <span class="n">qlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+
+<span class="kt">void</span>
+<span class="nf">process_msg</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">mp</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+        <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">workq</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+            <span class="n">pthread_cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qready</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="n">workq</span><span class="p">;</span>
+        <span class="n">workq</span> <span class="o">=</span> <span class="n">mp</span><span class="o">-&gt;</span><span class="n">m_next</span><span class="p">;</span>
+        <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+        <span class="cm">/* now process the message mp */</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span>
+<span class="nf">enqueue_msg</span><span class="p">(</span><span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">mp</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+    <span class="n">mp</span><span class="o">-&gt;</span><span class="n">m_next</span> <span class="o">=</span> <span class="n">workq</span><span class="p">;</span>
+    <span class="n">workq</span> <span class="o">=</span> <span class="n">mp</span><span class="p">;</span>
+    <span class="n">pthread_mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qlock</span><span class="p">);</span>
+    <span class="n">pthread_cond_signal</span><span class="p">(</span><span class="o">&amp;</span><span class="n">qready</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li><u>The condition is the state of the work queue.</u></li>
+<li>We protect the condition with a mutex and evaluate the condition in a <code>while</code> loop.</li>
+<li>When we put a message on the work queue, we need to hold the mutex, but we don’t need to hold the mutex when we signal the waiting threads.</li>
+<li>As long as it is okay for a thread to pull the message off the queue before we call <code>pthread_cond_signal</code>, we can do this after releasing the mutex. Since we check the condition in a <code>while</code> loop, this doesn’t present a problem; a thread will wake up, find that the queue is still empty, and go back to waiting again. If the code couldn’t tolerate this race, we would need to hold the mutex when we signal the threads.</li>
+</ul>
+<h4 id="spin-locks">Spin Locks</h4>
+<p>A <strong>spin lock</strong> is like a mutex, except that instead of blocking a process by sleeping, the process is blocked by busy-waiting (spinning) until the lock can be acquired. <u>A spin lock could be used in situations where locks are held for short periods of times and threads don’t want to incur the cost of being descheduled.</u></p>
+<p>Spin locks are often used as low-level primitives to implement other types of locks. They can be implemented efficiently using <a href="https://en.wikipedia.org/wiki/Test-and-set">test-and-set</a> instructions. Although efficient, they can lead to wasting CPU resources: while a thread is spinning and waiting for a lock to become available, the CPU can’t do anything else. <u>This is why spin locks should be held only for short periods of time.</u></p>
+<ul>
+<li><strong>Kernel-space</strong>. Spin locks are useful when used in a nonpreemptive kernel. Besides providing a mutual exclusion mechanism, they block interrupts so an interrupt handler can’t deadlock the system by trying to acquire a spin lock that is already locked (think of interrupts as another type of preemption). In these types of kernels, interrupt handlers can’t sleep, so the only synchronization primitives they can use are spin locks.</li>
+<li><strong>User-space</strong>. Spin locks are not as useful unless you are running in a realtime scheduling class that doesn’t allow preemption. User-level threads running in a time-sharing scheduling class can be descheduled when their time quantum expires or when a thread with a higher scheduling priority becomes runnable. In these cases, if a thread is holding a spin lock, it will be put to sleep and other threads blocked on the lock will continue spinning longer than intended.</li>
+</ul>
+<p>Many mutex implementations are efficient: using mutex locks is equivalent to using spin locks in terms of an application's performance. Some mutex implementations will spin for a limited amount of time trying to acquire the mutex, and only sleep when the spin count threshold is reached. These factors, combined with faster context switch in modern processors, make spin locks useful only in limited circumstances. [p417]</p>
+<p>Similar to mutex (we can replace one with the other), we can initialize a spin lock with the <code>pthread_spin_init</code> function. To deinitialize a spin lock, we can call the <code>pthread_spin_destroy</code> function.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_spin_init</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">,</span> <span class="kt">int</span> <span class="n">pshared</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_destroy</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>Only one attribute is specified for spin locks, which matters only if the platform supports the Thread Process-Shared Synchronization option.</li>
+<li>The <em>pshared</em> argument represents the process-shared attribute, which indicates how the spin lock will be acquired.<ul>
+<li>If it is set to <code>PTHREAD_PROCESS_SHARED</code>, then the spin lock can be acquired by threads that have access to the lock’s underlying memory, even if those threads are from different processes.</li>
+<li>Otherwise, the <em>pshared</em> argument is set to <code>PTHREAD_PROCESS_PRIVATE</code> and the spin lock can be accessed only from threads within the process that initialized it.</li>
+</ul>
+</li>
+</ul>
+<p>To lock the spin lock, we can call either of the following:
+<em> <code>pthread_spin_lock</code>, which will spin until the lock is acquired
+</em> pthread_spin_trylock, which will return the <code>EBUSY</code> error if the lock can’t be acquired immediately. <u>Note that <code>pthread_spin_trylock</code> doesn’t spin.</u></p>
+<p>Regardless of how it was locked, a spin lock can be unlocked by calling <code>pthread_spin_unlock</code>.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_spin_lock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_trylock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_unlock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+
+<span class="cm">/* All return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>If a spin lock is currently unlocked, then the <code>pthread_spin_lock</code> function can lock it without spinning.</li>
+<li>If the thread already has it locked, the results are undefined. The call to <code>pthread_spin_lock</code> could fail with the <code>EDEADLK</code> error (or some other error), or the call could spin indefinitely. The behavior depends on the implementation.</li>
+<li>If we try to unlock a spin lock that is not locked, the results are also undefined.</li>
+</ul>
+<p><u>If either <code>pthread_spin_lock</code> or <code>pthread_spin_trylock</code> returns 0, then the spin lock is locked. We need to be careful not to call any functions that might sleep while holding the spin lock. Otherwise, other threads trying to acquire it will spin, wasting CPU resources.</u></p>
+<h4 id="barriers">Barriers</h4>
+<p>Barriers are a synchronization mechanism to coordinate multiple threads working in parallel. A barrier allows each thread to wait until all cooperating
+threads have reached the same point, and then continue executing from there. The <code>pthread_join</code> function acts as a barrier to allow one thread to wait until another thread exits.</p>
+<p>Barrier objects are more general. They allow an arbitrary number of threads to wait until all of the threads have completed processing, but <u>the threads don’t have to exit. They can continue working after all threads have reached the barrier.</u></p>
+<p>The <code>pthread_barrier_init</code> function initializes a barrier, and <code>pthread_barrier_destroy</code> function deinitializes a barrier.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_barrier_init</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">barrier</span><span class="p">,</span>
+                         <span class="k">const</span> <span class="kt">pthread_barrierattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
+                         <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">count</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_barrier_destroy</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
+
+<span class="cm">/* Both return: 0 if OK, error number on failure */</span>
+</pre></div>
+
+
+<ul>
+<li>
+<p>The <em>count</em> argument for <code>pthread_barrier_init</code> specifies the number of threads that must reach the barrier before all of the threads will be allowed to continue.</p>
+</li>
+<li>
+<p>The <em>attr</em> argument specifies the attributes of the barrier object (<code>NULL</code> for default attributes).</p>
+</li>
+</ul>
+<p>If the <code>pthread_barrier_init</code> function allocated any resources for the barrier, the resources will be freed when we deinitialize the barrier by calling the <code>pthread_barrier_destroy</code> function.</p>
+<p>The <code>pthread_barrier_wait</code> function indicates that a thread is done with its work and is ready to wait for all the other threads to catch up.</p>
+<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">pthread_barrier_wait</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
+
+<span class="cm">/* Returns: 0 or PTHREAD_BARRIER_SERIAL_THREAD if OK, error number on failure */</span>
+</pre></div>
+
+
+<p>The thread calling <code>pthread_barrier_wait</code> is put to sleep if the barrier count (set in the call to <code>pthread_barrier_init</code>) is not yet satisfied. If the thread is the last one to call <code>pthread_barrier_wait</code>, thereby satisfying the barrier count, all of the threads are awakened.</p>
+<p>To one arbitrary thread, it will appear as if the <code>pthread_barrier_wait</code> function returned a value of <code>PTHREAD_BARRIER_SERIAL_THREAD</code>. The remaining threads see a return value of 0. This allows one thread to continue as the master to act on the results of the work done by all of the other threads.</p>
+<ul>
+<li>Once the barrier count is reached and the threads are unblocked, the barrier can be used again.</li>
+<li>The barrier count can’t be changed unless we call the <code>pthread_barrier_destroy</code> function followed by the <code>pthread_barrier_init</code> function with a different count.</li>
+</ul>
+<p>The following example shows how a barrier can be used to synchronize threads cooperating on a single task.</p>
+<p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/barrier.c">threads/barrier.c</a></small></p>
+<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<span class="cp">#include &lt;pthread.h&gt;</span>
+<span class="cp">#include &lt;limits.h&gt;</span>
+<span class="cp">#include &lt;sys/time.h&gt;</span>
+
+<span class="cp">#define NTHR   8                </span><span class="cm">/* number of threads */</span><span class="cp"></span>
+<span class="cp">#define NUMNUM 8000000L         </span><span class="cm">/* number of numbers to sort */</span><span class="cp"></span>
+<span class="cp">#define TNUM   (NUMNUM/NTHR)    </span><span class="cm">/* number to sort per thread */</span><span class="cp"></span>
+
+<span class="kt">long</span> <span class="n">nums</span><span class="p">[</span><span class="n">NUMNUM</span><span class="p">];</span>
+<span class="kt">long</span> <span class="n">snums</span><span class="p">[</span><span class="n">NUMNUM</span><span class="p">];</span>
+
+<span class="kt">pthread_barrier_t</span> <span class="n">b</span><span class="p">;</span>
+
+<span class="cp">#ifdef SOLARIS</span>
+<span class="cp">#define heapsort qsort</span>
+<span class="cp">#else</span>
+<span class="k">extern</span> <span class="kt">int</span> <span class="nf">heapsort</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span>
+                    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="p">));</span>
+<span class="cp">#endif</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Compare two long integers (helper function for heapsort)</span>
+<span class="cm"> */</span>
+<span class="kt">int</span>
+<span class="nf">complong</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg1</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg2</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">long</span> <span class="n">l1</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">long</span> <span class="o">*</span><span class="p">)</span><span class="n">arg1</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="n">l2</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">long</span> <span class="o">*</span><span class="p">)</span><span class="n">arg2</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">l1</span> <span class="o">==</span> <span class="n">l2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">l1</span> <span class="o">&lt;</span> <span class="n">l2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="k">else</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Worker thread to sort a portion of the set of numbers.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="o">*</span>
+<span class="nf">thr_fn</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">long</span>    <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">arg</span><span class="p">;</span>
+
+    <span class="n">heapsort</span><span class="p">(</span><span class="o">&amp;</span><span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">TNUM</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">long</span><span class="p">),</span> <span class="n">complong</span><span class="p">);</span>
+    <span class="n">pthread_barrier_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Go off and perform more work ...</span>
+<span class="cm">     */</span>
+    <span class="k">return</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Merge the results of the individual sorted ranges.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span>
+<span class="nf">merge</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">long</span>    <span class="n">idx</span><span class="p">[</span><span class="n">NTHR</span><span class="p">];</span>
+    <span class="kt">long</span>    <span class="n">i</span><span class="p">,</span> <span class="n">minidx</span><span class="p">,</span> <span class="n">sidx</span><span class="p">,</span> <span class="n">num</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NTHR</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">TNUM</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">sidx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">sidx</span> <span class="o">&lt;</span> <span class="n">NUMNUM</span><span class="p">;</span> <span class="n">sidx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">LONG_MAX</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NTHR</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">TNUM</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="n">num</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">num</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]];</span>
+                <span class="n">minidx</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">snums</span><span class="p">[</span><span class="n">sidx</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">minidx</span><span class="p">]];</span>
+        <span class="n">idx</span><span class="p">[</span><span class="n">minidx</span><span class="p">]</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">int</span>
+<span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span>   <span class="n">i</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">timeval</span>  <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="kt">long</span>       <span class="n">startusec</span><span class="p">,</span> <span class="n">endusec</span><span class="p">;</span>
+    <span class="kt">double</span>          <span class="n">elapsed</span><span class="p">;</span>
+    <span class="kt">int</span>             <span class="n">err</span><span class="p">;</span>
+    <span class="kt">pthread_t</span>       <span class="n">tid</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Create the initial set of numbers to sort.</span>
+<span class="cm">     */</span>
+    <span class="n">srandom</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUMNUM</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">nums</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="p">();</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Create 8 threads to sort the numbers.</span>
+<span class="cm">     */</span>
+    <span class="n">gettimeofday</span><span class="p">(</span><span class="o">&amp;</span><span class="n">start</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">pthread_barrier_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">NTHR</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NTHR</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)(</span><span class="n">i</span> <span class="o">*</span> <span class="n">TNUM</span><span class="p">));</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">err_exit</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">&quot;can&#39;t create thread&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">pthread_barrier_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">);</span>
+    <span class="n">merge</span><span class="p">();</span>
+    <span class="n">gettimeofday</span><span class="p">(</span><span class="o">&amp;</span><span class="n">end</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="cm">/*</span>
+<span class="cm">     * Print the sorted list.</span>
+<span class="cm">     */</span>
+    <span class="n">startusec</span> <span class="o">=</span> <span class="n">start</span><span class="p">.</span><span class="n">tv_sec</span> <span class="o">*</span> <span class="mi">1000000</span> <span class="o">+</span> <span class="n">start</span><span class="p">.</span><span class="n">tv_usec</span><span class="p">;</span>
+    <span class="n">endusec</span> <span class="o">=</span> <span class="n">end</span><span class="p">.</span><span class="n">tv_sec</span> <span class="o">*</span> <span class="mi">1000000</span> <span class="o">+</span> <span class="n">end</span><span class="p">.</span><span class="n">tv_usec</span><span class="p">;</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">endusec</span> <span class="o">-</span> <span class="n">startusec</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000000.0</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sort took %.4f seconds</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUMNUM</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">snums</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example:
+<em> We use eight threads to divide the job of sorting 8 million numbers.  Each thread sorts 1 million numbers using the heapsort algorithm. Then the main thread calls a function to merge the results.
+</em> We don’t need to use the <code>PTHREAD_BARRIER_SERIAL_THREAD</code> return value from <code>pthread_barrier_wait</code> to decide which thread merges the results, because we use the main thread for this task. That is why <u>we specify the barrier count as one more than the number of worker threads; the main thread counts as one waiter.</u></p>
+<p>This example shows the use of a barrier in a simplified situation where the threads perform only one task. In more realistic situations, the worker threads will continue with other activities after the call to <code>pthread_barrier_wait</code> returns.</p>
+<p>[p422]</p>
+<h3 id="summary">Summary</h3>
+<p>This chapter introduces the concept of threads and discussed the POSIX.1 primitives available to create and destroy them. We also introduced the problem of thread synchronization. We discussed five fundamental synchronization mechanisms: mutexes, reader–writer locks, condition variables, spin locks, and barriers; and we saw how to use them to protect shared resources.</p>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p409-410 on Reader–Writer Locks</p>
+<blockquote>
+<p>If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost.</p>
+</blockquote>
+<p>"any resources assigned to the lock will be lost" probably means a form of <a href="https://en.wikipedia.org/wiki/Resource_leak">resource leak</a>.</p>
+<p>p409 on <code>PTHREAD_BARRIER_SERIAL_THREAD.</code></p>
+<blockquote>
+<p>To one arbitrary thread, it will appear as if the <code>pthread_barrier_wait</code> function returned a value of <code>PTHREAD_BARRIER_SERIAL_THREAD</code>. The remaining threads see a return value of 0.</p>
+</blockquote>
+<p>"one arbitrary thread" means "one unspecified thread". As in <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_barrier_wait.html">pthread_barrier_wait</a>:</p>
+<p>Upon successful completion, the <code>pthread_barrier_wait()</code> function shall return <code>PTHREAD_BARRIER_SERIAL_THREAD</code> for a single (arbitrary) thread synchronized at the barrier and zero for each of the other threads.</p>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script src="../../js/base.js"></script>
+        <script src="../../custom.js"></script>
+    </body>
+</html>
