@@ -92,6 +92,18 @@ CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
 CCNA ICND2 Official Exam Certification Guide, Second Edition
 
+#### [SPEC](spec/index.md)
+
+Systems Performance: Enterprise and the Cloud
+
+<small>by Brendan Gregg</small>
+
+#### [CNAPP](cnapp/index.md)
+
+Content Networking: Architecture, Protocols, and Practice
+
+<small>by Markus Hofmann</small>
+
 #### [HTAE](htae/index.md)
 
 Hacking: The Art of Exploitation, 2nd Edition
