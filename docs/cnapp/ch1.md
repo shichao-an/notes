@@ -1,0 +1,3 @@
+### **Chapter 1. Introduction**
+
+Over the last decade, the Internet has been used more as a mechanism for information dissemination and broadcasting, mainly driven by the World Wide Web (WWW or the Web). The Web forms a universe of information accessible via networked computers, offering content in the form of Web pages, images, text, animations, or audio and video streams. This book examines the technical concepts and the challenges of distributing, delivering, and servicing content over the Internet. The focus is on fundamental principles and concepts rather than providing a reference for specific communication protocols or implementation details.
