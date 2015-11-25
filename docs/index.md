@@ -26,11 +26,15 @@ Each chapter is organized as a single page; the included sections are noted with
 
 #### [APUE](apue/index.md)
 
+[![Advanced Programming in the UNIX Environment, 3rd Edition](apue/cover_80.jpg)](apue/cover.jpg "Advanced Programming in the UNIX Environment, 3rd Edition")
+
 Advanced Programming in the UNIX Environment, 3rd Edition
 
 <small>by W. Richard Stevens and Stephen A. Rago</small>
 
 #### [LKD](lkd/index.md)
+
+[![Linux Kernel Development (3rd Edition)](lkd/cover_80.jpg)](lkd/cover.jpg "Linux Kernel Development (3rd Edition)")
 
 Linux Kernel Development (3rd Edition)
 
@@ -38,11 +42,15 @@ Linux Kernel Development (3rd Edition)
 
 #### [UTLK](utlk/index.md)
 
+[![Understanding the Linux Kernel, Third Edition](utlk/cover_80.jpg)](utlk/cover.jpg "Understanding the Linux Kernel, Third Edition")
+
 Understanding the Linux Kernel, Third Edition
 
 <small>by Daniel P. Bovet and Marco Cesati</small>
 
 #### [UNP](unp/index.md)
+
+[![Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)](unp/cover_80.gif)](unp/cover.gif "Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)")
 
 Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 
@@ -50,11 +58,15 @@ Unix Network Programming, Volume 1: The Sockets Networking API (3rd Edition)
 
 #### [TCPv1](tcpv1/index.md)
 
+[![TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)](tcpv1/cover_80.jpg)](tcpv1/cover.jpg "TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)")
+
 TCP/IP Illustrated, Volume 1: The Protocols (2nd Edition)
 
 <small>by Kevin R. Fall and W. Richard Stevens</small>
 
 #### [TCPIP](tcpip/index.md)
+
+[![The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference](tcpip/cover_80.png)](tcpip/cover.png "The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference")
 
 The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference
 
@@ -62,11 +74,15 @@ The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference
 
 #### [LSP](lsp/index.md)
 
+[![Linux System Programming: Talking Directly to the Kernel and C Library (Second Edition)](lsp/cover_80.jpg)](lsp/cover.jpg "Linux System Programming: Talking Directly to the Kernel and C Library (Second Edition)")
+
 Linux System Programming: Talking Directly to the Kernel and C Library (Second Edition)
 
 <small>by Robert Love</small>
 
 #### [TLPI](tlpi/index.md)
+
+[![The Linux Programming Interface](tlpi/cover_80.png)](tlpi/cover.png "The Linux Programming Interface")
 
 The Linux Programming Interface
 
@@ -74,11 +90,15 @@ The Linux Programming Interface
 
 #### [GOPL](gopl/index.md)
 
+[![The Go Programming Language](gopl/cover_80.png)](gopl/cover.png "The Go Programming Language")
+
 The Go Programming Language
 
 <small>by Alan A. A. Donovan and Brian W. Kernighan</small>
 
 #### [DevOps](devops/index.md)
+
+[![DevOps: A Software Architect's Perspective](devops/cover_80.jpg)](devops/cover.jpg "DevOps: A Software Architect's Perspective")
 
 DevOps: A Software Architect's Perspective
 
@@ -93,6 +113,8 @@ CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 CCNA ICND2 Official Exam Certification Guide, Second Edition
 
 #### [SPEC](spec/index.md)
+
+[![Systems Performance: Enterprise and the Cloud](spec/cover_80.png)](spec/cover.png "Systems Performance: Enterprise and the Cloud")
 
 Systems Performance: Enterprise and the Cloud
 
