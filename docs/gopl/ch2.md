@@ -26,12 +26,22 @@ Functions: | `make` `len` `cap` `new` `append` `copy` `close` `delete` `complex`
 
 These names are not reserved, so you may use them in declarations. Beware of the potential for confusion.
 
+#### Local and exported names *
+
 If an entity is:
 
-* Declared within a function: it is local to that function.
+* Declared within a function: it is *local* to that function.
 * Declared outside of a function: it is visible in all files of the package to which it belongs.
 
 The case of the first letter of a name determines its visibility across package boundaries:
 
 * If the name begins with an upper-case letter, it is *exported* (visible and accessible outside of its own package and may be referred to by other parts of the program), as with `Printf` in the `fmt` package.
 * Package names themselves are always in lower case.
+
+#### Naming convention and style *
+
+* There is no limit on name length;
+* Short names are preferred, especially for local variables with small scopes (`i` is better than `theLoopIndex`);
+* The larger the scope of a name, the longer and more meaningful it should be.
+* [Camel case](https://en.wikipedia.org/wiki/CamelCase) are used when forming names by combining words, e.g. `QuoteRuneToASCII` and `parseRequestLine` (instead of `quote_rune_to_ASCII` or `parse_request_line`).
+* The letters of acronyms and initialisms like `ASCII` and `HTML` are always rendered in the same case, so a function might be called `htmlEscape`, `HTMLEscape`, or `escapeHTML`, but not `escapeHtml`.
