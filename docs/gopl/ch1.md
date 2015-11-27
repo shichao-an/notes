@@ -399,3 +399,13 @@ In this program, the error handling prints a message on the standard error strea
 the verb `%v`, which displays a value of any type in a default format. The details of error handling are in [Section 5.4](ch5.md#errors).
 
 <u>Notice that the call to `countLines` precedes its declaration. Functions and other package-level entities may be declared in any order.</u>
+
+### Animated GIFs
+
+### Fetching a URL
+
+### Fetching URLs Concurrently
+
+### A Web Server
+
+### Loose Ends
