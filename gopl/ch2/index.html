@@ -690,6 +690,14 @@
             <li><a href="#naming-convention-and-style">Naming convention and style *</a></li>
         
     
+        <li class="main "><a href="#declarations">Declarations</a></li>
+        
+    
+        <li class="main "><a href="#variables">Variables</a></li>
+        
+            <li><a href="#short-variable-declarations">Short Variable Declarations</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -785,6 +793,114 @@
 <li><a href="https://en.wikipedia.org/wiki/CamelCase">Camel case</a> are used when forming names by combining words, e.g. <code>QuoteRuneToASCII</code> and <code>parseRequestLine</code> (instead of <code>quote_rune_to_ASCII</code> or <code>parse_request_line</code>).</li>
 <li>The letters of acronyms and initialisms like <code>ASCII</code> and <code>HTML</code> are always rendered in the same case, so a function might be called <code>htmlEscape</code>, <code>HTMLEscape</code>, or <code>escapeHTML</code>, but not <code>escapeHtml</code>.</li>
 </ul>
+<h3 id="declarations">Declarations</h3>
+<p>A <strong>declaration</strong> names a program entity and specifies its properties. There are four major kinds of declarations:</p>
+<ol>
+<li><code>var</code> (variables)</li>
+<li><code>const</code> (constants)</li>
+<li><code>type</code> (types)</li>
+<li><code>func</code> (functions)</li>
+</ol>
+<p>This chapter discusses variables and types. Constants are disucssed in <a href="ch3.md">Chapter 3</a>, and functions in <a href="ch5.md">Chapter 5</a>.</p>
+<p>Each <code>.go</code> file has declarations in the following order:</p>
+<ol>
+<li>A <code>package</code> declaration that says what package the file is part of.</li>
+<li>Any <code>import</code> declarations</li>
+<li>A sequence of package-level declarations of types, variables, constants, and functions, in any order.</li>
+</ol>
+<p>For example, the following program declares a constant, a function, and a couple of variables:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/boiling/main.go">gopl.io/ch2/boiling/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Boiling prints the boiling point of water.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="s">&quot;fmt&quot;</span>
+
+<span class="kd">const</span> <span class="nx">boilingF</span> <span class="p">=</span> <span class="mf">212.0</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">f</span> <span class="p">=</span> <span class="nx">boilingF</span>
+    <span class="kd">var</span> <span class="nx">c</span> <span class="p">=</span> <span class="p">(</span><span class="nx">f</span> <span class="o">-</span> <span class="mi">32</span><span class="p">)</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">/</span> <span class="mi">9</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;boiling point = %g°F or %g°C\n&quot;</span><span class="p">,</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>
+    <span class="c1">// Output:</span>
+    <span class="c1">// boiling point = 212°F or 100°C</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>Each package-level name is visible in all the files of the package.</li>
+<li>Local declarations are visible only within the function in which they are declared.</li>
+</ul>
+<p>A function declaration has a name, a list of parameters an optional list of results (omitted if the function does not return anything), and the function body.</p>
+<h3 id="variables">Variables</h3>
+<p>A <code>var</code> declaration creates a variable of a particular type, attaches a name to it, and sets its initial value, with the general form:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">name</span> <span class="kd">type</span> <span class="p">=</span> <span class="nx">expression</span>
+</pre></div>
+
+
+<p><u>Either the type or the <code>= expression</code> part may be omitted, but not both:</u></p>
+<ul>
+<li>If the type is omitted, it is determined by the initializer expression.</li>
+<li>If the expression is omitted, the initial value is the <strong>zero value</strong> for the type, which is:<ul>
+<li>0 for numbers</li>
+<li><code>false</code> for booleans</li>
+<li><code>""</code> for strings</li>
+<li><code>nil</code> for interfaces and reference types (slice, pointer, map, channel, function).</li>
+</ul>
+</li>
+</ul>
+<p>The zero value of an aggregate type like an array or a struct has the zero value of all of its elements or fields.</p>
+<p>The zero-value mechanism ensures that a variable always holds a well-defined value of its type; in Go there is no such thing as an uninitialized variable. This simplifies code and often ensures sensible behavior of boundary conditions without extra work. For example,</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">s</span> <span class="kt">string</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="c1">// &quot;&quot;</span>
+</pre></div>
+
+
+<p>Go programmers often go to some effort to make the zero value of a more complicated type meaningful, so that variables begin life in a useful state.</p>
+<p>It is possible to declare and optionally initialize a set of variables in a single declaration, with a matching list of expressions. Omitting the type allows declaration of multiple variables of different types:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">j</span><span class="p">,</span> <span class="nx">k</span> <span class="kt">int</span> <span class="c1">// int, int, int</span>
+<span class="kd">var</span> <span class="nx">b</span><span class="p">,</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">s</span> <span class="p">=</span> <span class="kc">true</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">,</span> <span class="s">&quot;four&quot;</span> <span class="c1">// bool, float64, string</span>
+</pre></div>
+
+
+<ul>
+<li>Initializers may be literal values or arbitrary expressions.</li>
+<li>Package-level variables are initialized before <code>main</code> begins (<a href="#package-initialization">Section 2.6.2</a>).</li>
+<li>Local variables are initialized as their declarations are encountered during function execution.</li>
+</ul>
+<p>A set of variables can also be initialized by calling a function that returns multiple values:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span> <span class="c1">// os.Open returns a file and an error</span>
+</pre></div>
+
+
+<h4 id="short-variable-declarations">Short Variable Declarations</h4>
+<p>Within a function, an alternate form called a short variable declaration may be used to declare and initialize local variables. It takes the form <code>name := expression</code>, and the type of name is determined by the type of expression. For exmaple (<a href="../ch1/#animated-gifs">Animated GIFs</a>),</p>
+<h5 id="when-to-use-short-variable-declaration-and-var-declaration"><strong>When to use short variable declaration and <code>var</code> declaration</strong> *</h5>
+<ul>
+<li>Short variable declarations are used to declare and initialize the majority of local variables, for brevity and flexibility.</li>
+<li>A <code>var</code> declaration tends to be reserved for:<ul>
+<li>Local variables that need an explicit type that differs from that of the initializer expression;</li>
+<li>Local variables when they will be assigned a value later and its initial value is unimportant.</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">i</span> <span class="o">:=</span> <span class="mi">100</span> <span class="c1">// an int</span>
+<span class="kd">var</span> <span class="nx">boiling</span> <span class="kt">float64</span> <span class="p">=</span> <span class="mi">100</span> <span class="c1">// a float64</span>
+<span class="kd">var</span> <span class="nx">names</span> <span class="p">[]</span><span class="kt">string</span>
+<span class="kd">var</span> <span class="nx">err</span> <span class="kt">error</span>
+<span class="kd">var</span> <span class="nx">p</span> <span class="nx">Point</span>
+</pre></div>
+
+
+<p>As with <code>var</code> declarations, multiple variables may be declared and initialized in the same short variable declaration:</p>
+<div class="codehilite"><pre><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+</pre></div>
+
+
+<p>However, declarations with multiple initializer expressions should be used only when they help readability, such as for short and natural groupings like the initialization part of a for loop.</p>
+<p>Keep in mind that <code>:=</code> is a declaration, whereas <code>=</code> is an assignment. A multi-variable declaration should not be confused with a <a href="#tuple-assignment">tuple assignment</a>), in which each variable on the left-hand side is assigned the corresponding value from the right-hand side:</p>
+<div class="codehilite"><pre><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="p">=</span> <span class="nx">j</span><span class="p">,</span> <span class="nx">i</span> <span class="c1">// swap values of i and j</span>
+</pre></div>
             </div>
         </div>
 
