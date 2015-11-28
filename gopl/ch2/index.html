@@ -697,6 +697,13 @@
         
             <li><a href="#short-variable-declarations">Short Variable Declarations</a></li>
         
+            <li><a href="#pointers">Pointers</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -898,9 +905,92 @@
 
 
 <p>However, declarations with multiple initializer expressions should be used only when they help readability, such as for short and natural groupings like the initialization part of a for loop.</p>
-<p>Keep in mind that <code>:=</code> is a declaration, whereas <code>=</code> is an assignment. A multi-variable declaration should not be confused with a <a href="#tuple-assignment">tuple assignment</a>), in which each variable on the left-hand side is assigned the corresponding value from the right-hand side:</p>
+<p>Keep in mind that <code>:=</code> is a declaration, whereas <code>=</code> is an assignment. A multi-variable declaration should not be confused with a <a href="#tuple-assignment">tuple assignment</a>, in which each variable on the left-hand side is assigned the corresponding value from the right-hand side:</p>
 <div class="codehilite"><pre><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="p">=</span> <span class="nx">j</span><span class="p">,</span> <span class="nx">i</span> <span class="c1">// swap values of i and j</span>
 </pre></div>
+
+
+<p>Like <code>var</code> declarations, short variable declarations may be used for calls to functions like <code>os.Open</code> that return two or more values:</p>
+<div class="codehilite"><pre><span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+<span class="p">}</span>
+<span class="c1">// ...use f...</span>
+<span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+</pre></div>
+
+
+<h5 id="one-subtle-but-important-point"><strong>One subtle but important point</strong> *</h5>
+<p>A short variable declaration does not necessarily declare all the variables on its left-hand side. If some of them were already declared in the same lexical block , then the short variable declaration acts like an assignment to those variables. For example,</p>
+<div class="codehilite"><pre><span class="nx">in</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">infile</span><span class="p">)</span>
+<span class="c1">// ...</span>
+<span class="nx">out</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Create</span><span class="p">(</span><span class="nx">outfile</span><span class="p">)</span>
+</pre></div>
+
+
+<p>In the above code:</p>
+<ul>
+<li>The first statement declares both <code>in</code> and <code>err</code>.</li>
+<li>The second declares <code>out</code> but only assigns a value to the existing <code>err</code> variable.</li>
+</ul>
+<p>A short variable declaration must declare at least one new variable. Therefore, the following code will not compile:</p>
+<div class="codehilite"><pre><span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">infile</span><span class="p">)</span>
+<span class="c1">// ...</span>
+<span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Create</span><span class="p">(</span><span class="nx">outfile</span><span class="p">)</span> <span class="c1">// compile error: no new variables</span>
+</pre></div>
+
+
+<p>The fix is to use an ordinary assignment for the second statement.</p>
+<p>A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.</p>
+<h4 id="pointers">Pointers</h4>
+<p>A <strong>variable</strong> is a piece of storage containing a value.</p>
+<ul>
+<li>Variables created by declarations are identified by a name, such as <code>x</code></li>
+<li>Many other variables are identified only by expressions like <code>x[i]</code> or <code>x.f</code>.</li>
+</ul>
+<p>All these expressions read the value of a variable, except when they appear on the lefthand side of an assignment, in which case a new value is assigned to the variable.</p>
+<p>A <strong>pointer</strong> value is the address of a variable. A pointer is thus the location at which a value is stored. Not every value has an address, but every variable does. With a pointer, we can read or update the value of a variable indirectly, without using or even knowing the name of the variable, if indeed it has a name.</p>
+<h5 id="pointer-type-type-and-address-of-operators"><strong>Pointer type (<code>*type</code>) and address-of (<code>&amp;</code>) operators</strong> *</h5>
+<p>If a variable is declared <code>var x int</code>, the expression <code>&amp;x</code> ("address of <code>x</code>") yields a pointer to an integer variable (a value of type <code>*int</code>, which is pronounced "pointer to <code>int</code>"). If this value is called <code>p</code>, we say "<code>p</code> points to <code>x</code>", or equivalently "<code>p</code> contains the address of <code>x</code>". The variable to which <code>p</code> points is written <code>*p</code>. The expression <code>*p</code> yields the value of that variable, an <code>int</code>, but since <code>*p</code> denotes a variable, it may also appear on the left-hand side of an assignment, in which case the assignment updates the variable.</p>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">1</span>
+<span class="nx">p</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">x</span>          <span class="c1">// p, of type *int, points to x</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">*</span><span class="nx">p</span><span class="p">)</span>  <span class="c1">// &quot;1&quot;</span>
+<span class="o">*</span><span class="nx">p</span> <span class="p">=</span> <span class="mi">2</span>           <span class="c1">// equivalent to x = 2</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>   <span class="c1">// &quot;2&quot;</span>
+</pre></div>
+
+
+<p>Each component of a variable of aggregate type: a field of a struct or an element of an array, is also a variable and thus has an address too.</p>
+<p>Variables are sometimes described as <em>addressable</em> values. Expressions that denote variables are the only expressions to which the <em>address-of</em> operator <code>&amp;</code> may be applied.</p>
+<h5 id="comparing-pointers"><strong>Comparing pointers</strong> *</h5>
+<p>The zero value for a pointer of any type is <code>nil</code>. The test <code>p != nil</code> is true if <code>p</code> points to a variable. Pointers are comparable; two pointers are equal if and only if they point to the same variable or both are <code>nil</code>.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">x</span> <span class="o">==</span> <span class="o">&amp;</span><span class="nx">x</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">x</span> <span class="o">==</span> <span class="o">&amp;</span><span class="nx">y</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">x</span> <span class="o">==</span> <span class="kc">nil</span><span class="p">)</span> <span class="c1">// &quot;true false false&quot;</span>
+</pre></div>
+
+
+<p><u>It is perfectly safe for a function to return the address of a local variable.</u> For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">p</span> <span class="p">=</span> <span class="nx">f</span><span class="p">()</span>
+
+<span class="kd">func</span> <span class="nx">f</span><span class="p">()</span> <span class="o">*</span><span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">v</span> <span class="o">:=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">v</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><u>The local variable <code>v</code> created by this particular call to <code>f</code> will remain in existence even after the call has returned, and the pointer <code>p</code> will still refer to it.</u> Each call of <code>f</code> returns a distinct value:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">()</span> <span class="o">==</span> <span class="nx">f</span><span class="p">())</span> <span class="c1">// &quot;false&quot;</span>
+</pre></div>
+
+
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p32 on short variable declaration.</p>
+<blockquote>
+<p>A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.</p>
+</blockquote>
+<p>What does "declarations in an outer block are ignored" mean?</p>
             </div>
         </div>
 
