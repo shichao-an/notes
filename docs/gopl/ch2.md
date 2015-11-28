@@ -162,8 +162,112 @@ i, j := 0, 1
 
 However, declarations with multiple initializer expressions should be used only when they help readability, such as for short and natural groupings like the initialization part of a for loop.
 
-Keep in mind that `:=` is a declaration, whereas `=` is an assignment. A multi-variable declaration should not be confused with a [tuple assignment](#tuple-assignment)), in which each variable on the left-hand side is assigned the corresponding value from the right-hand side:
+Keep in mind that `:=` is a declaration, whereas `=` is an assignment. A multi-variable declaration should not be confused with a [tuple assignment](#tuple-assignment), in which each variable on the left-hand side is assigned the corresponding value from the right-hand side:
 
 ```go
 i, j = j, i // swap values of i and j
 ```
+
+Like `var` declarations, short variable declarations may be used for calls to functions like `os.Open` that return two or more values:
+
+```go
+f, err := os.Open(name)
+	if err != nil {
+		return err
+}
+// ...use f...
+f.Close()
+```
+
+##### **One subtle but important point** *
+
+A short variable declaration does not necessarily declare all the variables on its left-hand side. If some of them were already declared in the same lexical block , then the short variable declaration acts like an assignment to those variables. For example,
+
+```go
+in, err := os.Open(infile)
+// ...
+out, err := os.Create(outfile)
+```
+
+In the above code:
+
+* The first statement declares both `in` and `err`.
+* The second declares `out` but only assigns a value to the existing `err` variable.
+
+A short variable declaration must declare at least one new variable. Therefore, the following code will not compile:
+
+```go
+f, err := os.Open(infile)
+// ...
+f, err := os.Create(outfile) // compile error: no new variables
+```
+
+The fix is to use an ordinary assignment for the second statement.
+
+A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.
+
+#### Pointers
+
+A **variable** is a piece of storage containing a value.
+
+* Variables created by declarations are identified by a name, such as `x`
+* Many other variables are identified only by expressions like `x[i]` or `x.f`.
+
+All these expressions read the value of a variable, except when they appear on the lefthand side of an assignment, in which case a new value is assigned to the variable.
+
+A **pointer** value is the address of a variable. A pointer is thus the location at which a value is stored. Not every value has an address, but every variable does. With a pointer, we can read or update the value of a variable indirectly, without using or even knowing the name of the variable, if indeed it has a name.
+
+##### **Pointer type (`*type`) and address-of (`&`) operators** *
+
+If a variable is declared `var x int`, the expression `&x` ("address of `x`") yields a pointer to an integer variable (a value of type `*int`, which is pronounced "pointer to `int`"). If this value is called `p`, we say "`p` points to `x`", or equivalently "`p` contains the address of `x`". The variable to which `p` points is written `*p`. The expression `*p` yields the value of that variable, an `int`, but since `*p` denotes a variable, it may also appear on the left-hand side of an assignment, in which case the assignment updates the variable.
+
+```go
+x := 1
+p := &x          // p, of type *int, points to x
+fmt.Println(*p)  // "1"
+*p = 2           // equivalent to x = 2
+fmt.Println(x)   // "2"
+```
+
+Each component of a variable of aggregate type: a field of a struct or an element of an array, is also a variable and thus has an address too.
+
+Variables are sometimes described as *addressable* values. Expressions that denote variables are the only expressions to which the *address-of* operator `&` may be applied.
+
+##### **Comparing pointers** *
+
+The zero value for a pointer of any type is `nil`. The test `p != nil` is true if `p` points to a variable. Pointers are comparable; two pointers are equal if and only if they point to the same variable or both are `nil`.
+
+```go
+var x, y int
+fmt.Println(&x == &x, &x == &y, &x == nil) // "true false false"
+```
+
+<u>It is perfectly safe for a function to return the address of a local variable.</u> For example:
+
+```go
+var p = f()
+
+func f() *int {
+	v := 1
+	return &v
+}
+```
+
+<u>The local variable `v` created by this particular call to `f` will remain in existence even after the call has returned, and the pointer `p` will still refer to it.</u> Each call of `f` returns a distinct value:
+
+```go
+fmt.Println(f() == f()) // "false"
+```
+
+
+
+
+### Doubts and Solutions
+
+#### Verbatim
+
+p32 on short variable declaration.
+
+> A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.
+
+What does "declarations in an outer block are ignored" mean?
