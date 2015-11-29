@@ -24,7 +24,7 @@ This site documents reading and learning notes of the following books and materi
 
 The following is the primary reading list of books. Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
 
-##### [APUE](apue/index.md)
+#### [APUE](apue/index.md)
 
 [![Advanced Programming in the UNIX Environment, 3rd Edition](apue/cover_80.jpg)](apue/cover.jpg "Advanced Programming in the UNIX Environment, 3rd Edition")
 
@@ -32,7 +32,7 @@ Advanced Programming in the UNIX Environment, 3rd Edition
 
 <small>by W. Richard Stevens and Stephen A. Rago</small>
 
-##### [LKD](lkd/index.md)
+#### [LKD](lkd/index.md)
 
 [![Linux Kernel Development (3rd Edition)](lkd/cover_80.jpg)](lkd/cover.jpg "Linux Kernel Development (3rd Edition)")
 
