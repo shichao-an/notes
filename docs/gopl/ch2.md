@@ -277,6 +277,8 @@ fmt.Println(incr(&v)) // "3" (and v is 3)
 
 Each time we take the address of a variable or copy a pointer, we create new aliases or ways to identify the same variable. For example, `*p` is an alias for `v`. Pointer aliasing is useful because it allows us to access a variable without using its name, but this is a double-edged sword: to find all the statements that access a variable, we have to know all its aliases. <u>Aliasing also occurs when we copy values of other reference types like slices, maps, and channels, and even structs, arrays, and interfaces that contain these types.</u>
 
+##### **Pointer and the `flag` package**
+
 Pointers are key to the `flag` package, which uses a program’s command-line arguments to set the values of certain variables for the entire program. To illustrate, this variation on the earlier `echo` command takes two optional flags:
 
 * `-n` causes `echo` to omit the trailing newline that would normally be printed;
@@ -306,6 +308,19 @@ func main() {
 }
 ```
 
+The function `flag.Bool` creates a new flag variable of type `bool`. It takes three arguments:
+
+* The name of the flag (`"n"`),
+* The variable’s default value (`false`),
+* A message that will be printed if the user provides an invalid argument, an invalid flag, or `-h` or `-help`.
+
+This is similar to `flag.String`.
+
+The variables `sep` and `n` are pointers to the flag variables, which must be accessed indirectly as `*sep` and `*n`.
+
+When the program is run, it must call `flag.Parse` before the flags are used, to update the flag variables from their default values. The non-flag arguments are available from `flag.Args()` as a slice of strings. If `flag.Parse` encounters an error, it prints a usage message and calls `os.Exit(2)` to terminate the program.
+
+[p34]
 
 
 ### Doubts and Solutions
