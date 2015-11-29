@@ -259,6 +259,52 @@ func f() *int {
 fmt.Println(f() == f()) // "false"
 ```
 
+Passing a pointer argument to a function makes it possible for the function to update the variable that was indirectly passed. For example:
+
+```go
+func incr(p *int) int {
+	*p++ // increments what p points to; does not change p
+	return *p
+}
+
+v := 1
+incr(&v)
+// side effect: v is now 2
+fmt.Println(incr(&v)) // "3" (and v is 3)
+```
+
+##### **Pointer aliasing** *
+
+Each time we take the address of a variable or copy a pointer, we create new aliases or ways to identify the same variable. For example, `*p` is an alias for `v`. Pointer aliasing is useful because it allows us to access a variable without using its name, but this is a double-edged sword: to find all the statements that access a variable, we have to know all its aliases. <u>Aliasing also occurs when we copy values of other reference types like slices, maps, and channels, and even structs, arrays, and interfaces that contain these types.</u>
+
+Pointers are key to the `flag` package, which uses a program’s command-line arguments to set the values of certain variables for the entire program. To illustrate, this variation on the earlier `echo` command takes two optional flags:
+
+* `-n` causes `echo` to omit the trailing newline that would normally be printed;
+* `-s sep` causes it to separate the output arguments by the contents of the string `sep` instead of the default single space.
+
+<small>[gopl.io/ch2/echo4/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch2/echo4/main.go)</small>
+
+```go
+// Echo4 prints its command-line arguments.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"strings"
+)
+
+var n = flag.Bool("n", false, "omit trailing newline")
+var sep = flag.String("s", " ", "separator")
+
+func main() {
+	flag.Parse()
+	fmt.Print(strings.Join(flag.Args(), *sep))
+	if !*n {
+		fmt.Println()
+	}
+}
+```
 
 
 
