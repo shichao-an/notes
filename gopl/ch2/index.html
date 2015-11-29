@@ -18,7 +18,7 @@
         <link href="../../css/base.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,500,600" rel="stylesheet">
         <link href="../../custom.css" rel="stylesheet">
-        <link href="../../github.css" rel="stylesheet">
+        <link href="../../friendly.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -981,6 +981,49 @@
 
 <p><u>The local variable <code>v</code> created by this particular call to <code>f</code> will remain in existence even after the call has returned, and the pointer <code>p</code> will still refer to it.</u> Each call of <code>f</code> returns a distinct value:</p>
 <div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">()</span> <span class="o">==</span> <span class="nx">f</span><span class="p">())</span> <span class="c1">// &quot;false&quot;</span>
+</pre></div>
+
+
+<p>Passing a pointer argument to a function makes it possible for the function to update the variable that was indirectly passed. For example:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">incr</span><span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="o">*</span><span class="nx">p</span><span class="o">++</span> <span class="c1">// increments what p points to; does not change p</span>
+    <span class="k">return</span> <span class="o">*</span><span class="nx">p</span>
+<span class="p">}</span>
+
+<span class="nx">v</span> <span class="o">:=</span> <span class="mi">1</span>
+<span class="nx">incr</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">v</span><span class="p">)</span>
+<span class="c1">// side effect: v is now 2</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">incr</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">v</span><span class="p">))</span> <span class="c1">// &quot;3&quot; (and v is 3)</span>
+</pre></div>
+
+
+<h5 id="pointer-aliasing"><strong>Pointer aliasing</strong> *</h5>
+<p>Each time we take the address of a variable or copy a pointer, we create new aliases or ways to identify the same variable. For example, <code>*p</code> is an alias for <code>v</code>. Pointer aliasing is useful because it allows us to access a variable without using its name, but this is a double-edged sword: to find all the statements that access a variable, we have to know all its aliases. <u>Aliasing also occurs when we copy values of other reference types like slices, maps, and channels, and even structs, arrays, and interfaces that contain these types.</u></p>
+<p>Pointers are key to the <code>flag</code> package, which uses a program’s command-line arguments to set the values of certain variables for the entire program. To illustrate, this variation on the earlier <code>echo</code> command takes two optional flags:</p>
+<ul>
+<li><code>-n</code> causes <code>echo</code> to omit the trailing newline that would normally be printed;</li>
+<li><code>-s sep</code> causes it to separate the output arguments by the contents of the string <code>sep</code> instead of the default single space.</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/echo4/main.go">gopl.io/ch2/echo4/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Echo4 prints its command-line arguments.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;flag&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;strings&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">var</span> <span class="nx">n</span> <span class="p">=</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">Bool</span><span class="p">(</span><span class="s">&quot;n&quot;</span><span class="p">,</span> <span class="kc">false</span><span class="p">,</span> <span class="s">&quot;omit trailing newline&quot;</span><span class="p">)</span>
+<span class="kd">var</span> <span class="nx">sep</span> <span class="p">=</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;s&quot;</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">,</span> <span class="s">&quot;separator&quot;</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">flag</span><span class="p">.</span><span class="nx">Parse</span><span class="p">()</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">flag</span><span class="p">.</span><span class="nx">Args</span><span class="p">(),</span> <span class="o">*</span><span class="nx">sep</span><span class="p">))</span>
+    <span class="k">if</span> <span class="p">!</span><span class="o">*</span><span class="nx">n</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">()</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 </pre></div>
 
 
