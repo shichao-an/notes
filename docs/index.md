@@ -22,9 +22,9 @@ This site documents reading and learning notes of the following books and materi
 
 ### Books
 
-Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
+The following is the primary reading list of books. Each chapter is organized as a single page; the included sections are noted with major concepts, along with personal doubts (with possible solutions figured out afterwards) and summary.
 
-#### [APUE](apue/index.md)
+##### [APUE](apue/index.md)
 
 [![Advanced Programming in the UNIX Environment, 3rd Edition](apue/cover_80.jpg)](apue/cover.jpg "Advanced Programming in the UNIX Environment, 3rd Edition")
 
@@ -32,7 +32,7 @@ Advanced Programming in the UNIX Environment, 3rd Edition
 
 <small>by W. Richard Stevens and Stephen A. Rago</small>
 
-#### [LKD](lkd/index.md)
+##### [LKD](lkd/index.md)
 
 [![Linux Kernel Development (3rd Edition)](lkd/cover_80.jpg)](lkd/cover.jpg "Linux Kernel Development (3rd Edition)")
 
@@ -104,11 +104,11 @@ DevOps: A Software Architect's Perspective
 
 <small>by Len Bass, Ingo Weber, Liming Zhu</small>
 
-#### ICND1
+#### [ICND1](icnd1/index.md)
 
 CCENT/CCNA ICND1 640-822 Official Cert Guide, Third Edition
 
-#### ICND2
+#### [ICND2](icnd2/index.md)
 
 CCNA ICND2 Official Exam Certification Guide, Second Edition
 
@@ -128,23 +128,52 @@ Content Networking: Architecture, Protocols, and Practice
 
 #### [HTAE](htae/index.md)
 
+[![Hacking: The Art of Exploitation, 2nd Edition](htae/cover_80.jpg)](htae/cover.jpg "Hacking: The Art of Exploitation, 2nd Edition")
+
 Hacking: The Art of Exploitation, 2nd Edition
 
 <small>by Jon Erickson</small>
 
-### Programming Languages
+### Materials
 
-Each topic is included in a single page and references one or more books and materials.
+The following is the supplementary books and materials. Each topic, which may have one or more primary references listed, is included in a single page.
 
 #### [Bash](bash/index.md)
-#### [Go](golang/index.md)
+
+* [The GNU Bash Reference Manual](https://www.gnu.org/software/bash/manual/)
+
 #### [C](c/index.md)
-#### [Ruby](ruby/index.md)
+
+* Patterns in C
+
+#### [Go](golang/index.md)
+
+* The Way To Go: A Thorough Introduction To The Go Programming Language
+* [The Go Documentation](https://golang.org/doc/)
+* [The Go Programming Language Specification](https://golang.org/ref/spec)
+
 #### [Python](python/index.md)
+
+* Python Essential Reference (4th Edition)
+
+#### [Ruby](ruby/index.md)
+
+* Programming Ruby 1.9 & 2.0: The Pragmatic Programmers' Guide (4th Edition)
+
 #### [x86 Assembly](asm/index.md)
 
-### Software and Technologies
+* [Wikibooks](https://en.wikibooks.org/wiki/X86_Assembly)
 
 #### [iptables](iptables/index.md)
+
+* [Iptables Tutorial 1.2.2](http://homes.di.unimi.it/sisop/qemu/iptables-tutorial.pdf)
+
 #### [Nginx](nginx/index.md)
+
+* [nginx documentation](http://nginx.org/en/docs/)
+* [NGINX and NGINX Plus Tutorial and Admin Guide](http://nginx.com/resources/admin-guide/)
+
 #### [Vim](vim/index.md)
+
+* Learning the vi and Vim Editors, 7th Edition
+* [Learn Vimscript the Hard Way](http://learnvimscriptthehardway.stevelosh.com/)
