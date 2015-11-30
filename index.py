@@ -3,7 +3,7 @@
 import os
 import yaml
 
-NO_INDEX = set(['ICND', 'Others'])
+NO_INDEX = set(['PL', 'Others'])
 
 
 def load_mkdocs():
