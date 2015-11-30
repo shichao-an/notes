@@ -1,6 +1,6 @@
 ### **Shichao's Notes**
 
-This site documents reading and learning notes of the following books and materials.
+This site documents reading and learning notes. See [Roadmap](roadmap/index.md) for the current progress.
 
 <div class="row">
   <div class="col-md-8">
@@ -95,6 +95,14 @@ The Linux Programming Interface
 The Go Programming Language
 
 <small>by Alan A. A. Donovan and Brian W. Kernighan</small>
+
+#### [TWGR](twgr/index.md)
+
+[![The Well-Grounded Rubyist, Second Edition](twgr/cover_80.png)](twgr/cover.png "The Well-Grounded Rubyist, Second Edition")
+
+The Well-Grounded Rubyist, Second Edition
+
+<small>by David A. Black</small>
 
 #### [DevOps](devops/index.md)
 
