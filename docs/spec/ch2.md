@@ -20,3 +20,68 @@ The following are key terms for systems performance. Later chapters provide addi
 * **Bottleneck**: In system performance, a bottleneck is a resource that limits the performance of the system. Identifying and removing systemic bottlenecks is a key activity of systems performance.
 * **Workload**: The input to the system or the load applied is the workload. For a database, the workload consists of the database queries and commands sent by the clients.
 * **Cache**: a fast storage area that can duplicate or buffer a limited amount of data, to avoid communicating directly with a slower tier of storage, thereby improving performance. For economic reasons, a cache is smaller than the slower tier.
+
+### Models
+
+#### System under Test
+
+The performance of a [system under test](https://en.wikipedia.org/wiki/System_under_test) (SUT) is shown below:
+
+[![Figure 2.1 System under test](figure_2.1.png)](figure_2.1.png "Figure 2.1 System under test")
+
+**Perturbations** (interference) can affect results, including those caused by:
+
+* Scheduled system activity,
+* Other users of the system,
+* Oher workloads.
+
+The origin of the perturbations may not be clear and determining it can be particularly difficult in some cloud environments, where other activity (by guest tenants) on the physical host system is not observable from within a guest SUT.
+
+Another difficulty is that modern environments may be composed of several networked components needed to service the input workload, including load balancers, web servers, database servers, application servers, and storage systems. The mere act of mapping the environment may help to reveal previously overlooked sources of perturbations. The environment may also be modeled as a network of queueing systems, for analytical study.
+
+#### Queueing System
+
+Some components and resources can be modeled as a queueing system. The following figure shows a simple queueing system.
+
+[![Figure 2.2 Simple queueing model](figure_2.2.png)](figure_2.2.png "Figure 2.2 Simple queueing model")
+
+### Concepts
+
+#### Latency
+
+
+#### Time Scales
+
+#### Trade-offs
+
+#### Tuning Efforts
+
+#### Level of Appropriateness
+
+#### Point-in-Time Recommendations
+
+#### Load versus Architecture
+
+#### Scalability
+
+#### Known-Unknowns
+
+#### Metrics
+
+#### Utilization
+
+#### Saturation
+
+#### Profiling
+
+#### Caching
+
+### Doubts and Solutions
+
+#### Verbatim
+
+p17 on System under Test:
+
+> The mere act of mapping the environment may help to reveal previously overlooked sources of perturbations. The environment may also be modeled as a network of queueing systems, for analytical study.
+
+WTF?
