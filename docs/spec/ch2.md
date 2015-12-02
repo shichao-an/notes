@@ -49,6 +49,17 @@ Some components and resources can be modeled as a queueing system. The following
 
 #### Latency
 
+The **latency** is the time spent waiting before an operation is performed.  The following figure, as an example of latency, shows a network transfer (e.g. HTTP GET request):
+
+[![Figure 2.3 Network connection latency](figure_2.3.png)](figure_2.3.png "Figure 2.3 Network connection latency")
+
+In this example, the operation is a network service request to transfer data. Before this operation can take place, the system must wait for a network connection to be established, which is latency for this operation. The response time spans this latency and the operation time.
+
+Depending on the target, the latency can be measured differently. For example, the load time for a website may be composed of three different times:
+
+* DNS latency, which refers to the entire DNS operation.
+* TCP connection latency, which refers to the initialization only (TCP handshake).
+* TCP data transfer time.
 
 #### Time Scales
 
