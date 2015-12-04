@@ -66,3 +66,7 @@ fmt.Println(u, u+1, u*u) // "255 0 1"
 var i int8 = 127
 fmt.Println(i, i+1, i*i) // "127 -128 1"
 ```
+
+[p53]
+
+All values of basic type (booleans, numbers, and strings) are comparable. This means two values of the same type may be compared using the `==` and `!=` operators. Furthermore, integers, floating-point numbers, and strings are ordered by the comparison operators.
