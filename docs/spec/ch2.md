@@ -105,6 +105,26 @@ Physical system reboot | 5 m | 32 millennia
 
 #### Trade-offs
 
+Be aware of some common performance trade-offs. The figure below shows the good/fast/cheap "pick two" trade-off on the left alongside the terminology adjusted for IT projects on the right.
+
+[![Figure 2.4 Trade-offs: pick two](figure_2.4.png)](figure_2.4.png "Figure 2.4 Trade-offs: pick two")
+
+A common trade-off in performance tuning is that between CPU and memory:
+
+* Memory can be used to cache results, reducing CPU usage.
+* CPU may be spent to compress data to reduce memory usage. (On modern systems with an abundance of CPU)
+
+[p21]
+
+Tunable parameters often come with trade-offs. For examples:
+
+* **File system record size** (or block size):
+    * Small record sizes, close to the application I/O size, will perform better for random I/O workloads and make more efficient use of the file system cache while the application is running.
+    * Large record sizes will improve streaming workloads, including file system backups.
+* **Network buffer size**:
+    * Small buffer sizes will reduce the memory overhead per connection, helping the system scale.
+    * Large sizes will improve network throughput.
+
 #### Tuning Efforts
 
 #### Level of Appropriateness
@@ -136,3 +156,9 @@ p17 on System under Test:
 > The mere act of mapping the environment may help to reveal previously overlooked sources of perturbations. The environment may also be modeled as a network of queueing systems, for analytical study.
 
 WTF?
+
+p21 on Trade-offs:
+
+> File system record size and network buffer size: small vs large
+
+Further reading may be required to understand these trade-offs.
