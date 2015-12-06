@@ -127,13 +127,83 @@ Tunable parameters often come with trade-offs. For examples:
 
 #### Tuning Efforts
 
+<u>Performance tuning is most effective when done closest to where the work is performed (e.g. within application itself)).</u> The following table shows an example of software stack, with tuning possibilities.
+
+Layer | Tuning Targets
+----- | --------------
+Application | database queries performed
+Database | database table layout, indexes, buffering
+System calls | memory-mapped or read/write, sync or async I/O flags
+File system | record size, cache size, file system tunables
+Storage | RAID level, number and type of disks, storage tunables
+
+##### **Application Level** *
+
+Tuning at the application level may improve performance significantly due to the following reasons:
+
+1. It may be possible to eliminate or reduce database queries and improve performance by a large factor (e.g., 20x).
+    * Tuning down to the storage device level may eliminate or improve storage I/O, but tuning efforts have already been made executing higher-level OS stack code, so this may improve resulting application performance by only percentages (e.g., 20%).
+2. Since many of today’s environments target rapid deployment for features and functionality, application development and testing tend to focus on correctness, leaving little or no time for performance measurement or optimization before production deployment. These activities are conducted later, when performance becomes a problem.
+
+The application isn’t necessarily the most effective level from which to base observation. Slow queries may be best understood from their time spent on-CPU, or from the file system and disk I/O that they perform. These are observable from operating system tools.
+
+In many environments (especially cloud computing), the application level is under constant development, pushing software changes into production weekly or daily. Large performance improvment (including fixes for regressions) are frequently found as the application code changes. In these environments, tuning for the operating system and observability from the operating system can be easy to overlook. Remember that operating system performance analysis can also identify application-level issues, not just OS-level issues, in some cases more easily than from the application alone.
+
 #### Level of Appropriateness
+
+Different organizations and environments have different requirements for performance [p22]. This doesn’t necessarily mean that some organizations are doing it right and some wrong. It depends on the [return on investment](https://en.wikipedia.org/wiki/Return_on_investment) (ROI) for performance expertise:
+
+* Organizations with large data centers or cloud environments may need a team of performance engineers who analyze everything, including kernel internals and CPU performance counters, and frequently use dynamic tracing. They may also formally model performance and develop accurate predictions for future growth.
+* Small start-ups may have time only for superficial checks, trusting third-party monitoring solutions to check their performance and provide alerts.
 
 #### Point-in-Time Recommendations
 
+The performance characteristics of environments change over time, due to the addition of more users, newer hardware, and updated software or firmware.
+
+[p23]
+
+Performance recommendations, especially the values of tunable parameters, are valid only at a specific *point in time*. What may have been the best advice from a performance expert one week may become invalid a week later after a software or hardware upgrade, or after adding more users.
+
 #### Load versus Architecture
 
+An application can perform badly due to an issue with the software configuration and hardware on which it is running: its architecture. However, an application can also perform badly simply due to too much load applied, resulting in queueing and long latencies. Load and architecture are pictured in the figure below:
+
+[![Figure 2.5 Load versus architecture](figure_2.5.png)](figure_2.5.png "Figure 2.5 Load versus architecture")
+
+If analysis of the architecture shows queueing of work but no problems with how the work is performed, the issue may be one of too much load applied. In a cloud computing environment, this is the point where more nodes can be introduced to handle the work.
+
+##### **Single-threaded and multithreaded application** *
+
+For example,
+
+* An **issue of architecture** may be a single-threaded application that is busy on-CPU, with requests queueing while other CPUs are available and idle. In this case, performance is limited by the application’s single-threaded architecture.
+* An **issue of load** may be a multithreaded application that is busy on all available CPUs, with requests still queueing. In this case, performance is limited by the available CPU capacity, or put differently, by more load than the CPUs can handle.
+
 #### Scalability
+
+The performance of the system under increasing load is its **scalability**. The following figure shows a typical throughput profile as a system’s load increases:
+
+[![Figure 2.6 Throughput versus load](figure_2.6.png)](figure_2.6.png "Figure 2.6 Throughput versus load")
+
+For some period, linear scalability is observed. A point is then reached, marked with a dotted line, where contention for a resource begins to affect performance. This point can be described as a *knee point*, as it is the boundary between two pro files. Beyond this point, the throughput profile departs from linear scalability, as contention for the resource increases. Eventually the overheads for increased contention and coherency cause less work to be completed and throughput to decrease.
+
+This point may occur when a component reaches 100% utilization: the *saturation point*. It may also occur when a component approaches 100% utilization, and queueing begins to be frequent and significant. This point may occur when a component reaches 100% utilization: the saturation
+point. It may also occur when a component approaches 100% utilization, and
+queueing begins to be frequent and significant.
+
+An example system that may exhibit this profile is an application that performs heavy compute, with more load added as threads. As the CPUs approach 100% utilization, performance begins to degrade as CPU scheduler latency increases. After peak performance, at 100% utilization, throughput begins to decrease as more threads are added, causing more context switches, which consume CPU resources and cause less actual work to be completed.
+
+The same curve can be seen if you replace "load" on the *x* axis with a resource such as CPU cores (detailed in [Modeling](#modeling))
+
+The degradation of performance for nonlinear scalability, in terms of average response time or latency, is graphed in the following figure:
+
+[![Figure 2.7 Performance degradation](figure_2.7.png)](figure_2.7.png "Figure 2.7 Performance degradation")
+
+* The "fast" degradation profile may occur for memory load, when the system begins to page (or swap) to supplement main memory.
+* The "slow" degradation profile may occur for CPU load.
+* Another "fast" profile example is disk I/O. As load (and the resulting disk utilization) increases, I/O becomes more likely to queue behind other I/O. An idle rotational disk may serve I/O with a response time of about 1 ms, but when load increases, this can approach 10 ms.
+
+<u>Linear scalability of response time could occur if the application begins to return errors when resources are unavailable, instead of queueing work. For example, a web server may return 503 "Service Unavailable" instead of adding requests to a queue, so that those requests that are served can be performed with a consistent response time.</u>
 
 #### Known-Unknowns
 
@@ -146,6 +216,20 @@ Tunable parameters often come with trade-offs. For examples:
 #### Profiling
 
 #### Caching
+
+### Perspectives
+
+### Methodology
+
+### Modeling
+
+### Capacity Planning
+
+### Statistics
+
+### Monitoring
+
+### Visualizations
 
 ### Doubts and Solutions
 
