@@ -402,6 +402,113 @@ the verb `%v`, which displays a value of any type in a default format. The detai
 
 ### Animated GIFs
 
+The next program demonstrates usage of Go’s standard image packages to create a sequence of bit-mapped images and then encode the sequence as a GIF animation, called [Lissajous figures](https://en.wikipedia.org/wiki/Lissajous_curve).
+
+There are several new constructs in this code, including `const` declarations, struct types, and composite literals, and also involves floating-point computations.
+
+<small>[gopl.io/ch1/lissajous/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/lissajous/main.go)</small>
+
+```go
+// Lissajous generates GIF animations of random Lissajous figures.
+package main
+
+import (
+	"image"
+	"image/color"
+	"image/gif"
+	"io"
+	"math"
+	"math/rand"
+	"os"
+)
+
+//!-main
+// Packages not needed by version in book.
+import (
+	"log"
+	"net/http"
+	"time"
+)
+
+//!+main
+
+var palette = []color.Color{color.White, color.Black}
+
+const (
+	whiteIndex = 0 // first color in palette
+	blackIndex = 1 // next color in palette
+)
+
+func main() {
+	lissajous(os.Stdout)
+}
+
+func lissajous(out io.Writer) {
+	const (
+		cycles  = 5     // number of complete x oscillator revolutions
+		res     = 0.001 // angular resolution
+		size    = 100   // image canvas covers [-size..+size]
+		nframes = 64    // number of animation frames
+		delay   = 8     // delay between frames in 10ms units
+	)
+	freq := rand.Float64() * 3.0 // relative frequency of y oscillator
+	anim := gif.GIF{LoopCount: nframes}
+	phase := 0.0 // phase difference
+	for i := 0; i < nframes; i++ {
+		rect := image.Rect(0, 0, 2*size+1, 2*size+1)
+		img := image.NewPaletted(rect, palette)
+		for t := 0.0; t < cycles*2*math.Pi; t += res {
+			x := math.Sin(t)
+			y := math.Sin(t*freq + phase)
+			img.SetColorIndex(size+int(x*size+0.5), size+int(y*size+0.5),
+				blackIndex)
+		}
+		phase += 0.1
+		anim.Delay = append(anim.Delay, delay)
+		anim.Image = append(anim.Image, img)
+	}
+	gif.EncodeAll(out, &anim) // NOTE: ignoring encoding errors
+}
+```
+
+#### Package names with multiple components *
+
+After importing a package whose path has multiple components, we refer to the package with a name that comes from the last component. Therefore:
+
+* The variable `color.White` belongs to the `image/color` package
+* The [`gif.GIF`](https://golang.org/pkg/image/gif/#GIF) belongs to the `image/gif` package
+
+#### `constant` declarations *
+
+A `const` declaration ([Section 3.6](ch3.md#constants)) gives names to constants (values that are fixed at compile time) such as the numerical parameters for cycles, frames, and delay. Like `var` declarations, const declarations may appear at package level (so the names are visible throughout the package) or within a function (so the names are visible only within that function). <u>The value of a constant must be a number, string, or boolean.</u>
+
+#### Composite literals *
+
+The expressions `[]color.Color{...}` (a slice) and `gif.GIF{...}` (a struct) are [**composite literals**](https://golang.org/ref/spec#Composite_literals) ([Section 4.2](ch4.md#slices), [Section 4.4.1](ch4.md#struct-literals)), a compact notation for instantiating any of Go’s composite types from a sequence of element values.
+
+#### Structs *
+
+The type `gif.GIF` is a struct type ([Section 4.4](ch4.md#structs)). A struct is a group of values called *fields*, often of different types, that are collected together in a single object that can be treated as a unit. The variable `anim` is a struct of type `gif.GIF`. The struct literal creates a struct value whose `LoopCount` field is set to `nframes`; all other fields have the zero value for their type. The individual fields of a struct can be accessed using dot notation, as in the final two assignments which explicitly update the `Delay` and `Image` fields of `anim`.
+
+#### The `lissajous` function *
+
+[p15]
+
+(skipped)
+
+Used concepts:
+
+* Built-in `append` function
+* `io.Writer`
+
+The `main` function calls the `lissajous` function, directing it to write to the standard output, so this command produces an animated GIF:
+
+```shell-session
+$ go build gopl.io/ch1/lissajous
+$ ./lissajous >out.gif
+```
+
+
 ### Fetching a URL
 
 ### Fetching URLs Concurrently
