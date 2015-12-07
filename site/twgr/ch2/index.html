@@ -656,6 +656,13 @@
         
             <li><a href="#methods-that-take-arguments">Methods that take arguments</a></li>
         
+            <li><a href="#the-return-value-of-a-method">The return value of a method</a></li>
+        
+    
+        <li class="main "><a href="#crafting-an-object-the-behavior-of-a-ticket">Crafting an object: The behavior of a ticket</a></li>
+        
+            <li><a href="#the-ticket-object-behavior-first">The ticket object, behavior first</a></li>
+        
     
     </ul>
 </div></div>
@@ -758,6 +765,132 @@ method calls together, so it’s good to lean toward using them rather than leav
 out. You can make an exception for common or conventional cases where parentheses
 are usually excluded, like calls to <code>puts</code>. But when in doubt, use the parentheses.</p>
 <p>At the other end of the process, every method call <em>returns</em> a value.</p>
+<h4 id="the-return-value-of-a-method">The return value of a method</h4>
+<p>Ruby code is made up of expressions, each of which evaluates to a particular value.  The following table shows some examples of expressions and their values:</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Value</th>
+<th>Comments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2 + 2</code></td>
+<td><code>4</code></td>
+<td>Arithmetic expressions evaluate to their results.</td>
+</tr>
+<tr>
+<td><code>"Hello"</code></td>
+<td><code>"Hello"</code></td>
+<td>A simple, literal string (in quotation marks) evaluates to itself.</td>
+</tr>
+<tr>
+<td><code>"Hello" + " there"</code></td>
+<td><code>"Hello there"</code></td>
+<td>Strings can be "added" to each other (concatenated) with the plus sign.</td>
+</tr>
+<tr>
+<td><code>c = 100</code></td>
+<td><code>100</code></td>
+<td>When you assign to a variable, the whole assignment evaluates to the value you’ve assigned.</td>
+</tr>
+<tr>
+<td><code>c * 9/5 + 32</code></td>
+<td>212</td>
+<td>The usual rules of precedence apply: multiplication and division bind more tightly than addition and are performed first.</td>
+</tr>
+<tr>
+<td><code>obj.c2f(100)</code></td>
+<td><code>212</code></td>
+<td>A method call is an expression.</td>
+</tr>
+</tbody>
+</table>
+<p>Every method call is an expression.  When you call a method, the method call evaluates to something. This result of calling a method is the method’s return value.</p>
+<p>The return value of any method is the same as the value of the last expression evaluated during execution of the method. In the case of the temperature-conversion method (i.e. <code>obj.c2f</code>), the last expression evaluated is the only line of the method body.</p>
+<p>Ruby gives you a keyword for making return values explicit: <code>return</code>. The use of this keyword is usually optional, but many programmers like to use it because it makes explicit what is otherwise implicit:</p>
+<div class="codehilite"><pre><span class="k">def</span> <span class="nc">obj</span><span class="o">.</span><span class="nf">c2f</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">c</span> <span class="o">*</span> <span class="mi">9</span><span class="o">.</span><span class="mi">0</span> <span class="o">/</span> <span class="mi">5</span> <span class="o">+</span> <span class="mi">32</span>
+<span class="k">end</span>
+</pre></div>
+
+
+<p>This is equivalent to the earlier version of the method, but it’s more expressive about what it’s doing.</p>
+<p>In some cases, the <code>return</code> is required:</p>
+<ul>
+<li>You have to use it if you return multiple values, which will be automatically wrapped up in an array: <code>return a,b,c</code> rather than just <code>a,b,c</code> (though you can also return multiple values in an explicit array, like <code>[a,b,c]</code>, without return).</li>
+<li>You also have to use <code>return</code> if you want to return from somewhere in the middle of a method.</li>
+</ul>
+<p>Whether you use return or not, something will be returned from every method call. Even a call to an empty method body, consisting of just the <code>def</code> and <code>end</code> statements, returns <code>nil</code>.</p>
+<p>At this point, the object is doing what we need it to do: listening to messages and acting on them. [p40]</p>
+<h3 id="crafting-an-object-the-behavior-of-a-ticket">Crafting an object: The behavior of a ticket</h3>
+<h4 id="the-ticket-object-behavior-first">The ticket object, behavior first</h4>
+<p>A ticket object should be able to provide data about itself. It should field requests for information about the event it’s for: when, where, name of event, performer, which seat, and cost.</p>
+<div class="codehilite"><pre>01/02/03
+Town Hall
+Author&#39;s reading
+Mark Twain
+Second Balcony, row J, seat 12
+$5.50
+</pre></div>
+
+
+<h5 id="creating-the-ticket-object"><strong>Creating the ticket object</strong></h5>
+<p><small><a href="https://github.com/shichao-an/twgr2E-code/blob/master/ch2/ticket.rb">ch2/ticket.rb</a></small></p>
+<div class="codehilite"><pre><span class="n">ticket</span> <span class="o">=</span> <span class="no">Object</span><span class="o">.</span><span class="n">new</span>
+
+<span class="k">def</span> <span class="nc">ticket</span><span class="o">.</span><span class="nf">date</span>
+  <span class="s2">&quot;01/02/03&quot;</span>
+<span class="k">end</span>
+
+<span class="k">def</span> <span class="nc">ticket</span><span class="o">.</span><span class="nf">venue</span>
+  <span class="s2">&quot;Town Hall&quot;</span>
+<span class="k">end</span>
+
+<span class="k">def</span> <span class="nc">ticket</span><span class="o">.</span><span class="nf">event</span>
+  <span class="s2">&quot;Author&#39;s reading&quot;</span>
+<span class="k">end</span>
+
+<span class="k">def</span> <span class="nc">ticket</span><span class="o">.</span><span class="nf">performer</span>
+  <span class="s2">&quot;Mark Twain&quot;</span>
+<span class="k">end</span>
+
+<span class="k">def</span> <span class="nc">ticket</span><span class="o">.</span><span class="nf">seat</span>
+  <span class="s2">&quot;Second Balcony, row J, seat 12&quot;</span>
+<span class="k">end</span>
+
+<span class="k">def</span> <span class="nc">ticket</span><span class="o">.</span><span class="nf">price</span>
+  <span class="mi">5</span><span class="o">.</span><span class="mi">50</span>
+<span class="k">end</span>
+</pre></div>
+
+
+<p>The majority of the methods defined here return string values. The <code>price</code> method returns a floating-point number.</p>
+<h5 id="querying-the-ticket-object"><strong>Querying the ticket object</strong></h5>
+<p>The use of <code>print</code> and <code>puts</code> can help get the information:</p>
+<div class="codehilite"><pre><span class="nb">print</span> <span class="s2">&quot;This ticket is for: &quot;</span>
+<span class="nb">print</span> <span class="n">ticket</span><span class="o">.</span><span class="n">event</span> <span class="o">+</span> <span class="s2">&quot;, at &quot;</span>
+<span class="nb">print</span> <span class="n">ticket</span><span class="o">.</span><span class="n">venue</span> <span class="o">+</span> <span class="s2">&quot;, on &quot;</span>
+<span class="nb">puts</span> <span class="n">ticket</span><span class="o">.</span><span class="n">date</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span>
+<span class="nb">print</span> <span class="s2">&quot;The performer is &quot;</span>
+<span class="nb">puts</span> <span class="n">ticket</span><span class="o">.</span><span class="n">performer</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span>
+<span class="nb">print</span> <span class="s2">&quot;The seat is &quot;</span>
+<span class="nb">print</span> <span class="n">ticket</span><span class="o">.</span><span class="n">seat</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span>
+<span class="nb">print</span> <span class="s2">&quot;and it costs $&quot;</span>
+<span class="nb">puts</span> <span class="s2">&quot;%.2f.&quot;</span> <span class="o">%</span> <span class="n">ticket</span><span class="o">.</span><span class="n">price</span>
+</pre></div>
+
+
+<h5 id="shortening-the-ticket-code-via-string-interpolation"><strong>Shortening the ticket code via string interpolation</strong></h5>
+<p>One of the most useful programming techniques available in Ruby is <a href="https://en.wikipedia.org/wiki/String_interpolation"><strong>string interpolation</strong></a>.  The string-interpolation operator gives you a way to drop anything into a string: a variable, for example, or the return value of a method. This can save you a lot of back-and-forth between <code>print</code> and <code>puts</code>.</p>
+<p>Strings can also be concatenated with the plus sign (<code>+</code>). The following code is an example of using string interpolation to insert the values of expressions into the string and using string addition to consolidate multiple <code>puts</code> calls into one:</p>
+<div class="codehilite"><pre><span class="nb">puts</span> <span class="s2">&quot;This ticket is for: </span><span class="si">#{</span><span class="n">ticket</span><span class="o">.</span><span class="n">event</span><span class="si">}</span><span class="s2">, at </span><span class="si">#{</span><span class="n">ticket</span><span class="o">.</span><span class="n">venue</span><span class="si">}</span><span class="s2">.&quot;</span> <span class="o">+</span>
+  <span class="s2">&quot;The performer is </span><span class="si">#{</span><span class="n">ticket</span><span class="o">.</span><span class="n">performer</span><span class="si">}</span><span class="s2">.&quot;</span> <span class="o">+</span>
+  <span class="s2">&quot;The seat is </span><span class="si">#{</span><span class="n">ticket</span><span class="o">.</span><span class="n">seat</span><span class="si">}</span><span class="s2">, &quot;</span> <span class="o">+</span>
+  <span class="s2">&quot;and it costs $</span><span class="si">#{</span><span class="s2">&quot;%.2f.&quot;</span> <span class="o">%</span> <span class="n">ticket</span><span class="o">.</span><span class="n">price</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
             </div>
         </div>
 
