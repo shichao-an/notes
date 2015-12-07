@@ -320,8 +320,127 @@ The variables `sep` and `n` are pointers to the flag variables, which must be ac
 
 When the program is run, it must call `flag.Parse` before the flags are used, to update the flag variables from their default values. The non-flag arguments are available from `flag.Args()` as a slice of strings. If `flag.Parse` encounters an error, it prints a usage message and calls `os.Exit(2)` to terminate the program.
 
-[p34]
+The following are some test results:
 
+```shell-session
+$ go build gopl.io/ch2/echo4
+$ ./echo4 a bc def
+a bc def
+$ ./echo4 -s / a bc def
+a/bc/def
+$ ./echo4 -n a bc def
+a bc def$
+$ ./echo4 -help
+Usage of ./echo4:
+  -n    omit trailing newline
+  -s string
+        separator (default " ")
+```
+
+#### The `new` Function
+
+Another way to create a variable is to use the built-in function `new`. The expression `new(T)` creates an **unnamed variable** ([anonymous variable](https://golang.org/ref/spec#Variables)) of type `T`, initializes it to the zero value of `T`, and returns its address, which is a value of type `*T`.
+
+```go
+p := new(int)    // p, of type *int, points to an unnamed int variable
+fmt.Println(*p)  // "0"
+*p = 2           // sets the unnamed int to 2
+fmt.Println(*p)  // "2"
+```
+
+A variable created with `new` is no different from an ordinary local variable whose address is taken, except that there’s no need to invent (and declare) a dummy name, and we can use `new(T)` in an expression. <u>Thus `new` is only a syntactic convenience, not a fundamental notion.</u>
+
+The two `newInt` functions below have identical behaviors:
+
+```go
+func newInt() *int {
+	return new(int)
+}
+```
+
+```go
+func newInt() *int {
+	var dummy int
+	return &dummy
+}
+```
+
+Each call to new returns a distinct variable with a unique address:
+
+```go
+p := new(int)
+q := new(int)
+fmt.Println(p == q) // "false"
+```
+
+There is one exception to this rule: two variables whose type carries no information and is therefore of size zero, such as `struct{}` or `[0]int`, may have the same address (depending on the implementation).
+
+The `new` function is relatively rarely used because the most common unnamed variables are of struct types, for which the struct literal syntax ([Section 4.4.1](ch4.md#struct-literals)) is more flexible.
+
+Since new is a predeclared function, not a keyword, it’s possible to redefine the name for something else within a function, for example:
+
+```go
+func delta(old, new int) int { return new - old }
+```
+
+Within `delta`, the built-in `new` function is unavailable.
+
+#### Lifetime of Variables
+
+The lifetime of a variable is the interval of time during which it exists as the program executes.
+
+* The lifetime of a package-level variable is the entire execution of the program.
+* Local variables have dynamic lifetimes: a new instance is created each time the declaration statement is executed, and the variable lives on until it becomes *unreachable*, at which point its storage may be recycled.
+* Function parameters and results are also local variables; they are created each time their enclosing function is called.
+
+For example, in this excerpt from the Lissajous program of [Section 1.4](#animated-gifs):
+
+```go
+for t := 0.0; t < cycles*2*math.Pi; t += res {
+	x := math.Sin(t)
+	y := math.Sin(t*freq + phase)
+	img.SetColorIndex(size+int(x*size+0.5), size+int(y*size+0.5),
+		blackIndex)
+}
+```
+
+* The variable `t` is created each time the for loop begins.
+* New variables `x` and `y` are created on each iteration of the loop.
+
+##### **How does the garbage collector know that a variable’s storage can be reclaimed?** *
+
+The basic idea is that every package-level variable, and every local variable of each currently active function, can potentially be the start or root of a path to the variable in question, following pointers and other kinds of references that ultimately lead to the variable. If no such path exists, the variable has become unreachable, so it can no longer affect the rest of the computation.
+
+<u>Because the lifetime of a variable is determined only by whether or not it is reachable, a local variable may outlive a single iteration of the enclosing loop. It may continue to exist even after its enclosing function has returned.</u>
+
+##### **Heap or stack?** *
+
+A compiler may choose to allocate local variables on the heap or on the stack, but this choice is not determined by whether `var` or `new` was used to declare the variable.
+
+```go
+var global *int
+
+func f() {
+	var x int
+	x = 1
+	global = &x
+}
+
+func g() {
+	y := new(int)
+	*y = 1
+}
+```
+In the above code:
+
+* `x` must be heap-allocated because it is still reachable from the variable `global` after `f` has returned, despite being declared as a local variable; we say `x` *escapes* from `f`.
+* Conversely, when `g` returns, the variable `*y` becomes unreachable and can be recycled. Since `*y` does not escape from `g`, it’s safe for the compiler to allocate *y on the stack, even though it was allocated with `new`.
+
+In any case, the notion of escaping is not something that you need to worry about in order to write correct code, though it’s good to keep in mind during performance optimization, since each variable that escapes requires an extra memory allocation.
+
+##### **Thoughts on garbage collection** *
+
+Garbage collection is a tremendous help in writing correct programs, but it does not relieve you of the burden of thinking about memory. You don’t need to explicitly allocate and free memory, but to write efficient programs you still need to be aware of the lifetime of variables.  For example, keeping unnecessary pointers to short-lived objects within long-lived objects, especially global variables, will prevent the garbage collector from reclaiming the short-lived objects.
 
 ### Doubts and Solutions
 
