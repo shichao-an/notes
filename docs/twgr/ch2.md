@@ -121,3 +121,118 @@ out. You can make an exception for common or conventional cases where parenthese
 are usually excluded, like calls to `puts`. But when in doubt, use the parentheses.
 
 At the other end of the process, every method call *returns* a value.
+
+#### The return value of a method
+
+Ruby code is made up of expressions, each of which evaluates to a particular value.  The following table shows some examples of expressions and their values:
+
+Expression | Value | Comments
+---------- | ----- | --------
+`2 + 2` | `4` | Arithmetic expressions evaluate to their results.
+`"Hello"` | `"Hello"` | A simple, literal string (in quotation marks) evaluates to itself.
+`"Hello" + " there"` | `"Hello there"` | Strings can be "added" to each other (concatenated) with the plus sign.
+`c = 100` | `100` | When you assign to a variable, the whole assignment evaluates to the value you’ve assigned.
+`c * 9/5 + 32` | 212 | The usual rules of precedence apply: multiplication and division bind more tightly than addition and are performed first.
+`obj.c2f(100)` | `212` | A method call is an expression.
+
+Every method call is an expression.  When you call a method, the method call evaluates to something. This result of calling a method is the method’s return value.
+
+The return value of any method is the same as the value of the last expression evaluated during execution of the method. In the case of the temperature-conversion method (i.e. `obj.c2f`), the last expression evaluated is the only line of the method body.
+
+Ruby gives you a keyword for making return values explicit: `return`. The use of this keyword is usually optional, but many programmers like to use it because it makes explicit what is otherwise implicit:
+
+```ruby
+def obj.c2f(c)
+  return c * 9.0 / 5 + 32
+end
+```
+
+This is equivalent to the earlier version of the method, but it’s more expressive about what it’s doing.
+
+In some cases, the `return` is required:
+
+* You have to use it if you return multiple values, which will be automatically wrapped up in an array: `return a,b,c` rather than just `a,b,c` (though you can also return multiple values in an explicit array, like `[a,b,c]`, without return).
+* You also have to use `return` if you want to return from somewhere in the middle of a method.
+
+Whether you use return or not, something will be returned from every method call. Even a call to an empty method body, consisting of just the `def` and `end` statements, returns `nil`.
+
+At this point, the object is doing what we need it to do: listening to messages and acting on them. [p40]
+
+### Crafting an object: The behavior of a ticket
+
+#### The ticket object, behavior first
+
+A ticket object should be able to provide data about itself. It should field requests for information about the event it’s for: when, where, name of event, performer, which seat, and cost.
+
+```text
+01/02/03
+Town Hall
+Author's reading
+Mark Twain
+Second Balcony, row J, seat 12
+$5.50
+```
+
+##### **Creating the ticket object**
+
+<small>[ch2/ticket.rb](https://github.com/shichao-an/twgr2E-code/blob/master/ch2/ticket.rb)</small>
+
+```ruby
+ticket = Object.new
+
+def ticket.date
+  "01/02/03"
+end
+
+def ticket.venue
+  "Town Hall"
+end
+
+def ticket.event
+  "Author's reading"
+end
+
+def ticket.performer
+  "Mark Twain"
+end
+
+def ticket.seat
+  "Second Balcony, row J, seat 12"
+end
+
+def ticket.price
+  5.50
+end
+```
+
+The majority of the methods defined here return string values. The `price` method returns a floating-point number.
+
+##### **Querying the ticket object**
+
+The use of `print` and `puts` can help get the information:
+
+```ruby
+print "This ticket is for: "
+print ticket.event + ", at "
+print ticket.venue + ", on "
+puts ticket.date + "."
+print "The performer is "
+puts ticket.performer + "."
+print "The seat is "
+print ticket.seat + ", "
+print "and it costs $"
+puts "%.2f." % ticket.price
+```
+
+##### **Shortening the ticket code via string interpolation**
+
+One of the most useful programming techniques available in Ruby is [**string interpolation**](https://en.wikipedia.org/wiki/String_interpolation).  The string-interpolation operator gives you a way to drop anything into a string: a variable, for example, or the return value of a method. This can save you a lot of back-and-forth between `print` and `puts`.
+
+Strings can also be concatenated with the plus sign (`+`). The following code is an example of using string interpolation to insert the values of expressions into the string and using string addition to consolidate multiple `puts` calls into one:
+
+```ruby
+puts "This ticket is for: #{ticket.event}, at #{ticket.venue}." +
+  "The performer is #{ticket.performer}." +
+  "The seat is #{ticket.seat}, " +
+  "and it costs $#{"%.2f." % ticket.price}"
+```
