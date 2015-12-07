@@ -520,6 +520,12 @@
                         </li>
                       
                     
+                      
+                        <li >
+                            <a href="../ch4/">Chapter 4. Composite Types</a>
+                        </li>
+                      
+                    
                     </ul>
                 </li>
             
@@ -678,6 +684,16 @@
         
     
         <li class="main "><a href="#animated-gifs">Animated GIFs</a></li>
+        
+            <li><a href="#package-names-with-multiple-components">Package names with multiple components *</a></li>
+        
+            <li><a href="#constant-declarations">constant declarations *</a></li>
+        
+            <li><a href="#composite-literals">Composite literals *</a></li>
+        
+            <li><a href="#structs">Structs *</a></li>
+        
+            <li><a href="#the-lissajous-function">The lissajous function *</a></li>
         
     
         <li class="main "><a href="#fetching-a-url">Fetching a URL</a></li>
@@ -938,7 +954,7 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 <li>The key may be of any type whose values can compared with <code>==</code>, strings being the most common example;</li>
 <li>The value may be of any type at all.</li>
 </ul>
-<p>In this example, the keys are <code>string</code>s and the values are <code>int</code>s. The built-in function <code>make</code> creates a new empty map. Maps are detailed in <a href="ch4.md#maps">Section 4.3</a>.</p>
+<p>In this example, the keys are <code>string</code>s and the values are <code>int</code>s. The built-in function <code>make</code> creates a new empty map. Maps are detailed in <a href="../ch4/#maps">Section 4.3</a>.</p>
 <p>The statement <code>counts[input.Text()]++</code> is equivalent to these two statements:</p>
 <div class="codehilite"><pre><span class="nx">line</span> <span class="o">:=</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">()</span>
 <span class="nx">counts</span><span class="p">[</span><span class="nx">line</span><span class="p">]</span> <span class="p">=</span> <span class="nx">counts</span><span class="p">[</span><span class="nx">line</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
@@ -1071,6 +1087,98 @@ list (empty for <code>main</code>), a result list (also empty here), and the bod
 the verb <code>%v</code>, which displays a value of any type in a default format. The details of error handling are in <a href="ch5.md#errors">Section 5.4</a>.</p>
 <p><u>Notice that the call to <code>countLines</code> precedes its declaration. Functions and other package-level entities may be declared in any order.</u></p>
 <h3 id="animated-gifs">Animated GIFs</h3>
+<p>The next program demonstrates usage of Go’s standard image packages to create a sequence of bit-mapped images and then encode the sequence as a GIF animation, called <a href="https://en.wikipedia.org/wiki/Lissajous_curve">Lissajous figures</a>.</p>
+<p>There are several new constructs in this code, including <code>const</code> declarations, struct types, and composite literals, and also involves floating-point computations.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/lissajous/main.go">gopl.io/ch1/lissajous/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Lissajous generates GIF animations of random Lissajous figures.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;image&quot;</span>
+    <span class="s">&quot;image/color&quot;</span>
+    <span class="s">&quot;image/gif&quot;</span>
+    <span class="s">&quot;io&quot;</span>
+    <span class="s">&quot;math&quot;</span>
+    <span class="s">&quot;math/rand&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">//!-main</span>
+<span class="c1">// Packages not needed by version in book.</span>
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;log&quot;</span>
+    <span class="s">&quot;net/http&quot;</span>
+    <span class="s">&quot;time&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">//!+main</span>
+
+<span class="kd">var</span> <span class="nx">palette</span> <span class="p">=</span> <span class="p">[]</span><span class="nx">color</span><span class="p">.</span><span class="nx">Color</span><span class="p">{</span><span class="nx">color</span><span class="p">.</span><span class="nx">White</span><span class="p">,</span> <span class="nx">color</span><span class="p">.</span><span class="nx">Black</span><span class="p">}</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">whiteIndex</span> <span class="p">=</span> <span class="mi">0</span> <span class="c1">// first color in palette</span>
+    <span class="nx">blackIndex</span> <span class="p">=</span> <span class="mi">1</span> <span class="c1">// next color in palette</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">lissajous</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">lissajous</span><span class="p">(</span><span class="nx">out</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="p">(</span>
+        <span class="nx">cycles</span>  <span class="p">=</span> <span class="mi">5</span>     <span class="c1">// number of complete x oscillator revolutions</span>
+        <span class="nx">res</span>     <span class="p">=</span> <span class="mf">0.001</span> <span class="c1">// angular resolution</span>
+        <span class="nx">size</span>    <span class="p">=</span> <span class="mi">100</span>   <span class="c1">// image canvas covers [-size..+size]</span>
+        <span class="nx">nframes</span> <span class="p">=</span> <span class="mi">64</span>    <span class="c1">// number of animation frames</span>
+        <span class="nx">delay</span>   <span class="p">=</span> <span class="mi">8</span>     <span class="c1">// delay between frames in 10ms units</span>
+    <span class="p">)</span>
+    <span class="nx">freq</span> <span class="o">:=</span> <span class="nx">rand</span><span class="p">.</span><span class="nx">Float64</span><span class="p">()</span> <span class="o">*</span> <span class="mf">3.0</span> <span class="c1">// relative frequency of y oscillator</span>
+    <span class="nx">anim</span> <span class="o">:=</span> <span class="nx">gif</span><span class="p">.</span><span class="nx">GIF</span><span class="p">{</span><span class="nx">LoopCount</span><span class="p">:</span> <span class="nx">nframes</span><span class="p">}</span>
+    <span class="nx">phase</span> <span class="o">:=</span> <span class="mf">0.0</span> <span class="c1">// phase difference</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">nframes</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">rect</span> <span class="o">:=</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Rect</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="nx">size</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="nx">size</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nx">img</span> <span class="o">:=</span> <span class="nx">image</span><span class="p">.</span><span class="nx">NewPaletted</span><span class="p">(</span><span class="nx">rect</span><span class="p">,</span> <span class="nx">palette</span><span class="p">)</span>
+        <span class="k">for</span> <span class="nx">t</span> <span class="o">:=</span> <span class="mf">0.0</span><span class="p">;</span> <span class="nx">t</span> <span class="p">&lt;</span> <span class="nx">cycles</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="nx">math</span><span class="p">.</span><span class="nx">Pi</span><span class="p">;</span> <span class="nx">t</span> <span class="o">+=</span> <span class="nx">res</span> <span class="p">{</span>
+            <span class="nx">x</span> <span class="o">:=</span> <span class="nx">math</span><span class="p">.</span><span class="nx">Sin</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>
+            <span class="nx">y</span> <span class="o">:=</span> <span class="nx">math</span><span class="p">.</span><span class="nx">Sin</span><span class="p">(</span><span class="nx">t</span><span class="o">*</span><span class="nx">freq</span> <span class="o">+</span> <span class="nx">phase</span><span class="p">)</span>
+            <span class="nx">img</span><span class="p">.</span><span class="nx">SetColorIndex</span><span class="p">(</span><span class="nx">size</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="nx">x</span><span class="o">*</span><span class="nx">size</span><span class="o">+</span><span class="mf">0.5</span><span class="p">),</span> <span class="nx">size</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="nx">y</span><span class="o">*</span><span class="nx">size</span><span class="o">+</span><span class="mf">0.5</span><span class="p">),</span>
+                <span class="nx">blackIndex</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="nx">phase</span> <span class="o">+=</span> <span class="mf">0.1</span>
+        <span class="nx">anim</span><span class="p">.</span><span class="nx">Delay</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">anim</span><span class="p">.</span><span class="nx">Delay</span><span class="p">,</span> <span class="nx">delay</span><span class="p">)</span>
+        <span class="nx">anim</span><span class="p">.</span><span class="nx">Image</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">anim</span><span class="p">.</span><span class="nx">Image</span><span class="p">,</span> <span class="nx">img</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">gif</span><span class="p">.</span><span class="nx">EncodeAll</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">anim</span><span class="p">)</span> <span class="c1">// NOTE: ignoring encoding errors</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="package-names-with-multiple-components">Package names with multiple components *</h4>
+<p>After importing a package whose path has multiple components, we refer to the package with a name that comes from the last component. Therefore:</p>
+<ul>
+<li>The variable <code>color.White</code> belongs to the <code>image/color</code> package</li>
+<li>The <a href="https://golang.org/pkg/image/gif/#GIF"><code>gif.GIF</code></a> belongs to the <code>image/gif</code> package</li>
+</ul>
+<h4 id="constant-declarations"><code>constant</code> declarations *</h4>
+<p>A <code>const</code> declaration (<a href="../ch3/#constants">Section 3.6</a>) gives names to constants (values that are fixed at compile time) such as the numerical parameters for cycles, frames, and delay. Like <code>var</code> declarations, const declarations may appear at package level (so the names are visible throughout the package) or within a function (so the names are visible only within that function). <u>The value of a constant must be a number, string, or boolean.</u></p>
+<h4 id="composite-literals">Composite literals *</h4>
+<p>The expressions <code>[]color.Color{...}</code> (a slice) and <code>gif.GIF{...}</code> (a struct) are <a href="https://golang.org/ref/spec#Composite_literals"><strong>composite literals</strong></a> (<a href="../ch4/#slices">Section 4.2</a>, <a href="../ch4/#struct-literals">Section 4.4.1</a>), a compact notation for instantiating any of Go’s composite types from a sequence of element values.</p>
+<h4 id="structs">Structs *</h4>
+<p>The type <code>gif.GIF</code> is a struct type (<a href="../ch4/#structs">Section 4.4</a>). A struct is a group of values called <em>fields</em>, often of different types, that are collected together in a single object that can be treated as a unit. The variable <code>anim</code> is a struct of type <code>gif.GIF</code>. The struct literal creates a struct value whose <code>LoopCount</code> field is set to <code>nframes</code>; all other fields have the zero value for their type. The individual fields of a struct can be accessed using dot notation, as in the final two assignments which explicitly update the <code>Delay</code> and <code>Image</code> fields of <code>anim</code>.</p>
+<h4 id="the-lissajous-function">The <code>lissajous</code> function *</h4>
+<p>[p15]</p>
+<p>(skipped)</p>
+<p>Used concepts:</p>
+<ul>
+<li>Built-in <code>append</code> function</li>
+<li><code>io.Writer</code></li>
+</ul>
+<p>The <code>main</code> function calls the <code>lissajous</code> function, directing it to write to the standard output, so this command produces an animated GIF:</p>
+<div class="codehilite"><pre><span class="go">$ go build gopl.io/ch1/lissajous</span>
+<span class="go">$ ./lissajous &gt;out.gif</span>
+</pre></div>
+
+
 <h3 id="fetching-a-url">Fetching a URL</h3>
 <h3 id="fetching-urls-concurrently">Fetching URLs Concurrently</h3>
 <h3 id="a-web-server">A Web Server</h3>
