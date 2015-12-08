@@ -207,6 +207,14 @@ The degradation of performance for nonlinear scalability, in terms of average re
 
 #### Known-Unknowns
 
+The following notions are important:
+
+* **Known-knowns**: These are things you know. You know you should be checking a performance metric, and you know its current value. For example, you know you should be checking CPU utilization, and you also know that the value is 10% on average.
+* **Known-unknowns**: These are things you know that you do not know. You know you can check a metric or the existence of a subsystem, but you haven’t yet observed it. For example, you know you could be checking what is making the CPUs busy by the use of profiling but have yet to do so.
+* **Unknown-unknowns**: These are things you do not know you do not know.  For example, you may not know that device interrupts can become heavy CPU consumers, so you are not checking them.
+
+Performance is a field where "the more you know, the more you don’t know". It’s the same principle: the more you learn about systems, the more unknownunknowns you become aware of, which are then known-unknowns that you can check on.
+
 #### Metrics
 
 #### Utilization
