@@ -228,6 +228,14 @@ Common types of systems performance metrics include:
 * **Utilization**
 * **Latency**
 
+##### **Overhead**
+
+Since CPU cycles must be spent to gather and store the metrics. This causes overhead, which can negatively affect the performance of the target of measurement. This is called the [**observer effect**](https://en.wikipedia.org/wiki/Observer_effect_(information_technology)).
+
+##### **Issues**
+
+The temptation is to assume that the software vendor has provided metrics that are well chosen, are bug-free, and provide complete visibility. In reality, metrics can be confusing, complicated, unreliable, inaccurate, and even plain wrong (due to bugs). Sometimes a metric was correct on one software version but did not get updated to reflect the addition of new code and code paths.
+
 #### Utilization
 
 #### Saturation
