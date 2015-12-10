@@ -238,6 +238,28 @@ The temptation is to assume that the software vendor has provided metrics that a
 
 #### Utilization
 
+The term *utilization* is often used for operating systems to describe device usage, such as for the CPU and disk devices. Utilization can be time-based or capacitybased.
+
+##### **Time-Based**
+
+Time-based utilization is the average amount of time the server or resource was busy, as defined in [queueing theory](https://en.wikipedia.org/wiki/Queueing_theory), along with the ratio:
+
+*U* = *B*/*T*
+
+where:
+
+* *U* = utilization
+* *B* = total time the system was busy during *T*, the observation period
+
+The "utilization" is also available from operating system performance tools. The disk monitoring tool `iostat(1)` calls this metric *%b* for percent busy, a term that better conveys the underlying metric: *B*/*T*.
+
+This utilization metric means how busy a component is: when a component approaches 100% utilization, performance can seriously degrade when there is contention for the resource. Other metrics can be checked to confirm and to see if the component has therefore become a system bottleneck.
+
+Some components can service multiple operations in parallel. Performance may not degrade much at 100% utilization, as they can accept more work. [p28]
+
+* A disk that is 100% busy may also be able to accept and process more work, for example, by buffering writes in the on-disk cache to be completed later.
+* Storage arrays frequently run at 100% utilization because some disk is busy 100% of the time, but the array has plenty of idle disks and can accept much more work.
+
 #### Saturation
 
 #### Profiling
