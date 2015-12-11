@@ -281,7 +281,7 @@ In an ideal world, we would be able to measure both types of utilization for a d
 
 ##### **Non-Idle Time**
 
-**Non-idle time** a more accurate term to define utilization, but not yet in common usage. [p29]
+**Non-idle time** is a more accurate term to define utilization, but not yet in common usage. [p29]
 
 #### Saturation
 
