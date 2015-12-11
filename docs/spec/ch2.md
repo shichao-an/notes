@@ -244,14 +244,14 @@ The term *utilization* is often used for operating systems to describe device us
 
 Time-based utilization is the average amount of time the server or resource was busy, as defined in [queueing theory](https://en.wikipedia.org/wiki/Queueing_theory), along with the ratio:
 
-*U* = *B*/*T*
+> *U* = *B*/*T*
 
 where:
 
 * *U* = utilization
 * *B* = total time the system was busy during *T*, the observation period
 
-The "utilization" is also available from operating system performance tools. The disk monitoring tool `iostat(1)` calls this metric *%b* for percent busy, a term that better conveys the underlying metric: *B*/*T*.
+The "utilization" is also available from operating system performance tools. The disk monitoring tool [`iostat(1)`](http://man7.org/linux/man-pages/man1/iostat.1.html) calls this metric *%b* for percent busy, a term that better conveys the underlying metric: *B*/*T*.
 
 This utilization metric means how busy a component is: when a component approaches 100% utilization, performance can seriously degrade when there is contention for the resource. Other metrics can be checked to confirm and to see if the component has therefore become a system bottleneck.
 
@@ -259,6 +259,29 @@ Some components can service multiple operations in parallel. Performance may not
 
 * A disk that is 100% busy may also be able to accept and process more work, for example, by buffering writes in the on-disk cache to be completed later.
 * Storage arrays frequently run at 100% utilization because some disk is busy 100% of the time, but the array has plenty of idle disks and can accept much more work.
+
+##### **Capacity-Based**
+
+The other definition of utilization in the context of capacity planning is:
+
+> A system or component (such as a disk drive) is able to deliver a certain amount of throughput. At any level of performance, the system or component is working at some proportion of its capacity. That proportion is called the utilization.
+
+This defines utilization in terms of capacity instead of time. It implies that a disk at 100% utilization cannot accept any more work. With the time-based definition, 100% utilization only means it is busy 100% of the time. Therefore, <u>100% busy does not mean 100% capacity.</u>
+
+##### **Time-Based vs. Capacity-Based**
+
+Use elevator as an example:
+
+* Time-Based Utilization: the elevator may be considered utilized when it is moving between floors, and not utilized when it is idle waiting. However, the elevator may be able to accept more passengers even when it is busy 100% of the time responding to calls.
+* Capacity-Based Utilization: 100% capacity may mean the elevator is at its maximum payload capacity and cannot accept more passengers.
+
+In an ideal world, we would be able to measure both types of utilization for a device, which usually isn't possible. [p29]
+
+<u>In this book, *utilization* usually refers to the time-based version.</u> The capacity version is used for some volume-based metrics, such as memory usage.
+
+##### **Non-Idle Time**
+
+**Non-idle time** a more accurate term to define utilization, but not yet in common usage. [p29]
 
 #### Saturation
 
