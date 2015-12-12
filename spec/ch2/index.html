@@ -1069,7 +1069,7 @@ queueing begins to be frequent and significant.</p>
 <p>A system or component (such as a disk drive) is able to deliver a certain amount of throughput. At any level of performance, the system or component is working at some proportion of its capacity. That proportion is called the utilization.</p>
 </blockquote>
 <p>This defines utilization in terms of capacity instead of time. It implies that a disk at 100% utilization cannot accept any more work. With the time-based definition, 100% utilization only means it is busy 100% of the time. Therefore, <u>100% busy does not mean 100% capacity.</u></p>
-<h5 id="time-based-vs-capacity-based"><strong>Time-Based vs. Capacity-Based</strong></h5>
+<h5 id="time-based-vs-capacity-based"><strong>Time-Based vs. Capacity-Based</strong> *</h5>
 <p>Use elevator as an example:</p>
 <ul>
 <li>Time-Based Utilization: the elevator may be considered utilized when it is moving between floors, and not utilized when it is idle waiting. However, the elevator may be able to accept more passengers even when it is busy 100% of the time responding to calls.</li>
@@ -1080,8 +1080,30 @@ queueing begins to be frequent and significant.</p>
 <h5 id="non-idle-time"><strong>Non-Idle Time</strong></h5>
 <p><strong>Non-idle time</strong> is a more accurate term to define utilization, but not yet in common usage. [p29]</p>
 <h4 id="saturation">Saturation</h4>
+<p><strong>Saturation</strong> is the degree to which more work is requested of a resource than it can process. Saturation begins to occur at 100% utilization (capacity-based), as extra work cannot be processed and begins to queue. This is pictured in the following figure:</p>
+<p><a href="../figure_2.8.png" title="Figure 2.8 Utilization versus saturation"><img alt="Figure 2.8 Utilization versus saturation" src="../figure_2.8.png" /></a></p>
+<p>Any degree of saturation is a performance issue, as time is spent waiting (latency). For time-based utilization (percent busy), saturation may not begin at the 100% utilization mark, depending on the degree to which the resource can operate on work in parallel. [p30]</p>
 <h4 id="profiling">Profiling</h4>
+<p><strong>Profiling</strong> is typically performed by <a href="https://en.wikipedia.org/wiki/Sampling_(statistics)">sampling</a> the state of the system at timed intervals, and then studying the set of samples.</p>
+<p>Unlike the previous metrics covered, including IOPS and throughput, the use of sampling provides a <em>coarse</em> view of the target’s activity, depending on the rate of sampling.</p>
+<p>For example, CPU usage can be understood in reasonable detail by sampling the CPU program counter or stack backtrace at frequent intervals to gather statistics on the code paths that are consuming CPU resources, which is detailed in <a href="ch6.md">Chapter 6</a>.</p>
 <h4 id="caching">Caching</h4>
+<p>Frequently used to improve performance, a cache stores results from a slower storage tier in a faster storage tier for reference. An example is caching disk blocks in main memory (RAM).</p>
+<ul>
+<li>Multiple tiers of caches may be used. CPUs commonly employ multiple hardware caches for main memory (Levels 1, 2, and 3), beginning with a very fast but small cache (Level 1) and increasing in both storage size and access latency. This is an economic trade-off between density and latency:level; and sizes are chosen for the best performance for the on-chip space available.</li>
+<li>There are many other caches present in a system, many of them implemented in software using main memory for storage.</li>
+</ul>
+<p>Caching is detailed in <a href="../ch3/#caching">Section 3.2.11</a>.</p>
+<h5 id="cache-metrics"><strong>Cache metrics</strong> *</h5>
+<p><strong>Hit ratio</strong> is a metric of cache performance. It represents the number of times the needed data was found in the cache (hits) versus the number of times it was not (misses). The higher, the better, as a higher ratio reflects more data successfully accessed from faster media. The following figure shows the expected performance improvement for increasing cache hit ratios.</p>
+<p><a href="../figure_2.9.png" title="Figure 2.9 Cache hit ratio and performance"><img alt="Figure 2.9 Cache hit ratio and performance" src="../figure_2.9.png" /></a></p>
+<p>This is a nonlinear profile because of the difference in speed between cache hits and misses (the two storage tiers). The performance difference between 98% and 99% is much greater than that between 10% and 11%. The greater the difference, the steeper the slope becomes.</p>
+<p><strong>Miss rate</strong> is another metric, in terms of misses per second. This is proportional (linear) to the performance penalty of each miss.</p>
+<p>The total runtime for each workload can be calculated as:</p>
+<blockquote>
+<p>runtime = (hit rate x hit latency) + (miss rate x miss latency)</p>
+</blockquote>
+<p>This calculation uses the average hit and miss latencies and assumes the work is serialized.</p>
 <h3 id="perspectives">Perspectives</h3>
 <h3 id="methodology">Methodology</h3>
 <h3 id="modeling">Modeling</h3>
