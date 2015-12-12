@@ -508,8 +508,65 @@ $ go build gopl.io/ch1/lissajous
 $ ./lissajous >out.gif
 ```
 
-
 ### Fetching a URL
+
+Go provides a collection of packages, grouped under `net`, that make it easy to send and receive information through the Internet, make low-level network connections, and set up servers, for which Go’s concurrency features ([Chapter 8](ch8.md)) are particularly useful.
+
+The following program fetches the content of each specified URL and prints it as uninterpreted text, which is inspired the `curl` utility:
+
+<small>[gopl.io/ch1/fetch/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/fetch/main.go)</small>
+
+```go
+// Fetch prints the content found at a URL.
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+)
+
+func main() {
+	for _, url := range os.Args[1:] {
+		resp, err := http.Get(url)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
+			os.Exit(1)
+		}
+		b, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "fetch: reading %s: %v\n", url, err)
+			os.Exit(1)
+		}
+		fmt.Printf("%s", b)
+	}
+}
+```
+
+This program introduces functions from two packages, `net/http` and `io/ioutil`.
+
+1. The `http.Get` function makes an HTTP request and, if there is no error, returns the result in the response struct `resp`.
+2. The `Body` field of `resp` contains the server response as a readable stream.
+3. `ioutil.ReadAll` reads the entire response; the result is stored in `b`.
+4. The `Body` stream is closed to avoid leaking resources, and `Printf` writes the response to the standard output.
+
+```shell-session
+$ go build gopl.io/ch1/fetch
+$ ./fetch http://gopl.io
+<html>
+<head>
+<title>The Go Programming Language</title>
+...
+```
+
+If the HTTP request fails, `fetch` reports the failure instead:
+
+```shell-session
+$ ./fetch http://bad.gopl.io
+fetch: Get http://bad.gopl.io: dial tcp: lookup bad.gopl.io: no such host
+```
 
 ### Fetching URLs Concurrently
 
