@@ -324,6 +324,29 @@ The total runtime for each workload can be calculated as:
 
 This calculation uses the average hit and miss latencies and assumes the work is serialized.
 
+##### **Algorithms**
+
+Cache management algorithms and policies determine what to store in the limited space available for a cache:
+
+* **Most recently used** (MRU) refers to a cache **retention policy**, which decides what to favor keeping in the cache: the objects that have been used most recently.
+* **Least recently used** (LRU) can refer to an equivalent cache **eviction policy**, deciding what objects to remove from the cache when more space is needed.
+* **Most frequently used** (MFU)
+* **Least frequently used** (LFU)
+* **Not frequently used** (NFU): an inexpensive but less thorough version of LRU.
+
+##### **Hot, Cold, and Warm Caches**
+
+The following words describe the state of the cache:
+
+* Cold: A **cold cache** is empty, or populated with unwanted data. The hit ratio for a cold cache is zero (or near zero as it begins to warm up).
+* Hot: A **hot cache** is populated with commonly requested data and has a high hit ratio, for example, over 99%.
+* Warm: A **warm cache** is one that is populated with useful data but doesn’t have a high enough hit ratio to be considered hot.
+* Warmth: Cache warmth describes how hot or cold a cache is. An activity that improves cache warmth is one that aims to improve the cache hit ratio.
+
+When caches are first initialized, they begin cold and then warm up over time.  When the cache is large or the next-level storage is slow (or both), the cache can take a long time to become populated and warm.
+
+[p32]
+
 ### Perspectives
 
 ### Methodology
