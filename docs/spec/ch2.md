@@ -268,7 +268,7 @@ The other definition of utilization in the context of capacity planning is:
 
 This defines utilization in terms of capacity instead of time. It implies that a disk at 100% utilization cannot accept any more work. With the time-based definition, 100% utilization only means it is busy 100% of the time. Therefore, <u>100% busy does not mean 100% capacity.</u>
 
-##### **Time-Based vs. Capacity-Based**
+##### **Time-Based vs. Capacity-Based** *
 
 Use elevator as an example:
 
@@ -285,9 +285,44 @@ In an ideal world, we would be able to measure both types of utilization for a d
 
 #### Saturation
 
+**Saturation** is the degree to which more work is requested of a resource than it can process. Saturation begins to occur at 100% utilization (capacity-based), as extra work cannot be processed and begins to queue. This is pictured in the following figure:
+
+[![Figure 2.8 Utilization versus saturation](figure_2.8.png)](figure_2.8.png "Figure 2.8 Utilization versus saturation")
+
+Any degree of saturation is a performance issue, as time is spent waiting (latency). For time-based utilization (percent busy), saturation may not begin at the 100% utilization mark, depending on the degree to which the resource can operate on work in parallel. [p30]
+
 #### Profiling
 
+**Profiling** is typically performed by [sampling](https://en.wikipedia.org/wiki/Sampling_(statistics)) the state of the system at timed intervals, and then studying the set of samples.
+
+Unlike the previous metrics covered, including IOPS and throughput, the use of sampling provides a *coarse* view of the target’s activity, depending on the rate of sampling.
+
+For example, CPU usage can be understood in reasonable detail by sampling the CPU program counter or stack backtrace at frequent intervals to gather statistics on the code paths that are consuming CPU resources, which is detailed in [Chapter 6](ch6.md).
+
 #### Caching
+
+Frequently used to improve performance, a cache stores results from a slower storage tier in a faster storage tier for reference. An example is caching disk blocks in main memory (RAM).
+
+* Multiple tiers of caches may be used. CPUs commonly employ multiple hardware caches for main memory (Levels 1, 2, and 3), beginning with a very fast but small cache (Level 1) and increasing in both storage size and access latency. This is an economic trade-off between density and latency:level; and sizes are chosen for the best performance for the on-chip space available.
+* There are many other caches present in a system, many of them implemented in software using main memory for storage.
+
+Caching is detailed in [Section 3.2.11](ch3.md#caching).
+
+##### **Cache metrics** *
+
+**Hit ratio** is a metric of cache performance. It represents the number of times the needed data was found in the cache (hits) versus the number of times it was not (misses). The higher, the better, as a higher ratio reflects more data successfully accessed from faster media. The following figure shows the expected performance improvement for increasing cache hit ratios.
+
+[![Figure 2.9 Cache hit ratio and performance](figure_2.9.png)](figure_2.9.png "Figure 2.9 Cache hit ratio and performance")
+
+This is a nonlinear profile because of the difference in speed between cache hits and misses (the two storage tiers). The performance difference between 98% and 99% is much greater than that between 10% and 11%. The greater the difference, the steeper the slope becomes.
+
+**Miss rate** is another metric, in terms of misses per second. This is proportional (linear) to the performance penalty of each miss.
+
+The total runtime for each workload can be calculated as:
+
+> runtime = (hit rate x hit latency) + (miss rate x miss latency)
+
+This calculation uses the average hit and miss latencies and assumes the work is serialized.
 
 ### Perspectives
 
