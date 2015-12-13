@@ -570,6 +570,10 @@ fetch: Get http://bad.gopl.io: dial tcp: lookup bad.gopl.io: no such host
 
 ### Fetching URLs Concurrently
 
+Support for concurrent programming is one of the most interesting and novel aspects of Go. This is a large topic (concurrency mechanisms, goroutines and channels) to which Chapter 8 and Chapter 9 are devoted. This sections only main concurrency mechanisms, goroutines and channels
+
+The following program, `fetchall`, does the same fetch of a URL’s contents as the previous example, but it fetches many URLs concurrently, so that the process will take no longer than the longest fetch rather than the sum of all the fetch times. This version of fetchall discards the responses but reports the size and elapsed time for each one:
+
 ### A Web Server
 
 ### Loose Ends
