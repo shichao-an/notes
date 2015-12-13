@@ -1235,8 +1235,82 @@ the verb <code>%v</code>, which displays a value of any type in a default format
 
 
 <h3 id="fetching-urls-concurrently">Fetching URLs Concurrently</h3>
-<p>Support for concurrent programming is one of the most interesting and novel aspects of Go. This is a large topic (concurrency mechanisms, goroutines and channels) to which Chapter 8 and Chapter 9 are devoted. This sections only main concurrency mechanisms, goroutines and channels</p>
-<p>The following program, <code>fetchall</code>, does the same fetch of a URL’s contents as the previous example, but it fetches many URLs concurrently, so that the process will take no longer than the longest fetch rather than the sum of all the fetch times. This version of fetchall discards the responses but reports the size and elapsed time for each one:</p>
+<p>Support for concurrent programming is one of the most interesting and novel aspects of Go. This is a large topic (concurrency mechanisms, goroutines and channels) to which Chapter 8 and Chapter 9 are devoted.</p>
+<p>The following program, <code>fetchall</code>, does the same fetch of a URL’s contents as the previous example, but it fetches many URLs concurrently, so that the process will take no longer than the longest fetch rather than the sum of all the fetch times. This version of <code>fetchall</code> discards the responses but reports the size and elapsed time for each one:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/fetchall/main.go">gopl.io/ch1/fetchall/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Fetchall fetches URLs in parallel and reports their times and sizes.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;io&quot;</span>
+    <span class="s">&quot;io/ioutil&quot;</span>
+    <span class="s">&quot;net/http&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+    <span class="s">&quot;time&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">start</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+    <span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">url</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="nx">fetch</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="nx">ch</span><span class="p">)</span> <span class="c1">// start a goroutine</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="k">range</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">&lt;-</span><span class="nx">ch</span><span class="p">)</span> <span class="c1">// receive from channel ch</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%.2fs elapsed\n&quot;</span><span class="p">,</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Since</span><span class="p">(</span><span class="nx">start</span><span class="p">).</span><span class="nx">Seconds</span><span class="p">())</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">fetch</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">ch</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">start</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprint</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="c1">// send to channel ch</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+
+    <span class="nx">nbytes</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">ioutil</span><span class="p">.</span><span class="nx">Discard</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span> <span class="c1">// don&#39;t leak resources</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;while reading %s: %v&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="nx">secs</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Since</span><span class="p">(</span><span class="nx">start</span><span class="p">).</span><span class="nx">Seconds</span><span class="p">()</span>
+    <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%.2fs  %7d  %s&quot;</span><span class="p">,</span> <span class="nx">secs</span><span class="p">,</span> <span class="nx">nbytes</span><span class="p">,</span> <span class="nx">url</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Result:</p>
+<div class="codehilite"><pre><span class="go">$ go build gopl.io/ch1/fetchall</span>
+<span class="go">$ ./fetchall https://golang.org http://gopl.io https://godoc.org</span>
+<span class="go">0.14s</span>
+<span class="go">6852 https://godoc.org</span>
+<span class="go">0.16s</span>
+<span class="go">7261 https://golang.org</span>
+<span class="go">0.48s</span>
+<span class="go">2475 http://gopl.io</span>
+<span class="go">0.48s elapsed</span>
+</pre></div>
+
+
+<ul>
+<li>A <strong>goroutine</strong> is a concurrent function execution.</li>
+<li>A <strong>channel</strong> is a communication mechanism that allows one goroutine to pass values of a specified type to another goroutine.<ul>
+<li>The function <code>main</code> runs in a goroutine and the <code>go</code> statement creates additional goroutines.</li>
+</ul>
+</li>
+</ul>
+<p>This program does the following:</p>
+<ol>
+<li>The <code>main</code> function creates a channel of strings using <code>make</code>.</li>
+<li>For each command-line argument, the <code>go</code> statement in the first range loop starts a new goroutine that calls <code>fetch</code> asynchronously to fetch the URL using <code>http.Get</code>.</li>
+<li>The <a href="https://golang.org/pkg/io/#Copy"><code>io.Copy</code></a> function reads the body of the response and discards it by writing to the <a href="https://golang.org/pkg/io/ioutil/#Discard"><code>ioutil.Discard</code></a> output stream.</li>
+<li><code>Copy</code> returns the byte count, along with any error that occurred. As each result arrives, <code>fetch</code> sends a summary line on the channel <code>ch</code>.</li>
+<li>The second range loop in main receives and prints those lines.</li>
+</ol>
+<p>When one goroutine attempts a send or receive on a channel, it blocks until another goroutine attempts the corresponding receive or send operation, at which point the value is transferred and both goroutines proceed. In this example, each <code>fetch</code> sends a value (<code>ch &lt;-</code> <em>expression</em>) on the channel <code>ch</code>, and <code>main</code> receives all of them (<code>&lt;-ch</code>). <u>Having <code>main</code> do all the printing ensures that output from each goroutine is processed as a unit, with no danger of interleaving if two goroutines finish at the same time.</u></p>
 <h3 id="a-web-server">A Web Server</h3>
 <h3 id="loose-ends">Loose Ends</h3>
             </div>
