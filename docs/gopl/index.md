@@ -4,3 +4,6 @@
 * [Chapter 2. Program Structure](ch2.md)
 * [Chapter 3. Basic Data Types](ch3.md)
 * [Chapter 4. Composite Types](ch4.md)
+* [Chapter 5. Functions](ch5.md)
+* [Chapter 6. Methods](ch6.md)
+* [Chapter 7. Interfaces](ch7.md)
