@@ -685,6 +685,8 @@
         
             <li><a href="#address-and-port-translation-behavior">Address and Port Translation Behavior</a></li>
         
+            <li><a href="#nat-address-pool">NAT address pool *</a></li>
+        
             <li><a href="#filtering-behavior">Filtering Behavior</a></li>
         
             <li><a href="#servers-behind-nats">Servers behind NATs</a></li>
@@ -887,7 +889,7 @@ by an ISP.</li>
 <li>The notation <em>X:x</em> indicates that a host in the private addressing realm (inside host) uses IP address <em>X</em> with port number <em>x</em> (for ICMP, the query ID is used instead of the port number). The IP address <em>X</em> is a private IPv4 address.</li>
 <li>To reach the remote address/port combination <em>Y:y</em>, the NAT establishes a mapping using an external (globally routable) address <em>X1′</em> and port number <em>x1′</em>. Assuming that the internal host contacts <em>Y1:y1</em> followed by <em>Y2:y2</em>, the NAT establishes mappings <em>X1′:x1′</em> and <em>X2′:x2′</em>, respectively.<ul>
 <li>In most cases, X1′ equals X2′ because most sites use only a single globally routable IP address.</li>
-<li>The mapping is said to be <em>reused</em> if <em>x1′</em> equals <em>x2′</em>. If <em>x1′</em> and <em>x2′</em> equal <em>x</em>, the NAT implements port preservation, as <a href="#nat-and-tcp">mentioned earlier</a>.</li>
+<li>The mapping is said to be <em>reused</em> if <em>x1′</em> equals <em>x2′</em>. If <em>x1′</em> and <em>x2′</em> equal <em>x</em>, the NAT implements port preservation, as <a href="#nat-and-tcp">mentioned earlier</a>. In some cases, port preservation is not possible, so the NAT must deal with port collisions as suggested by <a href="../figure_7-4.png">Figure 7-4</a>.</li>
 </ul>
 </li>
 </ul>
@@ -922,10 +924,15 @@ by an ISP.</li>
 <tr>
 <td>Address-and port-dependent</td>
 <td><em>X1′:x1′ = X2′:x2′</em> iff <em>Y1:y1 = Y2:y2</em></td>
-<td>Allows packets for <em>X1:x1</em> from <em>Y1:y</em></td>
+<td>Allows packets for <em>X1:x1</em> from <em>Y1:y1</em> as long as <em>X1</em> has previously contacted <em>Y1:y1</em></td>
 </tr>
 </tbody>
 </table>
+<h4 id="nat-address-pool">NAT address pool *</h4>
+<p>A NAT may have several external addresses available to use. The set of addresses is typically called the <strong>NAT pool</strong> or <strong>NAT address pool</strong>. Note that NAT address pools are distinct from the DHCP address pools discussed in <a href="../ch6/">Chapter 6</a>, although a single device may need to handle both NAT and DHCP address pools.</p>
+<h5 id="address-pairing-or-not"><strong>Address pairing or not?</strong> *</h5>
+<p>When a single host behind the NAT opens multiple simultaneous connections, is each assigned the same external IP address (called address <em>pairing</em>) or not?</p>
+<p>A NAT’s <strong>IP address pooling behavior</strong> is said to be <em>arbitrary</em> if there is no restriction on which external address is used for any association. It is said to be paired if it implements address pairing. Pairing is the recommended NAT behavior for all transports. If pairing is not used, the communication peer of an internal host may erroneously conclude that it is communicating with different hosts. For NATs with only a single external address, this is obviously not a problem.</p>
 <h4 id="filtering-behavior">Filtering Behavior</h4>
 <h4 id="servers-behind-nats">Servers behind NATs</h4>
 <h4 id="hairpinning-and-nat-loopback">Hairpinning and NAT Loopback</h4>
