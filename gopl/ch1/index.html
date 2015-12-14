@@ -704,6 +704,12 @@
     
         <li class="main "><a href="#a-web-server">A Web Server</a></li>
         
+            <li><a href="#echoing-url-path">Echoing URL path *</a></li>
+        
+            <li><a href="#request-counter">Request counter *</a></li>
+        
+            <li><a href="#inspecting-requests">Inspecting requests *</a></li>
+        
     
         <li class="main "><a href="#loose-ends">Loose Ends</a></li>
         
@@ -1312,6 +1318,133 @@ the verb <code>%v</code>, which displays a value of any type in a default format
 </ol>
 <p>When one goroutine attempts a send or receive on a channel, it blocks until another goroutine attempts the corresponding receive or send operation, at which point the value is transferred and both goroutines proceed. In this example, each <code>fetch</code> sends a value (<code>ch &lt;-</code> <em>expression</em>) on the channel <code>ch</code>, and <code>main</code> receives all of them (<code>&lt;-ch</code>). <u>Having <code>main</code> do all the printing ensures that output from each goroutine is processed as a unit, with no danger of interleaving if two goroutines finish at the same time.</u></p>
 <h3 id="a-web-server">A Web Server</h3>
+<p>Go’s libraries makes it easy to write a web server.</p>
+<h4 id="echoing-url-path">Echoing URL path *</h4>
+<p>The following example shows a minimal server that returns the path component of the URL used to access the server. That is, if the request is for <code>http://localhost:8000/hello</code>, the response will be <code>URL.Path = "/hello"</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/server1/main.go">gopl.io/ch1/server1/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Server1 is a minimal &quot;echo&quot; server.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;log&quot;</span>
+    <span class="s">&quot;net/http&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="p">)</span> <span class="c1">// each request calls handler</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">ListenAndServe</span><span class="p">(</span><span class="s">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="kc">nil</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="c1">// handler echoes the Path component of the request URL r.</span>
+<span class="kd">func</span> <span class="nx">handler</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;URL.Path = %q\n&quot;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Path</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This program does the following:</p>
+<ol>
+<li>The <code>main</code> function connects a handler function to incoming URLs that begin with <code>/</code> (which is all URLs) using <a href="https://golang.org/pkg/net/http/#HandleFunc"><code>http.HandleFunc</code></a>, and starts a server listening for incoming requests on port 8000 using <a href="https://golang.org/pkg/net/http/#ListenAndServe"><code>http.ListenAndServe</code></a>.</li>
+<li>A request is represented as a struct of type <code>http.Request</code>, which contains a number of related fields, one of which is the URL of the incoming request.</li>
+<li>When a request arrives, it is given to the <code>handler</code> function, which extracts the path component (<code>/hello</code>) from the request URL and sends it back as the response, using <code>fmt.Fprintf</code>. Web servers will be explained in detail in <a href="ch7.md#the-httphandler-interface">Section 7.7</a>.</li>
+</ol>
+<h4 id="request-counter">Request counter *</h4>
+<p>This version does the same echo but also counts the number of requests; a request to the URL <code>/count</code> returns the count so far, excluding <code>/count</code> requests themselves:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/server2/main.go">gopl.io/ch1/server2/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Server2 is a minimal &quot;echo&quot; and counter server.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;log&quot;</span>
+    <span class="s">&quot;net/http&quot;</span>
+    <span class="s">&quot;sync&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">var</span> <span class="nx">mu</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span>
+<span class="kd">var</span> <span class="nx">count</span> <span class="kt">int</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="p">)</span>
+    <span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/count&quot;</span><span class="p">,</span> <span class="nx">counter</span><span class="p">)</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">ListenAndServe</span><span class="p">(</span><span class="s">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="kc">nil</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="c1">// handler echoes the Path component of the requested URL.</span>
+<span class="kd">func</span> <span class="nx">handler</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">count</span><span class="o">++</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;URL.Path = %q\n&quot;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Path</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// counter echoes the number of calls so far.</span>
+<span class="kd">func</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;Count %d\n&quot;</span><span class="p">,</span> <span class="nx">count</span><span class="p">)</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The server has two handlers, and the request URL determines which one is called: a request for <code>/count</code> invokes <code>counter</code> and all others invoke <code>handler</code>. A handler pattern that ends with a slash matches any URL that has the pattern as a prefix.</p>
+<p>Behind the scenes, the server runs the handler for each incoming request in a separate goroutine so that it can serve multiple requests simultaneously. We must ensure that at most one goroutine accesses the <code>count</code> variable at a time, which is the purpose of the <code>mu.Lock()</code> and <code>mu.Unlock()</code> calls that bracket each access of <code>count</code>. Otherwise, if two concurrent requests try to update count at the same time, it might not be incremented consistently; the program would have a serious bug called a race condition. Concurrency and shared variables are detailed in <a href="ch9.md">Chapter 9</a>.</p>
+<h4 id="inspecting-requests">Inspecting requests *</h4>
+<p>In the following example, the <code>handler</code> function can report on the headers and form data that it receives, making the server useful for inspecting and debugging requests:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch1/server3/main.go">gopl.io/ch1/server3/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// handler echoes the HTTP request.</span>
+<span class="kd">func</span> <span class="nx">handler</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;%s %s %s\n&quot;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Method</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Proto</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">k</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Header</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;Header[%q] = %q\n&quot;</span><span class="p">,</span> <span class="nx">k</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;Host = %q\n&quot;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Host</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;RemoteAddr = %q\n&quot;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">RemoteAddr</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">r</span><span class="p">.</span><span class="nx">ParseForm</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">k</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Form</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;Form[%q] = %q\n&quot;</span><span class="p">,</span> <span class="nx">k</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>[p21]</p>
+<p>The call to <code>ParseForm</code> is nested within an <code>if</code> statement. Go allows a simple statement such as a local variable declaration to precede the <code>if</code> condition, which is particularly useful for error handling as in this example. It could have been written it as:</p>
+<div class="codehilite"><pre><span class="nx">err</span> <span class="o">:=</span> <span class="nx">r</span><span class="p">.</span><span class="nx">ParseForm</span><span class="p">()</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>but combining the statements is shorter and reduces the scope of the variable <code>err</code>, which is good practice. Scope is defined in <a href="../ch2/#section">Section 2.7</a>.</p>
+<p>In these programs, three very different types are used as output streams:</p>
+<ul>
+<li>The <code>fetch</code> program copied HTTP response data to <code>os.Stdout</code>,</li>
+<li>The <code>fetchall</code> program threw the response away by copying it to the trivial sink <code>ioutil.Discard</code>.</li>
+<li>The web server above used <code>fmt.Fprintf</code>to write to an <code>http.ResponseWriter</code> representing the web browser.</li>
+</ul>
+<p>Although these three types differ in the details of what they do, they all satisfy a common
+interface, allowing any of them to be used wherever an output stream is needed. That interface, called <code>io.Writer</code>, is discussed in <a href="ch7.md#interfaces-as-contracts">Section 7.1</a>.</p>
+<p>Go’s interface mechanism is the topic of <a href="ch7.md">Chapter 7</a>. It's easy to combine the web server with the <code>lissajous</code> function so that animated GIFs are written not to the standard output, but to the HTTP client. Add the following code:</p>
+<div class="codehilite"><pre><span class="nx">handler</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">lissajous</span><span class="p">(</span><span class="nx">w</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="p">)</span>
+</pre></div>
+
+
+<p>or equivalently:</p>
+<div class="codehilite"><pre><span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">lissajous</span><span class="p">(</span><span class="nx">w</span><span class="p">)</span>
+<span class="p">})</span>
+</pre></div>
+
+
+<p>The second argument to the <code>HandleFunc</code> function call immediately above is a <a href="https://golang.org/ref/spec#Function_literals"><strong>function literal</strong></a>, which is an anonymous function defined at its point of use. This is detailed in <a href="#anonymous-functions">Section 5.6</a>.</p>
 <h3 id="loose-ends">Loose Ends</h3>
             </div>
         </div>
