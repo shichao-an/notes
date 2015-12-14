@@ -650,4 +650,149 @@ When one goroutine attempts a send or receive on a channel, it blocks until anot
 
 ### A Web Server
 
+Go’s libraries makes it easy to write a web server.
+
+#### Echoing URL path *
+
+The following example shows a minimal server that returns the path component of the URL used to access the server. That is, if the request is for `http://localhost:8000/hello`, the response will be `URL.Path = "/hello"`.
+
+<small>[gopl.io/ch1/server1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/server1/main.go)</small>
+
+```go
+// Server1 is a minimal "echo" server.
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func main() {
+	http.HandleFunc("/", handler) // each request calls handler
+	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+
+// handler echoes the Path component of the request URL r.
+func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
+}
+```
+This program does the following:
+
+1. The `main` function connects a handler function to incoming URLs that begin with `/` (which is all URLs) using [`http.HandleFunc`](https://golang.org/pkg/net/http/#HandleFunc), and starts a server listening for incoming requests on port 8000 using [`http.ListenAndServe`](https://golang.org/pkg/net/http/#ListenAndServe).
+2. A request is represented as a struct of type `http.Request`, which contains a number of related fields, one of which is the URL of the incoming request.
+3. When a request arrives, it is given to the `handler` function, which extracts the path component (`/hello`) from the request URL and sends it back as the response, using `fmt.Fprintf`. Web servers will be explained in detail in [Section 7.7](ch7.md#the-httphandler-interface).
+
+#### Request counter *
+
+This version does the same echo but also counts the number of requests; a request to the URL `/count` returns the count so far, excluding `/count` requests themselves:
+
+<small>[gopl.io/ch1/server2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/server2/main.go)</small>
+
+```go
+// Server2 is a minimal "echo" and counter server.
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"sync"
+)
+
+var mu sync.Mutex
+var count int
+
+func main() {
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/count", counter)
+	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+
+// handler echoes the Path component of the requested URL.
+func handler(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	count++
+	mu.Unlock()
+	fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
+}
+
+// counter echoes the number of calls so far.
+func counter(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	fmt.Fprintf(w, "Count %d\n", count)
+	mu.Unlock()
+}
+```
+
+The server has two handlers, and the request URL determines which one is called: a request for `/count` invokes `counter` and all others invoke `handler`. A handler pattern that ends with a slash matches any URL that has the pattern as a prefix.
+
+Behind the scenes, the server runs the handler for each incoming request in a separate goroutine so that it can serve multiple requests simultaneously. We must ensure that at most one goroutine accesses the `count` variable at a time, which is the purpose of the `mu.Lock()` and `mu.Unlock()` calls that bracket each access of `count`. Otherwise, if two concurrent requests try to update count at the same time, it might not be incremented consistently; the program would have a serious bug called a race condition. Concurrency and shared variables are detailed in [Chapter 9](ch9.md).
+
+#### Inspecting requests *
+
+In the following example, the `handler` function can report on the headers and form data that it receives, making the server useful for inspecting and debugging requests:
+
+<small>[gopl.io/ch1/server3/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch1/server3/main.go)</small>
+
+```go
+// handler echoes the HTTP request.
+func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "%s %s %s\n", r.Method, r.URL, r.Proto)
+	for k, v := range r.Header {
+		fmt.Fprintf(w, "Header[%q] = %q\n", k, v)
+	}
+	fmt.Fprintf(w, "Host = %q\n", r.Host)
+	fmt.Fprintf(w, "RemoteAddr = %q\n", r.RemoteAddr)
+	if err := r.ParseForm(); err != nil {
+		log.Print(err)
+	}
+	for k, v := range r.Form {
+		fmt.Fprintf(w, "Form[%q] = %q\n", k, v)
+	}
+}
+```
+
+[p21]
+
+The call to `ParseForm` is nested within an `if` statement. Go allows a simple statement such as a local variable declaration to precede the `if` condition, which is particularly useful for error handling as in this example. It could have been written it as:
+
+```go
+err := r.ParseForm()
+if err != nil {
+	log.Print(err)
+}
+```
+
+but combining the statements is shorter and reduces the scope of the variable `err`, which is good practice. Scope is defined in [Section 2.7](ch2.md#section).
+
+In these programs, three very different types are used as output streams:
+
+* The `fetch` program copied HTTP response data to `os.Stdout`,
+* The `fetchall` program threw the response away by copying it to the trivial sink `ioutil.Discard`.
+* The web server above used `fmt.Fprintf `to write to an `http.ResponseWriter` representing the web browser.
+
+Although these three types differ in the details of what they do, they all satisfy a common
+interface, allowing any of them to be used wherever an output stream is needed. That interface, called `io.Writer`, is discussed in [Section 7.1](ch7.md#interfaces-as-contracts).
+
+Go’s interface mechanism is the topic of [Chapter 7](ch7.md). It's easy to combine the web server with the `lissajous` function so that animated GIFs are written not to the standard output, but to the HTTP client. Add the following code:
+
+```go
+handler := func(w http.ResponseWriter, r *http.Request) {
+	lissajous(w)
+}
+http.HandleFunc("/", handler)
+```
+
+or equivalently:
+
+```go
+http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	lissajous(w)
+})
+```
+
+The second argument to the `HandleFunc` function call immediately above is a [**function literal**](https://golang.org/ref/spec#Function_literals), which is an anonymous function defined at its point of use. This is detailed in [Section 5.6](#anonymous-functions).
+
 ### Loose Ends
