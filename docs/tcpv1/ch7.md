@@ -208,7 +208,7 @@ In this figure:
 * The notation *X:x* indicates that a host in the private addressing realm (inside host) uses IP address *X* with port number *x* (for ICMP, the query ID is used instead of the port number). The IP address *X* is a private IPv4 address.
 * To reach the remote address/port combination *Y:y*, the NAT establishes a mapping using an external (globally routable) address *X1′* and port number *x1′*. Assuming that the internal host contacts *Y1:y1* followed by *Y2:y2*, the NAT establishes mappings *X1′:x1′* and *X2′:x2′*, respectively.
     * In most cases, X1′ equals X2′ because most sites use only a single globally routable IP address.
-    * The mapping is said to be *reused* if *x1′* equals *x2′*. If *x1′* and *x2′* equal *x*, the NAT implements port preservation, as [mentioned earlier](#nat-and-tcp).
+    * The mapping is said to be *reused* if *x1′* equals *x2′*. If *x1′* and *x2′* equal *x*, the NAT implements port preservation, as [mentioned earlier](#nat-and-tcp). In some cases, port preservation is not possible, so the NAT must deal with port collisions as suggested by [Figure 7-4](figure_7-4.png).
 
 A NAT’s address and port behavior is characterized by what its mappings depend on.  The inside host uses IP address:port *X:x* to contact *Y1:y1* and then *Y2:y2*. The address and port used by the NAT for these associations are *X1′:x1′* and *X2′:x2′*, respectively.
 
@@ -226,8 +226,17 @@ Behavior Name | Translation Behavior | Filtering Behavior
 ------------- | -------------------- | ------------------
 Endpoint-independent | *X1′:x1′ = X2′:x2′* for all *Y2:y2* (required) | Allows any packets for *X1:x1* as long as any *X1′:x1′* exists (recommended for greatest transparency)
 Address-dependent | *X1′:x1′ = X2′:x2′* iff *Y1 = Y2* | Allows packets for *X1:x1* from *Y1:y1* as long as *X1* has previously contacted *Y1* (recommended for more stringent filtering)
-Address-and port-dependent | *X1′:x1′ = X2′:x2′* iff *Y1:y1 = Y2:y2* | Allows packets for *X1:x1* from *Y1:y*
+Address-and port-dependent | *X1′:x1′ = X2′:x2′* iff *Y1:y1 = Y2:y2* | Allows packets for *X1:x1* from *Y1:y1* as long as *X1* has previously contacted *Y1:y1*
 
+#### NAT address pool *
+
+A NAT may have several external addresses available to use. The set of addresses is typically called the **NAT pool** or **NAT address pool**. Note that NAT address pools are distinct from the DHCP address pools discussed in [Chapter 6](ch6.md), although a single device may need to handle both NAT and DHCP address pools.
+
+##### **Address pairing or not?** *
+
+When a single host behind the NAT opens multiple simultaneous connections, is each assigned the same external IP address (called address *pairing*) or not?
+
+A NAT’s **IP address pooling behavior** is said to be *arbitrary* if there is no restriction on which external address is used for any association. It is said to be paired if it implements address pairing. Pairing is the recommended NAT behavior for all transports. If pairing is not used, the communication peer of an internal host may erroneously conclude that it is communicating with different hosts. For NATs with only a single external address, this is obviously not a problem.
 
 #### Filtering Behavior
 
@@ -240,10 +249,6 @@ Address-and port-dependent | *X1′:x1′ = X2′:x2′* iff *Y1:y1 = Y2:y2* | A
 #### Service Provider NAT (SPNAT) and Service Provider IPv6 Transition
 
 ### NAT Traversal
-
-
-
-
 
 
 
