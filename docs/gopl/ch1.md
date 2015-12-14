@@ -796,3 +796,57 @@ http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 The second argument to the `HandleFunc` function call immediately above is a [**function literal**](https://golang.org/ref/spec#Function_literals), which is an anonymous function defined at its point of use. This is detailed in [Section 5.6](#anonymous-functions).
 
 ### Loose Ends
+
+The following are some topics that have been barely touched upon or omitted entirely.
+
+#### Control flow
+
+##### **The `switch` statement** *
+
+Besides `if` and `for`, there is the `switch` statement, which is a multi-way branch. For example:
+
+```go
+switch coinflip() {
+case "heads":
+	heads++
+case "tails":
+	tails++
+default:
+	fmt.Println("landed on edge!")
+}
+```
+
+The result of calling `coinflip` is compared to the value of each case. Cases are evaluated from
+top to bottom, so the first matching one is executed. <u>The optional default case matches if none
+of the other cases does; it may be placed anywhere. Cases do not fall through from one to the
+next as in C-like languages,</u> though there is a rarely used [`fallthrough`](https://github.com/golang/go/wiki/Switch#fall-through) statement that overrides this behavior.
+
+A `switch` does not need an operand; it can just list the cases, each of which is a boolean expression:
+
+```go
+func Signum(x int) int {
+	switch {
+	case x > 0:
+		return +1
+	default:
+		return 0
+	case x < 0:
+		return -1
+	}
+}
+```
+
+This form is called a *tagless switch*; it’s equivalent to `switch true`.
+
+Like the `for` and `if` statements, a `switch` may include an optional simple statement: a short variable declaration, an increment or assignment statement, or a function call, that can be used to set a value before it is tested.
+
+##### **`break` and `continue`** *
+
+The `break` and continue `statements` modify the flow of control.
+
+* A `break` causes control to resume at the next statement after the innermost `for`, `switch`, or [`select`](https://golang.org/ref/spec#Select_statements) statement
+* A `continue` causes the innermost for loop to start its next iteration.
+
+Statements [may be labeled](https://golang.org/ref/spec#Continue_statements) so that `break` and `continue` can refer to them, for instance to break out of several nested loops at once or to start the next iteration of the outermost loop.
+
+There is even a `goto` statement, though it’s intended for machine-generated code, not regular use by programmers.
