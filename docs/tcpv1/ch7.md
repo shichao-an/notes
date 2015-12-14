@@ -228,7 +228,7 @@ Endpoint-independent | *X1′:x1′ = X2′:x2′* for all *Y2:y2* (required) | 
 Address-dependent | *X1′:x1′ = X2′:x2′* iff *Y1 = Y2* | Allows packets for *X1:x1* from *Y1:y1* as long as *X1* has previously contacted *Y1* (recommended for more stringent filtering)
 Address-and port-dependent | *X1′:x1′ = X2′:x2′* iff *Y1:y1 = Y2:y2* | Allows packets for *X1:x1* from *Y1:y1* as long as *X1* has previously contacted *Y1:y1*
 
-#### NAT address pool *
+##### **NAT address pool** *
 
 A NAT may have several external addresses available to use. The set of addresses is typically called the **NAT pool** or **NAT address pool**. Note that NAT address pools are distinct from the DHCP address pools discussed in [Chapter 6](ch6.md), although a single device may need to handle both NAT and DHCP address pools.
 
