@@ -731,6 +731,8 @@
     
         <li class="main "><a href="#loose-ends">Loose Ends</a></li>
         
+            <li><a href="#control-flow">Control flow</a></li>
+        
     
     </ul>
 </div></div>
@@ -1464,6 +1466,49 @@ interface, allowing any of them to be used wherever an output stream is needed. 
 
 <p>The second argument to the <code>HandleFunc</code> function call immediately above is a <a href="https://golang.org/ref/spec#Function_literals"><strong>function literal</strong></a>, which is an anonymous function defined at its point of use. This is detailed in <a href="#anonymous-functions">Section 5.6</a>.</p>
 <h3 id="loose-ends">Loose Ends</h3>
+<p>The following are some topics that have been barely touched upon or omitted entirely.</p>
+<h4 id="control-flow">Control flow</h4>
+<h5 id="the-switch-statement"><strong>The <code>switch</code> statement</strong> *</h5>
+<p>Besides <code>if</code> and <code>for</code>, there is the <code>switch</code> statement, which is a multi-way branch. For example:</p>
+<div class="codehilite"><pre><span class="k">switch</span> <span class="nx">coinflip</span><span class="p">()</span> <span class="p">{</span>
+<span class="k">case</span> <span class="s">&quot;heads&quot;</span><span class="p">:</span>
+    <span class="nx">heads</span><span class="o">++</span>
+<span class="k">case</span> <span class="s">&quot;tails&quot;</span><span class="p">:</span>
+    <span class="nx">tails</span><span class="o">++</span>
+<span class="k">default</span><span class="p">:</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;landed on edge!&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The result of calling <code>coinflip</code> is compared to the value of each case. Cases are evaluated from
+top to bottom, so the first matching one is executed. <u>The optional default case matches if none
+of the other cases does; it may be placed anywhere. Cases do not fall through from one to the
+next as in C-like languages,</u> though there is a rarely used <a href="https://github.com/golang/go/wiki/Switch#fall-through"><code>fallthrough</code></a> statement that overrides this behavior.</p>
+<p>A <code>switch</code> does not need an operand; it can just list the cases, each of which is a boolean expression:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Signum</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nx">x</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">+</span><span class="mi">1</span>
+    <span class="k">default</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">case</span> <span class="nx">x</span> <span class="p">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This form is called a <em>tagless switch</em>; it’s equivalent to <code>switch true</code>.</p>
+<p>Like the <code>for</code> and <code>if</code> statements, a <code>switch</code> may include an optional simple statement: a short variable declaration, an increment or assignment statement, or a function call, that can be used to set a value before it is tested.</p>
+<h5 id="break-and-continue"><strong><code>break</code> and <code>continue</code></strong> *</h5>
+<p>The <code>break</code> and continue <code>statements</code> modify the flow of control.</p>
+<ul>
+<li>A <code>break</code> causes control to resume at the next statement after the innermost <code>for</code>, <code>switch</code>, or <a href="https://golang.org/ref/spec#Select_statements"><code>select</code></a> statement</li>
+<li>A <code>continue</code> causes the innermost for loop to start its next iteration.</li>
+</ul>
+<p>Statements <a href="https://golang.org/ref/spec#Continue_statements">may be labeled</a> so that <code>break</code> and <code>continue</code> can refer to them, for instance to break out of several nested loops at once or to start the next iteration of the outermost loop.</p>
+<p>There is even a <code>goto</code> statement, though it’s intended for machine-generated code, not regular use by programmers.</p>
             </div>
         </div>
 
