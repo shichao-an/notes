@@ -108,7 +108,6 @@ Most NATs perform both *translation* and *packet filtering*, and the packet-filt
 **Traditional NAT** includes both:
 
 * **Basic NAT**. It performs rewriting of IP addresses only: a private address is rewritten to be a public address, often from a pool or range of public addresses supplied. This type of NAT is not the most popular because it does not help to dramatically reduce the need for (globally routable) IP addresses.
-by an ISP.
 * **Network Address Port Translation** (NAPT), also known as **IP masquerading**. It uses transport-layer identifiers (i.e., ports for TCP and UDP, query identifiers for ICMP) to differentiate which host on the private side of the NAT is associated with a particular packet. This allows a large number of internal hosts to access the Internet simultaneously using a limited number of public addresses, often only a single one.
 
 See the following figure for the distinction between basic NAT and NAPT:
@@ -129,7 +128,7 @@ The following subsections discusses how NAT behaves with each major transport pr
 
 When a TCP connection starts, an "active opener" or client usually sends a synchronization (SYN) packet to a "passive opener" or server. The server responds with its own SYN packet, which also includes an acknowledgment (ACK) of the client’s SYN.  The client then responds with an ACK to the server. This “three-way handshake” establishes the connection. A similar exchange with finish (FIN) packets is used to gracefully close a connection. The connection can also be forcefully closed right away using a reset (RST) packet. The behavioral requirements for traditional NAT with TCP relate primarily to the TCP three-way handshake.
 
-Referring to the figure below, consider a TCP connection initiated by the wireless client at 10.0.0.126 destined for the Web server on the host www.isoc.org (IPv4 address 212.110.167.157). With the format "(source IP:source port; destination IP:destination port)", the packet initiating the connection on the private segment might be addressed as (10.0.0.126:9200; 212.110.167.157:80).
+Referring to the figure below, consider a TCP connection initiated by the wireless client at 10.0.0.126 destined for the Web server on the host `www.isoc.org` (IPv4 address 212.110.167.157). With the format "(source IP:source port; destination IP:destination port)", the packet initiating the connection on the private segment might be addressed as (10.0.0.126:9200; 212.110.167.157:80).
 
 [![A NAT isolates private addresses and the systems using them from the Internet. Packets with private addresses are not routed by the Internet directly but instead must be translated as they enter and leave the private network through the NAT router. Internet hosts see traffic as coming from a public IP address of the NAT.](figure_7-3_600.png)](figure_7-3.png "A NAT isolates private addresses and the systems using them from the Internet. Packets with private addresses are not routed by the Internet directly but instead must be translated as they enter and leave the private network through the NAT router. Internet hosts see traffic as coming from a public IP address of the NAT.")
 
@@ -238,7 +237,28 @@ When a single host behind the NAT opens multiple simultaneous connections, is ea
 
 A NAT’s **IP address pooling behavior** is said to be *arbitrary* if there is no restriction on which external address is used for any association. It is said to be paired if it implements address pairing. Pairing is the recommended NAT behavior for all transports. If pairing is not used, the communication peer of an internal host may erroneously conclude that it is communicating with different hosts. For NATs with only a single external address, this is obviously not a problem.
 
+##### **Port overloading** *
+
+**Port overloading** is a type of NAT that overloads not only addresses but also ports, where the traffic of multiple internal hosts may be rewritten to the same external IP address and port number. This is a dangerous because if multiple hosts associate with a service on the same external host, it cannot determine the appropriate destination for traffic returning from the external host. For TCP, this is a consequence of all four elements of the connection identifier (source and destination address and port numbers) being identical in the external network among the various connections. Such behavior
+is now disallowed.
+
+##### **Port parity** *
+
+Some NATs implement a special feature called **port parity**. Such NATs attempt to preserve the "parity" (evenness or oddness) of port numbers. Thus, if *x1* is even, *x1′* is even and vice versa. Although not as strong as port preservation, such behavior is sometimes useful for specific application protocols that use special port numberings (e.g., the Real-Time Protocol, abbreviated RTP, has traditionally used multiple ports, but there are proposed methods for avoiding this issue).
+
+Port parity preservation is a recommended NAT feature but not a requirement. It is also expected to become less important over time as more sophisticated [NAT traversal](#nat-traversal) methods become widespread.
+
 #### Filtering Behavior
+
+When a NAT creates a binding for a TCP connection, UDP association, or ICMP traffic, not only does it establish the address and port mappings, but it must also determine its filtering behavior for the returning traffic if it acts as a firewall, which is the common case. The type of filtering a NAT performs, though logically distinct from its address- and port-handling behavior, is often related and the same terminology is used.
+
+A NAT’s filtering behavior is usually related to whether it has established an address mapping. A NAT lacking any form of address mapping is unable to forward any traffic it receives from the outside to the inside because it would not know which internal destination to use. For the most common case of outgoing traffic, when a binding is established, filtering is disabled for relevant return traffic:
+
+* For endpoint-independent filtering behavior, as soon as any mapping is established for an internal host, any incoming traffic is permitted, regardless of source.
+* For address-dependent filtering behavior, traffic destined for *X1:x1* is permitted from *Y1:y1* only if *Y1* had been previously contacted by *X1:x1*.
+* For those NATs with address- and port-dependent filtering behavior, traffic destined for *X1:x1* is permitted from *Y1:y1* only if *Y1:y1* had been previously contacted by *X1:x1*.
+
+The difference between the last two is that the last form takes the port number *y1* into account.
 
 #### Servers behind NATs
 
