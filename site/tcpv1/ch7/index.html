@@ -805,8 +805,7 @@ with a threat of exhaustion. One of the most important mechanisms developed to d
 <h4 id="traditional-nat-basic-nat-and-napt">Traditional NAT: Basic NAT and NAPT</h4>
 <p><strong>Traditional NAT</strong> includes both:</p>
 <ul>
-<li><strong>Basic NAT</strong>. It performs rewriting of IP addresses only: a private address is rewritten to be a public address, often from a pool or range of public addresses supplied. This type of NAT is not the most popular because it does not help to dramatically reduce the need for (globally routable) IP addresses.
-by an ISP.</li>
+<li><strong>Basic NAT</strong>. It performs rewriting of IP addresses only: a private address is rewritten to be a public address, often from a pool or range of public addresses supplied. This type of NAT is not the most popular because it does not help to dramatically reduce the need for (globally routable) IP addresses.</li>
 <li><strong>Network Address Port Translation</strong> (NAPT), also known as <strong>IP masquerading</strong>. It uses transport-layer identifiers (i.e., ports for TCP and UDP, query identifiers for ICMP) to differentiate which host on the private side of the NAT is associated with a particular packet. This allows a large number of internal hosts to access the Internet simultaneously using a limited number of public addresses, often only a single one.</li>
 </ul>
 <p>See the following figure for the distinction between basic NAT and NAPT:</p>
@@ -821,7 +820,7 @@ by an ISP.</li>
 <p>The following subsections discusses how NAT behaves with each major transport protocol and how it may be used in mixed IPv4/IPv6 environments. [p306]</p>
 <h5 id="nat-and-tcp"><strong>NAT and TCP</strong></h5>
 <p>When a TCP connection starts, an "active opener" or client usually sends a synchronization (SYN) packet to a "passive opener" or server. The server responds with its own SYN packet, which also includes an acknowledgment (ACK) of the client’s SYN.  The client then responds with an ACK to the server. This “three-way handshake” establishes the connection. A similar exchange with finish (FIN) packets is used to gracefully close a connection. The connection can also be forcefully closed right away using a reset (RST) packet. The behavioral requirements for traditional NAT with TCP relate primarily to the TCP three-way handshake.</p>
-<p>Referring to the figure below, consider a TCP connection initiated by the wireless client at 10.0.0.126 destined for the Web server on the host www.isoc.org (IPv4 address 212.110.167.157). With the format "(source IP:source port; destination IP:destination port)", the packet initiating the connection on the private segment might be addressed as (10.0.0.126:9200; 212.110.167.157:80).</p>
+<p>Referring to the figure below, consider a TCP connection initiated by the wireless client at 10.0.0.126 destined for the Web server on the host <code>www.isoc.org</code> (IPv4 address 212.110.167.157). With the format "(source IP:source port; destination IP:destination port)", the packet initiating the connection on the private segment might be addressed as (10.0.0.126:9200; 212.110.167.157:80).</p>
 <p><a href="../figure_7-3.png" title="A NAT isolates private addresses and the systems using them from the Internet. Packets with private addresses are not routed by the Internet directly but instead must be translated as they enter and leave the private network through the NAT router. Internet hosts see traffic as coming from a public IP address of the NAT."><img alt="A NAT isolates private addresses and the systems using them from the Internet. Packets with private addresses are not routed by the Internet directly but instead must be translated as they enter and leave the private network through the NAT router. Internet hosts see traffic as coming from a public IP address of the NAT." src="../figure_7-3_600.png" /></a></p>
 <p>[p307]</p>
 <ul>
@@ -931,7 +930,21 @@ by an ISP.</li>
 <h5 id="address-pairing-or-not"><strong>Address pairing or not?</strong> *</h5>
 <p>When a single host behind the NAT opens multiple simultaneous connections, is each assigned the same external IP address (called address <em>pairing</em>) or not?</p>
 <p>A NAT’s <strong>IP address pooling behavior</strong> is said to be <em>arbitrary</em> if there is no restriction on which external address is used for any association. It is said to be paired if it implements address pairing. Pairing is the recommended NAT behavior for all transports. If pairing is not used, the communication peer of an internal host may erroneously conclude that it is communicating with different hosts. For NATs with only a single external address, this is obviously not a problem.</p>
+<h5 id="port-overloading"><strong>Port overloading</strong> *</h5>
+<p><strong>Port overloading</strong> is a type of NAT that overloads not only addresses but also ports, where the traffic of multiple internal hosts may be rewritten to the same external IP address and port number. This is a dangerous because if multiple hosts associate with a service on the same external host, it cannot determine the appropriate destination for traffic returning from the external host. For TCP, this is a consequence of all four elements of the connection identifier (source and destination address and port numbers) being identical in the external network among the various connections. Such behavior
+is now disallowed.</p>
+<h5 id="port-parity"><strong>Port parity</strong> *</h5>
+<p>Some NATs implement a special feature called <strong>port parity</strong>. Such NATs attempt to preserve the "parity" (evenness or oddness) of port numbers. Thus, if <em>x1</em> is even, <em>x1′</em> is even and vice versa. Although not as strong as port preservation, such behavior is sometimes useful for specific application protocols that use special port numberings (e.g., the Real-Time Protocol, abbreviated RTP, has traditionally used multiple ports, but there are proposed methods for avoiding this issue).</p>
+<p>Port parity preservation is a recommended NAT feature but not a requirement. It is also expected to become less important over time as more sophisticated <a href="#nat-traversal">NAT traversal</a> methods become widespread.</p>
 <h4 id="filtering-behavior">Filtering Behavior</h4>
+<p>When a NAT creates a binding for a TCP connection, UDP association, or ICMP traffic, not only does it establish the address and port mappings, but it must also determine its filtering behavior for the returning traffic if it acts as a firewall, which is the common case. The type of filtering a NAT performs, though logically distinct from its address- and port-handling behavior, is often related and the same terminology is used.</p>
+<p>A NAT’s filtering behavior is usually related to whether it has established an address mapping. A NAT lacking any form of address mapping is unable to forward any traffic it receives from the outside to the inside because it would not know which internal destination to use. For the most common case of outgoing traffic, when a binding is established, filtering is disabled for relevant return traffic:</p>
+<ul>
+<li>For endpoint-independent filtering behavior, as soon as any mapping is established for an internal host, any incoming traffic is permitted, regardless of source.</li>
+<li>For address-dependent filtering behavior, traffic destined for <em>X1:x1</em> is permitted from <em>Y1:y1</em> only if <em>Y1</em> had been previously contacted by <em>X1:x1</em>.</li>
+<li>For those NATs with address- and port-dependent filtering behavior, traffic destined for <em>X1:x1</em> is permitted from <em>Y1:y1</em> only if <em>Y1:y1</em> had been previously contacted by <em>X1:x1</em>.</li>
+</ul>
+<p>The difference between the last two is that the last form takes the port number <em>y1</em> into account.</p>
 <h4 id="servers-behind-nats">Servers behind NATs</h4>
 <h4 id="hairpinning-and-nat-loopback">Hairpinning and NAT Loopback</h4>
 <h4 id="nat-editors">NAT Editors</h4>
