@@ -262,7 +262,28 @@ The difference between the last two is that the last form takes the port number 
 
 #### Servers behind NATs
 
+A system that wishes to provide a service from behind a NAT is not directly reachable from the outside. In [Figure 7-3](figure_7-3.png), if the host with address 10.0.0.3 is to provide a service to the Internet, it cannot be reached without participation from the NAT, for at least two reasons:
+
+1. The NAT is acting as the Internet router, so it must agree to forward the incoming traffic destined for 10.0.0.3.
+2. The IP address 10.0.0.3 is not routable through the Internet and cannot be used to identify the server by hosts in the Internet. Instead, the external address of the NAT must be used to find the server, and the NAT must arrange to properly rewrite and forward the appropriate traffic to the server so that it can operate. This process is most often called **port forwarding** or **port mapping**.
+
+##### **Port forwarding** *
+
+With port forwarding, incoming traffic to a NAT is forwarded to a specific configured destination behind the NAT. This allows servers to provide services to the Internet even though they may be assigned private, nonroutable addresses.
+
+Port forwarding typically requires static configuration of the NAT with the address of the server and the associated port number whose traffic should be forwarded. The port forwarding directive acts like an always-present static NAT mapping. If the server’s IP address is changed, the NAT must be updated with the new addressing information.
+
+Port forwarding also has the limitation that it has only one set of port numbers for each of its (IP address, transport protocol) combinations. Thus, if the NAT has only a single external IP address, it can forward only a single port of the same transport protocol to at most one internal machine (e.g., it could not support two independent Web servers on the inside being remotely accessible using TCP port 80 from the outside).
+
 #### Hairpinning and NAT Loopback
+
+An interesting issue arises when a client wishes to reach a server and both reside on the same, private side of the same NAT. NATs that support this scenario implement so-called [**hairpinning**](https://en.wikipedia.org/wiki/Hairpinning) or [**NAT loopback**](https://en.wikipedia.org/wiki/Network_address_translation#NAT_loopback).
+
+[![ A NAT that implements hairpinning or NAT loopback allows a client to reach a server on the same side of the NAT using the server’s external IP address and port numbers. That is, X1 can reach X2:x2 using the addressing information X2′:x2′](figure_7-6.png)](figure_7-6.png " A NAT that implements hairpinning or NAT loopback allows a client to reach a server on the same side of the NAT using the server’s external IP address and port numbers. That is, X1 can reach X2:x2 using the addressing information X2′:x2′")
+
+Referring to the figure above, assume that host *X1* attempts to establish a connection to host *X2*. If *X1* knows the private addressing information, *X2:x2*, there is no problem because the connection can be made directly. However, in some cases *X1* knows only the public address information, *X2′:x2′*. In these cases, *X1* attempts to contact *X2* using the NAT with destination *X2′:x2′*. The hairpinning process takes place when the NAT notices the existence of the mapping between *X2′:x2′* and *X2:x2* and forwards the packet to *X2:x2* residing on the private side of the NAT. At this point a question arises as to which source address is contained in the packet heading to *X2:x2*: *X1:x1* or *X1′:x1′*?
+
+If the NAT presents the hairpinned packet to *X2* with source addressing information *X1′:x1′*, the NAT is said to have "external source IP address and port" hairpinning behavior. This behavior is required for TCP NAT [RFC5382]. The justification for requiring this behavior is for applications that identify their peers using globally routable addresses. In our example, *X2* may be expecting an incoming connection from *X1′* (e.g., because of coordination from a third-party system).
 
 #### NAT Editors
 
