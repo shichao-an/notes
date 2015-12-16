@@ -349,6 +349,47 @@ When caches are first initialized, they begin cold and then warm up over time.  
 
 ### Perspectives
 
+There are two common perspectives for performance analysis: **workload analysis** and **resource analysis**, which can be thought of as either top-down or bottom-up analysis of the operating system software stack, as show in the figure below:
+
+[![Figure 2.10 Analysis perspectives](figure_2.10.png)](figure_2.10.png "Figure 2.10 Analysis perspectives")
+
+#### Resource Analysis
+
+Resource analysis begins with analysis of the system resources: CPUs, memory, disks, network interfaces, busses, and interconnects. It is most likely performed by system administrators, who are responsible for the physical environment resources.
+
+##### **Activities** *
+
+* **Performance issue investigations:** to see if a particular type of resource is responsible
+* **Capacity planning**: for information to help size new systems, and to see when existing system resources may become exhausted
+
+##### **Metrics with utilization as a focus** *
+
+Resource analysis focuses on utilization to identify when resources are at or approaching their limit.
+
+* Some resource types, such as CPUs, have utilization metrics readily available.
+* Utilization for other resources can be estimated based on available metrics, for example, estimating network interface utilization by comparing the send and receive megabits per second (throughput) with the known maximum bandwidth.
+
+[Metrics](#metrics) best suited for resource analysis include:
+
+* IOPS
+* Throughput
+* [Utilization](#utilization)
+* [Saturation](#saturation)
+
+These metrics measure the following:
+
+* What the resource is being asked to do
+* How utilized or saturated
+it is for a given load. Ot
+
+Other types of metrics, including latency, are also of use to see how well the resource is responding for the given workload.
+
+##### **Documentation on "stat" tools** *
+
+Resource analysis is a common approach to performance analysis, in part because of the widely available documentation on the topic. Such documentation focuses on the operating system "stat" tools: [`vmstat(1)`](http://man7.org/linux/man-pages/man8/vmstat.8.html), [`iostat(1)`](http://man7.org/linux/man-pages/man1/iostat.1.html), [`mpstat(1)`](http://man7.org/linux/man-pages/man1/mpstat.1.html). Resource analysis is a perspective, but not the only perspective.
+
+#### Workload Analysis
+
 ### Methodology
 
 ### Modeling
