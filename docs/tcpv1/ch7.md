@@ -256,7 +256,7 @@ A NAT’s filtering behavior is usually related to whether it has established an
 
 * For endpoint-independent filtering behavior, as soon as any mapping is established for an internal host, any incoming traffic is permitted, regardless of source.
 * For address-dependent filtering behavior, traffic destined for *X1:x1* is permitted from *Y1:y1* only if *Y1* had been previously contacted by *X1:x1*.
-* For those NATs with address- and port-dependent filtering behavior, traffic destined for *X1:x1* is permitted from *Y1:y1* only if *Y1:y1* had been previously contacted by *X1:x1*.
+* For address- and port-dependent filtering behavior, traffic destined for *X1:x1* is permitted from *Y1:y1* only if *Y1:y1* had been previously contacted by *X1:x1*.
 
 The difference between the last two is that the last form takes the port number *y1* into account.
 
