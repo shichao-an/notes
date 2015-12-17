@@ -390,6 +390,39 @@ Resource analysis is a common approach to performance analysis, in part because 
 
 #### Workload Analysis
 
+Workload analysis, as seen in the figure below, examines the performance of the applications, including the workload applied and how the application is responding. It is most commonly used by application developers and support staff, who are responsible for the application software and configuration.
+
+[![Figure 2.11 Workload analysis](figure_2.11.png)](figure_2.11.png "Figure 2.11 Workload analysis")
+
+##### **Targets for workload analysis** *
+
+* **Requests**: the workload applied
+* **Latency**: the response time of the application
+* **Completion**: looking for errors
+
+Studying workload requests involves checking and summarizing their attributes: the process of *workload characterization* (detailed in [Section 2.5](#methodology)). For databases, these attributes may include the client host, database name, tables, and query string. This data may help identify unnecessary work or unbalanced work. Examining these attributes may identify ways to reduce or eliminate the work applied. (The fastest query is the one you don’t do at all.)
+
+Latency (response time) is the most important metric for expressing application performance. For instance: for a MySQL database, it’s query latency; for Apache, it’s HTTP request latency. In these contexts, the term *latency* is used to mean the same as response time ([Section 2.3.1](#latency)).
+
+##### **Identifying issues**
+
+The tasks of workload analysis are identifying and confirming issues. Latency, for example, can be done by:
+
+1. Looking for latency beyond an acceptable threshold,
+2. Finding the source of the latency (drill-down analysis),
+3. Confirming that the latency is improved after applying a fix.
+
+Note that the starting point is the application. To investigate latency usually involves drilling down deeper into the application, libraries, and the operating system (kernel).
+
+System issues may be identified by studying characteristics related to the completion of an event, including its error status. While a request may complete quickly, it may do so with an error status that causes the request to be retried, accumulating latency.
+
+##### **Metrics for workload analysis** *
+
+* Throughput (transactions per second)
+* Latency
+
+These measure the rate of requests and the resulting performance.
+
 ### Methodology
 
 ### Modeling
