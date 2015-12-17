@@ -683,6 +683,9 @@
             <li><a href="#block-vs-sector">Block vs. Sector *</a></li>
         
     
+        <li class="main "><a href="#buffers-and-buffer-heads">Buffers and Buffer Heads</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -722,8 +725,100 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 <li>Sectors, the smallest addressable unit to the device, are sometimes called "hard sectors" or "device blocks".</li>
 <li>Blocks, the smallest addressable unit to the filesystem, are sometimes referred to as "filesystem blocks" or "I/O blocks".</li>
 </ul>
-<p>This chapter continues to call the two notions sectors and blocks, but you should keep these other terms in mind.</p>
+<p>This chapter continues to call the two notions sectors and blocks, but you should keep these other terms in mind. Below is a diagram of the relationship between sectors and blocks:</p>
+<p><a href="../figure_14.1.png" title="Figure 14.1 Relationship between sectors and blocks."><img alt="Figure 14.1 Relationship between sectors and blocks." src="../figure_14.1.png" /></a></p>
 <p>Hard disk related terminology, such as clusters, <a href="https://en.wikipedia.org/wiki/Cylinder-head-sector">cylinders</a>, and heads are specific only to certain block devices and are mostly invisible to user-space software. The reason that the sector is important to the kernel is because all device I/O must be done in units of sectors. In turn, blocks, which is the higher-level concept used by the kernel, are built on top of sectors.</p>
+<h3 id="buffers-and-buffer-heads">Buffers and Buffer Heads</h3>
+<p>When a block is stored in memory (e.g. after a read or pending a write), it is stored in a <strong>buffer</strong>.  Each buffer is associated with exactly one block.The buffer serves as the object that represents a disk block in memory. A block is composed of one or more sectors but is no more than a page in size,  a single page can hold one or more blocks in memory. Because the kernel requires some associated control information to accompany the data (such as from which block device and which specific block the buffer is), each buffer is associated with a descriptor. This descriptor is called a <strong>buffer head</strong> and is of type struct <code>buffer_head</code>. The <code>buffer_head</code> structure holds all the information that the kernel needs to manipulate buffers and is defined in <code>&lt;linux/buffer_head.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h">include/linux/buffer_head.h</a>).</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L61">include/linux/buffer_head.h#L61</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">buffer_head</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">b_state</span><span class="p">;</span>             <span class="cm">/* buffer state flags */</span>
+    <span class="k">struct</span> <span class="n">buffer_head</span> <span class="o">*</span><span class="n">b_this_page</span><span class="p">;</span>   <span class="cm">/* list of page’s buffers */</span>
+    <span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">b_page</span><span class="p">;</span>               <span class="cm">/* associated page */</span>
+    <span class="kt">sector_t</span> <span class="n">b_blocknr</span><span class="p">;</span>                <span class="cm">/* starting block number */</span>
+    <span class="kt">size_t</span> <span class="n">b_size</span><span class="p">;</span>                     <span class="cm">/* size of mapping */</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">b_data</span><span class="p">;</span>                      <span class="cm">/* pointer to data within the page */</span>
+    <span class="k">struct</span> <span class="n">block_device</span> <span class="o">*</span><span class="n">b_bdev</span><span class="p">;</span>       <span class="cm">/* associated block device */</span>
+    <span class="kt">bh_end_io_t</span> <span class="o">*</span><span class="n">b_end_io</span><span class="p">;</span>             <span class="cm">/* I/O completion */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">b_private</span><span class="p">;</span>                   <span class="cm">/* reserved for b_end_io */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">b_assoc_buffers</span><span class="p">;</span>  <span class="cm">/* associated mappings */</span>
+    <span class="k">struct</span> <span class="n">address_space</span> <span class="o">*</span><span class="n">b_assoc_map</span><span class="p">;</span> <span class="cm">/* associated address space */</span>
+    <span class="kt">atomic_t</span> <span class="n">b_count</span><span class="p">;</span>                  <span class="cm">/* use count */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>The <code>b_state</code> field specifies the state of this particular buffer. It can be one or more of the flags in the following table. The legal flags are stored in the <code>bh_state_bits</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L19">include/linux/buffer_head.h#L19</a>) enumeration, which is defined in <code>&lt;linux/buffer_head.h&gt;</code>.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Status Flag</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BH_Uptodate</code></td>
+<td>Buffer contains valid data.</td>
+</tr>
+<tr>
+<td><code>BH_Dirty</code></td>
+<td>Buffer is dirty. (The contents of the buffer are newer than the contents of the block on disk and therefore the buffer must eventually be written back to disk.)</td>
+</tr>
+<tr>
+<td><code>BH_Lock</code></td>
+<td>Buffer is undergoing disk I/O and is locked to prevent concurrent access.</td>
+</tr>
+<tr>
+<td><code>BH_Req</code></td>
+<td>Buffer is involved in an I/O request.</td>
+</tr>
+<tr>
+<td><code>BH_Mapped</code></td>
+<td>Buffer is a valid buffer mapped to an on-disk block.</td>
+</tr>
+<tr>
+<td><code>BH_New</code></td>
+<td>Buffer is newly mapped via <code>get_block()</code> and not yet accessed.</td>
+</tr>
+<tr>
+<td><code>BH_Async_Read</code></td>
+<td>Buffer is undergoing asynchronous read I/O via <code>end_buffer_async_read()</code>.</td>
+</tr>
+<tr>
+<td><code>BH_Async_Write</code></td>
+<td>Buffer is undergoing asynchronous write I/O via <code>end_buffer_async_write()</code>.</td>
+</tr>
+<tr>
+<td><code>BH_Delay</code></td>
+<td>Buffer does not yet have an associated on-disk block (delayed allocation).</td>
+</tr>
+<tr>
+<td><code>BH_Boundary</code></td>
+<td>Buffer forms the boundary of contiguous blocks; the next block is discontinuous.</td>
+</tr>
+<tr>
+<td><code>BH_Write_EIO</code></td>
+<td>Buffer incurred an I/O error on write.</td>
+</tr>
+<tr>
+<td><code>BH_Ordered</code></td>
+<td>Ordered write.</td>
+</tr>
+<tr>
+<td><code>BH_Eopnotsupp</code></td>
+<td>Buffer incurred a "not supported" error.</td>
+</tr>
+<tr>
+<td><code>BH_Unwritten</code></td>
+<td>Space for the buffer has been allocated on disk but the actual data has not yet been written out.</td>
+</tr>
+<tr>
+<td><code>BH_Quiet</code></td>
+<td>Suppress errors for this buffer.</td>
+</tr>
+</tbody>
+</table>
             </div>
         </div>
 
