@@ -685,6 +685,12 @@
     
         <li class="main "><a href="#buffers-and-buffer-heads">Buffers and Buffer Heads</a></li>
         
+            <li><a href="#the-b_state-field-and-bh_state_bits-enumeration">The b_state field and bh_state_bits enumeration *</a></li>
+        
+            <li><a href="#b_count">b_count</a></li>
+        
+            <li><a href="#physical-block-page-and-buffer">Physical block, page and buffer *</a></li>
+        
     
     </ul>
 </div></div>
@@ -748,6 +754,7 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 </pre></div>
 
 
+<h4 id="the-b_state-field-and-bh_state_bits-enumeration">The <code>b_state</code> field and <code>bh_state_bits</code> enumeration *</h4>
 <p>The <code>b_state</code> field specifies the state of this particular buffer. It can be one or more of the flags in the following table. The legal flags are stored in the <code>bh_state_bits</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L19">include/linux/buffer_head.h#L19</a>) enumeration, which is defined in <code>&lt;linux/buffer_head.h&gt;</code>.</p>
 <table>
 <thead>
@@ -819,6 +826,33 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 </tr>
 </tbody>
 </table>
+<p>The <code>bh_state_bits</code> enumeration also contains a <code>BH_PrivateStart</code> flag (as the last value in the list). This is not a valid state flag but instead corresponds to the first usable bit of which other code can make use. All bit values equal to and greater than <code>BH_PrivateStart</code> are not used by the block I/O layer proper, so these bits are safe to use by individual drivers who want to store information in the <code>b_state</code> field. Drivers can base the bit values of their internal flags off this flag and rest assured that they are not encroaching on an official bit used by the block I/O layer.</p>
+<h4 id="b_count"><code>b_count</code></h4>
+<p>The <code>b_count</code> field is the buffer’s usage count. The value is incremented and decremented by two inline functions defined in <code>&lt;linux/buffer_head.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L252">include/linux/buffer_head.h#L252</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">get_bh</span><span class="p">(</span><span class="k">struct</span> <span class="n">buffer_head</span> <span class="o">*</span><span class="n">bh</span><span class="p">)</span>
+<span class="p">{</span>
+        <span class="n">atomic_inc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">bh</span><span class="o">-&gt;</span><span class="n">b_count</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">put_bh</span><span class="p">(</span><span class="k">struct</span> <span class="n">buffer_head</span> <span class="o">*</span><span class="n">bh</span><span class="p">)</span>
+<span class="p">{</span>
+        <span class="n">smp_mb__before_atomic_dec</span><span class="p">();</span>
+        <span class="n">atomic_dec</span><span class="p">(</span><span class="o">&amp;</span><span class="n">bh</span><span class="o">-&gt;</span><span class="n">b_count</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>Before manipulating a buffer head, you must increment its reference count via <code>get_bh()</code> to ensure that the buffer head is not deallocated out from under you.</li>
+<li>When finished with the buffer head, decrement the reference count via <code>put_bh()</code>.</li>
+</ul>
+<h4 id="physical-block-page-and-buffer">Physical block, page and buffer *</h4>
+<ul>
+<li>The physical block on disk to which a given buffer corresponds is the <code>b_blocknr</code>-th logical block on the block device described by <code>b_bdev</code>.</li>
+<li>The physical page in memory to which a given buffer corresponds is the page pointed to by <code>b_page</code>. More specifically, <code>b_data</code> is a pointer directly to the block (that exists somewhere in <code>b_page</code>), which is <code>b_size</code> bytes in length. Therefore, the block is located in memory starting at address <code>b_data</code> and ending at address (<code>b_data</code> + <code>b_size</code>).</li>
+</ul>
+<p>The purpose of a buffer head is to describe this mapping between the on-disk block and the physical in-memory buffer (which is a sequence of bytes on a specific page). Acting as a descriptor of this buffer-to-block mapping is the data structure’s only role in the kernel.</p>
             </div>
         </div>
 
