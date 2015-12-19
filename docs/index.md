@@ -134,6 +134,12 @@ Content Networking: Architecture, Protocols, and Practice
 
 <small>by Markus Hofmann</small>
 
+#### [BD](bd/index.md)
+
+Big Data: Principles and Best Practices of Scalable Realtime Data Systems
+
+<small>by Nathan Marz, James Warren</small>
+
 #### [HTAE](htae/index.md)
 
 [![Hacking: The Art of Exploitation, 2nd Edition](htae/cover_80.jpg)](htae/cover.jpg "Hacking: The Art of Exploitation, 2nd Edition")
