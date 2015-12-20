@@ -14,4 +14,20 @@ Many of these Big Data systems were pioneered by Google, including:
 
 Another notable pioneer in the space was Amazon, which created an innovative distributed key/value store called Dynamo. The open source community responded in the years following with Hadoop, HBase, MongoDB, Cassandra, RabbitMQ, and countless other projects.
 
-This book is about complexity as much as it is about scalability. Some of the most basic ways people manage data in traditional systems like relational database management systems (RDBMSs) are too complex for Big Data systems.The simpler, alternative approach is the new paradigm for Big Data. This approach is dubbed the [Lambda Architecture](https://en.wikipedia.org/wiki/Lambda_architecture).
+This book is about complexity as much as it is about scalability. Some of the most basic ways people manage data in traditional systems like relational database management systems (RDBMSs) are too complex for Big Data systems.The simpler, alternative approach is the new paradigm for Big Data. This approach is dubbed the [**Lambda Architecture**](https://en.wikipedia.org/wiki/Lambda_architecture).
+
+### How this book is structured
+
+This book is theory book, focusing on how to approach building a solution to any Big Data problem. The book is structured into theory and illustration chapters.
+
+### Scaling with a traditional database
+
+#### Scaling with a queue
+
+#### Scaling by sharding the database
+
+#### Fault-tolerance issues begin
+
+#### Corruption issues
+
+#### What went wrong?
