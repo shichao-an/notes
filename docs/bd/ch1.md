@@ -18,16 +18,179 @@ This book is about complexity as much as it is about scalability. Some of the mo
 
 ### How this book is structured
 
-This book is theory book, focusing on how to approach building a solution to any Big Data problem. The book is structured into theory and illustration chapters.
+This book is a theory book, focusing on how to approach building a solution to any Big Data problem. It is structured into theory and illustration chapters.
 
 ### Scaling with a traditional database
 
+The example in this section is a simple web analytics application, which tracks the number of pageviews for any URL a customer wishes to track. The customer’s web page pings the application’s web server with its URL every time a pageview is received. Additionally, the application should be able to tell you at any point what the top 100 URLs are by number of pageviews.
+
+You start with a traditional relational schema for the pageviews similiar to the table below:
+
+Column name | Type
+----------- | ----
+`id` | `integer`
+`user_id` | `integer`
+`url` | `varchar(255)`
+`pageviews` | `bigint`
+
+Your back end consists of an RDBMS with a table of that schema and a web server. Whenever someone loads a web page being tracked by your application, the web page pings your web server with the pageview, and your web server increments the corresponding row in the database.
+
+The following subsections discuss what problems emerge as you evolve the application: you’ll run into problems with both scalability and complexity.
+
 #### Scaling with a queue
+
+As the traffic to your application is growing, you got a lot of "Timeout error on inserting to the database" error, sincet the database can’t keep up with the load, so write requests to increment pageviews are timing out.
+
+Instead of having the web server hit the database directly, you insert a queue between the web server and the database. Whenever you receive a new pageview, that event is added to the queue. You then create a worker process that reads 100 events at a time off the queue, and batches them into a single database update. This is illustrated in the figure below:
+
+[![Figure 1.2 Batching updates with queue and worker](figure_1.2.png)](figure_1.2.png "Figure 1.2 Batching updates with queue and worker")
+
+This scheme resolves the timeout issues you were getting. If the database ever gets overloaded again, the queue will just get bigger instead of timing out to the web server and potentially losing data.
 
 #### Scaling by sharding the database
 
+As your application continues to get more and more popular, and again the database gets overloaded. Your worker can’t keep up with the writes; adding more workers to parallelize the updates doesn’t help; the database is clearly the bottleneck.
+
+The approach is to use multiple database servers and spread the table across all the servers. Each server will have a subset of the data for the table. This is known as [**horizontal partitioning**](https://en.wikipedia.org/wiki/Partition_(database)) or [**sharding**](https://en.wikipedia.org/wiki/Shard_(database_architecture)). This technique spreads the write load across multiple machines.
+
+The sharding technique you use is to choose the shard for each key by taking the hash of the key modded by the number of shards. Mapping keys to shards using a hash function causes the keys to be uniformly distributed across the shards. You do the following:
+
+1. Write a script to map over all the rows in your single database instance, and split the data into four shards. Since it takes a while to run this script, you turn off the worker that increments pageviews to avoid losing increments during the transition.
+2. Wrap a library around database-handling code that reads the number of shards from a configuration file, and redeploy all of your application code, since all application code needs to know how to find the shard for each key. You have to modify your top-100-URLs query to get the top 100 URLs from each shard and merge those together for the global top 100 URLs.
+
+As the application gets more popular, you keep having to reshard the database into more shards to keep up with the write load:
+
+* Each time gets more and more painful because there’s so much more work to coordinate. You can’t just run one script to do the resharding, as that would be too slow. You have to do all the resharding in parallel and manage many active worker scripts at once.
+* If you forget to update the application code with the new number of shards, it causes many of the increments to be written to the wrong shards. So you have to write a one-off script to manually go through the data and move whatever was misplaced.
+
 #### Fault-tolerance issues begin
+
+With so many shards, it becomes a frequent occurrence for the disk on one of the database machines to go bad. That portion of the data is unavailable while that machine is down. You do a couple of things to address this:
+
+* You update your queue/worker system to put increments for unavailable shards on a separate “pending” queue that you attempt to flush once every five minutes.
+* You use the database’s replication capabilities to add a slave to each shard so you have a backup in case the master goes down. You don’t write to the slave, but at least customers can still view the stats in the application.
 
 #### Corruption issues
 
+You accidentally deploy a bug to production that increments the number of pageviews by two, instead of by one, for every URL and you don’t notice until 24 hours later, but by then the damage is done. Your weekly backups don’t help because there’s no way of knowing which data got corrupted.  After all this work trying to make your system scalable and tolerant of machine failures, your system has no resilience to a human making a mistake.
+
 #### What went wrong?
+
+As the application evolved, the system continued to get more and more complex: queues, shards, replicas, resharding scripts, etc. Developing applications on the data requires a lot more than just knowing the database schema; your code needs to know how to talk to the right shards, and if you make a mistake, there’s nothing preventing you from reading from or writing to the wrong shard.
+
+ One problem is that your database is not self-aware of its distributed nature, so it can’t help you deal with shards, replication, and distributed queries. All that complexity got pushed to you both in operating the database and developing the application code.
+
+However, the worst problem is that the system is not engineered for human mistakes.  As the system keeps getting more complex, it is more likely that a mistake will be made:
+
+* Mistakes in software are inevitable. If you’re not engineering for it, you might as well be writing scripts that randomly corrupt data.
+* Backups are not enough; the system must be carefully thought out to limit the damage a human mistake can cause.
+* Human-fault tolerance is not optional. It’s essential, especially when Big Data adds so many more complexities to building applications.
+
+### How will Big Data techniques help?
+
+The Big Data techniques to be discussed address these scalability and complexity issues in dramatically:
+
+1. The databases and computation systems for Big Data are aware of their distributed nature. Sharding and replication are handled for you.
+    * Shading: the logic is internalized in the database, preventing situations where you accidentally query the wrong shard.
+    * Scaling: just add new nodes and the systems will automatically rebalance onto the new nodes.
+2. Make data immutable. Instead of storing the pageview counts as your core dataset, which you continuously mutate as new pageviews come in, you store the raw pageview information, which is never modified. <u>When you make a mistake, you might write bad data, but at least you won’t destroy good data.</u> This is a much stronger human-fault tolerance guarantee than in a traditional system based on mutation. [p6]
+
+### NoSQL is not a panacea
+
+Innovation in scalable data systems in the past decades include:
+
+* Large-scale computation systems: such as [Hadoop](https://en.wikipedia.org/wiki/Apache_Hadoop)
+* Databases: such as [Cassandra](https://en.wikipedia.org/wiki/Apache_Cassandra) and [Riak](https://en.wikipedia.org/wiki/Riak).
+
+These systems can handle very large amounts of data, but with serious trade-offs:
+
+* Hadoop can parallelize large-scale batch computations on very large amounts of data, but the computations have high latency. You don’t use Hadoop for anything where you need low-latency results.
+* NoSQL databases like Cassandra achieve their scalability by offering you a much more limited data model than you’re used to with something like SQL.
+    * Squeezing your application into these limited data models can be very complex.
+    * They are not human-fault tolerant, because the databases are mutable.
+
+These tools on their own are not a panacea. But when intelligently used in conjunction with one another, you can produce scalable systems for arbitrary data problems with human-fault tolerance and a minimum of complexity. This is the Lambda Architecture discussed throughout the book.
+
+### First principles
+
+What does a data system do? An intuitive definition is:
+
+> A data system answers questions based on information that was acquired in the past up to the present.
+
+* Data systems don’t just memorize and regurgitate information. They combine bits and pieces together to produce their answers.
+* All bits of information are equal. Some information is derived from other pieces of information.
+* When you keep tracing back where information is derived from, you eventually end up at information that’s not derived from anything. This is the rawest information you have: information you hold to be true simply because it exists. This information is called *data*.
+
+Data is often used interchangeably with the word *information*. But for the remainder of this book, when we use the word data, we’re referring to that special information from which everything else is derived.
+
+The most general-purpose data system answers questions by looking at the entire dataset, which has the definition:
+
+> query = function(all data)
+
+[p7]
+
+The Lambda Architecture provides a general-purpose approach to implementing an arbitrary function on an arbitrary dataset and having the function return its results with low latency. This does not mean always using the same technologies to implement a database system; the Lambda Architecture defines a consistent approach to choosing those technologies and to wiring them together to meet your requirements.
+
+### Desired properties of a Big Data system
+
+Not only must a Big Data system perform well and be resource-efficient, it must be easy to reason about as well.
+
+#### Robustness and fault tolerance
+
+Systems need to behave correctly despite any of the following situations:
+
+* Machines going down randomly
+* The complex semantics of consistency in distributed databases
+* Duplicated data
+* Concurrency
+
+These challenges make it difficult even to reason about a system is doing. Part of making a Big Data system robust is avoiding these complexities so that you can easily reason about the system
+
+It’s imperative for systems to be *human-fault tolerant*, which is an oft-overlooked property. In a production system, it’s inevitable that someone will make a mistake, such as by deploying incorrect code that corrupts values in a database. If you build immutability and recomputation into the core of a Big Data system, the system will be innately resilient to human error by providing a clear and simple mechanism for recovery.
+
+#### Low latency reads and updates
+
+* Most applications require reads to be satisfied with very low latency, typically
+between a few milliseconds to a few hundred milliseconds.
+* The update latency requirements vary a great deal between applications. Some applications require updates to propagate immediately, but in other applications a latency of a few hours is fine.
+
+You need to be able to:
+
+* Achieve low latency updates when you need them in your Big Data systems,
+* Achieve low latency reads and updates without compromising the robustness of the system.
+
+#### Scalability
+
+<u>Scalability is the ability to maintain performance in the face of increasing data or load by adding resources to the system.</u> The Lambda Architecture is horizontally scalable across all layers of the system stack: scaling is accomplished by adding more machines.
+
+#### Generalization
+
+A general system can support a wide range of applications. Because the Lambda Architecture is based on functions of all data, it generalizes to all applications.
+
+#### Extensibility
+
+YExtensible systems allow functionality to be added with a minimal development cost, without having to reinvent the wheel each time you add a related feature or make a change to how your system works.
+
+Oftentimes a new feature or a change to an existing feature requires a migration of old data into a new format. Part of making a system extensible is making it easy to do large-scale migrations. Being able to do big migrations quickly and easily is core to the approach under discussion.
+
+#### Ad hoc queries
+
+Every large dataset has unanticipated value within it. Being able to mine a dataset arbitrarily gives opportunities for business optimization and new applications. Ultimately, you can’t discover interesting things to do with your data unless you can ask arbitrary questions of it.
+
+#### Minimal maintenance
+
+Maintenance is the work required to keep a system running smoothly. This includes:
+
+* Anticipating when to add machines to scale,
+* Keeping processes up and running,
+* Debugging anything that goes wrong in production.
+
+An important part of minimizing maintenance is choosing components that have as little implementation complexity as possible. You want to rely on components that have simple mechanisms underlying them. In particular, distributed databases tend to have very complicated internals. The more complex a system, the more likely something will go wrong, and the more you need to understand about the system to debug and tune it.
+
+<u>You combat implementation complexity by relying on simple algorithms and simple components.</u> A trick employed in the Lambda Architecture is to push complexity out of the core components and into pieces of the system whose outputs are discardable after a few hours. The most complex components used, like read/write distributed databases, are in this layer where outputs are eventually discardable.
+
+#### Debuggability
+
+A Big Data system must provide the information necessary to debug the system when things go wrong. The key is to be able to trace, for each value in the system, exactly what caused it to have that value.
+
+Debuggability is accomplished in the Lambda Architecture through the functional nature of the batch layer and by preferring to use recomputation algorithms when possible.

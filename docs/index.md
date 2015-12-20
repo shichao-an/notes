@@ -136,6 +136,8 @@ Content Networking: Architecture, Protocols, and Practice
 
 #### [BD](bd/index.md)
 
+[![Big Data: Principles and Best Practices of Scalable Realtime Data Systems](bd/cover_80.png)](bd/cover.png "Big Data: Principles and Best Practices of Scalable Realtime Data Systems")
+
 Big Data: Principles and Best Practices of Scalable Realtime Data Systems
 
 <small>by Nathan Marz, James Warren</small>
