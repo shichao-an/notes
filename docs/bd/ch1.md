@@ -254,9 +254,39 @@ In general, handling eventual consistency in incremental, highly available syste
 
 #### Lack of human-fault tolerance
 
+The last problem with fully incremental architectures is their inherent lack of human-fault tolerance. <u>An incremental system is constantly modifying the state it keeps in the database, which means a mistake can also modify the state in the database. Because mistakes are inevitable, the database in a fully incremental architecture is guaranteed to be corrupted.</u>
+
+This is one of the few complexities of fully incremental architectures that can be resolved without a complete rethinking of the architecture. Consider the two architectures shown in the following figure:
+
+* Synchronous architecture, where the application makes updates directly to the database.
+* Asynchronous architecture, where events go to a queue before updating the database in the background.
+
 [![Figure 1.5 Adding logging to fully incremental architectures](figure_1.5.png)](figure_1.5.png "Figure 1.5 Adding logging to fully incremental architectures")
 
+In both cases, every event is permanently logged to an events datastore. By keeping every event, if a human mistake causes database corruption, you can go back to the events store and reconstruct the proper state for the database. Because the events store is immutable and constantly growing, redundant checks, like permissions, can be put in to make it highly unlikely for a mistake to trample over the events store. This technique is also core to the Lambda Architecture and is discussed in depth in [Chapter 2](ch2.md) and [Chapter 3](ch3.md).
+
+Although fully incremental architectures with logging can overcome the human-fault tolerance deficiencies of those without logging, the logging cannot handle the other complexities that have been discussed.
+
 #### Fully incremental solution vs. Lambda Architecture solution
+
+One of the example queries implemented throughout the book serves as a great contrast between fully incremental and Lambda architectures. The query has to do with pageview analytics and is done on two kinds of data coming in:
+
+* *Pageviews*, which contain a user ID, URL, and timestamp.
+* *Equivs*, which contain two user IDs. An equiv indicates the two user IDs refer to the same person.
+
+The goal of the query is to compute the number of unique visitors to a URL over a
+range of time. Queries should be up to date with all data and respond with minimal
+latency (less than 100 milliseconds). Below is the interface for the query:
+
+```
+long uniquesOverTime(String url, int startHour, int endHour)
+```
+
+If a person visits the same URL in a time range with two user IDs connected via equivs (even transitively), that should only count as one visit. A new equiv coming in can change the results for any query over any time range for any URL.
+
+Instead of showing details of the solutions which require covering many concepts such as indexing, distributed databases, batch processing, [HyperLogLog](https://en.wikipedia.org/wiki/HyperLogLog), we’ll focus on the characteristics of the solutions and the striking differences between them. The best possible fully incremental solution is shown in detail in Chapter 10, and the Lambda Architecture solution is built up in Chapter 8, 9, 14, and 15.
+
+The two solutions can be compared on three axes: accuracy, latency, and throughput. [p14] The Lambda Architecture solution is significantly better in all respects. Lambda Architecture can produce solutions with higher performance in every respect, while also avoiding the complexity that plagues fully incremental architectures.
 
 ### Lambda Architecture
 
