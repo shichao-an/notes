@@ -698,6 +698,25 @@
             <li><a href="#debuggability">Debuggability</a></li>
         
     
+        <li class="main "><a href="#the-problems-with-fully-incremental-architectures">The problems with fully incremental architectures</a></li>
+        
+            <li><a href="#operational-complexity">Operational complexity</a></li>
+        
+            <li><a href="#extreme-complexity-of-achieving-eventual-consistency">Extreme complexity of achieving eventual consistency</a></li>
+        
+            <li><a href="#lack-of-human-fault-tolerance">Lack of human-fault tolerance</a></li>
+        
+            <li><a href="#fully-incremental-solution-vs-lambda-architecture-solution">Fully incremental solution vs. Lambda Architecture solution</a></li>
+        
+    
+        <li class="main "><a href="#lambda-architecture">Lambda Architecture</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -870,6 +889,54 @@ between a few milliseconds to a few hundred milliseconds.</li>
 <h4 id="debuggability">Debuggability</h4>
 <p>A Big Data system must provide the information necessary to debug the system when things go wrong. The key is to be able to trace, for each value in the system, exactly what caused it to have that value.</p>
 <p>Debuggability is accomplished in the Lambda Architecture through the functional nature of the batch layer and by preferring to use recomputation algorithms when possible.</p>
+<h3 id="the-problems-with-fully-incremental-architectures">The problems with fully incremental architectures</h3>
+<p>Traditional architectures look like the figure below:</p>
+<p><a href="../figure_1.3.png" title="Figure 1.3 Fully incremental architecture"><img alt="Figure 1.3 Fully incremental architecture" src="../figure_1.3.png" /></a></p>
+<p>What characterizes these architectures is the use of read/write databases and maintaining the state in those databases incrementally as new data is seen. For example, an incremental approach to counting pageviews would be to process a new pageview by adding one to the counter for its URL. The vast majority of both relational and non-relational database deployments are done as fully incremental architectures. This has been true for many decades.</p>
+<p>Fully incremental architectures are so widespread that many people don’t realize it’s possible to avoid their problems with a different architecture.  This is called <em>familiar complexity</em> (complexity that’s so ingrained, you don’t even think to find a way to avoid it).</p>
+<p>The problems with fully incremental architectures are significant. This section discusses:</p>
+<ul>
+<li>General complexities brought on by any fully incremental architecture.</li>
+<li>Two contrasting solutions for the same problem: one using the best possible fully incremental solution, and one using a Lambda Architecture.</li>
+</ul>
+<p>You’ll see that the fully incremental version is significantly worse in every respect.</p>
+<h4 id="operational-complexity">Operational complexity</h4>
+<p>With many complexities inherent in fully incremental architectures that create difficulties in operating production infrastructure, this section focuses on one: the need for read/write databases to perform online compaction, and what you have to do operationally to keep things running smoothly.</p>
+<p>In a read/write database, as a disk index is incrementally added to and modified, parts of the index become unused. These unused parts take up space and eventually need to be reclaimed to prevent the disk from filling up. Reclaiming space as soon as it becomes unused is too expensive, so the space is occasionally reclaimed in bulk in a process called <strong>compaction</strong>.</p>
+<p>Compaction is an intensive operation. The server places substantially higher demand on the CPU and disks during compaction, which dramatically lowers the performance of that machine during that time period. Databases such as HBase and Cassandra are well-known for requiring careful configuration and management to avoid problems or server lockups during compaction. The performance loss during compaction is a complexity that can even cause cascading failure: if too many machines compact at the same time, the load they were supporting will have to be handled by other machines in the cluster. This can potentially overload the rest of your cluster, causing total failure.</p>
+<p>To manage compaction correctly, you have to:</p>
+<ul>
+<li>Schedule compactions on each node so that not too many nodes are affected at once.</li>
+<li>Be aware of how long a compaction takes to avoid having more nodes undergoing compaction than you intended.</li>
+<li>Make sure you have enough disk capacity on your nodes to last them between compactions.</li>
+<li>Make sure you have enough capacity on your cluster so that it doesn’t become overloaded when resources are lost during compactions.</li>
+</ul>
+<p>The best way to deal with complexity is to get rid of that complexity altogether. The fewer failure modes you have in your system, the less likely it is that you’ll suffer unexpected downtime. Dealing with online compaction is a complexity inherent to fully incremental architectures, but in a Lambda Architecture the primary databases don’t require any online compaction.</p>
+<h4 id="extreme-complexity-of-achieving-eventual-consistency">Extreme complexity of achieving eventual consistency</h4>
+<p>Incremental architectures have another complexity when trying to make the system highly available.  A highly available system allows for queries and updates even in the presence of machine or partial network failure.</p>
+<p>Achieving high availability competes directly with another important property called <a href="https://en.wikipedia.org/wiki/Consistency_(database_systems)"><strong>consistency</strong></a>. A consistent system returns results that take into account all previous writes. The <a href="https://en.wikipedia.org/wiki/CAP_theorem">CAP theorem</a> has shown that it’s impossible to achieve both high availability and consistency in the same system in the presence of network partitions. Therefore, a highly available system sometimes returns stale results during a network partition.</p>
+<p>In order for a highly available system to return to consistency once a network partition ends (known as <a href="https://en.wikipedia.org/wiki/Eventual_consistency"><strong>eventual consistency</strong></a>), a lot of help is required from your application. [p11] Distributed databases achieve high availability by keeping multiple replicas of all information stored. When you keep many copies of the same information, that information is still available even if a machine goes down or the network gets partitioned, as shown in the figure below. During a network partition, a system that chooses to be highly available has clients update whatever replicas are reachable to them. This causes replicas to diverge and receive different sets of updates. Only when the partition goes away can the replicas be merged together into a common value.</p>
+<p><a href="../figure_1.4.png" title="Figure 1.4 Using replication to increase availability"><img alt="Figure 1.4 Using replication to increase availability" src="../figure_1.4_600.png" /></a></p>
+<h5 id="example-highly-available-counting"><strong>Example: highly available counting</strong> *</h5>
+<p>For example, suppose you have two replicas with a count of 10 when a network partition begins. Suppose the first replica gets two increments and the second gets one increment.  When it comes time to merge these replicas together, with values of 12 and 11, what should the merged value be? Although the correct answer is 13, there’s no way to know just by looking at the numbers 12 and 11. They could have diverged at 11 (in which case the answer would be 12), or they could have diverged at 0 (in which case the answer would be 23).</p>
+<p>To do highly available counting correctly, it’s not enough to just store a count:</p>
+<ul>
+<li>You need a data structure that’s amenable to merging when values diverge,</li>
+<li>You need to implement the code that will repair values once partitions end.</li>
+</ul>
+<p>This is an amazing amount of complexity you have to deal with just to maintain a simple count.</p>
+<p>In general, handling eventual consistency in incremental, highly available systems is unintuitive and prone to error. This complexity is innate to highly available, fully incremental systems. However, the Lambda Architecture structures itself in a different way that greatly lessens the burdens of achieving highly available, eventually consistent systems.</p>
+<h4 id="lack-of-human-fault-tolerance">Lack of human-fault tolerance</h4>
+<p><a href="../figure_1.5.png" title="Figure 1.5 Adding logging to fully incremental architectures"><img alt="Figure 1.5 Adding logging to fully incremental architectures" src="../figure_1.5.png" /></a></p>
+<h4 id="fully-incremental-solution-vs-lambda-architecture-solution">Fully incremental solution vs. Lambda Architecture solution</h4>
+<h3 id="lambda-architecture">Lambda Architecture</h3>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p10 on Operational complexity</p>
+<blockquote>
+<p>In a read/write database, as a disk index is incrementally added to and modified, parts of the index become unused. These unused parts take up space and eventually need to be reclaimed to prevent the disk from filling up. Reclaiming space as soon as it becomes unused is too expensive, so the space is occasionally reclaimed in bulk in a process called <em>compaction</em>.</p>
+</blockquote>
+<p>What is a disk index?</p>
             </div>
         </div>
 
