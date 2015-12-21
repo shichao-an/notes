@@ -277,6 +277,12 @@
                         </li>
                       
                     
+                      
+                        <li >
+                            <a href="../ch16/">Chapter 16. The Page Cache and Page Writeback</a>
+                        </li>
+                      
+                    
                     </ul>
                 </li>
             
@@ -373,7 +379,7 @@
                     
                       
                         <li >
-                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol </a>
+                            <a href="../../tcpv1/ch4/">Chapter 4. ARP: Address Resolution Protocol</a>
                         </li>
                       
                     
@@ -403,7 +409,7 @@
                     
                       
                         <li >
-                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD) </a>
+                            <a href="../../tcpv1/ch9/">Chapter 9. Broadcasting and Local Multicasting (IGMP and MLD)</a>
                         </li>
                       
                     
@@ -673,6 +679,8 @@
         
             <li><a href="#physical-block-page-and-buffer">Physical block, page and buffer *</a></li>
         
+            <li><a href="#problems-with-buffer-heads">Problems with buffer heads *</a></li>
+        
     
     </ul>
 </div></div>
@@ -835,6 +843,25 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 <li>The physical page in memory to which a given buffer corresponds is the page pointed to by <code>b_page</code>. More specifically, <code>b_data</code> is a pointer directly to the block (that exists somewhere in <code>b_page</code>), which is <code>b_size</code> bytes in length. Therefore, the block is located in memory starting at address <code>b_data</code> and ending at address (<code>b_data</code> + <code>b_size</code>).</li>
 </ul>
 <p>The purpose of a buffer head is to describe this mapping between the on-disk block and the physical in-memory buffer (which is a sequence of bytes on a specific page). Acting as a descriptor of this buffer-to-block mapping is the data structure’s only role in the kernel.</p>
+<h4 id="problems-with-buffer-heads">Problems with buffer heads *</h4>
+<p>Before the 2.6 kernel, the buffer head was an important data structure. It was the unit of I/O in the kernel:</p>
+<ul>
+<li>Described the disk-blockto-physical-page mapping,</li>
+<li>Acted as the container used for all block I/O.</li>
+</ul>
+<p>However, it had two primary problems:</p>
+<ol>
+<li><strong>The buffer head was a large and unwieldy data structure.</strong> It was neither clean nor simple to manipulate data in terms of buffer heads.<ul>
+<li>Instead, the kernel prefers to work in terms of pages, which are simple and enable for greater performance.</li>
+<li>A large buffer head describing each individual buffer (which might be smaller than a page) was inefficient.</li>
+<li>Consequently, in the 2.6 kernel, much work has gone into making the kernel work directly with pages and address spaces instead of buffers. Some of this work is discussed in <a href="../ch16/">Chapter 16</a> "The Page Cache and Page Writeback", where the <code>address_space</code> structure and the <em>pdflush</em> daemons are discussed.</li>
+</ul>
+</li>
+<li><strong>Buffer heads describe only a single buffer.</strong> When used as the container for all I/O operations, the buffer head forces the kernel to break up potentially large block I/O operations into multiple <code>buffer_head</code> structures. This results in needless overhead and space consumption.<ul>
+<li>The primary goal of the 2.5 development kernel was to introduce a new, flexible, and lightweight container, <code>bio</code> structure (discussed in the next section), for block I/O operations.</li>
+</ul>
+</li>
+</ol>
             </div>
         </div>
 
