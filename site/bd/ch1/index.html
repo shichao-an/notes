@@ -951,7 +951,7 @@ between a few milliseconds to a few hundred milliseconds.</li>
 <p>The goal of the query is to compute the number of unique visitors to a URL over a
 range of time. Queries should be up to date with all data and respond with minimal
 latency (less than 100 milliseconds). Below is the interface for the query:</p>
-<div class="codehilite"><pre>long uniquesOverTime(String url, int startHour, int endHour)
+<div class="codehilite"><pre><span class="kt">long</span> <span class="nf">uniquesOverTime</span><span class="o">(</span><span class="n">String</span> <span class="n">url</span><span class="o">,</span> <span class="kt">int</span> <span class="n">startHour</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endHour</span><span class="o">)</span>
 </pre></div>
 
 
@@ -959,6 +959,30 @@ latency (less than 100 milliseconds). Below is the interface for the query:</p>
 <p>Instead of showing details of the solutions which require covering many concepts such as indexing, distributed databases, batch processing, <a href="https://en.wikipedia.org/wiki/HyperLogLog">HyperLogLog</a>, we’ll focus on the characteristics of the solutions and the striking differences between them. The best possible fully incremental solution is shown in detail in Chapter 10, and the Lambda Architecture solution is built up in Chapter 8, 9, 14, and 15.</p>
 <p>The two solutions can be compared on three axes: accuracy, latency, and throughput. [p14] The Lambda Architecture solution is significantly better in all respects. Lambda Architecture can produce solutions with higher performance in every respect, while also avoiding the complexity that plagues fully incremental architectures.</p>
 <h3 id="lambda-architecture">Lambda Architecture</h3>
+<p>Computing arbitrary functions on an arbitrary dataset in real time is not a simple problem. There’s no single tool that provides a complete solution. Instead, you have to use a variety of tools and techniques to build a complete Big Data system.</p>
+<p>The main idea of the Lambda Architecture is to build Big Data systems as a series of layers, as shown in the following figure.</p>
+<p><a href="../figure_1.6.png" title="Figure 1.6 Lambda Architecture"><img alt="Figure 1.6 Lambda Architecture" src="../figure_1.6.png" /></a></p>
+<p>Each layer satisfies a subset of the properties and builds upon the functionality provided by the layers beneath it. Each layer requires a lot of work to design, implement, and deploy, but the high-level ideas of the whole system are easy to understand.</p>
+<p>Starting everything from the <em>query</em> = <em>function</em>(<em>all data</em>) equation, you could ideally run the functions on the fly to get the results.  However, this would take a huge amount of resources to do and would be unreasonably expensive. This is similar to having to read a petabyte dataset every time you wanted to answer the query of someone’s current location.</p>
+<p>The most obvious alternative approach is to precompute the query function, which is called the <em>batch view</em>. Instead of computing the query on the fly, you read the results from the precomputed view. The precomputed view is indexed so that it can be accessed with random reads:</p>
+<blockquote>
+<p>batch view = function(all data)</p>
+<p>query = function(batch view)</p>
+</blockquote>
+<p>This system works as follows:</p>
+<ol>
+<li>Run a function on all the data to get the batch view.</li>
+<li>When you want to know the value for a query, run a function on that batch view.</li>
+<li>The batch view makes it possible to get the values you need from it very quickly, without having to scan everything in it.</li>
+</ol>
+<p>For example, you’re building a web analytics application, and you want to query the number of pageviews for a URL on any range of days. If you were computing the query as a function of all the data, you’d scan the dataset for pageviews for that URL within that time range, and return the count of those results.</p>
+<p>Instead, the batch view approach (as show in the figure below) works as follows:</p>
+<ol>
+<li>Run a function on all the pageviews to precompute an index from a key of <code>[url, day]</code> to the count of the number of pageviews for that URL for that day.</li>
+<li>To resolve the query, retrieve all values from that view for all days within that time range, and sum up the counts to get the result.</li>
+</ol>
+<p><a href="../figure_1.7.png" title="Figure 1.7 Architecture of the batch layer"><img alt="Figure 1.7 Architecture of the batch layer" src="../figure_1.7.png" /></a></p>
+<p>Creating the batch view (with this approach described so far) is a high-latency operation, because it’s running a function on all the data you have. By the time it finishes, a lot of new data will have collected that’s not represented in the batch views, and the queries will be out of date by many hours. We will ignore this issue for the moment (because we'll be able to fix it) and assume it’s fine for queries to be out of date by a few hours and continue exploring this idea of precomputing a batch view by running a function on the complete dataset.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p10 on Operational complexity</p>

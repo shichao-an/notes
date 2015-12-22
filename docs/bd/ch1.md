@@ -278,7 +278,7 @@ The goal of the query is to compute the number of unique visitors to a URL over 
 range of time. Queries should be up to date with all data and respond with minimal
 latency (less than 100 milliseconds). Below is the interface for the query:
 
-```
+```java
 long uniquesOverTime(String url, int startHour, int endHour)
 ```
 
@@ -290,6 +290,38 @@ The two solutions can be compared on three axes: accuracy, latency, and throughp
 
 ### Lambda Architecture
 
+Computing arbitrary functions on an arbitrary dataset in real time is not a simple problem. There’s no single tool that provides a complete solution. Instead, you have to use a variety of tools and techniques to build a complete Big Data system.
+
+The main idea of the Lambda Architecture is to build Big Data systems as a series of layers, as shown in the following figure.
+
+[![Figure 1.6 Lambda Architecture](figure_1.6.png)](figure_1.6.png "Figure 1.6 Lambda Architecture")
+
+Each layer satisfies a subset of the properties and builds upon the functionality provided by the layers beneath it. Each layer requires a lot of work to design, implement, and deploy, but the high-level ideas of the whole system are easy to understand.
+
+Starting everything from the *query* = *function*(*all data*) equation, you could ideally run the functions on the fly to get the results.  However, this would take a huge amount of resources to do and would be unreasonably expensive. This is similar to having to read a petabyte dataset every time you wanted to answer the query of someone’s current location.
+
+The most obvious alternative approach is to precompute the query function, which is called the *batch view*. Instead of computing the query on the fly, you read the results from the precomputed view. The precomputed view is indexed so that it can be accessed with random reads:
+
+> batch view = function(all data)
+
+> query = function(batch view)
+
+This system works as follows:
+
+1. Run a function on all the data to get the batch view.
+2. When you want to know the value for a query, run a function on that batch view.
+3. The batch view makes it possible to get the values you need from it very quickly, without having to scan everything in it.
+
+For example, you’re building a web analytics application, and you want to query the number of pageviews for a URL on any range of days. If you were computing the query as a function of all the data, you’d scan the dataset for pageviews for that URL within that time range, and return the count of those results.
+
+Instead, the batch view approach (as show in the figure below) works as follows:
+
+1. Run a function on all the pageviews to precompute an index from a key of `[url, day]` to the count of the number of pageviews for that URL for that day.
+2. To resolve the query, retrieve all values from that view for all days within that time range, and sum up the counts to get the result.
+
+[![Figure 1.7 Architecture of the batch layer](figure_1.7.png)](figure_1.7.png "Figure 1.7 Architecture of the batch layer")
+
+Creating the batch view (with this approach described so far) is a high-latency operation, because it’s running a function on all the data you have. By the time it finishes, a lot of new data will have collected that’s not represented in the batch views, and the queries will be out of date by many hours. We will ignore this issue for the moment (because we'll be able to fix it) and assume it’s fine for queries to be out of date by a few hours and continue exploring this idea of precomputing a batch view by running a function on the complete dataset.
 
 ### Doubts and Solutions
 
