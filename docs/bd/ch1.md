@@ -336,7 +336,39 @@ The batch layer needs to be able to do two things:
 1. Store an immutable, constantly growing master dataset.
 2. Compute arbitrary functions on that dataset.
 
-This type of processing is best done using batch-processing systems. Hadoop is the canonical example of a batch-processing system
+This type of processing is best done using batch-processing systems. Hadoop is the canonical example of a batch-processing system.
+
+The batch layer can be represented in pseudo-code like this:
+
+```
+function runBatchLayer():
+  while(true):
+    recomputeBatchViews()
+```
+
+The batch layer runs in a `while(true)` loop and continuously recomputes the batch views from scratch. This is the best way to think about the batch layer at the moment, though in reality, the batch layer is a little more involved.
+
+The batch layer is simple to use:
+
+* Batch computations are written like single-threaded programs, and you get parallelism for free.
+* It’s easy to write robust, highly scalable computations on the batch layer.
+* The batch layer scales by adding new machines.
+
+The following is an example of a batch layer computation. You don't have to understand this code; the point is to show what an inherently parallel program looks like:
+
+```java
+Api.execute(Api.hfsSeqfile("/tmp/pageview-counts"),
+    new Subquery("?url", "?count")
+        .predicate(Api.hfsSeqfile("/data/pageviews"),
+            "?url", "?user", "?timestamp")
+        .predicate(new Count(), "?count");)
+```
+
+This code computes the number of pageviews for every URL given an input dataset of raw pageviews:
+
+* All the concurrency challenges of scheduling work and merging results is done for you.
+* Because the algorithm is written in this way, it can be arbitrarily distributed on a MapReduce cluster, scaling to however many nodes you have available.
+* At the end of the computation, the output directory will contain some number of files with the results.
 
 ### Doubts and Solutions
 

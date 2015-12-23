@@ -994,7 +994,36 @@ latency (less than 100 milliseconds). Below is the interface for the query:</p>
 <li>Store an immutable, constantly growing master dataset.</li>
 <li>Compute arbitrary functions on that dataset.</li>
 </ol>
-<p>This type of processing is best done using batch-processing systems. Hadoop is the canonical example of a batch-processing system</p>
+<p>This type of processing is best done using batch-processing systems. Hadoop is the canonical example of a batch-processing system.</p>
+<p>The batch layer can be represented in pseudo-code like this:</p>
+<div class="codehilite"><pre><span class="kd">function</span> <span class="nx">runBatchLayer</span><span class="p">()</span><span class="o">:</span>
+  <span class="k">while</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span><span class="o">:</span>
+    <span class="nx">recomputeBatchViews</span><span class="p">()</span>
+</pre></div>
+
+
+<p>The batch layer runs in a <code>while(true)</code> loop and continuously recomputes the batch views from scratch. This is the best way to think about the batch layer at the moment, though in reality, the batch layer is a little more involved.</p>
+<p>The batch layer is simple to use:</p>
+<ul>
+<li>Batch computations are written like single-threaded programs, and you get parallelism for free.</li>
+<li>It’s easy to write robust, highly scalable computations on the batch layer.</li>
+<li>The batch layer scales by adding new machines.</li>
+</ul>
+<p>The following is an example of a batch layer computation. You don't have to understand this code; the point is to show what an inherently parallel program looks like:</p>
+<div class="codehilite"><pre><span class="n">Api</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="n">Api</span><span class="o">.</span><span class="na">hfsSeqfile</span><span class="o">(</span><span class="s">&quot;/tmp/pageview-counts&quot;</span><span class="o">),</span>
+    <span class="k">new</span> <span class="n">Subquery</span><span class="o">(</span><span class="s">&quot;?url&quot;</span><span class="o">,</span> <span class="s">&quot;?count&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">predicate</span><span class="o">(</span><span class="n">Api</span><span class="o">.</span><span class="na">hfsSeqfile</span><span class="o">(</span><span class="s">&quot;/data/pageviews&quot;</span><span class="o">),</span>
+            <span class="s">&quot;?url&quot;</span><span class="o">,</span> <span class="s">&quot;?user&quot;</span><span class="o">,</span> <span class="s">&quot;?timestamp&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">predicate</span><span class="o">(</span><span class="k">new</span> <span class="n">Count</span><span class="o">(),</span> <span class="s">&quot;?count&quot;</span><span class="o">);)</span>
+</pre></div>
+
+
+<p>This code computes the number of pageviews for every URL given an input dataset of raw pageviews:</p>
+<ul>
+<li>All the concurrency challenges of scheduling work and merging results is done for you.</li>
+<li>Because the algorithm is written in this way, it can be arbitrarily distributed on a MapReduce cluster, scaling to however many nodes you have available.</li>
+<li>At the end of the computation, the output directory will contain some number of files with the results.</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p10 on Operational complexity</p>
