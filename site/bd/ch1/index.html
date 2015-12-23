@@ -717,6 +717,8 @@
     
         <li class="main "><a href="#lambda-architecture">Lambda Architecture</a></li>
         
+            <li><a href="#batch-layer">Batch layer</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -983,6 +985,16 @@ latency (less than 100 milliseconds). Below is the interface for the query:</p>
 </ol>
 <p><a href="../figure_1.7.png" title="Figure 1.7 Architecture of the batch layer"><img alt="Figure 1.7 Architecture of the batch layer" src="../figure_1.7.png" /></a></p>
 <p>Creating the batch view (with this approach described so far) is a high-latency operation, because it’s running a function on all the data you have. By the time it finishes, a lot of new data will have collected that’s not represented in the batch views, and the queries will be out of date by many hours. We will ignore this issue for the moment (because we'll be able to fix it) and assume it’s fine for queries to be out of date by a few hours and continue exploring this idea of precomputing a batch view by running a function on the complete dataset.</p>
+<h4 id="batch-layer">Batch layer</h4>
+<p>The <strong>batch layer</strong> is the portion of the Lambda Architecture that implements the <em>batch view</em> = <em>function</em>(<em>all data</em>) equation.</p>
+<p>The batch layer stores the master copy of the dataset and precomputes batch views on that master dataset, as show in the figure below. The master dataset can be thought of as a very large list of records.</p>
+<p><a href="../figure_1.8.png" title="Figure 1.8 Batch layer"><img alt="Figure 1.8 Batch layer" src="../figure_1.8.png" /></a></p>
+<p>The batch layer needs to be able to do two things:</p>
+<ol>
+<li>Store an immutable, constantly growing master dataset.</li>
+<li>Compute arbitrary functions on that dataset.</li>
+</ol>
+<p>This type of processing is best done using batch-processing systems. Hadoop is the canonical example of a batch-processing system</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p10 on Operational complexity</p>
