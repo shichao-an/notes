@@ -323,6 +323,21 @@ Instead, the batch view approach (as show in the figure below) works as follows:
 
 Creating the batch view (with this approach described so far) is a high-latency operation, because it’s running a function on all the data you have. By the time it finishes, a lot of new data will have collected that’s not represented in the batch views, and the queries will be out of date by many hours. We will ignore this issue for the moment (because we'll be able to fix it) and assume it’s fine for queries to be out of date by a few hours and continue exploring this idea of precomputing a batch view by running a function on the complete dataset.
 
+#### Batch layer
+
+The **batch layer** is the portion of the Lambda Architecture that implements the *batch view* = *function*(*all data*) equation.
+
+The batch layer stores the master copy of the dataset and precomputes batch views on that master dataset, as show in the figure below. The master dataset can be thought of as a very large list of records.
+
+[![Figure 1.8 Batch layer](figure_1.8.png)](figure_1.8.png "Figure 1.8 Batch layer")
+
+The batch layer needs to be able to do two things:
+
+1. Store an immutable, constantly growing master dataset.
+2. Compute arbitrary functions on that dataset.
+
+This type of processing is best done using batch-processing systems. Hadoop is the canonical example of a batch-processing system
+
 ### Doubts and Solutions
 
 #### Verbatim
