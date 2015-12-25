@@ -425,6 +425,83 @@ These measure the rate of requests and the resulting performance.
 
 ### Methodology
 
+This section describes methodologies and procedures for system performance analysis and tuning, and introduces some new methods, particularly the [USE method](#the-use-method). Some [anti-methodologies](https://en.wiktionary.org/wiki/antimethodology) have also been included.
+
+These methodologies have been categorized as different types in the following table:
+
+Methodology | Type
+----------- | ----
+Streetlight anti-method | observational analysis
+Random change anti-method | experimental analysis
+Blame-someone-else anti-method | hypothetical analysis
+Ad hoc checklist method | observational and experimental analysis
+Problem statement | information gathering
+Scientific method | observational analysis
+Diagnosis cycle | analysis life cycle
+Tools method | observational analysis
+USE method | observational analysis
+Workload characterization | observational analysis, capacity planning
+Drill-down analysis | observational analysis
+Latency analysis | observational analysis
+Method R | observational analysis
+Event tracing | observational analysis
+Baseline statistics | observational analysis
+Performance monitoring | observational analysis, capacity planning
+Queueing theory | statistical analysis, capacity planning
+Static performance tuning | observational analysis, capacity planning
+Cache tuning | observational analysis, tuning
+Micro-benchmarking | experimental analysis
+Capacity planning | capacity planning, tuning
+
+The following sections begin with commonly used but weaker methodologies for comparison, including the anti-methodologies. For the analysis of performance issues, the first methodology you should attempt is the [problem statement](#problem-statement) method, before moving on to others.
+
+#### Streetlight Anti-Method
+
+This method is actually the *absence* of a deliberate methodology. The user analyzes performance by choosing observability tools that are familiar, found on the Internet, or at random to see if anything obvious shows up. This approach is hit or miss and can overlook many types of issues.
+
+Tuning performance may be attempted in a similar [trial-and-error](https://en.wikipedia.org/wiki/Trial_and_error) fashion, setting whatever tunable parameters are known and familiar to different values to see if that helps.
+
+Even when this method reveals an issue, it can be slow as tools or tunings unrelated to the issue are found and tried, just because they’re familiar. This methodology is therefore named after an observational bias called the [**streetlight effect**](https://en.wikipedia.org/wiki/Streetlight_effect), illustrated by this parable:
+
+> One night a police officer sees a drunk searching the ground beneath a streetlight and asks what he is looking for. The drunk says he has lost his keys. The police officer can’t find them either and asks: "Are you sure you lost them here, under the streetlight?" The drunk replies: "No, but this is where the light is best."
+
+The performance equivalent would be looking at [`top(1)`](http://man7.org/linux/man-pages/man1/top.1.html), not because it makes sense, but because the user doesn’t know how to read other tools. This methodology does find may be *an issue* but not *the issue*. Other methodologies quantify findings, so that [false positives](https://en.wikipedia.org/wiki/False_positives_and_false_negatives) can be ruled out more quickly.
+
+#### Random Change Anti-Method
+
+This is an experimental anti-methodology. The user randomly guesses where the problem may be and then changes things until it goes away. To determine whether performance has improved as a result of each change, a metric is studied, such as:
+
+* Application runtime
+* Operation time
+* Latency
+* Operation rate (operations per second)
+* Throughput (bytes per second)
+
+This approach is as follows:
+
+1. Pick a random item to change (e.g., a tunable parameter).
+2. Change it in one direction.
+3. Measure performance.
+4. Change it in the other direction.
+5. Measure performance.
+6. Check whether the results in step 3 or step 5 better than the baseline. If so, keep the change and go back to step 1.
+
+##### **Cons of the Random Change Anti-Method** *
+
+Although this process may eventually unearth tuning that works for the tested workload, it has the following disadvantages:
+
+1. It is very time-consuming and can also leave behind tuning that doesn’t make sense in the long term.
+    * For example, an application change may improve performance because it works around a database or operating system bug, which is later fixed. But the application will still have that tuning that no longer makes sense, and that no one understood properly in the first place.
+2. A change that isn’t properly understood causes a worse problem during peak production load and a need to back out the change during this time.
+
+#### Blame-Someone-Else Anti-Method
+#### Ad Hoc Checklist Method
+#### Problem Statement
+#### Scientific Method
+#### Diagnosis Cycle
+#### Tools Method
+#### The USE Method
+
 ### Modeling
 
 ### Capacity Planning
