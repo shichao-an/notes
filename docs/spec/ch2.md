@@ -495,11 +495,58 @@ Although this process may eventually unearth tuning that works for the tested wo
 2. A change that isn’t properly understood causes a worse problem during peak production load and a need to back out the change during this time.
 
 #### Blame-Someone-Else Anti-Method
+
+This anti-methodology follows these steps:
+
+1. Find a system or environment component for which you are not responsible.
+2. Hypothesize that the issue is with that component.
+3. Redirect the issue to the team responsible for that component.
+4. When proven wrong, go back to step 1.
+
+> Maybe it’s the network. Can you check with the network team if they have had dropped packets or something?
+
+[p38]
+
+This anti-methodology can be identified by a lack of data leading to the hypothesis. To avoid becoming a victim of blame-someone-else, ask the accuser for screen shots showing which tools were run and how the output was interpreted. You can take these screen shots and interpretations to someone else for a second opinion.
+
 #### Ad Hoc Checklist Method
+
+The ad hoc checklists used by support professionals are built from recent experience and issues for that system type. A typical scenario involves the deployment of a new server or application in production and a support professional checking for common issues when the system is under real load.
+
+The following is an example checklist entry:
+
+> Run `iostat –x 1` and check the await column. If this is consistently over 10 (ms) during load, then the disks are either slow or overloaded.
+
+##### **Cons of ad hoc checklists** *
+
+While these checklists can provide the most value in the shortest time frame, they have the following disadvantags:
+
+* They are [point-in-time recommendations](#point-in-time-recommendations) and need to be frequently refreshed to stay current.
+* They focus on issues for which there are known fixes that can be easily documented, such as the setting of tunable parameters, but not custom fixes to the source code or environment.
+
+##### **Using ad hoc checklists correctly** *
+
+An ad hoc checklist can be an effective way to ensure that everyone knows how to check for the worst of the issues, and that all the obvious culprits have been checked. A checklist can be written to be clear and prescriptive, showing how to identify each issue and what the fix is. However, this list must be constantly updated.
+
 #### Problem Statement
+
+Defining the problem statement is a routine task for support staff when first responding to issues. It’s done by asking the customer the following questions:
+
+1. What makes you think there is a performance problem?
+2. Has this system ever performed well?
+3. What changed recently? Software? Hardware? Load?
+4. Can the problem be expressed in terms of latency or runtime?
+5. Does the problem affect other people or applications (or is it just you)?
+6. What is the environment? What software and hardware are used? Versions?  Configuration?
+
+Asking and answering these questions often points to an immediate cause and solution. The problem statement has therefore been included here as its own methodology and should be the first approach you use when tackling a new issue.
+
 #### Scientific Method
+
 #### Diagnosis Cycle
+
 #### Tools Method
+
 #### The USE Method
 
 ### Modeling

@@ -35,3 +35,12 @@ The field of performance includes the following activities, listed in an ideal o
 9. Performance analysis of issues
 
 ### Perspectives
+
+Performance roles can be viewed from the following two perspectives as shown in the figure below:
+
+* Workload analysis: commonly focused on by application developers, who are responsible for the delivered performance of the workload.
+* Resource analysis: commonly employed by system administrators, who are responsible for the system resources.
+
+[![Figure 1.2 Analysis perspectives](figure_1.2.png)](figure_1.2.png "Figure 1.2 Analysis perspectives")
+
+Perspectives are detailed in [Chapter 2](ch2.md#perspectives).
