@@ -34,6 +34,7 @@ This page summarizes roadmaps of learning focus on the following areas within th
 * [TCPIP](../tcpip/index.md)
 * [CNAPP](../cnapp/index.md)
 
-### System Architecture <small>(1)</small>
+### System Architecture <small>(2)</small>
 
+* [BD](../bd/index.md)
 * [DevOps](../devops/index.md)
