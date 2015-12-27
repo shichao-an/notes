@@ -715,6 +715,14 @@
             <li><a href="#problems-with-buffer-heads">Problems with buffer heads *</a></li>
         
     
+        <li class="main "><a href="#the-bio-structure">The bio Structure</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -895,6 +903,45 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 </ul>
 </li>
 </ol>
+<h3 id="the-bio-structure">The <code>bio</code> Structure</h3>
+<p>The <code>bio</code> structure is the basic container for block I/O within the kernel is the bio structure. Defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/bio.h"><code>&lt;linux/bio.h&gt;</code></a>, this structure represents block I/O operations that are in flight (active) as a list of <strong>segments</strong>. A segment is a chunk of a buffer that is contiguous in memory. Thus, individual buffers need not be contiguous in memory. By allowing the buffers to be described in chunks, the <code>bio</code> structure provides the capability for the kernel to perform block I/O operations of even a single buffer from multiple locations in memory. <a href="https://en.wikipedia.org/wiki/Vectored_I/O">Vector I/O</a> such as this is called <strong>scatter-gather I/O</strong>.</p>
+<p>The following is <code>struct bio</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/bio.h#L62">include/linux/bio.h#L62</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">bio</span> <span class="p">{</span>
+    <span class="kt">sector_t</span> <span class="n">bi_sector</span><span class="p">;</span>               <span class="cm">/* associated sector on disk */</span>
+    <span class="k">struct</span> <span class="n">bio</span> <span class="o">*</span><span class="n">bi_next</span><span class="p">;</span>              <span class="cm">/* list of requests */</span>
+    <span class="k">struct</span> <span class="n">block_device</span> <span class="o">*</span><span class="n">bi_bdev</span><span class="p">;</span>     <span class="cm">/* associated block device */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">bi_flags</span><span class="p">;</span>           <span class="cm">/* status and command flags */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">bi_rw</span><span class="p">;</span>              <span class="cm">/* read or write? */</span>
+    <span class="kt">unsigned</span> <span class="kt">short</span> <span class="n">bi_vcnt</span><span class="p">;</span>           <span class="cm">/* number of bio_vecs off */</span>
+    <span class="kt">unsigned</span> <span class="kt">short</span> <span class="n">bi_idx</span><span class="p">;</span>            <span class="cm">/* current index in bi_io_vec */</span>
+    <span class="kt">unsigned</span> <span class="kt">short</span> <span class="n">bi_phys_segments</span><span class="p">;</span>  <span class="cm">/* number of segments */</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">bi_size</span><span class="p">;</span>             <span class="cm">/* I/O count */</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">bi_seg_front_size</span><span class="p">;</span>   <span class="cm">/* size of first segment */</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">bi_seg_back_size</span><span class="p">;</span>    <span class="cm">/* size of last segment */</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">bi_max_vecs</span><span class="p">;</span>         <span class="cm">/* maximum bio_vecs possible */</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">bi_comp_cpu</span><span class="p">;</span>         <span class="cm">/* completion CPU */</span>
+    <span class="kt">atomic_t</span> <span class="n">bi_cnt</span><span class="p">;</span>                  <span class="cm">/* usage counter */</span>
+    <span class="k">struct</span> <span class="n">bio_vec</span> <span class="o">*</span><span class="n">bi_io_vec</span><span class="p">;</span>        <span class="cm">/* bio_vec list */</span>
+    <span class="kt">bio_end_io_t</span> <span class="o">*</span><span class="n">bi_end_io</span><span class="p">;</span>          <span class="cm">/* I/O completion method */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">bi_private</span><span class="p">;</span>                 <span class="cm">/* owner-private method */</span>
+    <span class="kt">bio_destructor_t</span> <span class="o">*</span><span class="n">bi_destructor</span><span class="p">;</span>  <span class="cm">/* destructor method */</span>
+    <span class="k">struct</span> <span class="n">bio_vec</span> <span class="n">bi_inline_vecs</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span> <span class="cm">/* inline bio vectors */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<p>p294 on the <code>bio</code> structure:</p>
+<blockquote>
+<p>The <code>bio</code> structure is the basic container for block I/O within the kernel is the bio structure. Defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/bio.h"><code>&lt;linux/bio.h&gt;</code></a>, this structure represents block I/O operations that are in flight (active) as a list of <strong>segments</strong>. A segment is a chunk of a buffer that is contiguous in memory. Thus, individual buffers need not be contiguous in memory. By allowing the buffers to be described in chunks, the <code>bio</code> structure provides the capability for the kernel to perform block I/O operations of even a single buffer from multiple locations in memory. Vector I/O such as this is called <strong>scatter-gather I/O</strong>.</p>
+</blockquote>
+<p>Need in-depth understanding on this paragrah</p>
+<p>Solution:</p>
+<ul>
+<li><a href="http://stackoverflow.com/questions/14574052/the-bio-structure-in-the-linux-kernel">Stack Overflow</a></li>
+</ul>
             </div>
         </div>
 
