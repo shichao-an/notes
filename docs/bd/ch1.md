@@ -370,6 +370,14 @@ This code computes the number of pageviews for every URL given an input dataset 
 * Because the algorithm is written in this way, it can be arbitrarily distributed on a MapReduce cluster, scaling to however many nodes you have available.
 * At the end of the computation, the output directory will contain some number of files with the results.
 
+#### Serving layer
+
+The serving layer is a specialized distributed database that loads in a batch view (emitted by the batch layer as the result of its functions) and makes it possible to do random reads on it, as seen in the following figure. When new batch views are available, the serving layer automatically swaps those in so that more up-to-date results are available.
+
+[![Figure 1.9 Serving layer](figure_1.9.png)](figure_1.9.png "Figure 1.9 Serving layer")
+
+A serving layer database supports batch updates and random reads, but it doesn’t need to support random writes. This is a very important point, as random writes cause most of the complexity in databases. By not supporting random writes, these databases are extremely simple. That simplicity makes them robust, predictable, easy to configure, and easy to operate. ElephantDB, the serving layer database discussed in this book, is only a few thousand lines of code.
+
 ### Doubts and Solutions
 
 #### Verbatim
