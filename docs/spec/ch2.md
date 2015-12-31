@@ -617,6 +617,29 @@ When a large number of tools and metrics are available, it can be time-consuming
 
 #### The USE Method
 
+The utilization, saturation, and errors (USE) method should be used early in a performance investigation to identify systemic bottlenecks. It can be summarized this way:
+
+> For every resource, check utilization, saturation, and errors.
+
+##### **Definitions of terms** *
+
+* **Resource**: all physical server functional components (e.g. CPUs, busses).  Some software resources can also be examined, provided the metrics make
+sense.
+* **Utilization:** during a specific time interval, the percentage of time that the resource was busy servicing work. <u>While busy, the resource may still be able to accept more work; the degree to which it cannot do so is identified by saturation.</u>
+* **Saturation:** the degree to which the resource has extra work that it can’t service, often waiting on a queue.
+* **Errors**: the count of error events.
+
+As explained in the [earlier section](#utilization), for some resource types such as main memory, utilization is the capacity of the resource that is used. This is different from the time-based definition. Once a capacity resource reaches 100% utilization, more work cannot be accepted, and the resource either queues the work (saturation) or returns errors, which are also identified using the USE method.
+
+<u>Errors should be investigated because they can degrade performance and may not be immediately noticed when the failure mode is recoverable. This includes operations that fail and are retried, and devices that fail in a pool of redundant devices.</u>
+
+##### **Comparing to the tools method** *
+
+In contrast with the tools method, the USE method involves iterating over system resources instead of tools.
+
+* Iterating resources helps you create a complete list of questions to ask, and only then do you search for tools to answer them.
+* Even when tools cannot be found to answer questions, the knowledge that these questions are unanswered can be extremely useful for the performance analyst: they are now "[known-unknowns](#known-unknowns)".
+
 ### Modeling
 
 ### Capacity Planning
