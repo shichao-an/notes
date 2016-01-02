@@ -640,6 +640,16 @@ In contrast with the tools method, the USE method involves iterating over system
 * Iterating resources helps you create a complete list of questions to ask, and only then do you search for tools to answer them.
 * Even when tools cannot be found to answer questions, the knowledge that these questions are unanswered can be extremely useful for the performance analyst: they are now "[known-unknowns](#known-unknowns)".
 
+The USE method also directs analysis to a limited number of key metrics, so that all system resources are checked as quickly as possible. After this, if no issues have been found, other methodologies can be used.
+
+##### **Procedure**
+
+The USE method is pictured as the flowchart in the following figure. Errors are placed first before utilization and saturation are checked. Errors are usually quick and easy to interpret, and it can be time-efficient to rule them out before investigating the other metrics.
+
+[![Figure 2.12 The USE method flow](figure_2.12.png)](figure_2.12.png "Figure 2.12 The USE method flow")
+
+This method identifies problems that are likely to be system bottlenecks. Unfortunately, a system may be suffering from more than one performance problem, so the first thing you find may be a problem but not the problem. Each discovery can be investigated using further methodologies, before returning to the USE method as needed to iterate over more resources.
+
 ### Modeling
 
 ### Capacity Planning
