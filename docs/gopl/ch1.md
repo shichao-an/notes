@@ -850,3 +850,58 @@ The `break` and continue `statements` modify the flow of control.
 Statements [may be labeled](https://golang.org/ref/spec#Continue_statements) so that `break` and `continue` can refer to them, for instance to break out of several nested loops at once or to start the next iteration of the outermost loop.
 
 There is even a `goto` statement, though it’s intended for machine-generated code, not regular use by programmers.
+
+#### Named types
+
+A `type` declaration gives a name to an existing type. <u>Since struct types are often long, they are nearly always named.</u> For example:
+
+```go
+type Point struct {
+	X, Y int
+}
+var p Point
+```
+
+Type declarations and named types are covered in [Chapter 2](ch2.md).
+
+#### Pointers
+
+Pointers are values that contain the address of a variable.
+
+* In some languages, notably C, pointers are relatively unconstrained.
+* In other languages, pointers are disguised as "references", and there’s not much that can be done with them except pass them around.
+* Go takes a position somewhere in the middle.
+    * Pointers are explicitly visible.
+    * The `&` operator yields the address of a variable.
+    * The `*` operator retrieves the variable that the pointer refers to, but there is no pointer arithmetic.
+
+Pointers are detailed in [Section 2.3.2](ch2.md#pointers).
+
+#### Methods and interfaces
+
+A method is a function associated with a named type. In Go, methods may be attached to almost any named type. Methods are covered in [Chapter 6](ch6.md).
+
+Interfaces are abstract types that let us treat different concrete types in the same way based on what methods they have, not how they are represented or implemented. Interfaces are the subject of [Chapter 7](ch7.md).
+
+#### Packages
+
+Go has an extensive standard library of useful packages, and the Go community has created and shared many more. This book disucsses a couple of the most important standard packages.
+
+Before you embark on any new program, it’s a good idea to see if packages already exist that might help you get your job done more easily. You can find an index of the standard library packages at [https://golang.org/pkg](https://golang.org/pkg) and the packages contributed by the community at [https://godoc.org](https://godoc.org). The `go doc` tool makes these documents easily accessible from the command line:
+
+```shell-session
+$ go doc http.ListenAndServe
+package http // import "net/http"
+
+func ListenAndServe(addr string, handler Handler) error
+
+  ListenAndServe listens on the TCP network address addr and then
+  calls Serve with handler to handle requests on incoming connections.
+...
+```
+
+#### Comments
+
+Besides documentation comments at the beginning of a program or package, it’s also good style to write a comment before the declaration of each function to specify its behavior. These conventions are important, because they are used by tools like `go doc` and `godoc` to locate and display documentation.
+
+For comments that span multiple lines or appear within an expression or statement, there is also the `/* ... */` notation familiar from other languages. Such comments are sometimes used at the beginning of a file for a large block of explanatory text to avoid a `//` on every line.  Within a comment, // and `/*` have no special meaning, so comments do not nest.
