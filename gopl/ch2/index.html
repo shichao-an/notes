@@ -714,6 +714,11 @@
             <li><a href="#lifetime-of-variables">Lifetime of Variables</a></li>
         
     
+        <li class="main "><a href="#assignments">Assignments</a></li>
+        
+            <li><a href="#tuple-assignment">Tuple Assignment</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1091,7 +1096,8 @@
 </pre></div>
 
 
-<p>Each call to new returns a distinct variable with a unique address:</p>
+<p>G
+Each call to new returns a distinct variable with a unique address:</p>
 <div class="codehilite"><pre><span class="nx">p</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span>
 <span class="nx">q</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span>
 <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span> <span class="o">==</span> <span class="nx">q</span><span class="p">)</span> <span class="c1">// &quot;false&quot;</span>
@@ -1155,6 +1161,58 @@
 <p>In any case, the notion of escaping is not something that you need to worry about in order to write correct code, though it’s good to keep in mind during performance optimization, since each variable that escapes requires an extra memory allocation.</p>
 <h5 id="thoughts-on-garbage-collection"><strong>Thoughts on garbage collection</strong> *</h5>
 <p>Garbage collection is a tremendous help in writing correct programs, but it does not relieve you of the burden of thinking about memory. You don’t need to explicitly allocate and free memory, but to write efficient programs you still need to be aware of the lifetime of variables.  For example, keeping unnecessary pointers to short-lived objects within long-lived objects, especially global variables, will prevent the garbage collector from reclaiming the short-lived objects.</p>
+<h3 id="assignments">Assignments</h3>
+<p>The value held by a variable is updated by an assignment statement. In its simplest form, an assignment has a variable on the left of the <code>=</code> sign and an expression on the right:</p>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="p">=</span> <span class="mi">1</span>                         <span class="c1">// named variable</span>
+<span class="o">*</span><span class="nx">p</span> <span class="p">=</span> <span class="kc">true</span>                     <span class="c1">// indirect variable</span>
+<span class="nx">person</span><span class="p">.</span><span class="nx">name</span> <span class="p">=</span> <span class="s">&quot;bob&quot;</span>           <span class="c1">// struct field</span>
+<span class="nx">count</span><span class="p">[</span><span class="nx">x</span><span class="p">]</span> <span class="p">=</span> <span class="nx">count</span><span class="p">[</span><span class="nx">x</span><span class="p">]</span> <span class="o">*</span> <span class="nx">scale</span>   <span class="c1">// array or slice or map element</span>
+</pre></div>
+
+
+<p>Each of the arithmetic and bitwise binary operators has a corresponding <em>assignment operator</em>, which allows the last statement to be rewritten like <code>count[x] *= scale</code>. This saves us from having to repeat (and re-evaluate) the expression for the variable.</p>
+<p>Numeric variables can also be incremented and decremented by <code>++</code> and <code>--</code> statements:</p>
+<div class="codehilite"><pre><span class="nx">v</span> <span class="o">:=</span> <span class="mi">1</span>
+<span class="nx">v</span><span class="o">++</span>   <span class="c1">// same as v = v + 1; v becomes 2</span>
+<span class="nx">v</span><span class="o">--</span>   <span class="c1">// same as v = v - 1; v becomes 1 again</span>
+</pre></div>
+
+
+<h4 id="tuple-assignment">Tuple Assignment</h4>
+<p><strong>Tuple assignment</strong> allows several variables to be assigned at once. <u>All of the right-hand side expressions are evaluated before any of the variables are updated, making this form most useful when some of the variables appear on both sides of the assignment.</u></p>
+<p>Tple assignment can be used in the following scenarios and examples:</p>
+<p>Swapping the values of two variables:</p>
+<div class="codehilite"><pre><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">=</span> <span class="nx">y</span><span class="p">,</span> <span class="nx">x</span>
+<span class="nx">a</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="nx">a</span><span class="p">[</span><span class="nx">j</span><span class="p">]</span> <span class="p">=</span> <span class="nx">a</span><span class="p">[</span><span class="nx">j</span><span class="p">],</span> <span class="nx">a</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+</pre></div>
+
+
+<p>Computing the <a href="https://en.wikipedia.org/wiki/Greatest_common_divisor">greatest common divisor</a> (GCD) of two integers:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">gcd</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">y</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">=</span> <span class="nx">y</span><span class="p">,</span> <span class="nx">x</span><span class="o">%</span><span class="nx">y</span>
+<span class="p">}</span>
+    <span class="k">return</span> <span class="nx">x</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Computing the <em>n</em>-th Fibonacci number iteratively:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">fib</span><span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">n</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">=</span> <span class="nx">y</span><span class="p">,</span> <span class="nx">x</span><span class="o">+</span><span class="nx">y</span>
+<span class="p">}</span>
+    <span class="k">return</span> <span class="nx">x</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Tuple assignment can also make a sequence of trivial assignments more compact:</p>
+<div class="codehilite"><pre><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span><span class="p">,</span> <span class="nx">k</span> <span class="p">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p32 on short variable declaration.</p>
