@@ -364,7 +364,7 @@ func newInt() *int {
 	return &dummy
 }
 ```
-
+G
 Each call to new returns a distinct variable with a unique address:
 
 ```go
@@ -441,6 +441,71 @@ In any case, the notion of escaping is not something that you need to worry abou
 ##### **Thoughts on garbage collection** *
 
 Garbage collection is a tremendous help in writing correct programs, but it does not relieve you of the burden of thinking about memory. You don’t need to explicitly allocate and free memory, but to write efficient programs you still need to be aware of the lifetime of variables.  For example, keeping unnecessary pointers to short-lived objects within long-lived objects, especially global variables, will prevent the garbage collector from reclaiming the short-lived objects.
+
+### Assignments
+
+The value held by a variable is updated by an assignment statement. In its simplest form, an assignment has a variable on the left of the `=` sign and an expression on the right:
+
+```go
+x = 1                         // named variable
+*p = true                     // indirect variable
+person.name = "bob"           // struct field
+count[x] = count[x] * scale   // array or slice or map element
+```
+
+Each of the arithmetic and bitwise binary operators has a corresponding *assignment operator*, which allows the last statement to be rewritten like `count[x] *= scale`. This saves us from having to repeat (and re-evaluate) the expression for the variable.
+
+Numeric variables can also be incremented and decremented by `++` and `--` statements:
+
+```go
+v := 1
+v++   // same as v = v + 1; v becomes 2
+v--   // same as v = v - 1; v becomes 1 again
+```
+
+#### Tuple Assignment
+
+**Tuple assignment** allows several variables to be assigned at once. <u>All of the right-hand side expressions are evaluated before any of the variables are updated, making this form most useful when some of the variables appear on both sides of the assignment.</u>
+
+Tple assignment can be used in the following scenarios and examples:
+
+Swapping the values of two variables:
+
+```go
+x, y = y, x
+a[i], a[j] = a[j], a[i]
+```
+
+Computing the [greatest common divisor](https://en.wikipedia.org/wiki/Greatest_common_divisor) (GCD) of two integers:
+
+```go
+func gcd(x, y int) int {
+	for y != 0 {
+		x, y = y, x%y
+}
+	return x
+}
+```
+
+Computing the *n*-th Fibonacci number iteratively:
+
+```go
+func fib(n int) int {
+	x, y := 0, 1
+	for i := 0; i < n; i++ {
+		x, y = y, x+y
+}
+	return x
+}
+```
+
+Tuple assignment can also make a sequence of trivial assignments more compact:
+
+```go
+i, j, k = 2, 3, 5
+```
+
+
 
 ### Doubts and Solutions
 
