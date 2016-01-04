@@ -447,10 +447,10 @@ Garbage collection is a tremendous help in writing correct programs, but it does
 The value held by a variable is updated by an assignment statement. In its simplest form, an assignment has a variable on the left of the `=` sign and an expression on the right:
 
 ```go
-x = 1                         // named variable
-*p = true                     // indirect variable
-person.name = "bob"           // struct field
-count[x] = count[x] * scale   // array or slice or map element
+x = 1                       // named variable
+*p = true                   // indirect variable
+person.name = "bob"         // struct field
+count[x] = count[x] * scale // array or slice or map element
 ```
 
 Each of the arithmetic and bitwise binary operators has a corresponding *assignment operator*, which allows the last statement to be rewritten like `count[x] *= scale`. This saves us from having to repeat (and re-evaluate) the expression for the variable.
@@ -459,8 +459,8 @@ Numeric variables can also be incremented and decremented by `++` and `--` state
 
 ```go
 v := 1
-v++   // same as v = v + 1; v becomes 2
-v--   // same as v = v - 1; v becomes 1 again
+v++ // same as v = v + 1; v becomes 2
+v-- // same as v = v - 1; v becomes 1 again
 ```
 
 #### Tuple Assignment
@@ -505,6 +505,175 @@ Tuple assignment can also make a sequence of trivial assignments more compact:
 i, j, k = 2, 3, 5
 ```
 
+However, as a matter of style, avoid the tuple form if the expressions are complex, since a sequence of separate statements is easier to read.
+
+##### **Expressions that produce multiple results** *
+
+Certain expressions produce several values.  When such a call is used in an assignment statement, the left-hand side must have as many variables as the function has results.
+
+For example, a function call with multiple results:
+
+```go
+f, err = os.Open("foo.txt") // function call returns two values
+```
+
+Often, functions use these additional results to indicate some kind of error by returning either of the following:
+* An `error` (as in the call to `os.Open`)
+* A `bool`, usually called `ok`.
+
+There are three operators that sometimes also behave this way:
+
+* Map lookup (§4.3)
+* Type assertion (§7.10)
+* Channel receive (§8.4.2)
+
+When any of the above three appears in an assignment in which two results are expected, each produces an additional boolean result:
+
+```go
+v, ok = m[key] // map lookup
+v, ok = x.(T)  // type assertion
+v, ok = <-ch   // channel receive
+```
+
+As with variable declarations, we can assign unwanted values to the blank identifier:
+
+```go
+_, err = io.Copy(dst, src) // discard byte count
+_, ok = x.(T)              // check type but discard result
+```
+
+#### Assignability
+
+Assignment statements are an explicit form of assignment. There are many places in a
+program where an assignment occurs implicitly:
+
+* A function call implicitly assigns the argument values to the corresponding parameter variables;
+* A `return` statement implicitly assigns the `return` operands to the corresponding result variables;
+* A literal expression for a [composite type](ch4.md) such as this slice:
+
+```go
+medals := []string{"gold", "silver", "bronze"}
+```
+
+This implicitly assign each element, as if written like this:
+
+```go
+medals[0] = "gold"
+medals[1] = "silver"
+medals[2] = "bronze"
+```
+
+This implicit assignment also applies to the elements of maps and channels.
+
+##### **Assignability rule** *
+
+<u>An assignment, explicit or implicit, is always legal if the left-hand side (the variable) and the right-hand side (the value) have the same type. More generally, the assignment is legal only if the value is *assignable* to the type of the variable.</u>
+
+The rule for assignability has cases for various types. Relevant cases will be explained when each new type is introduced.
+
+For the types discussed so far, the rules are simple:
+
+* The types must exactly match.
+* `nil` may be assigned to any variable of interface or reference type.
+
+[Constants](ch3.md#constants) have more flexible rules for assignability that avoid the need for most explicit conversions.
+
+##### **Assignability and comparability** *
+
+Whether two values may be compared with `==` and `!=` is related to assignability: in any comparison, the first operand must be assignable to the type of the second operand, or vice versa. As with assignability, relevant cases for comparability will be explained when each new type is introduced.
+
+### Type Declarations
+
+The type of a variable or expression defines the characteristics of the values it may take on, such as:
+
+* Size.
+* How they are represented internally.
+* Intrinsic operations that can be performed on them.
+* Methods associated with them.
+
+Variables can share the same representation but signify very different concepts. [p39]
+
+A `type` declaration defines a new *named type* that has the same *underlying type* as an existing type. <u>The named type provides a way to separate different and perhaps incompatible uses of the underlying type so that they can’t be mixed unintentionally.</u>
+
+```go
+type name underlying-type
+```
+
+Type declarations most often appear at package level, where the named type is visible throughout the package; if the name is exported (it starts with an upper-case letter), it’s accessible from other packages as well.
+
+#### Example of type declarations: temperature scales *
+
+The following example turns different temperature scales into different types:
+
+<small>[gopl.io/ch2/tempconv0/celsius.go](https://github.com/shichao-an/gopl.io/blob/master/ch2/tempconv0/celsius.go)</small>
+
+```go
+// Package tempconv performs Celsius and Fahrenheit temperature computations.
+package tempconv
+
+import "fmt"
+
+type Celsius float64
+type Fahrenheit float64
+
+const (
+	AbsoluteZeroC Celsius = -273.15
+	FreezingC     Celsius = 0
+	BoilingC      Celsius = 100
+)
+
+func CToF(c Celsius) Fahrenheit { return Fahrenheit(c*9/5 + 32) }
+
+func FToC(f Fahrenheit) Celsius { return Celsius((f - 32) * 5 / 9) }
+```
+
+This package defines two types, `Celsius` and `Fahrenheit` for the two units of temperature. <u>Even though both have the same underlying type, `float64`, they are not the same type, so they cannot be compared or combined in arithmetic expressions.</u> Defining two types avoids errors like inadvertently combining temperatures in the two different scales; an explicit type conversion like `Celsius(t)` or `Fahrenheit(t)` is required to convert from a `float64`.
+
+* `Celsius(t)` and `Fahrenheit(t)` are conversions, not function calls. <u>They don’t change the value or representation in any way, but they make the change of meaning explicit.</u>
+* The functions `CToF` and `FToC` convert between the two scales; they do return different values.
+
+##### **Type conversion** *
+
+For every type `T`, there is a corresponding conversion operation `T(x)` that converts the value `x`
+to type `T`. A conversion from one type to another is allowed if any of the following holds:
+
+* Both have the same underlying type.
+* Both are unnamed pointer types that point to variables of the same underlying type.
+
+These conversions change the type but not the representation of the value.
+
+If `x` is assignable to `T`, a conversion is permitted but is usually redundant.
+
+Conversions are also allowed in the following cases:
+
+* Between numeric types
+* Between string and some slice types (discussed in [Chapter 3](ch3.md)).
+
+These conversions may change the representation of the value. For instance, converting a floating-point number to an integer discards any fractional part, and converting a string to a `[]byte` slice allocates a copy of the string data. In any case, a conversion never fails at run time.
+
+The underlying type of a named type determines its structure and representation, and also the set of intrinsic operations it supports, which are the same as if the underlying type had been used directly. That means that arithmetic operators work the same for `Celsius` and `Fahrenheit` as they do for `float64`.
+
+```go
+fmt.Printf("%g\n", BoilingC-FreezingC) // "100" °C
+boilingF := CToF(BoilingC)
+fmt.Printf("%g\n", boilingF-CToF(FreezingC))  // "180" °F
+fmt.Printf("%g\n", boilingF-FreezingC)        // compile error: type mismatch
+```
+
+Comparison operators like `==` and `<` can also be used to compare a value of a named type to
+another of the same type, or to a value of the underlying type. But two values of different
+named types cannot be compared directly:
+
+```go
+var c Celsius
+var f Fahrenheit
+fmt.Println(c == 0)          // "true"
+fmt.Println(f >= 0)          // "true"
+fmt.Println(c == f)          // compile error: type mismatch
+fmt.Println(c == Celsius(f)) // "true"!
+```
+
+Note that in the last case, the type conversion `Celsius(f)` does not change the value of its argument, just its type. The test is true because `c` and `f` are both zero.
 
 
 ### Doubts and Solutions
