@@ -632,7 +632,7 @@ This package defines two types, `Celsius` and `Fahrenheit` for the two units of 
 * `Celsius(t)` and `Fahrenheit(t)` are conversions, not function calls. <u>They don’t change the value or representation in any way, but they make the change of meaning explicit.</u>
 * The functions `CToF` and `FToC` convert between the two scales; they do return different values.
 
-##### **Type conversion** *
+#### Type conversion *
 
 For every type `T`, there is a corresponding conversion operation `T(x)` that converts the value `x`
 to type `T`. A conversion from one type to another is allowed if any of the following holds:
@@ -675,6 +675,31 @@ fmt.Println(c == Celsius(f)) // "true"!
 
 Note that in the last case, the type conversion `Celsius(f)` does not change the value of its argument, just its type. The test is true because `c` and `f` are both zero.
 
+#### Advantages of named types *
+
+A named type provides notational convenience if it helps avoid writing out complex types over and over again. The advantage is small when the underlying type is simple like `float64`, but big for complicated types (detailed when discussing [structs](ch4.md#structs)).
+
+Named types also make it possible to define new behaviors for values of the type. These behaviors are expressed as a set of functions associated with the type, called the type’s **methods**. Methods are discussed in [Chapter 6](ch6.md). The following example of the `String` method gives a taste the mechanism.
+
+The declaration below, in which the `Celsius` parameter `c` appears before the function name, associates with the `Celsius` type a method named `String` that returns `c`’s numeric value followed by `°C`:
+
+```go
+func (c Celsius) String() string { return fmt.Sprintf("%g°C", c) }
+```
+
+#### The `String` method *
+
+Many types declare a `String` method of this form because it controls how values of the type appear when printed as a string by the `fmt` package, discussed in [Section 7.1](ch7.md#interfaces-as-contracts).
+
+```go
+c := FToC(212.0)
+fmt.Println(c.String()) // "100°C"
+fmt.Printf("%v\n", c)   // "100°C"; no need to call String explicitly
+fmt.Printf("%s\n", c)   // "100°C"
+fmt.Println(c)          // "100°C"
+fmt.Printf("%g\n", c)   // "100"; does not call String
+fmt.Println(float64(c)) // "100"; does not call String
+```
 
 ### Doubts and Solutions
 
