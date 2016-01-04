@@ -718,6 +718,19 @@
         
             <li><a href="#tuple-assignment">Tuple Assignment</a></li>
         
+            <li><a href="#assignability">Assignability</a></li>
+        
+    
+        <li class="main "><a href="#type-declarations">Type Declarations</a></li>
+        
+            <li><a href="#example-of-type-declarations-temperature-scales">Example of type declarations: temperature scales *</a></li>
+        
+            <li><a href="#type-conversion">Type conversion *</a></li>
+        
+            <li><a href="#advantages-of-named-types">Advantages of named types *</a></li>
+        
+            <li><a href="#the-string-method">The String method *</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1163,18 +1176,18 @@ Each call to new returns a distinct variable with a unique address:</p>
 <p>Garbage collection is a tremendous help in writing correct programs, but it does not relieve you of the burden of thinking about memory. You don’t need to explicitly allocate and free memory, but to write efficient programs you still need to be aware of the lifetime of variables.  For example, keeping unnecessary pointers to short-lived objects within long-lived objects, especially global variables, will prevent the garbage collector from reclaiming the short-lived objects.</p>
 <h3 id="assignments">Assignments</h3>
 <p>The value held by a variable is updated by an assignment statement. In its simplest form, an assignment has a variable on the left of the <code>=</code> sign and an expression on the right:</p>
-<div class="codehilite"><pre><span class="nx">x</span> <span class="p">=</span> <span class="mi">1</span>                         <span class="c1">// named variable</span>
-<span class="o">*</span><span class="nx">p</span> <span class="p">=</span> <span class="kc">true</span>                     <span class="c1">// indirect variable</span>
-<span class="nx">person</span><span class="p">.</span><span class="nx">name</span> <span class="p">=</span> <span class="s">&quot;bob&quot;</span>           <span class="c1">// struct field</span>
-<span class="nx">count</span><span class="p">[</span><span class="nx">x</span><span class="p">]</span> <span class="p">=</span> <span class="nx">count</span><span class="p">[</span><span class="nx">x</span><span class="p">]</span> <span class="o">*</span> <span class="nx">scale</span>   <span class="c1">// array or slice or map element</span>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="p">=</span> <span class="mi">1</span>                       <span class="c1">// named variable</span>
+<span class="o">*</span><span class="nx">p</span> <span class="p">=</span> <span class="kc">true</span>                   <span class="c1">// indirect variable</span>
+<span class="nx">person</span><span class="p">.</span><span class="nx">name</span> <span class="p">=</span> <span class="s">&quot;bob&quot;</span>         <span class="c1">// struct field</span>
+<span class="nx">count</span><span class="p">[</span><span class="nx">x</span><span class="p">]</span> <span class="p">=</span> <span class="nx">count</span><span class="p">[</span><span class="nx">x</span><span class="p">]</span> <span class="o">*</span> <span class="nx">scale</span> <span class="c1">// array or slice or map element</span>
 </pre></div>
 
 
 <p>Each of the arithmetic and bitwise binary operators has a corresponding <em>assignment operator</em>, which allows the last statement to be rewritten like <code>count[x] *= scale</code>. This saves us from having to repeat (and re-evaluate) the expression for the variable.</p>
 <p>Numeric variables can also be incremented and decremented by <code>++</code> and <code>--</code> statements:</p>
 <div class="codehilite"><pre><span class="nx">v</span> <span class="o">:=</span> <span class="mi">1</span>
-<span class="nx">v</span><span class="o">++</span>   <span class="c1">// same as v = v + 1; v becomes 2</span>
-<span class="nx">v</span><span class="o">--</span>   <span class="c1">// same as v = v - 1; v becomes 1 again</span>
+<span class="nx">v</span><span class="o">++</span> <span class="c1">// same as v = v + 1; v becomes 2</span>
+<span class="nx">v</span><span class="o">--</span> <span class="c1">// same as v = v - 1; v becomes 1 again</span>
 </pre></div>
 
 
@@ -1210,6 +1223,166 @@ Each call to new returns a distinct variable with a unique address:</p>
 
 <p>Tuple assignment can also make a sequence of trivial assignments more compact:</p>
 <div class="codehilite"><pre><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span><span class="p">,</span> <span class="nx">k</span> <span class="p">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span>
+</pre></div>
+
+
+<p>However, as a matter of style, avoid the tuple form if the expressions are complex, since a sequence of separate statements is easier to read.</p>
+<h5 id="expressions-that-produce-multiple-results"><strong>Expressions that produce multiple results</strong> *</h5>
+<p>Certain expressions produce several values.  When such a call is used in an assignment statement, the left-hand side must have as many variables as the function has results.</p>
+<p>For example, a function call with multiple results:</p>
+<div class="codehilite"><pre><span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;foo.txt&quot;</span><span class="p">)</span> <span class="c1">// function call returns two values</span>
+</pre></div>
+
+
+<p>Often, functions use these additional results to indicate some kind of error by returning either of the following:
+<em> An <code>error</code> (as in the call to <code>os.Open</code>)
+</em> A <code>bool</code>, usually called <code>ok</code>.</p>
+<p>There are three operators that sometimes also behave this way:</p>
+<ul>
+<li>Map lookup (§4.3)</li>
+<li>Type assertion (§7.10)</li>
+<li>Channel receive (§8.4.2)</li>
+</ul>
+<p>When any of the above three appears in an assignment in which two results are expected, each produces an additional boolean result:</p>
+<div class="codehilite"><pre><span class="nx">v</span><span class="p">,</span> <span class="nx">ok</span> <span class="p">=</span> <span class="nx">m</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="c1">// map lookup</span>
+<span class="nx">v</span><span class="p">,</span> <span class="nx">ok</span> <span class="p">=</span> <span class="nx">x</span><span class="p">.(</span><span class="nx">T</span><span class="p">)</span>  <span class="c1">// type assertion</span>
+<span class="nx">v</span><span class="p">,</span> <span class="nx">ok</span> <span class="p">=</span> <span class="o">&lt;-</span><span class="nx">ch</span>   <span class="c1">// channel receive</span>
+</pre></div>
+
+
+<p>As with variable declarations, we can assign unwanted values to the blank identifier:</p>
+<div class="codehilite"><pre><span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">dst</span><span class="p">,</span> <span class="nx">src</span><span class="p">)</span> <span class="c1">// discard byte count</span>
+<span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="p">=</span> <span class="nx">x</span><span class="p">.(</span><span class="nx">T</span><span class="p">)</span>              <span class="c1">// check type but discard result</span>
+</pre></div>
+
+
+<h4 id="assignability">Assignability</h4>
+<p>Assignment statements are an explicit form of assignment. There are many places in a
+program where an assignment occurs implicitly:</p>
+<ul>
+<li>A function call implicitly assigns the argument values to the corresponding parameter variables;</li>
+<li>A <code>return</code> statement implicitly assigns the <code>return</code> operands to the corresponding result variables;</li>
+<li>A literal expression for a <a href="../ch4/">composite type</a> such as this slice:</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">medals</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;gold&quot;</span><span class="p">,</span> <span class="s">&quot;silver&quot;</span><span class="p">,</span> <span class="s">&quot;bronze&quot;</span><span class="p">}</span>
+</pre></div>
+
+
+<p>This implicitly assign each element, as if written like this:</p>
+<div class="codehilite"><pre><span class="nx">medals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">=</span> <span class="s">&quot;gold&quot;</span>
+<span class="nx">medals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">=</span> <span class="s">&quot;silver&quot;</span>
+<span class="nx">medals</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="p">=</span> <span class="s">&quot;bronze&quot;</span>
+</pre></div>
+
+
+<p>This implicit assignment also applies to the elements of maps and channels.</p>
+<h5 id="assignability-rule"><strong>Assignability rule</strong> *</h5>
+<p><u>An assignment, explicit or implicit, is always legal if the left-hand side (the variable) and the right-hand side (the value) have the same type. More generally, the assignment is legal only if the value is <em>assignable</em> to the type of the variable.</u></p>
+<p>The rule for assignability has cases for various types. Relevant cases will be explained when each new type is introduced.</p>
+<p>For the types discussed so far, the rules are simple:</p>
+<ul>
+<li>The types must exactly match.</li>
+<li><code>nil</code> may be assigned to any variable of interface or reference type.</li>
+</ul>
+<p><a href="../ch3/#constants">Constants</a> have more flexible rules for assignability that avoid the need for most explicit conversions.</p>
+<h5 id="assignability-and-comparability"><strong>Assignability and comparability</strong> *</h5>
+<p>Whether two values may be compared with <code>==</code> and <code>!=</code> is related to assignability: in any comparison, the first operand must be assignable to the type of the second operand, or vice versa. As with assignability, relevant cases for comparability will be explained when each new type is introduced.</p>
+<h3 id="type-declarations">Type Declarations</h3>
+<p>The type of a variable or expression defines the characteristics of the values it may take on, such as:</p>
+<ul>
+<li>Size.</li>
+<li>How they are represented internally.</li>
+<li>Intrinsic operations that can be performed on them.</li>
+<li>Methods associated with them.</li>
+</ul>
+<p>Variables can share the same representation but signify very different concepts. [p39]</p>
+<p>A <code>type</code> declaration defines a new <em>named type</em> that has the same <em>underlying type</em> as an existing type. <u>The named type provides a way to separate different and perhaps incompatible uses of the underlying type so that they can’t be mixed unintentionally.</u></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">name</span> <span class="nx">underlying</span><span class="o">-</span><span class="kd">type</span>
+</pre></div>
+
+
+<p>Type declarations most often appear at package level, where the named type is visible throughout the package; if the name is exported (it starts with an upper-case letter), it’s accessible from other packages as well.</p>
+<h4 id="example-of-type-declarations-temperature-scales">Example of type declarations: temperature scales *</h4>
+<p>The following example turns different temperature scales into different types:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/tempconv0/celsius.go">gopl.io/ch2/tempconv0/celsius.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package tempconv performs Celsius and Fahrenheit temperature computations.</span>
+<span class="kn">package</span> <span class="nx">tempconv</span>
+
+<span class="kn">import</span> <span class="s">&quot;fmt&quot;</span>
+
+<span class="kd">type</span> <span class="nx">Celsius</span> <span class="kt">float64</span>
+<span class="kd">type</span> <span class="nx">Fahrenheit</span> <span class="kt">float64</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">AbsoluteZeroC</span> <span class="nx">Celsius</span> <span class="p">=</span> <span class="o">-</span><span class="mf">273.15</span>
+    <span class="nx">FreezingC</span>     <span class="nx">Celsius</span> <span class="p">=</span> <span class="mi">0</span>
+    <span class="nx">BoilingC</span>      <span class="nx">Celsius</span> <span class="p">=</span> <span class="mi">100</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">CToF</span><span class="p">(</span><span class="nx">c</span> <span class="nx">Celsius</span><span class="p">)</span> <span class="nx">Fahrenheit</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">Fahrenheit</span><span class="p">(</span><span class="nx">c</span><span class="o">*</span><span class="mi">9</span><span class="o">/</span><span class="mi">5</span> <span class="o">+</span> <span class="mi">32</span><span class="p">)</span> <span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">FToC</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Fahrenheit</span><span class="p">)</span> <span class="nx">Celsius</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">Celsius</span><span class="p">((</span><span class="nx">f</span> <span class="o">-</span> <span class="mi">32</span><span class="p">)</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">/</span> <span class="mi">9</span><span class="p">)</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>This package defines two types, <code>Celsius</code> and <code>Fahrenheit</code> for the two units of temperature. <u>Even though both have the same underlying type, <code>float64</code>, they are not the same type, so they cannot be compared or combined in arithmetic expressions.</u> Defining two types avoids errors like inadvertently combining temperatures in the two different scales; an explicit type conversion like <code>Celsius(t)</code> or <code>Fahrenheit(t)</code> is required to convert from a <code>float64</code>.</p>
+<ul>
+<li><code>Celsius(t)</code> and <code>Fahrenheit(t)</code> are conversions, not function calls. <u>They don’t change the value or representation in any way, but they make the change of meaning explicit.</u></li>
+<li>The functions <code>CToF</code> and <code>FToC</code> convert between the two scales; they do return different values.</li>
+</ul>
+<h4 id="type-conversion">Type conversion *</h4>
+<p>For every type <code>T</code>, there is a corresponding conversion operation <code>T(x)</code> that converts the value <code>x</code>
+to type <code>T</code>. A conversion from one type to another is allowed if any of the following holds:</p>
+<ul>
+<li>Both have the same underlying type.</li>
+<li>Both are unnamed pointer types that point to variables of the same underlying type.</li>
+</ul>
+<p>These conversions change the type but not the representation of the value.</p>
+<p>If <code>x</code> is assignable to <code>T</code>, a conversion is permitted but is usually redundant.</p>
+<p>Conversions are also allowed in the following cases:</p>
+<ul>
+<li>Between numeric types</li>
+<li>Between string and some slice types (discussed in <a href="../ch3/">Chapter 3</a>).</li>
+</ul>
+<p>These conversions may change the representation of the value. For instance, converting a floating-point number to an integer discards any fractional part, and converting a string to a <code>[]byte</code> slice allocates a copy of the string data. In any case, a conversion never fails at run time.</p>
+<p>The underlying type of a named type determines its structure and representation, and also the set of intrinsic operations it supports, which are the same as if the underlying type had been used directly. That means that arithmetic operators work the same for <code>Celsius</code> and <code>Fahrenheit</code> as they do for <code>float64</code>.</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%g\n&quot;</span><span class="p">,</span> <span class="nx">BoilingC</span><span class="o">-</span><span class="nx">FreezingC</span><span class="p">)</span> <span class="c1">// &quot;100&quot; °C</span>
+<span class="nx">boilingF</span> <span class="o">:=</span> <span class="nx">CToF</span><span class="p">(</span><span class="nx">BoilingC</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%g\n&quot;</span><span class="p">,</span> <span class="nx">boilingF</span><span class="o">-</span><span class="nx">CToF</span><span class="p">(</span><span class="nx">FreezingC</span><span class="p">))</span>  <span class="c1">// &quot;180&quot; °F</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%g\n&quot;</span><span class="p">,</span> <span class="nx">boilingF</span><span class="o">-</span><span class="nx">FreezingC</span><span class="p">)</span>        <span class="c1">// compile error: type mismatch</span>
+</pre></div>
+
+
+<p>Comparison operators like <code>==</code> and <code>&lt;</code> can also be used to compare a value of a named type to
+another of the same type, or to a value of the underlying type. But two values of different
+named types cannot be compared directly:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">c</span> <span class="nx">Celsius</span>
+<span class="kd">var</span> <span class="nx">f</span> <span class="nx">Fahrenheit</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>          <span class="c1">// &quot;true&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>          <span class="c1">// &quot;true&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span> <span class="o">==</span> <span class="nx">f</span><span class="p">)</span>          <span class="c1">// compile error: type mismatch</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span> <span class="o">==</span> <span class="nx">Celsius</span><span class="p">(</span><span class="nx">f</span><span class="p">))</span> <span class="c1">// &quot;true&quot;!</span>
+</pre></div>
+
+
+<p>Note that in the last case, the type conversion <code>Celsius(f)</code> does not change the value of its argument, just its type. The test is true because <code>c</code> and <code>f</code> are both zero.</p>
+<h4 id="advantages-of-named-types">Advantages of named types *</h4>
+<p>A named type provides notational convenience if it helps avoid writing out complex types over and over again. The advantage is small when the underlying type is simple like <code>float64</code>, but big for complicated types (detailed when discussing <a href="../ch4/#structs">structs</a>).</p>
+<p>Named types also make it possible to define new behaviors for values of the type. These behaviors are expressed as a set of functions associated with the type, called the type’s <strong>methods</strong>. Methods are discussed in <a href="../ch6/">Chapter 6</a>. The following example of the <code>String</code> method gives a taste the mechanism.</p>
+<p>The declaration below, in which the <code>Celsius</code> parameter <code>c</code> appears before the function name, associates with the <code>Celsius</code> type a method named <code>String</code> that returns <code>c</code>’s numeric value followed by <code>°C</code>:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="nx">Celsius</span><span class="p">)</span> <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%g°C&quot;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="p">}</span>
+</pre></div>
+
+
+<h4 id="the-string-method">The <code>String</code> method *</h4>
+<p>Many types declare a <code>String</code> method of this form because it controls how values of the type appear when printed as a string by the <code>fmt</code> package, discussed in <a href="../ch7/#interfaces-as-contracts">Section 7.1</a>.</p>
+<div class="codehilite"><pre><span class="nx">c</span> <span class="o">:=</span> <span class="nx">FToC</span><span class="p">(</span><span class="mf">212.0</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// &quot;100°C&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%v\n&quot;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>   <span class="c1">// &quot;100°C&quot;; no need to call String explicitly</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s\n&quot;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>   <span class="c1">// &quot;100°C&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span>          <span class="c1">// &quot;100°C&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%g\n&quot;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>   <span class="c1">// &quot;100&quot;; does not call String</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">float64</span><span class="p">(</span><span class="nx">c</span><span class="p">))</span> <span class="c1">// &quot;100&quot;; does not call String</span>
 </pre></div>
 
 
