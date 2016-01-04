@@ -378,6 +378,28 @@ The serving layer is a specialized distributed database that loads in a batch vi
 
 A serving layer database supports batch updates and random reads, but it doesn’t need to support random writes. This is a very important point, as random writes cause most of the complexity in databases. By not supporting random writes, these databases are extremely simple. That simplicity makes them robust, predictable, easy to configure, and easy to operate. ElephantDB, the serving layer database discussed in this book, is only a few thousand lines of code.
 
+#### Batch and serving layers satisfy almost all properties
+
+The batch and serving layers support arbitrary queries on an arbitrary dataset with the trade-off that queries will be out of date by a few hours. It takes a new piece of data a few hours to propagate through the batch layer into the serving layer where it can be queried. Other than low latency updates, the batch and serving layers satisfy every property desired in a Big Data system, as outlined in [Section 1.5](#desired-properties-of-a-big-data-system):
+
+* **Robustness and fault tolerance**.
+    * Hadoop handles failover when machines go down.
+    * The serving layer uses replication to ensure availability when servers go down.
+    * The batch and serving layers are also human-fault tolerant, because when a mistake is made, you can fix your algorithm or remove the bad data and recompute the views from scratch.
+* **Scalability**. Both the batch and serving layers are easily scalable. They’re both fully distributed systems, and scaling them is as easy as adding new machines.
+* **Generalization**. You can compute and update arbitrary views of an arbitrary dataset.
+* **Extensibility**.
+    * Adding a new view is as easy as adding a new function of the master dataset. Because the master dataset can contain arbitrary data, new types of data can be easily added.
+    * If you want to tweak a view, you don’t have to worry about supporting multiple versions of the view in the application. You can simply recompute the entire view from scratch.
+* **Ad hoc queries**. The batch layer supports ad hoc queries innately. All the data is conveniently available in one location.
+* **Minimal maintenance**.
+    * The main component to maintain in this system is Hadoop. Hadoop requires some administration knowledge, but it’s fairly straightforward to operate.
+    * The serving layer databases are simple because they don’t do random writes. Because a serving layer database has so few moving parts, there’s lots less that can go wrong. As a consequence, it’s much less likely that anything will go wrong with a serving layer database, so they’re easier to maintain.
+* **Debuggability**. Having the inputs and outputs of computations run on the batch layer gives you all the information you need to debug when something goes wrong.
+    * In a traditional database, an output can replace the original input (such as when incrementing a value). In the batch and serving layers, the input is the master dataset and the output is the views. Likewise, you have the inputs and outputs for all the intermediate steps.
+
+The batch and serving layers satisfy almost all the properties you want with a simple and easy-to-understand approach. There are no concurrency issues to deal with, and it scales trivially. The only property missing is low latency updates. The final layer, the speed layer, fixes this problem.
+
 ### Doubts and Solutions
 
 #### Verbatim
