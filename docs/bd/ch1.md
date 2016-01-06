@@ -400,6 +400,51 @@ The batch and serving layers support arbitrary queries on an arbitrary dataset w
 
 The batch and serving layers satisfy almost all the properties you want with a simple and easy-to-understand approach. There are no concurrency issues to deal with, and it scales trivially. The only property missing is low latency updates. The final layer, the speed layer, fixes this problem.
 
+### Speed layer
+
+Since the serving layer updates whenever the batch layer finishes precomputing a batch view, the only data not represented in the batch view is the data that came in while the precomputation was running. The purpose of the speed layer is to compensate for those last few hours of data, in order to have arbitrary functions computed on arbitrary data in real time. The goal of the speed layer is to ensure new data is represented in query functions as quickly as needed for the application requirements (see figure below).
+
+[![Figure 1.10 Speed layer](figure_1.10.png)](figure_1.10.png "Figure 1.10 Speed layer")
+
+The speed layer is similar to the batch layer in that it produces views based on data it receives, but has two major differences:
+
+1. The speed layer only looks at recent data, whereas the batch layer looks at all the data at once.
+2. In order to achieve the smallest latencies possible, the speed layer doesn’t look at all the new data at once. Instead, it updates the realtime views as it receives new data instead of recomputing the views from scratch like the batch layer does. The speed layer does incremental computation instead of the recomputation done in the batch layer.
+
+The data flow on the speed layer can be formalized with the following equation:
+
+> realtime view = function(realtime view, new data)
+
+A realtime view is updated based on new data and the existing realtime view.
+
+The Lambda Architecture in full is summarized by these three equations:
+
+> batch view = function(all data)
+
+> realtime view = function(realtime view, new data)
+
+> query = function(batch view, realtime view)
+
+A pictorial representation of these ideas is shown in the figure below:
+
+[![Figure 1.11 Lambda Architecture diagram](figure_1.11.png)](figure_1.11.png "Figure 1.11 Lambda Architecture diagram")
+
+Instead of resolving queries by just doing a function of the batch view, you resolve queries by looking at both the batch and realtime views and merging the results together.
+
+The speed layer uses databases that support random reads and random writes, so they’re orders of magnitude more complex than the databases in the serving layer, both in terms of implementation and operation. However, <u>once data makes it through the batch layer into the serving layer, the corresponding results in the realtime views are no longer needed.</u> This means you can discard pieces of the realtime view as they’re no longer needed. This is a wonderful result, because the speed layer is far more complex than the batch and serving layers. This property of the Lambda Architecture is called *complexity isolation*, meaning that complexity is pushed into a layer whose results are only temporary. If anything ever goes wrong, you can discard the state for the entire speed layer, and everything will be back to normal within a few hours.
+
+#### Example of the web analytics application (continued) *
+
+To continue the example of building a web analytics application that supports queries about the number of pageviews over a range of days, recall that the batch layer produces batch views from `[url, day]` to the number of pageviews. The speed layer keeps its own separate view of `[url, day]` to number of pageviews.  Whereas the batch layer recomputes its views by literally counting the pageviews, the speed layer updates its views by incrementing the count in the view whenever it receives new data. To resolve a query, you query both the batch and realtime views as necessary to satisfy the range of dates specified, and you sum up the results to get the final count. The little work that needs to be done to properly synchronize the results will be covered in a future chapter.
+
+#### Eventual accuracy *
+
+Some algorithms are difficult to compute incrementally. The batch/speed layer split gives you the flexibility to use the exact algorithm on the batch layer and an approximate algorithm on the speed layer. The batch layer repeatedly overrides (corrects) the speed layer, so the approximation gets corrected and your system exhibits the property of *eventual accuracy*. For exmple, computing unique counts can be challenging if the sets of uniques get large. It’s easy to do the unique count on the batch layer, because you look at all the data at once, but on the speed layer you might use a [HyperLogLog](https://en.wikipedia.org/wiki/HyperLogLog) set as an approximation.
+
+#### Performance and robustness *
+
+The resulting system has both performance and robustness. [p20] You can still get low latency updates, the complexity of achieving this doesn’t affect the robustness of your results because the speed layer is transient. <u>The transient nature of the speed layer gives you the flexibility to be very aggressive when it comes to making trade-offs for performance.</u> For computations that can be done exactly in an incremental fashion, the system is fully accurate.
+
 ### Doubts and Solutions
 
 #### Verbatim
