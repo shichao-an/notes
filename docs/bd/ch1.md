@@ -445,6 +445,64 @@ Some algorithms are difficult to compute incrementally. The batch/speed layer sp
 
 The resulting system has both performance and robustness. [p20] You can still get low latency updates, the complexity of achieving this doesn’t affect the robustness of your results because the speed layer is transient. <u>The transient nature of the speed layer gives you the flexibility to be very aggressive when it comes to making trade-offs for performance.</u> For computations that can be done exactly in an incremental fashion, the system is fully accurate.
 
+### Recent trends in technology
+
+A number of trends in technology deeply influence the ways to build Big Data systems.
+
+#### CPUs aren’t getting faster
+
+CPUs hit the physical limits of speed. That means that if you want to scale to more data, you must be able to parallelize your computation.  This has led to the rise of shared-nothing parallel algorithms and their corresponding systems, such as MapReduce. Instead of just trying to scale by buying a better machine, known as **vertical scaling**, systems scale by adding more machines, known as **horizontal scaling**.
+
+#### Elastic clouds
+
+Elastic clouds, also known as [Infrastructure as a Service](https://en.wikipedia.org/wiki/Cloud_computing#Infrastructure_as_a_service_.28IaaS.29) (IaaS), is another trend in technology. [Amazon Web Services](https://en.wikipedia.org/wiki/Amazon_Web_Services) (AWS) is the most notable elastic cloud. Elastic clouds allow you to:
+
+* Rent hardware on demand rather than own your own hardware in your own location.
+* Increase or decrease the size of your cluster nearly instantaneously. If you have a big job you want to run, you can allocate the hardware temporarily.
+
+Elastic clouds has the following advantages:
+
+* Dramatically simplify system administration.
+* Provide additional storage and hardware allocation options that can significantly drive down the price of infrastructure.
+    * For example, AWS has a feature called [spot instances](https://aws.amazon.com/ec2/spot/) in which you bid on instances rather than pay a fixed price. If someone bids a higher price than you, you’ll lose the instance. Because spot instances can disappear at any moment, they tend to be significantly cheaper than normal instances.
+* Fault tolerance is handled at the software layer for distributed computation systems like MapReduce.
+
+#### Vibrant open source ecosystem for Big Data
+
+There are five categories of open source projects under discussion.
+
+* **Batch computation systems**. Batch computation systems are high throughput, high latency systems.
+    * Batch computation systems can do nearly arbitrary computations, but they may take hours or days to do so.
+    * The only batch computation system discussed is Hadoop. The Hadoop project has two subprojects: Hadoop Distributed File System (HDFS) and Hadoop MapReduce.
+        * HDFS is a distributed, fault-tolerant storage system that can scale to petabytes of data.
+        * MapReduce is a horizontally scalable computation framework that integrates with HDFS.
+* **Serialization frameworks**. Serialization frameworks provide tools and libraries for using objects between languages. They can:
+    * Serialize an object into a byte array from any language, and then deserialize that byte array into an object in any language.
+    * Provide a Schema Definition Language for defining objects and their fields,
+    * Provide mechanisms to safely version objects so that a schema can be evolved without invalidating existing objects.
+
+    The three notable serialization frameworks are [Thrift](https://en.wikipedia.org/wiki/Apache_Thrift), [Protocol Buffers](https://en.wikipedia.org/wiki/Protocol_Buffers), and [Avro](https://en.wikipedia.org/wiki/Apache_Avro).
+
+* **Random-access NoSQL databases**. There has been a plethora of NoSQL databases created in the past few years, such as [Cassandra](https://en.wikipedia.org/wiki/Apache_Cassandra), [HBase](https://en.wikipedia.org/wiki/Apache_HBase), [MongoDB](https://en.wikipedia.org/wiki/MongoDB), [Voldemort](https://en.wikipedia.org/wiki/Voldemort_(distributed_data_store)), [Riak](https://en.wikipedia.org/wiki/Riak), [CouchDB](https://en.wikipedia.org/wiki/CouchDB).
+    * These databases all share one thing in common: they sacrifice the full expressiveness of SQL and instead specialize in certain kinds of operations.
+    * They all have different semantics and are meant to be used for specific purposes. They’re not meant to be used for arbitrary [data warehousing](https://en.wikipedia.org/wiki/Data_warehouse). <u>Choosing a NoSQL database to use is like choosing between a hash map, sorted map, linked list, or vector when choosing a data structure to use in a program.</u> Cassandra will be used as part of the example application to be discussed.
+* **Messaging/queuing systems**. A messaging/queuing system provides a way to send and consume messages between processes in a fault-tolerant and asynchronous manner. A message queue is a key component for doing realtime processing. [Apache Kafka](https://en.wikipedia.org/wiki/Apache_Kafka) is discussed in this book.
+* **Realtime computation system**. Realtime computation systems are high throughput, low latency, stream-processing systems. They can’t do the range of computations a batch-processing system can, but they process messages extremely quickly. [Storm](https://en.wikipedia.org/wiki/Storm_(event_processor)) is used in this book. Storm topologies are easy to write and scale.
+
+As these open source projects have matured, companies have formed around some of
+them to provide enterprise support. For example:
+
+Enterprise support:
+
+* [Cloudera](https://en.wikipedia.org/wiki/Cloudera) provides Hadoop support
+* [DataStax](https://en.wikipedia.org/wiki/DataStax) provides Cassandra support
+
+Company products:
+
+* Riak is a product of [Basho Technologies](https://en.wikipedia.org/wiki/Basho_Technologies)
+* MongoDB is a product of [MongoDB Inc.](https://en.wikipedia.org/wiki/MongoDB_Inc.) (formerly 10gen)
+* [RabbitMQ](https://en.wikipedia.org/wiki/RabbitMQ) is a product of [SpringSource](https://en.wikipedia.org/wiki/SpringSource), a division of VMWare.
+
 ### Doubts and Solutions
 
 #### Verbatim
