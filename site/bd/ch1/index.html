@@ -766,6 +766,15 @@
             <li><a href="#performance-and-robustness">Performance and robustness *</a></li>
         
     
+        <li class="main "><a href="#recent-trends-in-technology">Recent trends in technology</a></li>
+        
+            <li><a href="#cpus-arent-getting-faster">CPUs aren’t getting faster</a></li>
+        
+            <li><a href="#elastic-clouds">Elastic clouds</a></li>
+        
+            <li><a href="#vibrant-open-source-ecosystem-for-big-data">Vibrant open source ecosystem for Big Data</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1131,6 +1140,69 @@ latency (less than 100 milliseconds). Below is the interface for the query:</p>
 <p>Some algorithms are difficult to compute incrementally. The batch/speed layer split gives you the flexibility to use the exact algorithm on the batch layer and an approximate algorithm on the speed layer. The batch layer repeatedly overrides (corrects) the speed layer, so the approximation gets corrected and your system exhibits the property of <em>eventual accuracy</em>. For exmple, computing unique counts can be challenging if the sets of uniques get large. It’s easy to do the unique count on the batch layer, because you look at all the data at once, but on the speed layer you might use a <a href="https://en.wikipedia.org/wiki/HyperLogLog">HyperLogLog</a> set as an approximation.</p>
 <h4 id="performance-and-robustness">Performance and robustness *</h4>
 <p>The resulting system has both performance and robustness. [p20] You can still get low latency updates, the complexity of achieving this doesn’t affect the robustness of your results because the speed layer is transient. <u>The transient nature of the speed layer gives you the flexibility to be very aggressive when it comes to making trade-offs for performance.</u> For computations that can be done exactly in an incremental fashion, the system is fully accurate.</p>
+<h3 id="recent-trends-in-technology">Recent trends in technology</h3>
+<p>A number of trends in technology deeply influence the ways to build Big Data systems.</p>
+<h4 id="cpus-arent-getting-faster">CPUs aren’t getting faster</h4>
+<p>CPUs hit the physical limits of speed. That means that if you want to scale to more data, you must be able to parallelize your computation.  This has led to the rise of shared-nothing parallel algorithms and their corresponding systems, such as MapReduce. Instead of just trying to scale by buying a better machine, known as <strong>vertical scaling</strong>, systems scale by adding more machines, known as <strong>horizontal scaling</strong>.</p>
+<h4 id="elastic-clouds">Elastic clouds</h4>
+<p>Elastic clouds, also known as <a href="https://en.wikipedia.org/wiki/Cloud_computing#Infrastructure_as_a_service_.28IaaS.29">Infrastructure as a Service</a> (IaaS), is another trend in technology. <a href="https://en.wikipedia.org/wiki/Amazon_Web_Services">Amazon Web Services</a> (AWS) is the most notable elastic cloud. Elastic clouds allow you to:</p>
+<ul>
+<li>Rent hardware on demand rather than own your own hardware in your own location.</li>
+<li>Increase or decrease the size of your cluster nearly instantaneously. If you have a big job you want to run, you can allocate the hardware temporarily.</li>
+</ul>
+<p>Elastic clouds has the following advantages:</p>
+<ul>
+<li>Dramatically simplify system administration.</li>
+<li>Provide additional storage and hardware allocation options that can significantly drive down the price of infrastructure.<ul>
+<li>For example, AWS has a feature called <a href="https://aws.amazon.com/ec2/spot/">spot instances</a> in which you bid on instances rather than pay a fixed price. If someone bids a higher price than you, you’ll lose the instance. Because spot instances can disappear at any moment, they tend to be significantly cheaper than normal instances.</li>
+</ul>
+</li>
+<li>Fault tolerance is handled at the software layer for distributed computation systems like MapReduce.</li>
+</ul>
+<h4 id="vibrant-open-source-ecosystem-for-big-data">Vibrant open source ecosystem for Big Data</h4>
+<p>There are five categories of open source projects under discussion.</p>
+<ul>
+<li><strong>Batch computation systems</strong>. Batch computation systems are high throughput, high latency systems.<ul>
+<li>Batch computation systems can do nearly arbitrary computations, but they may take hours or days to do so.</li>
+<li>The only batch computation system discussed is Hadoop. The Hadoop project has two subprojects: Hadoop Distributed File System (HDFS) and Hadoop MapReduce.<ul>
+<li>HDFS is a distributed, fault-tolerant storage system that can scale to petabytes of data.</li>
+<li>MapReduce is a horizontally scalable computation framework that integrates with HDFS.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Serialization frameworks</strong>. Serialization frameworks provide tools and libraries for using objects between languages. They can:</p>
+<ul>
+<li>Serialize an object into a byte array from any language, and then deserialize that byte array into an object in any language.</li>
+<li>Provide a Schema Definition Language for defining objects and their fields,</li>
+<li>Provide mechanisms to safely version objects so that a schema can be evolved without invalidating existing objects.</li>
+</ul>
+<p>The three notable serialization frameworks are <a href="https://en.wikipedia.org/wiki/Apache_Thrift">Thrift</a>, <a href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protocol Buffers</a>, and <a href="https://en.wikipedia.org/wiki/Apache_Avro">Avro</a>.</p>
+</li>
+<li>
+<p><strong>Random-access NoSQL databases</strong>. There has been a plethora of NoSQL databases created in the past few years, such as <a href="https://en.wikipedia.org/wiki/Apache_Cassandra">Cassandra</a>, <a href="https://en.wikipedia.org/wiki/Apache_HBase">HBase</a>, <a href="https://en.wikipedia.org/wiki/MongoDB">MongoDB</a>, <a href="https://en.wikipedia.org/wiki/Voldemort_(distributed_data_store)">Voldemort</a>, <a href="https://en.wikipedia.org/wiki/Riak">Riak</a>, <a href="https://en.wikipedia.org/wiki/CouchDB">CouchDB</a>.</p>
+<ul>
+<li>These databases all share one thing in common: they sacrifice the full expressiveness of SQL and instead specialize in certain kinds of operations.</li>
+<li>They all have different semantics and are meant to be used for specific purposes. They’re not meant to be used for arbitrary <a href="https://en.wikipedia.org/wiki/Data_warehouse">data warehousing</a>. <u>Choosing a NoSQL database to use is like choosing between a hash map, sorted map, linked list, or vector when choosing a data structure to use in a program.</u> Cassandra will be used as part of the example application to be discussed.</li>
+</ul>
+</li>
+<li><strong>Messaging/queuing systems</strong>. A messaging/queuing system provides a way to send and consume messages between processes in a fault-tolerant and asynchronous manner. A message queue is a key component for doing realtime processing. <a href="https://en.wikipedia.org/wiki/Apache_Kafka">Apache Kafka</a> is discussed in this book.</li>
+<li><strong>Realtime computation system</strong>. Realtime computation systems are high throughput, low latency, stream-processing systems. They can’t do the range of computations a batch-processing system can, but they process messages extremely quickly. <a href="https://en.wikipedia.org/wiki/Storm_(event_processor)">Storm</a> is used in this book. Storm topologies are easy to write and scale.</li>
+</ul>
+<p>As these open source projects have matured, companies have formed around some of
+them to provide enterprise support. For example:</p>
+<p>Enterprise support:</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Cloudera">Cloudera</a> provides Hadoop support</li>
+<li><a href="https://en.wikipedia.org/wiki/DataStax">DataStax</a> provides Cassandra support</li>
+</ul>
+<p>Company products:</p>
+<ul>
+<li>Riak is a product of <a href="https://en.wikipedia.org/wiki/Basho_Technologies">Basho Technologies</a></li>
+<li>MongoDB is a product of <a href="https://en.wikipedia.org/wiki/MongoDB_Inc.">MongoDB Inc.</a> (formerly 10gen)</li>
+<li><a href="https://en.wikipedia.org/wiki/RabbitMQ">RabbitMQ</a> is a product of <a href="https://en.wikipedia.org/wiki/SpringSource">SpringSource</a>, a division of VMWare.</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p10 on Operational complexity</p>

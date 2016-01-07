@@ -650,6 +650,40 @@ The USE method is pictured as the flowchart in the following figure. Errors are 
 
 This method identifies problems that are likely to be system bottlenecks. Unfortunately, a system may be suffering from more than one performance problem, so the first thing you find may be a problem but not the problem. Each discovery can be investigated using further methodologies, before returning to the USE method as needed to iterate over more resources.
 
+##### **Expressing Metrics**
+
+The USE method metrics are usually expressed as follows:
+
+* **Utilization**: as a percent over a time interval (e.g., "One CPU is running at 90% utilization")
+* **Saturation**: as a wait-queue length (e.g., "The CPUs have an average runqueue length of four")
+* **Errors:** number of errors reported (e.g., "This network interface has had 50 late collisions")
+
+Though it may seem counterintuitive, <u>a short burst of high utilization can cause saturation and performance issues, even though the overall utilization is low over a long interval.</u> Some monitoring tools report utilization over 5-minute averages. For example, CPU utilization can vary dramatically from second to second, so a 5-minute average may disguise short periods of 100% utilization and saturation.
+
+[p44]
+
+##### **Resource List**
+
+The first step in the USE method is to create a list of resources. Below is a generic list of server hardware resources, along with specific examples:
+
+* **CPUs**: sockets, cores, hardware threads (virtual CPUs)
+* **Main memory**: [DRAM](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
+* **Network interfaces**: Ethernet ports
+* **Storage devices**: disks
+* **Controllers**: storage, network
+* **Interconnects**: CPU, memory, I/O
+
+Each component typically acts as a single resource type. For example:
+
+* Main memory is a capacity resource
+* Network interfaces are an I/O resource (which can mean either IOPS or throughput).
+
+Some components can behave as multiple resource types. For example, a storage device is both an I/O resource and a capacity resource.
+
+Consider all types that can lead to performance bottlenecks. I/O resources can be further studied as queueing systems, which queue and then service these requests.
+
+<u>Some physical components, such as hardware caches (e.g., [CPU caches](https://en.wikipedia.org/wiki/CPU_cache)), can be left out of your checklist. The USE method is most effective for resources that suffer performance degradation under high utilization or saturation, leading to bottlenecks, while caches improve performance under high utilization.</u> These can be checked using other methodologies. If you are unsure whether to include a resource, include it, then see how well the metrics work in practice.
+
 ### Modeling
 
 ### Capacity Planning
