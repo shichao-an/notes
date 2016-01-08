@@ -503,6 +503,43 @@ Company products:
 * MongoDB is a product of [MongoDB Inc.](https://en.wikipedia.org/wiki/MongoDB_Inc.) (formerly 10gen)
 * [RabbitMQ](https://en.wikipedia.org/wiki/RabbitMQ) is a product of [SpringSource](https://en.wikipedia.org/wiki/SpringSource), a division of VMWare.
 
+### Example application: SuperWebAnalytics.com
+
+This book discusses building an example Big Data application. The data management layer is built for a Google Analytics–like service.  The service will be able to track billions of pageviews per day.
+
+The service will support a variety of different metrics. Each metric will be supported in real time. The metrics range from simple counting metrics to complex analyses of how visitors are navigating a website.
+
+The following metrics are to be supported:
+
+* **Pageview counts by URL sliced by time.**
+    * "What are the pageviews for each day over the past year?"
+    * "How many pageviews have there been in the past 12 hours?"
+* **Unique visitors by URL sliced by time.**
+    * How many unique people visited this domain in 2010?"
+    * "How many unique people visited this domain each hour for the past three days?"
+* **Bounce-rate analysis.**
+    * "What percentage of people visit the page without visiting any other pages on this website?"
+
+The layers that store, process, and serve queries to the application will be build out.
+
+### Summary
+
+[p23]
+
+The problems of scaling a relational system with traditional techniques (e.g. sharding) can be beyond scaling itself as the system becomes more complex to manage, extend, and even understand. The upcoming chapters focus as much on robustness as on scalability, and shows that when building things the right way, both robustness and scalability are achievable in the same system.
+
+The benefits of data systems built using the Lambda Architecture is not only scaling:
+
+* More data and more value out of it can be collected. Increasing the amount and types of data you store will lead to more opportunities to mine your data, produce analytics, and build new applications.
+* How robust your applications will be. There are many reasons for this, for example:
+    * You’ll have the ability to run computations on your whole dataset to do migrations or fix things that go wrong.
+    * You’ll never have to deal with situations where there are multiple versions of a schema active at the same time.
+    * When you change your schema, you’ll have the capability to update all data to the new schema.
+    * If an incorrect algorithm is accidentally deployed to production and corrupts the data you’re serving, you can easily fix things by recomputing the corrupted values.
+* Performance will be more predictable. Although the Lambda Architecture as a whole is generic and flexible, the individual components comprising the system are specialized. There is very little "magic" happening behind the scenes, as compared to something like a [SQL query planner](https://en.wikipedia.org/wiki/Query_plan).
+
+The next chapter discusses how to build the Lambda Architecture. You’ll start at the very core of the stack with how you model and schematize the master copy of your dataset.
+
 ### Doubts and Solutions
 
 #### Verbatim
