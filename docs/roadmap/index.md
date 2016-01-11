@@ -1,8 +1,8 @@
-### **Roadmap**
+### **Roadmap: Q1–Q2 2016**
 
 This page summarizes roadmaps of learning focus on the following areas within the next 6 months.
 
-### Programming Languages <small>(3)</small>
+### Programming Languages <small>(4)</small>
 
 #### [C](../c/index.md)
 
@@ -11,6 +11,10 @@ This page summarizes roadmaps of learning focus on the following areas within th
 #### Go
 
 * [GOPL](../gopl/index.md)
+
+#### Python
+
+* [PER](../per/index.md)
 
 #### Ruby
 
