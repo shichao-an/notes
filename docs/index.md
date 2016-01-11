@@ -96,6 +96,14 @@ The Go Programming Language
 
 <small>by Alan A. A. Donovan and Brian W. Kernighan</small>
 
+#### [PER](per/index.md)
+
+[![Python Essential Reference, 4th Edition](per/cover_80.jpg)](per/cover.jpg "Python Essential Reference, 4th Edition")
+
+Python Essential Reference, 4th Edition
+
+<small>by David M. Beazley </small>
+
 #### [TWGR](twgr/index.md)
 
 [![The Well-Grounded Rubyist, Second Edition](twgr/cover_80.png)](twgr/cover.png "The Well-Grounded Rubyist, Second Edition")
@@ -170,7 +178,8 @@ The following is the supplementary books and materials. Each topic, which may ha
 
 #### [Python](python/index.md)
 
-* Python Essential Reference (4th Edition)
+* [Hitchhiker's Guide to Python](http://docs.python-guide.org/en/latest/)
+* Python Cookbook (3rd Edition)
 
 #### [Ruby](ruby/index.md)
 
