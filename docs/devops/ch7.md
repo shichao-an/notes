@@ -375,6 +375,47 @@ Five things that are important to monitor:
 
 #### Challenge 1: Monitoring Under Continuous Changes
 
+##### **Deviation from normal behavior** *
+
+In operation, a deviation from normal behavior is a problem. Normal behavior assumes the system is relatively stable over time. However, in a large-scale complex environment, changes are the norm. Besides varying workloads or dynamic aspects of your application, which are often well anticipated, the new challenges come from both of:
+
+* Cloud elasticity makes infrastructure resources more volatile.
+* Automated DevOps operations trigger various sporadic operations (such as upgrade, reconfiguration, or backups).
+    * Sporadic operations and continuous deployment and deployment practices make software changes more frequent.
+
+Deploying a new version into production multiple times a day is becoming a common practice:
+
+    * Each deployment is a change to the system and may impact monitoring.
+    * These changes may be happening simultaneously in different portions of an application or the infrastructure.
+
+##### **How to use the past monitoring data to do performance management, capacity planning, anomaly detection, and error diagnosis for the new system?** *
+
+In practice, operators may turn off monitoring during scheduled maintenance and upgrades as a work-around to reduce false positive alerts triggered by those changes. However, this can lead to no monitoring (e.g. flying blind).
+
+The following techniques can solve this:
+
+1. Carefully identify the non-changing portions of the data.
+    * For example, use dimensionless data (i.e., ratios). You may find that although individual variables change frequently, the ratio of two variables is relatively constant.
+2. Focus monitoring on things that have changed.
+3. Compare performance of the canaries with historical performance. (As discussed in [Chapter 6](ch6.md), canary testing is a way of monitoring a small rollout of a new system for issues in production.) Changes that cannot be rationalized because of feature changes may indicate problems.
+
+##### **Specification of monitoring parameters** *
+
+The specification of monitoring parameters is another challenge related to monitoring under continuous changes [p144].
+
+The complexity of setting up and maintaining a monitoring system consists of:
+
+* Specifying what needs to be monitored
+* Setting thresholds
+* Defining the alerting logic
+
+Continuous changes in the system infrastructure and the system itself complicate the setting of monitoring parameters. Your monitoring may need to be adjusted for  variance on the infrastructure side. [p144]
+
+As a consequence, it makes sense to automate the configuration of alarms, alerts, and thresholds as much as possible. The monitoring configuration process is just another DevOps process to be automated:
+
+* When you provision a new server, registering this server in the monitoring system automatically.
+* When a server is terminated, a de-registration process should happen automatically.
+
 #### Challenge 2: Bottom-Up vs. Top-Down and Monitoring in the Cloud
 
 #### Challenge 3: Monitoring a Microservice Architecture
