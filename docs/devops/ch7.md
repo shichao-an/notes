@@ -385,8 +385,8 @@ In operation, a deviation from normal behavior is a problem. Normal behavior ass
 
 Deploying a new version into production multiple times a day is becoming a common practice:
 
-    * Each deployment is a change to the system and may impact monitoring.
-    * These changes may be happening simultaneously in different portions of an application or the infrastructure.
+* Each deployment is a change to the system and may impact monitoring.
+* These changes may be happening simultaneously in different portions of an application or the infrastructure.
 
 ##### **How to use the past monitoring data to do performance management, capacity planning, anomaly detection, and error diagnosis for the new system?** *
 
