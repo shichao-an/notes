@@ -684,6 +684,21 @@ Consider all types that can lead to performance bottlenecks. I/O resources can b
 
 <u>Some physical components, such as hardware caches (e.g., [CPU caches](https://en.wikipedia.org/wiki/CPU_cache)), can be left out of your checklist. The USE method is most effective for resources that suffer performance degradation under high utilization or saturation, leading to bottlenecks, while caches improve performance under high utilization.</u> These can be checked using other methodologies. If you are unsure whether to include a resource, include it, then see how well the metrics work in practice.
 
+##### **Functional Block Diagram**
+
+A functional block diagram for the system helps iterating over resources, such as the one shown below.
+
+[![Figure 2.13 Example two-processor functional block diagram](figure_2.13_600.png)](figure_2.13.png "Figure 2.13 Example two-processor functional block diagram")
+
+The diagram also shows relationships, which can be very useful when looking for bottlenecks in the flow of data.
+
+CPU, memory, and I/O interconnects and busses are often overlooked, but they are not common system bottlenecks, as they are typically designed to provide an excess of throughput. If they are, the problem can be difficult to solve. Possible solutions can be:
+
+* Upgrade the main board
+* Reduce load: for example, "[zero copy](https://en.wikipedia.org/wiki/Zero-copy)" projects lighten memory bus load.
+
+For investigating interconnects, see CPU Performance Counters in [Section 6.4.1] on hardware.
+
 ### Modeling
 
 ### Capacity Planning
