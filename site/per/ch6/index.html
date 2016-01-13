@@ -735,6 +735,18 @@
             <li><a href="#decorators-with-arguments">Decorators with arguments *</a></li>
         
     
+        <li class="main "><a href="#generators-and-yield">Generators and yield</a></li>
+        
+            <li><a href="#the-close-method-and-generatorexit-exception">The close() method and GeneratorExit exception *</a></li>
+        
+    
+        <li class="main "><a href="#coroutines-and-yield-expressions">Coroutines and yield Expressions</a></li>
+        
+            <li><a href="#raise-exceptions-throw-method">Raise exceptions throw() method *</a></li>
+        
+            <li><a href="#simultaneously-receive-and-emit-return-values">Simultaneously receive and emit return values *</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -821,6 +833,186 @@
 
 <p>For class decorators, you should always have the decorator function return a class object as a result. Code that expects to work with the original class definition may want to reference members of the class directly such as <code>Bar.spam</code>. This won’t work correctly if the decorator function <code>foo()</code> returns a function.</p>
 <p>Decorators can interact strangely with other aspects of functions such as recursion, documentation strings, and function attributes. These issues are described later in this chapter.</p>
+<h3 id="generators-and-yield">Generators and yield</h3>
+<p>If a function uses the <code>yield</code> keyword, it defines an object known as a <strong>generator</strong>. A generator is a function that produces a sequence of values for use in iteration. For example:</p>
+<div class="codehilite"><pre><span class="k">def</span> <span class="nf">countdown</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Counting down from </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">n</span>
+        <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+    <span class="k">return</span>
+</pre></div>
+
+
+<p>When this function is called, its code does not start executing. For example:</p>
+<div class="codehilite"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">countdown</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+</pre></div>
+
+
+<p>Instead, a generator object is returned, which executes the function whenever <code>next()</code> is called (or <code>__next_ _()</code> in Python 3). For example:</p>
+<div class="codehilite"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">next</span><span class="p">()</span> <span class="c"># Use c.__next__() in Python 3</span>
+<span class="go">Counting down from 10</span>
+<span class="go">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="go">9</span>
+</pre></div>
+
+
+<p>When <code>next()</code> is invoked, the generator function executes statements until it reaches a <code>yield</code> statement. The <code>yield</code> statement produces a result at which point execution of the function stops until <code>next()</code> is invoked again. Execution then resumes with the statement following <code>yield</code>.</p>
+<p>You normally don’t call <code>next()</code> directly on a generator but use it with the for statement, <code>sum()</code>, or some other operation that consumes a sequence.</p>
+<h4 id="the-close-method-and-generatorexit-exception">The <code>close()</code> method and <code>GeneratorExit</code> exception *</h4>
+<p>A problem with generators is the case where a generator function is
+only partially consumed. For example:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">countdown</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">break</span>
+</pre></div>
+
+
+<p>Since the <code>for</code> loop aborts by calling <code>break</code>, the associated generator never runs to full completion. To handle this case, generator objects have a method <code>close()</code> that is used to signal a shutdown. When a generator is no longer used or deleted, close() is called.</p>
+<p>Though it normally not necessary to call <code>close()</code>, you can also call it manually as shown here:</p>
+<div class="codehilite"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">countdown</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="go">Counting down from 10</span>
+<span class="go">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="go">9</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="err">File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;</span>
+<span class="go">StopIteration</span>
+<span class="go">&gt;&gt;&gt;</span>
+</pre></div>
+
+
+<p>Inside the generator function, <code>close()</code> is signaled by a <code>GeneratorExit</code> exception occurring on the <code>yield</code> statement. You can optionally catch this exception to perform cleanup actions.</p>
+<div class="codehilite"><pre><span class="k">def</span> <span class="nf">countdown</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Counting down from </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">n</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="ne">GeneratorExit</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Only made it to </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Note that:</p>
+<ul>
+<li>Although it is possible to catch <code>GeneratorExit</code>, it is illegal for a generator function to handle the exception and produce another output value using yield.</li>
+<li>If a program is currently iterating on generator, you should not call <code>close()</code> asynchronously on that generator from a separate thread of execution or from a signal handler.</li>
+</ul>
+<h3 id="coroutines-and-yield-expressions">Coroutines and yield Expressions</h3>
+<p>Inside a function, the <code>yield</code> statement can also be used as an expression that appears on the right side of an assignment operator. For example:</p>
+<div class="codehilite"><pre><span class="k">def</span> <span class="nf">receiver</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Ready to receive&quot;</span><span class="p">)</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Got </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span>
+</pre></div>
+
+
+<p><u>A function that uses <code>yield</code> in this manner is known as a <strong>coroutine</strong>, and it executes in response to values being sent to it.</u> Its behavior is also very similar to a generator. For example:</p>
+<div class="codehilite"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">receiver</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">next</span><span class="p">()</span> <span class="c"># Advance to first yield (r._ _next_ _() in Python 3)</span>
+<span class="go">Ready to receive</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">Got 1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="go">Got 2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">)</span>
+<span class="go">Got Hello</span>
+<span class="go">&gt;&gt;&gt;</span>
+</pre></div>
+
+
+<p>In this example:</p>
+<ol>
+<li>After the call to <code>next()</code>, the coroutine executes statements leading to the first <code>yield</code> expression. At this point, the coroutine suspends, waiting for a value to be sent to it using the <code>send()</code> method of the associated generator object <code>r</code>.</li>
+<li>The value passed to <code>send()</code> is returned by the <code>(yield)</code> expression in the coroutine. Upon receiving a value, a coroutine executes statements until the next <code>yield</code> statement is encountered.</li>
+</ol>
+<p>To avoid overlooking <code>next()</code> on a coroutine to be called, it is recommended that coroutines be wrapped with a decorator that automatically takes care of this step.</p>
+<div class="codehilite"><pre><span class="k">def</span> <span class="nf">coroutine</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">g</span>
+    <span class="k">return</span> <span class="n">start</span>
+</pre></div>
+
+
+<p>Using this decorator, you would write and use coroutines using:</p>
+<div class="codehilite"><pre><span class="nd">@coroutine</span>
+<span class="k">def</span> <span class="nf">receiver</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Ready to receive&quot;</span><span class="p">)</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Got </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span>
+<span class="c"># Example use</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">receiver</span><span class="p">()</span>
+<span class="n">r</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;Hello World&quot;</span><span class="p">)</span> <span class="c"># Note : No initial .next() needed</span>
+</pre></div>
+
+
+<p>A coroutine will typically run indefinitely unless:</p>
+<ul>
+<li>It is explicitly shut down (by calling <code>close()</code>).</li>
+<li>It exits on its own.</li>
+</ul>
+<p>The <code>close()</code> method closes the stream of input values:</p>
+<div class="codehilite"><pre><span class="o">&gt;&gt;&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="n">File</span> <span class="s">&quot;&lt;stdin&gt;&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">1</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+<span class="ne">StopIteration</span>
+</pre></div>
+
+
+<p>Once closed, a <code>StopIteration</code> exception will be raised if further values are sent to a coroutine. The <code>close()</code> operation raises <code>GeneratorExit</code> (which can be caught using <code>except</code>) inside the coroutine.</p>
+<h4 id="raise-exceptions-throw-method">Raise exceptions <code>throw()</code> method *</h4>
+<p>Exceptions can be raised inside a coroutine using the <code>throw(exctype [, value [, tb]])</code> method where <code>exctype</code> is an exception type, <code>value</code> is the exception value, and <code>tb</code> is a traceback object. For example:</p>
+<div class="codehilite"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">throw</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="s">&quot;You&#39;re hosed!&quot;</span><span class="p">)</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="err">File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;</span>
+<span class="go">File &quot;&lt;stdin&gt;&quot;, line 4, in receiver</span>
+<span class="go">RuntimeError: You&#39;re hosed!</span>
+</pre></div>
+
+
+<ul>
+<li>Exceptions raised using <code>throw()</code> will originate at the currently executing <code>yield</code> statement in the coroutine. A coroutine is able to catch exceptions and handle them as appropriate.</li>
+<li>It is not safe to use <code>throw()</code> as an asynchronous signal to a coroutine; it should never be invoked from a separate execution thread or in a signal handler.</li>
+</ul>
+<h4 id="simultaneously-receive-and-emit-return-values">Simultaneously receive and emit return values *</h4>
+<p>A coroutine may simultaneously receive and emit return values using <code>yield</code> if values are supplied in the <code>yield</code> expression. For example:</p>
+<div class="codehilite"><pre><span class="k">def</span> <span class="nf">line_splitter</span><span class="p">(</span><span class="n">delimiter</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Ready to split&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="n">result</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">delimiter</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Now calls to <code>send()</code> also produce a result. For example:</p>
+<div class="codehilite"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span> <span class="o">=</span> <span class="n">line_splitter</span><span class="p">(</span><span class="s">&quot;,&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">s</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="go">Ready to split</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;A,B,C&quot;</span><span class="p">)</span>
+<span class="go">[&#39;A&#39;, &#39;B&#39;, &#39;C&#39; ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;100,200,300&quot;</span><span class="p">)</span>
+<span class="go">[&#39;100&#39;, &#39;200&#39;, &#39;300&#39;]</span>
+<span class="go">&gt;&gt;&gt;</span>
+</pre></div>
+
+
+<ol>
+<li>The first <code>next()</code> call advances the coroutine to <code>(yield result)</code>, which returns <code>None</code>, the initial value of <code>result</code>.</li>
+<li>On subsequent <code>send()</code> calls, the received value is placed in <code>line</code> and split into <code>result</code>. The value returned by <code>send()</code> is the value passed to the next <code>yield</code> statement encountered. In other words, <u>the value returned by <code>send()</code> comes from the next <code>yield</code> expression, not the one responsible for receiving the value passed by <code>send()</code>.</u></li>
+</ol>
+<p>If a coroutine returns values, some care is required if exceptions raised with <code>throw()</code> are being handled. <u>If you raise an exception in a coroutine using <code>throw()</code>, the value passed to the next <code>yield</code> in the coroutine will be returned as the result of <code>throw()</code>. If you need this value and forget to save it, it will be lost.</u></p>
             </div>
         </div>
 
