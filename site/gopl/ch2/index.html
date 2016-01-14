@@ -754,6 +754,10 @@
         
             <li><a href="#the-string-method">The String method *</a></li>
         
+            <li><a href="#packages-and-files">Packages and Files</a></li>
+        
+            <li><a href="#doc-comment-of-a-package">Doc comment of a package *</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1409,6 +1413,62 @@ named types cannot be compared directly:</p>
 </pre></div>
 
 
+<h4 id="packages-and-files">Packages and Files</h4>
+<p>Similar to libraries or modules in other languages, packages in Go supports modularity, encapsulation, separate compilation, and reuse. The source code for a package resides in one or more <code>.go</code> files, usually in a directory whose name ends with the import path; for instance, the files of the <code>gopl.io/ch1/helloworld</code> package are stored in directory <code>$GOPATH/src/gopl.io/ch1/helloworld</code>.</p>
+<ul>
+<li>Each package serves as a separate <em>name space</em> for its declarations.
+    For example, within the <code>image</code> package the identifier <code>Decode</code> refers to a different function than does the same identifier in the <code>unicode/utf16</code> package. To refer to a function from outside its package, we must <em>qualify</em> the identifier to make explicit whether we mean <code>image.Decode</code> or <code>utf16.Decode</code>.</li>
+<li>Packages hides information by controlling which names are visible outside the package, or <em>exported</em>. In Go, exported identifiers start with an upper-case letter.</li>
+</ul>
+<p>Suppose we want to make our temperature conversion software available to the Go community as a new package.</p>
+<p>Create a package called <a href="https://github.com/shichao-an/gopl.io/tree/master/ch2/tempconv"><code>gopl.io/ch2/tempconv</code></a>, a variation on the previous example. The package itself is stored in two files to show how declarations in separate files of a package are accessed.</p>
+<p>The declarations of the types, their constants, and their methods are in <code>tempconv.go</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/tempconv/tempconv.go">gopl.io/ch2/tempconv/tempconv.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">tempconv</span>
+
+<span class="kn">import</span> <span class="s">&quot;fmt&quot;</span>
+
+<span class="kd">type</span> <span class="nx">Celsius</span> <span class="kt">float64</span>
+<span class="kd">type</span> <span class="nx">Fahrenheit</span> <span class="kt">float64</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">AbsoluteZeroC</span> <span class="nx">Celsius</span> <span class="p">=</span> <span class="o">-</span><span class="mf">273.15</span>
+    <span class="nx">FreezingC</span>     <span class="nx">Celsius</span> <span class="p">=</span> <span class="mi">0</span>
+    <span class="nx">BoilingC</span>      <span class="nx">Celsius</span> <span class="p">=</span> <span class="mi">100</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="nx">Celsius</span><span class="p">)</span> <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span>    <span class="p">{</span> <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%g°C&quot;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">f</span> <span class="nx">Fahrenheit</span><span class="p">)</span> <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%g°F&quot;</span><span class="p">,</span> <span class="nx">f</span><span class="p">)</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The conversion functions are in <code>conv.go</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/tempconv/conv.go">gopl.io/ch2/tempconv/conv.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package tempconv performs Celsius and Fahrenheit conversions.</span>
+<span class="kn">package</span> <span class="nx">tempconv</span>
+
+<span class="c1">// CToF converts a Celsius temperature to Fahrenheit.</span>
+<span class="kd">func</span> <span class="nx">CToF</span><span class="p">(</span><span class="nx">c</span> <span class="nx">Celsius</span><span class="p">)</span> <span class="nx">Fahrenheit</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">Fahrenheit</span><span class="p">(</span><span class="nx">c</span><span class="o">*</span><span class="mi">9</span><span class="o">/</span><span class="mi">5</span> <span class="o">+</span> <span class="mi">32</span><span class="p">)</span> <span class="p">}</span>
+
+<span class="c1">// FToC converts a Fahrenheit temperature to Celsius.</span>
+<span class="kd">func</span> <span class="nx">FToC</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Fahrenheit</span><span class="p">)</span> <span class="nx">Celsius</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">Celsius</span><span class="p">((</span><span class="nx">f</span> <span class="o">-</span> <span class="mi">32</span><span class="p">)</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">/</span> <span class="mi">9</span><span class="p">)</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Each file starts with a package declaration that defines the package name. When the package is imported, its members are referred to as <code>tempconv.CToF</code> and so on. <u>Package-level names declared in one file of a package are visible to all the other files of the package, as if the source code were all in a single file.</u></p>
+<p>[p42]</p>
+<p>To convert a Celsius temperature to Fahrenheit in a package that imports <code>gopl.io/ch2/tempconv</code>, we can write the following code:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">tempconv</span><span class="p">.</span><span class="nx">CToF</span><span class="p">(</span><span class="nx">tempconv</span><span class="p">.</span><span class="nx">BoilingC</span><span class="p">))</span> <span class="c1">// &quot;212°F&quot;</span>
+</pre></div>
+
+
+<h4 id="doc-comment-of-a-package">Doc comment of a package *</h4>
+<p>The <em>doc comment</em> (<a href="#ch10.md#documenting-packages">Section 10.7.4</a>) immediately preceding the package declaration documents the package as a whole.</p>
+<ul>
+<li>Conventionally, it should start with a summary sentence in the style illustrated.</li>
+<li>Only one file in each package should have a package doc comment.</li>
+<li>Extensive doc comments are often placed in a file of their own, conventionally called <code>doc.go</code>.</li>
+</ul>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p32 on short variable declaration.</p>
