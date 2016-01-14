@@ -716,12 +716,60 @@
         <li class="main active"><a href="#chapter-2-data-model-for-big-data">Chapter 2. Data model for Big Data</a></li>
         
     
+        <li class="main "><a href="#the-properties-of-data">The properties of data</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-2-data-model-for-big-data"><strong>Chapter 2. Data model for Big Data</strong></h3>
+<p>The last chapter discusses basics of the Lambda Architecture, which provides a practical way to implement an arbitrary function on arbitrary data in real time.</p>
+<p>[p28]</p>
+<p>The master dataset is at the core of the Lambda Architecture, as shown in the figure below.</p>
+<p><a href="../figure_2.1.png" title="Figure 2.1 The master dataset in the Lambda Architecture serves as the source of truth for your Big Data system. Errors at the serving and speed layers can be corrected, but corruption of the master dataset is irreparable."><img alt="Figure 2.1 The master dataset in the Lambda Architecture serves as the source of truth for your Big Data system. Errors at the serving and speed layers can be corrected, but corruption of the master dataset is irreparable." src="../figure_2.1_600.png" /></a></p>
+<p>In the figure, the texts are:</p>
+<ol>
+<li>The master dataset is the source of truth in your system and cannot withstand corruption.</li>
+<li>The data in the speed layer realtime views has a high turnover rate, so any errors are quickly expelled.</li>
+<li>Any errors introduced into the serving layer batch views are overwritten because they are continually rebuilt from the master dataset.</li>
+</ol>
+<p>The master dataset in the Lambda Architecture serves as the source of truth for your Big Data system. <u>Errors at the serving and speed layers can be corrected, but corruption of the master dataset is irreparable.</u> If you lose all your serving layer datasets and speed layer datasets, you could reconstruct your application from the master dataset. This is because the batch views served by the serving layer are produced via functions on the master dataset, and since the speed layer is based only on recent data, it can construct itself within a few hours.</p>
+<p>The master dataset must be safeguarded from corruption, which may be caused by errors due to:</p>
+<ul>
+<li>Overloaded machines</li>
+<li>Failing disks</li>
+<li>Power outages all could cause errors</li>
+<li>Human error with dynamic data systems, which is an intrinsic risk and inevitable eventuality.</li>
+</ul>
+<p>The master dataset must be carefully engineered to prevent corruption in all these cases, as fault tolerance is essential to the health of a long-running data system.</p>
+<p>There are two components to the master dataset:</p>
+<ul>
+<li>The data model you use.</li>
+<li>How you physically store the master dataset.</li>
+</ul>
+<p>This chapter is about designing a data model for the master dataset and the properties such a data model should have. Physically storing a master dataset is the topic of the next chapter.</p>
+<h3 id="the-properties-of-data">The properties of data</h3>
+<p>Suppose you’re designing the next big social network: FaceSpace.  When a new user, Tom, joins your site, he starts to invite his friends and family. What information should you store regarding Tom’s connections?  You have a number of choices, including the following:</p>
+<ul>
+<li>The sequence of Tom’s friend and unfriend events</li>
+<li>Tom’s current list of friends</li>
+<li>Tom’s current number of friends</li>
+</ul>
+<p>The following figure exhibits these options and their relationships.</p>
+<p><a href="../figure_2.2.png" title="Figure 2.2 Three possible options for storing friendship information for FaceSpace. Each option can be derived from the one to its left, but it’s a one-way process."><img alt="Figure 2.2 Three possible options for storing friendship information for FaceSpace. Each option can be derived from the one to its left, but it’s a one-way process." src="../figure_2.2_600.png" /></a></p>
+<p>This example illustrates information dependency. Each layer of information can be derived from the previous one (the one to its left), but it’s a one-way process. [p29]</p>
+<p>The notion of dependency shapes the definitions of the terms:</p>
+<ul>
+<li><strong>Information</strong> is the general collection of knowledge relevant to your Big Data system. It’s synonymous with the colloquial usage of the word <em>data</em>.</li>
+<li><strong>Data</strong> refers to the information that can’t be derived from anything else. Data serves as the axioms from which everything else derives.</li>
+<li><strong>Queries</strong> are questions you ask of your data.<ul>
+<li>For example, you query your financial transaction history to determine your current bank account balance.</li>
+</ul>
+</li>
+<li><strong>Views</strong> are information that has been derived from your base data. They are built to assist with answering specific types of queries.</li>
+</ul>
             </div>
         </div>
 
