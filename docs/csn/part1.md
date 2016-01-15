@@ -61,7 +61,7 @@ There are also size limits of these integer types:
 
 ##### **Character Literals** *
 
-A [**character literal**](http://en.cppreference.com/w/c/language/character_constant) (a kind of **literal constants**) by default is an integer of type `int`. However, the compiler determines whether to interpret it into `char` or `int`.
+A [**character constants**](http://en.cppreference.com/w/c/language/character_constant) by default is an integer of type `int`. However, the compiler determines whether to interpret it into `char` or `int`.
 
 The following code:
 
@@ -93,7 +93,7 @@ But in the code we usually use the expression `sizeof(char*)` to save the troubl
 
 ##### **Representing Integer Literals** *
 
-We can use different suffixes to represent [integer literals](http://en.cppreference.com/w/c/language/integer_constant). The following code:
+We can use different suffixes to represent [integer constants](http://en.cppreference.com/w/c/language/integer_constant). The following code:
 
 ```c
 printf("int size=%d;\n", sizeof(1));
