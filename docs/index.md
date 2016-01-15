@@ -158,6 +158,20 @@ Hacking: The Art of Exploitation, 2nd Edition
 
 <small>by Jon Erickson</small>
 
+#### [PIC](pic/index.md)
+
+[![Patterns in C: Patterns, Idioms and Design Principles](pic/cover_80.jpg)](pic/cover.jpg "Patterns in C: Patterns, Idioms and Design Principles")
+
+Patterns in C: Patterns, Idioms and Design Principles
+
+<small>by Adam Tornhill</small>
+
+#### [CSN](csn/index.md)
+
+C Study Notes
+
+<small>by [qyuhen](https://github.com/)</small>
+
 ### Materials
 
 The following is the supplementary books and materials. Each topic, which may have one or more primary references listed, is included in a single page.
@@ -168,7 +182,7 @@ The following is the supplementary books and materials. Each topic, which may ha
 
 #### [C](c/index.md)
 
-* Patterns in C
+* [How to C in 2016](https://matt.sh/howto-c)
 
 #### [Go](golang/index.md)
 
