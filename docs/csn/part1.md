@@ -59,9 +59,9 @@ There are also size limits of these integer types:
 # define UINT64_MAX (__UINT64_C(18446744073709551615))
 ```
 
-##### **Character Literals** *
+##### **Character Constants** *
 
-A [**character constants**](http://en.cppreference.com/w/c/language/character_constant) by default is an integer of type `int`. However, the compiler determines whether to interpret it into `char` or `int`.
+A [character constant](http://en.cppreference.com/w/c/language/character_constant) by default is an integer of type `int`. However, the compiler determines whether to interpret it into `char` or `int`.
 
 The following code:
 
@@ -91,7 +91,7 @@ A pointer is a special-purpose integer, whose type is also defined in `stdint.h`
 
 But in the code we usually use the expression `sizeof(char*)` to save the trouble of differentiating 32-bit and 64-bit.
 
-##### **Representing Integer Literals** *
+##### **Representing Integer Constants** *
 
 We can use different suffixes to represent [integer constants](http://en.cppreference.com/w/c/language/integer_constant). The following code:
 
