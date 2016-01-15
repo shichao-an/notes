@@ -53,3 +53,21 @@ The notion of dependency shapes the definitions of the terms:
 * **Queries** are questions you ask of your data.
     * For example, you query your financial transaction history to determine your current bank account balance.
 * **Views** are information that has been derived from your base data. They are built to assist with answering specific types of queries.
+
+The following figure illustrates the FaceSpace information dependency in terms of data, views, and queries.
+
+[![Figure 2.3 The relationships between data, views, and queries](figure_2.3_600.png)](figure_2.3.png "Figure 2.3 The relationships between data, views, and queries")
+
+<u>One person’s data can be another’s view.</u> Suppose an advertising firm creates a crawler that scrapes demographic information from user profiles on FaceSpace. FaceSpace has complete access to all the information Tom provided. For example, his complete birthdate is March 13, 1984, but he only makes his birthday (March 13) available on his public profile. His birthday is a view from FaceSpace’s perspective because it’s derived from his birthdate, but it’s data to the advertiser because they have limited information about Tom. This relationship is shown in the figure below:
+
+[![Figure 2.4 Classifying information as data or a view depends on your perspective. To FaceSpace, Tom’s birthday is a view because it’s derived from the user’s birthdate. But the birthday is considered data to a third-party advertiser.](figure_2.4_600.png)](figure_2.4.png "Figure 2.4 Classifying information as data or a view depends on your perspective. To FaceSpace, Tom’s birthday is a view because it’s derived from the user’s birthdate. But the birthday is considered data to a third-party advertiser.")
+
+Having established a shared vocabulary, the key properties of data can be introduced:
+
+* Rawness
+* Immutability
+* Perpetuity (or the "eternal trueness of data").
+
+These three key concepts is foundational to understanding Big Data systems.
+
+[p31]
