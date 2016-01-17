@@ -130,3 +130,73 @@ Some helper macros are defined in `stdint.h`.
 ```
 
 Note that the `##` operator in the macro means combining the left and right operands together as a symbol.
+
+### Floating-Point Numbers
+
+#### Real floating types *
+
+C has three types of different precisions for representing [real floating-point](http://en.cppreference.com/w/c/language/arithmetic_types#Real_floating_types) values:
+
+* `float`: 32-bit, 4-byte floating-point number, which has a precision (number of significant decimal digits) of 6 (`FLT_DIG`, defined in `<float.h>`).
+* `double`: 64-bit, 8-byte floating-point number, which has a precision of 15 (`DBL_DIG`).
+* `long double`: 80-bit, 10-byte floating-point number, which has a precision of 19 (`LDBL_DIG`).
+
+The default floating type is `double`. Suffix `F` represents `float` and `L` represents `long double`.
+
+The following code:
+
+```c
+printf("float %f size=%d\n", 1.F, sizeof(1.F));
+printf("double %f size=%d\n", .123, sizeof(.123));
+printf("long double %Lf size=%d\n", 1.234L, sizeof(1.234L));
+```
+
+will output:
+
+```text
+float 1.000000 size=4
+double 0.123000 size=8
+long double 1.234000 size=12
+```
+
+#### Complex floating types *
+
+C99 supports complex numbers, by using two same-type floating-point number to represent real and imaginary number of the complex number.
+
+To represent complex types, simply append `_Complex` to `float`, `double` and `long double`:
+
+* `float _Complex`
+* `double _Complex`
+* `long double _Complex`
+
+If `<complex.h>` is included, they are also available as:
+
+* `float complex`
+* `double complex`
+* `long double complex`
+
+The following code:
+
+```c
+#include <complex.h>
+
+printf("float complex size=%d\n", sizeof((float complex)1.0));
+printf("double complex size=%d\n", sizeof((double complex)1.0));
+printf("long double complex size=%d\n", sizeof((long double complex)1.0));
+```
+
+will output:
+
+```text
+float complex size=8
+double complex size=16
+long double complex size=24
+```
+
+
+
+- - -
+
+### References
+
+* [C reference - cppreference.com](http://en.cppreference.com/w/c)
