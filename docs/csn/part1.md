@@ -1,6 +1,7 @@
 ### **Part 1: Language**
 
-The examples are based on GCC 32-bit.
+* [C99](https://en.wikipedia.org/wiki/C99) is discussed.
+* The examples are based on 32-bit GCC.
 
 ### Data Types
 
@@ -131,9 +132,9 @@ Some helper macros are defined in `stdint.h`.
 
 Note that the `##` operator in the macro means combining the left and right operands together as a symbol.
 
-### Floating-Point Numbers
+#### Floating-Point Numbers
 
-#### Real floating types *
+##### **Real floating types** *
 
 C has three types of different precisions for representing [real floating-point](http://en.cppreference.com/w/c/language/arithmetic_types#Real_floating_types) values:
 
@@ -159,7 +160,7 @@ double 0.123000 size=8
 long double 1.234000 size=12
 ```
 
-#### Complex floating types *
+##### **Complex floating types** *
 
 C99 supports complex numbers, by using two same-type floating-point number to represent real and imaginary number of the complex number.
 
@@ -192,6 +193,238 @@ float complex size=8
 double complex size=16
 long double complex size=24
 ```
+
+#### Enumerations
+
+An [enumerated type](http://en.cppreference.com/w/c/language/enum) (`enum`) is a distinct type whose value is restricted to one of several enumeration constants. It is declared with the following syntax:
+
+```c
+enum identifier { enumerator-list }
+```
+
+* Each enumerator in the body of an enumeration specifier becomes an integer constant with type `int` and can be used whenever integer constants are required.
+* If enumerator is followed by `= constant-expression`, its value is the value of that constant expression.
+* If enumerator is not followed by` = constant-expression`, its value is the value one greater than the value of the previous enumerator in the same enumeration.
+* The value of the first enumerator (if it does not use `= constant-expression`) is zero.
+
+The following code:
+
+```c
+enum color { black, red = 5, green, yellow };
+
+enum color b = black;
+printf("black = %d\n", b);
+
+enum color r = red;
+printf("red = %d\n", r);
+
+enum color g = green;
+printf("green = %d\n", g);
+
+enum color y = yellow;
+printf("yellow = %d\n", y);
+```
+
+will output:
+
+```text
+black = 0
+red = 5
+green = 6
+yellow = 7
+```
+
+The values of enumerators can be the same:
+
+The following code:
+
+```c
+enum color { black = 1, red, green = 1, yellow };
+```
+
+will output:
+
+```text
+black = 1
+red = 2
+green = 1
+yellow = 2
+```
+
+Usually, the identifier can be omitted, so that enumerators can be used to avoid defining constants macros.
+
+```c
+enum { BLACK = 1, RED, GREEN = 1, YELLOW };
+
+printf("black = %d\n", BLACK);
+printf("red = %d\n", RED);
+printf("green = %d\n", GREEN);
+printf("yellow = %d\n", YELLOW);
+```
+
+### Literals
+
+A [literal](http://en.cppreference.com/w/c/language/expressions#Constants_and_literals) in the source code is a token to represent a specific value, which can be an integer, a floating-point number, a character, or a string.
+
+#### Integer Constants
+
+Besides the common decimal expression, octal (beginning with `0`) and hexadecimal (beginning with `0x` or `0X`) expressions can be used.
+
+The following code:
+
+```c
+int x = 010;
+int y = 0x0A;
+printf("x = %d, y = %d\n", x, y);
+```
+
+will output:
+
+```text
+x = 8, y = 10
+```
+
+Constant types is important. They can be differentiated using suffixes.
+
+```text
+0x200    -> int
+200U     -> unsigned int
+0L       -> long
+0xf0f0UL -> unsigned long
+0777LL   -> long long
+0xFFULL  -> unsigned long long
+```
+
+#### Floating Constants
+
+A [floating constant](http://en.cppreference.com/w/c/language/floating_constant) can be represented using decimal and hexadecimal expressions.
+
+The default type of floating constants is `double`. The `F` suffix represents `float`, and the `L` suffix represents `long double`.
+
+#### Character Constants
+
+The default type for character constants is `int`, unless `L` is preposed to represent wide character constant of `wchar_t` type.
+
+The following code:
+
+```c
+char c = 0x61;
+char c2 = 'a';
+char c3 = '\x61';
+printf("%c, %c, %c\n", c, c2, c3);
+```
+
+will output:
+
+```text
+a, a, a
+```
+
+In Linux, the default [character encoding](https://en.wikipedia.org/wiki/Character_encoding) is [UTF-8](https://en.wikipedia.org/wiki/UTF-8). Conversion can be done using the [`wctomb`](http://en.cppreference.com/w/c/string/multibyte/wctomb) functions and the like.
+
+`wchar_t` is 4 bytes in size by default, so it can hold any UCS-4 Unicode character.
+
+```c
+setlocale(LC_CTYPE, "en_US.UTF-8");
+
+wchar_t wc = L'中';
+char buf[100] = {};
+
+int len = wctomb(buf, wc);
+printf("%d\n", len);
+
+for (int i = 0; i < len; i++)
+{
+    printf("0x%02X ", (unsigned char)buf[i]);
+}
+```
+
+will output:
+
+```text
+3
+0xE4 0xB8 0xAD
+```
+
+#### String Literals
+
+In C, a string is a `char` array ending with `NULL` (`\0`).
+
+An empty string takes up 1 byte in the memory, which includes a `NULL` character. This means, a string that has a length of 1 requires at least 2 bytes (what [`strlen`](http://en.cppreference.com/w/c/string/byte/strlen) and [`sizeof`](http://en.cppreference.com/w/c/language/sizeof) means are different).
+
+```c
+char s[] = "Hello, World!";
+char* s2 = "Hello, C!";
+```
+
+As with character contants, the prefixing `L` declares a wide string literal.
+
+The following code:
+
+```c
+setlocale(LC_CTYPE, "en_US.UTF-8");
+
+wchar_t* ws = L"中国⼈";
+printf("%ls\n", ws);
+
+char buf[255] = {};
+size_t len = wcstombs(buf, ws, 255);
+
+for (int i = 0; i < len; i++)
+{
+    printf("0x%02X ", (unsigned char)buf[i]);
+}
+```
+
+will output:
+
+```text
+中国⼈
+0xE4 0xB8 0xAD 0xE5 0x9B 0xBD 0xE4 0xBA";
+```
+
+Similar to a `char` string, a `wchar_t` string ends with a 4-byte `NULL`.
+
+The following code:
+
+```c
+wchar_t ws[] = L"中国⼈";
+printf("len %d, size %d\n", wcslen(ws), sizeof(ws));
+
+unsigned char* b = (unsigned char*)ws;
+int len = sizeof(ws);
+
+for (int i = 0; i < len; i++)
+{
+ printf("%02X ", b[i]);
+}
+```
+
+will output:
+
+```text
+len 3, size 16
+2D 4E 00 00 FD 56 00 00 BA 4E 00 00 00 00 00 00
+```
+
+The compiler will automatically concatenate adjacent strings. This is helpful for better dealing with strings in the macros or the code.
+
+```c
+#define WORLD "world!"
+char* s = "Hello" " " WORLD "\n";
+```
+
+For very long strings in the source code, other than concatenating them, `\` in the end of a line can be used.
+
+```c
+char* s1 = "Hello"
+ " World!";
+char* s2 = "Hello \
+World!";
+```
+
+Note that the spaces to the right of `\` will treated as part of the string.
+
 
 
 
