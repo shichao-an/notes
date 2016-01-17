@@ -170,7 +170,7 @@ Patterns in C: Patterns, Idioms and Design Principles
 
 C Study Notes
 
-<small>by [qyuhen](https://github.com/)</small>
+<small>by [qyuhen](https://github.com/qyuhen)</small>
 
 ### Materials
 
