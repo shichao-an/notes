@@ -4,9 +4,10 @@ This page summarizes roadmaps of learning focus on the following areas within th
 
 ### Programming Languages <small>(4)</small>
 
-#### [C](../c/index.md)
+#### C
 
-* Patterns in C
+* [PIC](../pic/index.md)
+* [CSN](../csn/index.md)
 
 #### Go
 
