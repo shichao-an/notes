@@ -740,6 +740,13 @@
             <li><a href="#string-literals">String Literals</a></li>
         
     
+        <li class="main "><a href="#type-conversions">Type Conversions</a></li>
+        
+            <li><a href="#arithmetic-conversions">Arithmetic conversions</a></li>
+        
+            <li><a href="#non-arithmetic-conversions">Non-arithmetic conversions</a></li>
+        
+    
         <li class="main "><a href="#references">References</a></li>
         
     
@@ -1111,10 +1118,75 @@ yellow = 2
 
 
 <p>Note that the spaces to the right of <code>\</code> will treated as part of the string.</p>
+<h3 id="type-conversions">Type Conversions</h3>
+<p>When the operands for an operator has different types, conversion is required. Usually, the compiler performs <a href="http://en.cppreference.com/w/c/language/conversion">implict conversions</a>, on the premise that information is not lost, to convert the "narrow" bit-width operand into the "wide" one.</p>
+<h4 id="arithmetic-conversions">Arithmetic conversions</h4>
+<p>The compiler's default implicit conversion ranks:</p>
+<div class="codehilite"><pre>long double &gt; doulbe &gt; float &gt; long long &gt; long &gt; int &gt; char &gt; _Bool
+</pre></div>
+
+
+<p>The conversion rank of floating-point types is greater than that of any integers. Signed integers have the same conversion rank as their unsigned equivalence.</p>
+<p>In expressions, <code>char</code> and <code>short</code> may be by default converted to <code>int</code> (<code>unsigned int</code>) operands, but <code>float</code> will not be converted to <code>double</code> by default.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">char</span> <span class="n">a</span> <span class="o">=</span> <span class="sc">&#39;a&#39;</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;c&#39;</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">a</span><span class="p">));</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="mf">1.5F</span> <span class="o">-</span> <span class="mi">1</span><span class="p">));</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>4
+4
+</pre></div>
+
+
+<p><u>When dealing with unsigned operands, beware of checking whether the promoted type is able to hold all values of the unsigned type.</u></p>
+<div class="codehilite"><pre><span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1L</span><span class="p">;</span>
+<span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">b</span> <span class="o">?</span> <span class="nl">a</span> <span class="p">:</span> <span class="n">b</span><span class="p">);</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>-1
+</pre></div>
+
+
+<p>This output is incomprehensible. Even if <code>long</code> has a greater rank than <code>unsigned int</code>, they are both 32-bit integers in 32-bit systems, and <code>long</code> is unable to hold all values of <code>unsigned int</code>. Therefore, the compilter will convert both operands to <code>unsigned long</code>, which is the unsigned greater rank. For this reason the result of <code>(unsigned long)a</code> turns into a very big integer.</p>
+<blockquote>
+<p>If the signedness is different and the signed operand's rank is greater than unsigned operand's rank. In this case, if the signed type can represent all values of the unsigned type, then the operand with the unsigned type is implicitly converted to the type of the signed operand. Otherwise, both operands undergo implicit conversion to the unsigned type counterpart of the signed operand's type.
+<small><a href="http://en.cppreference.com/w/c/language/conversion#Usual_arithmetic_conversions">Usual arithmetic conversions: 4)</a></small></p>
+</blockquote>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1L</span><span class="p">;</span>
+<span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%lu</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">a</span><span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">b</span> <span class="o">?</span> <span class="nl">a</span> <span class="p">:</span> <span class="n">b</span><span class="p">);</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>4294967295
+-1
+</pre></div>
+
+
+<p>Other implict conversions are:</p>
+<ul>
+<li>In assignment and initialization, the type of the right operator is always converted to that of the left one.</li>
+<li>In a function call, the type of the actual parameter is always converted to that of the formal parameter.</li>
+<li>The type of the <code>return</code> expression result is converted to that of the function's return type.</li>
+<li>0 value of any type and the <code>NULL</code> pointer is deemed <code>_Bool false</code>; otherwise, it is <code>true</code>.</li>
+</ul>
+<p>When converting a "wide" type to a "narrow" type, the compiler will try to discard significant bits, to use rounding, or other techniques to return a approximate value.</p>
+<h4 id="non-arithmetic-conversions">Non-arithmetic conversions</h4>
 <hr />
 <h3 id="references">References</h3>
 <ul>
 <li><a href="http://en.cppreference.com/w/c">C reference - cppreference.com</a></li>
+<li>[CPP] <em>C Primer Plus</em> (6th Edition)</li>
 </ul>
             </div>
         </div>
