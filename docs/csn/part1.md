@@ -425,11 +425,87 @@ World!";
 
 Note that the spaces to the right of `\` will treated as part of the string.
 
+### Type Conversions
 
+When the operands for an operator has different types, conversion is required. Usually, the compiler performs [implict conversions](http://en.cppreference.com/w/c/language/conversion), on the premise that information is not lost, to convert the "narrow" bit-width operand into the "wide" one.
 
+#### Arithmetic conversions
+
+The compiler's default implicit conversion ranks:
+
+```text
+long double > doulbe > float > long long > long > int > char > _Bool
+```
+
+The conversion rank of floating-point types is greater than that of any integers. Signed integers have the same conversion rank as their unsigned equivalence.
+
+In expressions, `char` and `short` may be by default converted to `int` (`unsigned int`) operands, but `float` will not be converted to `double` by default.
+
+The following code:
+
+```c
+char a = 'a';
+char c = 'c';
+printf("%d\n", sizeof(c - a));
+printf("%d\n", sizeof(1.5F - 1));
+```
+
+will output:
+
+```text
+4
+4
+```
+
+<u>When dealing with unsigned operands, beware of checking whether the promoted type is able to hold all values of the unsigned type.</u>
+
+```c
+long a = -1L;
+unsigned int b = 100;
+printf("%ld\n", a > b ? a : b);
+```
+
+will output:
+
+```text
+-1
+```
+
+This output is incomprehensible. Even if `long` has a greater rank than `unsigned int`, they are both 32-bit integers in 32-bit systems, and `long` is unable to hold all values of `unsigned int`. Therefore, the compilter will convert both operands to `unsigned long`, which is the unsigned greater rank. For this reason the result of `(unsigned long)a` turns into a very big integer.
+
+> If the signedness is different and the signed operand's rank is greater than unsigned operand's rank. In this case, if the signed type can represent all values of the unsigned type, then the operand with the unsigned type is implicitly converted to the type of the signed operand. Otherwise, both operands undergo implicit conversion to the unsigned type counterpart of the signed operand's type.
+> <small>[Usual arithmetic conversions: 4)](http://en.cppreference.com/w/c/language/conversion#Usual_arithmetic_conversions)</small>
+
+The following code:
+
+```c
+long a = -1L;
+unsigned int b = 100;
+printf("%lu\n", (unsigned long)a);
+printf("%ld\n", a > b ? a : b);
+```
+
+will output:
+
+```text
+4294967295
+-1
+```
+
+Other implict conversions are:
+
+* In assignment and initialization, the type of the right operator is always converted to that of the left one.
+* In a function call, the type of the actual parameter is always converted to that of the formal parameter.
+* The type of the `return` expression result is converted to that of the function's return type.
+* 0 value of any type and the `NULL` pointer is deemed `_Bool false`; otherwise, it is `true`.
+
+When converting a "wide" type to a "narrow" type, the compiler will try to discard significant bits, to use rounding, or other techniques to return a approximate value.
+
+#### Non-arithmetic conversions
 
 - - -
 
 ### References
 
 * [C reference - cppreference.com](http://en.cppreference.com/w/c)
+* [CPP] *C Primer Plus* (6th Edition)
