@@ -150,6 +150,14 @@ Big Data: Principles and Best Practices of Scalable Realtime Data Systems
 
 <small>by Nathan Marz, James Warren</small>
 
+#### [CNSPP](cnspp/index.md)
+
+[![Cryptography and Network Security: Principles and Practice (6th Edition)](cnspp/cover_80.jpg)](cnspp/cover.jpg "Cryptography and Network Security: Principles and Practice (6th Edition)")
+
+Cryptography and Network Security: Principles and Practice (6th Edition)
+
+<small>William Stallings</small>
+
 #### [HTAE](htae/index.md)
 
 [![Hacking: The Art of Exploitation, 2nd Edition](htae/cover_80.jpg)](htae/cover.jpg "Hacking: The Art of Exploitation, 2nd Edition")
@@ -198,6 +206,10 @@ The following is the supplementary books and materials. Each topic, which may ha
 #### [Ruby](ruby/index.md)
 
 * Programming Ruby 1.9 & 2.0: The Pragmatic Programmers' Guide (4th Edition)
+
+#### Cryptography
+
+* [Introduction to Cryptography](https://class.coursera.org/crypto-preview/lecture) on Coursera
 
 #### [x86 Assembly](asm/index.md)
 
