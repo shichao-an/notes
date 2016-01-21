@@ -1,6 +1,6 @@
 ### **Roadmap: 2016**
 
-This page summarizes roadmaps of learning focus within the next 8 to 12 months.
+This page summarizes the roadmap of learning focuses within the next 8 to 12 months.
 
 ### Summary
 
@@ -31,7 +31,7 @@ I will read SPEC.
 
 > I'm highly interested in UNIX system programming, and have read most chapters of APUE and a few chapters of UNP, but lack hands-on programming experience.
 
-I will keep reading the remaining major chapters of APUE and UNP, and start reading LSP and TLPI, which provide more entensive and in-depth knowledge.
+I will keep reading the remaining major chapters of APUE and UNP, and start reading LSP and TLPI, which provide more extensive and in-depth knowledge.
 
 ##### **Go and Ruby**
 
