@@ -13,21 +13,55 @@ The interest of studies generally lies in the following fields:
 * Networks
 * System Programming
 
-#### Proof of Concept
+#### Motives and Actions
+
+##### **Linux Kernel**
+
+> I'm interested in Linux and it's useful to learn the internals of the Linux kernel.
+
+I have read the majority of LKD; I need to read the rest of the chapters.
+
+##### **System Administration**
+
+> System administration and performance optimization is extremely relevant to my job.
+
+I will read SPEC.
 
 ##### **System Programming**
 
-* **Motive**: I'm highly interested in UNIX system programming, and have read most chapters of APUE and a few chapters of UNP, but lack hands-on programming experience.
-* **Action**: I will keep reading the remaining essential chapters of APUE and UNP, and start reading LSP and TLPI, which provide more entensive and in-depth knowledge.
+> I'm highly interested in UNIX system programming, and have read most chapters of APUE and a few chapters of UNP, but lack hands-on programming experience.
+
+I will keep reading the remaining major chapters of APUE and UNP, and start reading LSP and TLPI, which provide more entensive and in-depth knowledge.
 
 ##### **Go and Ruby**
 
-* **Motive**: I think that Go is a well-designed, modern language for system programming, and that Ruby is handy and commonly-used in DevOps.
-* **Action**: I will read GOPL and TWGR as the stepping stones to these languages.
+> I believe that Go is a well-designed, modern language for system programming, and that Ruby is handy and commonly-used in DevOps.
+
+I will read GOPL and TWGR as the stepping stones to these languages.
+
+##### **C**
+
+> C is the foundation language of the UNIX systems and is essential for kernel development and system programming.
+
+I will read CSN to brush up concepts and learn PIC for some basic development techniques.
+
+##### **Python**
+
+> I have some experience with Python, but still need to learn in-depth knowledge and advanced usage.
+
+I will read PER for extensive coverage.
+
+##### **Networks and Security**
+
+> I'm fairly interested in computer networks and security, but lack a lot of knowledge in the related fields, such as TCP/IP and cryptography.
+
+For networks, I have read some chapters of TCPv1, so I need to continue reading it, along with TCPIP as a supplement and reference. To learn cryptography, I will read CNSPP.
+
+#### Pros and Cons of Notes
 
 ### Catalog
 
-#### Programming Languages <small>(4)</small>
+#### Programming Languages <small>(5)</small>
 
 ##### **C**
 
