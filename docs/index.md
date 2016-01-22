@@ -1,6 +1,6 @@
 ### **Shichao's Notes**
 
-This site documents reading and learning notes. See [Roadmap](roadmap/index.md) for the current progress.
+This site documents reading and learning notes with a [roadmap](roadmap/index.md).
 
 <div class="row">
   <div class="col-md-8">
