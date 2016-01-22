@@ -697,7 +697,38 @@ CPU, memory, and I/O interconnects and busses are often overlooked, but they are
 * Upgrade the main board
 * Reduce load: for example, "[zero copy](https://en.wikipedia.org/wiki/Zero-copy)" projects lighten memory bus load.
 
-For investigating interconnects, see CPU Performance Counters in [Section 6.4.1] on hardware.
+For investigating interconnects, see CPU Performance Counters in [Section 6.4.1](ch6.md#hardware) on hardware.
+
+##### **Metrics**
+
+With list of resources, consider the metric types: utilization, saturation, and errors. These metrics can be either averages per interval or counts. The following table show some example resources and metric types:
+
+Resource | Type | Metric
+-------- | ---- | ------
+CPU | utilization | CPU utilization (either per CPU or a system-wide average)
+CPU | saturation | dispatcher-queue length (aka [run-queue](https://en.wikipedia.org/wiki/Run_queue) length)
+Memory | utilization | available free memory (system-wide)
+Memory | saturation | anonymous paging or thread swapping (page scanning is another indicator), or out-of-memory events
+Network interface | utilization | receive throughput/max bandwidth, transmit throughput/ max bandwidth
+Storage device I/O | utilization | device busy percent
+Storage device I/O | saturation | wait-queue length
+Storage device I/O | errors | device errors ("soft", "hard")
+
+Some metrics are easy and some are difficult to check. [p47]
+
+Some examples of harder combinations are provided in the following table:
+
+Resource | Type | Metric
+-------- | ---- | ------
+CPU | errors | for example, correctable CPU cache [error-correcting code](https://en.wikipedia.org/wiki/ECC_memory) (ECC) events or faulted CPUs (if the OS + HW supports that)
+Memory | errors | for example, failed `malloc()`s (although this is usually due to virtual memory exhaustion, not physical)
+Network | saturation | saturation-related network interface or OS errors, e.g., Linux "overruns" or Solaris "nocanputs"
+Storage controller | utilization | depends on the controller; it may have a maximum IOPS or throughput that can be checked against current activity
+CPU interconnect | utilization | per-port throughput/maximum bandwidth (CPU performance counters)
+Memory interconnect | saturation | memory stall cycles, high cycles per instruction (CPU performance counters)
+I/O interconnect | utilization | bus throughput/maximum bandwidth (performance counters may exist on your HW, e.g., Intel "[uncore](https://en.wikipedia.org/wiki/Uncore)" events)
+
+Some of these may not be available from standard operating system tools and may require the use of dynamic tracing or the CPU performance counter facility.
 
 ### Modeling
 

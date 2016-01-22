@@ -1567,7 +1567,109 @@ sense.</li>
 <li>Upgrade the main board</li>
 <li>Reduce load: for example, "<a href="https://en.wikipedia.org/wiki/Zero-copy">zero copy</a>" projects lighten memory bus load.</li>
 </ul>
-<p>For investigating interconnects, see CPU Performance Counters in [Section 6.4.1] on hardware.</p>
+<p>For investigating interconnects, see CPU Performance Counters in <a href="ch6.md#hardware">Section 6.4.1</a> on hardware.</p>
+<h5 id="metrics_1"><strong>Metrics</strong></h5>
+<p>With list of resources, consider the metric types: utilization, saturation, and errors. These metrics can be either averages per interval or counts. The following table show some example resources and metric types:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Type</th>
+<th>Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU</td>
+<td>utilization</td>
+<td>CPU utilization (either per CPU or a system-wide average)</td>
+</tr>
+<tr>
+<td>CPU</td>
+<td>saturation</td>
+<td>dispatcher-queue length (aka <a href="https://en.wikipedia.org/wiki/Run_queue">run-queue</a> length)</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>utilization</td>
+<td>available free memory (system-wide)</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>saturation</td>
+<td>anonymous paging or thread swapping (page scanning is another indicator), or out-of-memory events</td>
+</tr>
+<tr>
+<td>Network interface</td>
+<td>utilization</td>
+<td>receive throughput/max bandwidth, transmit throughput/ max bandwidth</td>
+</tr>
+<tr>
+<td>Storage device I/O</td>
+<td>utilization</td>
+<td>device busy percent</td>
+</tr>
+<tr>
+<td>Storage device I/O</td>
+<td>saturation</td>
+<td>wait-queue length</td>
+</tr>
+<tr>
+<td>Storage device I/O</td>
+<td>errors</td>
+<td>device errors ("soft", "hard")</td>
+</tr>
+</tbody>
+</table>
+<p>Some metrics are easy and some are difficult to check. [p47]</p>
+<p>Some examples of harder combinations are provided in the following table:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Type</th>
+<th>Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU</td>
+<td>errors</td>
+<td>for example, correctable CPU cache <a href="https://en.wikipedia.org/wiki/ECC_memory">error-correcting code</a> (ECC) events or faulted CPUs (if the OS + HW supports that)</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>errors</td>
+<td>for example, failed <code>malloc()</code>s (although this is usually due to virtual memory exhaustion, not physical)</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>saturation</td>
+<td>saturation-related network interface or OS errors, e.g., Linux "overruns" or Solaris "nocanputs"</td>
+</tr>
+<tr>
+<td>Storage controller</td>
+<td>utilization</td>
+<td>depends on the controller; it may have a maximum IOPS or throughput that can be checked against current activity</td>
+</tr>
+<tr>
+<td>CPU interconnect</td>
+<td>utilization</td>
+<td>per-port throughput/maximum bandwidth (CPU performance counters)</td>
+</tr>
+<tr>
+<td>Memory interconnect</td>
+<td>saturation</td>
+<td>memory stall cycles, high cycles per instruction (CPU performance counters)</td>
+</tr>
+<tr>
+<td>I/O interconnect</td>
+<td>utilization</td>
+<td>bus throughput/maximum bandwidth (performance counters may exist on your HW, e.g., Intel "<a href="https://en.wikipedia.org/wiki/Uncore">uncore</a>" events)</td>
+</tr>
+</tbody>
+</table>
+<p>Some of these may not be available from standard operating system tools and may require the use of dynamic tracing or the CPU performance counter facility.</p>
 <h3 id="modeling">Modeling</h3>
 <h3 id="capacity-planning">Capacity Planning</h3>
 <h3 id="statistics">Statistics</h3>
