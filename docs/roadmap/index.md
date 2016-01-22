@@ -23,7 +23,7 @@ I have read the majority of LKD; I need to read the rest of the chapters.
 
 ##### **System Administration**
 
-> System administration and performance optimization is extremely relevant to my job.
+> System administration and performance optimization are extremely relevant to my job.
 
 I will read SPEC.
 
@@ -67,13 +67,14 @@ I have read the most part of DevOps. In addition to finishing with DevOps, I wil
 
 ##### **Pros**
 
-1. **Perseverance**: making notes guarantees a long-term, persistent learning paths.
+1. **Perseverance**: making notes guarantees long-term, persistent learning paths.
 2. **Selective and readable**: well-structured, focus-highlighted notes help memorization and internalization.
 3. **Available for lookups**: the notes are powerful resources for future reference.
 
 ##### **Cons**
 
 1. **Time-consuming**: formatting texts, adding images and sorting out information takes about 1/3 of the overall time spent on learning.
+2. **Tedious**: the notes can sometimes be lengthy and pointless.
 
 ### Catalog
 
