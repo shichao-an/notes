@@ -532,6 +532,120 @@ When converting a "wide" type to a "narrow" type, the compiler will try to disca
 
         0xbfc1389c, bfc1389c, 123
 
+### Operators
+
+Other than basic expressions and operator usages, let's document something special.
+
+#### Compound Literals
+
+Since C99, we can use the following syntax to declare a structure or array pointer.
+
+```text
+( type ) { initializer-list }
+```
+
+For example,
+
+```c
+int* i = &(int){ 123 };                              // integer variable, pointer
+int* x = (int[]){ 1, 2, 3, 4 };                      // array, pointer
+struct data_t* data = &(struct data_t){ .x = 123 };  // structure, pointer
+func(123, &(struct data_t){ .x = 123 });             // function argument, structure pointer
+```
+
+For static or global variables, the initializer list must be compile-time constants.
+
+#### `sizeof`
+
+`sizeof` returns the memory storage size of the operator in bytes. The return type is `size_t` and the operator can be a type or a variable.
+
+```c
+size_t size;
+int x = 1;
+size = sizeof(int);
+size = sizeof(x);
+size = sizeof x;
+size = sizeof(&x);
+size = sizeof &x;
+```
+
+Do not use `int` in place of `size_t`, because `size_t` has different sizes on 32-bit and 64-bit platforms.
+
+#### Comma operator
+
+The [comma operator](http://en.cppreference.com/w/c/language/operator_other#Comma_operator) is a binary operator, which guarantees that the operands are evaluated from left to right and returns the value and type of the right operand.
+
+```c
+int i = 1;
+long long x = (i++, (long long)i);
+printf("%lld\n", x);
+```
+
+#### Precedence
+
+The precedence is C is a big trouble. Do not refrain from using "()".
+
+The following table is the precedence list (from high to low):
+
+Kind | Operator | Associativity
+---- | -------- | -------------
+Postfix operator | `++`, `--`, `[]`, `func()`, `.`, `->`, `(type){init}` | Left-to-right
+Unary operator | `++`, `--`, `!`, `~`, `+`, `-`, `*`, `&`, `sizeof` | Right-to-left
+Cast operator | `(type name)` | Right-to-left
+Multiplication and division operator | `*`, `/`, `%` | Left-to-right
+Addition and subtraction operator | `+`, `-` | Left-to-right
+Bitwise shift operator | `<<`, `>>` | Left-to-right
+Relational operator | `<`, `<=`, `>`, `>=` | Left-to-right
+Equation operator | `==`, `!=` | Left-to-right
+Bitwise operator | `&` | Left-to-right
+Bitwise operator | `^` | Left-to-right
+Bitwise operator | <code>&#124;</code> | Left-to-right
+Logical operator | `&&` | Left-to-right
+Logical operator | <code>&#124;&#124;</code> | Left-to-right
+Conditional operator | `?:` | Right-to-left
+Assignment operator | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `^=`, <code>&#124;=</code>, `<<=`, `>>=` | Right-to-left
+Comma operator | `,` | Left-to-right
+
+If multiple operators in an expression have the same precedence, then their associativity determines how they are combined (left-to-right or right-to-left). For example, in `a = b = c`, the two `=` have the same precedence. According to its associativity, the expression is decomposed into `a = (b = c)`.
+
+The following are some confusing operator precedence.
+
+1. `.` is higher than `*`.
+
+        Original: *p.f
+        Erroneous: (*p).f
+        Correct: *(p.f)
+
+2. `[]` is higher than `*`.
+
+        Original: int *ap[]
+        Erroneous: int (*ap)[]
+        Correct: int *(ap[])
+
+3. `==` and `!=` are higher than bitwise operators.
+
+        Original: val & mask != 0
+        Erroneous: (val & mask) != 0
+        Correct: val & (mask != 0)
+
+4. `==` and `!=` are higher than assignment operators.
+
+        Original: c = getchar() != EOF
+        Erroneous: (c = getchar()) != EOF
+        Correct: c = (getchar() != EOF)
+
+5. Arithmetic operators are higher than bitwise shift operators.
+
+        Original: msb << 4 + lsb
+        Erroneous: (msb << 4) + lsb
+        Correct: msb << (4 + lsb)
+
+6. The comma operator has the lowest precedence.
+
+        Original: i = 1, 2
+        Erroneous: i = (1, 2)
+        Correct: (i = 1), 2
+
 - - -
 
 ### References
