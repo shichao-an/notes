@@ -503,6 +503,35 @@ When converting a "wide" type to a "narrow" type, the compiler will try to disca
 
 #### Non-arithmetic conversions
 
+1. The name or expression of an array is usually referred to as a pointer to its first element, unless:
+    * It is used as the operand of `sizeof`.
+    * The `&` operator is used on it to return a "array pointer".
+    * It is a [string constant](#string-literals) are used to initialize a `char` or `wchar_t` array.
+2. A pointer can be explicitly converted to a pointer of any other types.
+
+        int x = 123, *p = &x;
+        char* c = (char*)x;
+
+3. Any pointer can be implictly converted to a `void` pointer and vice versa.
+4. Any pointer can be implictly converted to a pointer of a more specific type (including qualifiers such as `const`, `volatile` and `restrict`).
+
+        int x = 123, *p = &x;
+        const int* p2 = p;
+
+5. `NULL` can be converted to a pointer of any type.
+6. A pointer can be explicitly converted to an integer and vice versa.
+
+    The following code:
+
+        int x = 123, *p = &x;
+        int px = (int)p;
+
+        printf("%p, %x, %d\n", p, px, *(int*)px);
+
+    will output:
+
+        0xbfc1389c, bfc1389c, 123
+
 - - -
 
 ### References
