@@ -540,6 +540,12 @@
                         </li>
                       
                     
+                      
+                        <li >
+                            <a href="../ch10/">Chapter 10. Packages and the Go Tool</a>
+                        </li>
+                      
+                    
                     </ul>
                 </li>
             
@@ -760,9 +766,12 @@
         
             <li><a href="#the-string-method">The String method *</a></li>
         
-            <li><a href="#packages-and-files">Packages and Files</a></li>
+    
+        <li class="main "><a href="#packages-and-files">Packages and Files</a></li>
         
             <li><a href="#doc-comment-of-a-package">Doc comment of a package *</a></li>
+        
+            <li><a href="#imports">Imports</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -1419,7 +1428,7 @@ named types cannot be compared directly:</p>
 </pre></div>
 
 
-<h4 id="packages-and-files">Packages and Files</h4>
+<h3 id="packages-and-files">Packages and Files</h3>
 <p>Similar to libraries or modules in other languages, packages in Go supports modularity, encapsulation, separate compilation, and reuse. The source code for a package resides in one or more <code>.go</code> files, usually in a directory whose name ends with the import path; for instance, the files of the <code>gopl.io/ch1/helloworld</code> package are stored in directory <code>$GOPATH/src/gopl.io/ch1/helloworld</code>.</p>
 <ul>
 <li>Each package serves as a separate <em>name space</em> for its declarations.
@@ -1475,6 +1484,55 @@ named types cannot be compared directly:</p>
 <li>Only one file in each package should have a package doc comment.</li>
 <li>Extensive doc comments are often placed in a file of their own, conventionally called <code>doc.go</code>.</li>
 </ul>
+<h4 id="imports">Imports</h4>
+<h5 id="import-path"><strong>Import path</strong> *</h5>
+<p>Every package within a Go program is identified by a unique string called its <strong>import path</strong>, which appears in an <code>import</code> declaration like <code>gopl.io/ch2/tempconv</code>. The language specification doesn’t define where these strings come from or what they mean; it’s up to the tools to interpret them. When using the <code>go</code> tool (<a href="../ch10/">Chapter 10</a>), <u>an import path denotes a directory containing Go source files that make up the package.</u></p>
+<h5 id="package-name"><strong>Package name</strong> *</h5>
+<p>In addition to its import path, each package has a <strong>package name</strong>, which is the short buy not necessarily unique name that appears in its package declaration. By convention, a package’s name matches the last segment of its import path. For example, the package name of <code>gopl.io/ch2/tempconv</code> is <code>tempconv</code>.</p>
+<p>To use <code>gopl.io/ch2/tempconv</code>, we must import it:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/cf/main.go">gopl.io/ch2/cf/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Cf converts its numeric argument to Celsius and Fahrenheit.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+    <span class="s">&quot;strconv&quot;</span>
+
+    <span class="s">&quot;gopl.io/ch2/tempconv&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">arg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">ParseFloat</span><span class="p">(</span><span class="nx">arg</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;cf: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+            <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="nx">f</span> <span class="o">:=</span> <span class="nx">tempconv</span><span class="p">.</span><span class="nx">Fahrenheit</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>
+        <span class="nx">c</span> <span class="o">:=</span> <span class="nx">tempconv</span><span class="p">.</span><span class="nx">Celsius</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s = %s, %s = %s\n&quot;</span><span class="p">,</span>
+            <span class="nx">f</span><span class="p">,</span> <span class="nx">tempconv</span><span class="p">.</span><span class="nx">FToC</span><span class="p">(</span><span class="nx">f</span><span class="p">),</span> <span class="nx">c</span><span class="p">,</span> <span class="nx">tempconv</span><span class="p">.</span><span class="nx">CToF</span><span class="p">(</span><span class="nx">c</span><span class="p">))</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The import declaration binds a short name to the imported package that may be used to refer to its contents throughout the file. The <code>import</code> the above code enables us refer to names within <code>gopl.io/ch2/tempconv</code> by using a qualified identifier like <code>tempconv.CToF</code>. By default, the short name is the package name (<code>tempconv</code> in this case), but an import declaration may specify an alternative name to avoid a conflict (<a href="../ch10/#the-package-declaration">Section 10.3</a>).</p>
+<p>The <code>cf</code> program converts a single numeric command-line argument to its value in both Celsius and Fahrenheit:</p>
+<div class="codehilite"><pre><span class="go">$ go build gopl.io/ch2/cf</span>
+<span class="go">$ ./cf 32</span>
+<span class="go">32°F = 0°C, 32°C = 89.6°F</span>
+<span class="go">$ ./cf 212</span>
+<span class="go">212°F = 100°C, 212°C = 413.6°F</span>
+<span class="go">$ ./cf -40</span>
+<span class="go">-40°F = -40°C, -40°C = -40°F</span>
+</pre></div>
+
+
+<p>It is an error to import a package and then not refer to it. This check helps eliminate dependencies that become unnecessary as the code evolves, although it can be a nuisance during debugging. [p44]</p>
+<h5 id="goimports"><strong><code>goimports</code></strong> *</h5>
+<p>The <a href="https://godoc.org/golang.org/x/tools/cmd/goimports">golang.org/x/tools/cmd/goimports</a> tool automatically inserts and removes packages from the import declaration as necessary; most editors can be configured to run <code>goimports</code> each time you save a file. Like the <code>gofmt</code> tool, it also pretty-prints Go source files in the canonical format.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p32 on short variable declaration.</p>
