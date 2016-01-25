@@ -13,7 +13,7 @@ The following are basic integer keywords:
 * `short`: signed 16-bit integer.
 * `int`: signed 32-bit integer.
 * `long`: 32-bit integer on the 32-bit system (`long int`), and 64-bit integer on the 64-bit system.
-* `long long`: signed 64-bit intger (`long long int`).
+* `long long`: signed 64-bit integer (`long long int`).
 * `bool`: `_Bool` type, 8-bit integer. The macros `bool`, `true` and `false` are defined in `stdbool.h`.
 
 Since on different systems `char` may represent a signed or unsigned 8-bit integer, it's recommended to use `unsigned char` or `signed char` to represent an exact type.
@@ -427,7 +427,7 @@ Note that the spaces to the right of `\` will treated as part of the string.
 
 ### Type Conversions
 
-When the operands for an operator has different types, conversion is required. Usually, the compiler performs [implict conversions](http://en.cppreference.com/w/c/language/conversion), on the premise that information is not lost, to convert the "narrow" bit-width operand into the "wide" one.
+When the operands for an operator has different types, conversion is required. Usually, the compiler performs [implicit conversions](http://en.cppreference.com/w/c/language/conversion), on the premise that information is not lost, to convert the "narrow" bit-width operand into the "wide" one.
 
 #### Arithmetic conversions
 
@@ -471,7 +471,7 @@ will output:
 -1
 ```
 
-This output is incomprehensible. Even if `long` has a greater rank than `unsigned int`, they are both 32-bit integers in 32-bit systems, and `long` is unable to hold all values of `unsigned int`. Therefore, the compilter will convert both operands to `unsigned long`, which is the unsigned greater rank. For this reason the result of `(unsigned long)a` turns into a very big integer.
+This output is incomprehensible. Even if `long` has a greater rank than `unsigned int`, they are both 32-bit integers in 32-bit systems, and `long` is unable to hold all values of `unsigned int`. Therefore, the compiler will convert both operands to `unsigned long`, which is the unsigned greater rank. For this reason the result of `(unsigned long)a` turns into a very big integer.
 
 > If the signedness is different and the signed operand's rank is greater than unsigned operand's rank. In this case, if the signed type can represent all values of the unsigned type, then the operand with the unsigned type is implicitly converted to the type of the signed operand. Otherwise, both operands undergo implicit conversion to the unsigned type counterpart of the signed operand's type.
 > <small>[Usual arithmetic conversions: 4)](http://en.cppreference.com/w/c/language/conversion#Usual_arithmetic_conversions)</small>
@@ -492,7 +492,7 @@ will output:
 -1
 ```
 
-Other implict conversions are:
+Other implicit conversions are:
 
 * In assignment and initialization, the type of the right operator is always converted to that of the left one.
 * In a function call, the type of the actual parameter is always converted to that of the formal parameter.
@@ -512,8 +512,8 @@ When converting a "wide" type to a "narrow" type, the compiler will try to disca
         int x = 123, *p = &x;
         char* c = (char*)x;
 
-3. Any pointer can be implictly converted to a `void` pointer and vice versa.
-4. Any pointer can be implictly converted to a pointer of a more specific type (including qualifiers such as `const`, `volatile` and `restrict`).
+3. Any pointer can be implicitly converted to a `void` pointer and vice versa.
+4. Any pointer can be implicitly converted to a pointer of a more specific type (including qualifiers such as `const`, `volatile` and `restrict`).
 
         int x = 123, *p = &x;
         const int* p2 = p;

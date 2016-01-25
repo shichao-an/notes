@@ -701,7 +701,7 @@ fmt.Printf("%g\n", c)   // "100"; does not call String
 fmt.Println(float64(c)) // "100"; does not call String
 ```
 
-#### Packages and Files
+### Packages and Files
 
 Similar to libraries or modules in other languages, packages in Go supports modularity, encapsulation, separate compilation, and reuse. The source code for a package resides in one or more `.go` files, usually in a directory whose name ends with the import path; for instance, the files of the `gopl.io/ch1/helloworld` package are stored in directory `$GOPATH/src/gopl.io/ch1/helloworld`.
 
@@ -767,6 +767,68 @@ The *doc comment* ([Section 10.7.4](#ch10.md#documenting-packages)) immediately 
 * Conventionally, it should start with a summary sentence in the style illustrated.
 * Only one file in each package should have a package doc comment.
 * Extensive doc comments are often placed in a file of their own, conventionally called `doc.go`.
+
+#### Imports
+
+##### **Import path** *
+
+Every package within a Go program is identified by a unique string called its **import path**, which appears in an `import` declaration like `gopl.io/ch2/tempconv`. The language specification doesn’t define where these strings come from or what they mean; it’s up to the tools to interpret them. When using the `go` tool ([Chapter 10](ch10.md)), <u>an import path denotes a directory containing Go source files that make up the package.</u>
+
+##### **Package name** *
+
+In addition to its import path, each package has a **package name**, which is the short buy not necessarily unique name that appears in its package declaration. By convention, a package’s name matches the last segment of its import path. For example, the package name of `gopl.io/ch2/tempconv` is `tempconv`.
+
+To use `gopl.io/ch2/tempconv`, we must import it:
+
+<small>[gopl.io/ch2/cf/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch2/cf/main.go)</small>
+
+```go
+// Cf converts its numeric argument to Celsius and Fahrenheit.
+package main
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+
+	"gopl.io/ch2/tempconv"
+)
+
+func main() {
+	for _, arg := range os.Args[1:] {
+		t, err := strconv.ParseFloat(arg, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cf: %v\n", err)
+			os.Exit(1)
+		}
+		f := tempconv.Fahrenheit(t)
+		c := tempconv.Celsius(t)
+		fmt.Printf("%s = %s, %s = %s\n",
+			f, tempconv.FToC(f), c, tempconv.CToF(c))
+	}
+}
+```
+
+The import declaration binds a short name to the imported package that may be used to refer to its contents throughout the file. The `import` the above code enables us refer to names within `gopl.io/ch2/tempconv` by using a qualified identifier like `tempconv.CToF`. By default, the short name is the package name (`tempconv` in this case), but an import declaration may specify an alternative name to avoid a conflict ([Section 10.3](ch10.md#the-package-declaration)).
+
+The `cf` program converts a single numeric command-line argument to its value in both Celsius and Fahrenheit:
+
+```shell-session
+$ go build gopl.io/ch2/cf
+$ ./cf 32
+32°F = 0°C, 32°C = 89.6°F
+$ ./cf 212
+212°F = 100°C, 212°C = 413.6°F
+$ ./cf -40
+-40°F = -40°C, -40°C = -40°F
+```
+
+It is an error to import a package and then not refer to it. This check helps eliminate dependencies that become unnecessary as the code evolves, although it can be a nuisance during debugging. [p44]
+
+##### **`goimports`** *
+
+The [golang.org/x/tools/cmd/goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) tool automatically inserts and removes packages from the import declaration as necessary; most editors can be configured to run `goimports` each time you save a file. Like the `gofmt` tool, it also pretty-prints Go source files in the canonical format.
+
 
 ### Doubts and Solutions
 

@@ -7,3 +7,4 @@
 * [Chapter 5. Functions](ch5.md)
 * [Chapter 6. Methods](ch6.md)
 * [Chapter 7. Interfaces](ch7.md)
+* [Chapter 10. Packages and the Go Tool](ch10.md)
