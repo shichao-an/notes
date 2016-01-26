@@ -772,6 +772,15 @@
             <li><a href="#precedence">Precedence</a></li>
         
     
+        <li class="main "><a href="#statements">Statements</a></li>
+        
+            <li><a href="#statement-blocks">Statement Blocks</a></li>
+        
+            <li><a href="#loop-statements">Loop Statements</a></li>
+        
+            <li><a href="#selection-statements">Selection Statements</a></li>
+        
+    
         <li class="main "><a href="#references">References</a></li>
         
     
@@ -1443,6 +1452,72 @@ Correct: *(p.f)
 
 </li>
 </ol>
+<h3 id="statements">Statements</h3>
+<h4 id="statement-blocks">Statement Blocks</h4>
+<p>A block represents a <a href="http://en.cppreference.com/w/c/language/scope">scope</a>; the automatic variables declared inside the block will be released if beyond the scope. Apart from <code>{...}</code> which represents a regular block, it can also be used in complex assignments. This is often used in macros.</p>
+<p>In the following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="p">({</span> <span class="kt">char</span> <span class="n">a</span> <span class="o">=</span> <span class="sc">&#39;a&#39;</span><span class="p">;</span> <span class="n">a</span><span class="o">++</span><span class="p">;</span> <span class="n">a</span><span class="p">;</span> <span class="p">});</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The last expression can be treated as the return value of a block. The equivalent macro version of this code is:</p>
+<div class="codehilite"><pre><span class="cp">#define test() ({ \</span>
+<span class="cp"> char _a = &#39;a&#39;; \</span>
+<span class="cp"> _a++; \</span>
+<span class="cp"> _a; })</span>
+<span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">test</span><span class="p">();</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+</pre></div>
+
+
+<p>In macros, the underline prefixes are usually used to avoid name conflicts with the upper block.</p>
+<h4 id="loop-statements">Loop Statements</h4>
+<p>C supports <code>while</code>, <code>for</code> and <code>do...while</code> loop statements (or iteration statements).</p>
+<p>Note that in the following example, the loop causes the <code>get_len</code> function to be executed multiple times.</p>
+<div class="codehilite"><pre><span class="kt">size_t</span> <span class="nf">get_len</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">s</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">__func__</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">strlen</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">s</span> <span class="o">=</span> <span class="s">&quot;abcde&quot;</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">get_len</span><span class="p">(</span><span class="n">s</span><span class="p">);</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%c</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="selection-statements">Selection Statements</h4>
+<p>Selection statements include <code>if...else if...else...</code> and <code>switch { case ... }</code>.</p>
+<p>GCC supports the <code>switch</code> <a href="https://gcc.gnu.org/onlinedocs/gcc/Case-Ranges.html">case range</a> extension.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="k">switch</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="mi">0</span> <span class="p">...</span> <span class="mi">9</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;0..9</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+    <span class="k">case</span> <span class="mi">10</span> <span class="p">...</span> <span class="mi">99</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;10..99</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+    <span class="k">default</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;default</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">char</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;C&#39;</span><span class="p">;</span>
+<span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+     <span class="k">case</span> <span class="sc">&#39;a&#39;</span> <span class="p">...</span> <span class="sc">&#39;z&#39;</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;a..z</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+     <span class="k">case</span> <span class="sc">&#39;A&#39;</span> <span class="p">...</span> <span class="sc">&#39;Z&#39;</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;A..Z</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+     <span class="k">case</span> <span class="sc">&#39;0&#39;</span> <span class="p">...</span> <span class="sc">&#39;9&#39;</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;0..9</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+     <span class="k">default</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;default</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <hr />
 <h3 id="references">References</h3>
 <ul>

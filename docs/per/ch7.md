@@ -76,7 +76,7 @@ Suppose that you defined a class that inherited from the `Date` class shown prev
 class EuroDate(Date):
     # Modify string conversion to use European dates
     def __str__(self):
-    return "%02d/%02d/%4d" % (self.day, self.month, self.year)
+        return "%02d/%02d/%4d" % (self.day, self.month, self.year)
 ```
 
 Because the class inherits from `Date`, it has all of the same features. However, the `now()` and `tomorrow()` methods are slightly broken. For example, if someone calls `EuroDate.now()`, a `Date` object is returned instead of a `EuroDate` object. A class method can fix this:
@@ -104,4 +104,4 @@ d = Date(1967,4,9)
 b = d.now() # Calls Date.now(Date)
 ```
 
-This is potentially quite confusing because a call to d.now() doesn’t really have anything to do with the instance `d`.This behavior is one area where the Python object system differs from that found in other OO languages such as Ruby. In those languages, class methods are strictly separate from instance methods.
+<u>This is potentially quite confusing because a call to `d.now()` doesn’t really have anything to do with the instance `d`.</u> This behavior is one area where the Python object system differs from that found in other OO languages such as Ruby. In those languages, class methods are strictly separate from instance methods.
