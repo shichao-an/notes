@@ -63,6 +63,11 @@ For networks, I have read some chapters of TCPv1, so I need to continue reading 
 
 I have read the most part of DevOps. In addition to finishing with DevOps, I will read BD.
 
+#### Methods of Notes
+
+1. **Systematic**: on a regular basis, read the major chapters (possibly unordered) of the entire books.
+2. **Ad hoc:** read a specific chapter, section, or topic.
+
 #### Pros and Cons of Notes
 
 ##### **Pros**

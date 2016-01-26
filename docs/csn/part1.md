@@ -646,6 +646,84 @@ The following are some confusing operator precedence.
         Erroneous: i = (1, 2)
         Correct: (i = 1), 2
 
+### Statements
+
+#### Statement Blocks
+
+A block represents a [scope](http://en.cppreference.com/w/c/language/scope); the automatic variables declared inside the block will be released if beyond the scope. Apart from `{...}` which represents a regular block, it can also be used in complex assignments. This is often used in macros.
+
+In the following code:
+
+```c
+int i = ({ char a = 'a'; a++; a; });
+printf("%d\n", i);
+```
+
+The last expression can be treated as the return value of a block. The equivalent macro version of this code is:
+
+```c
+#define test() ({ \
+ char _a = 'a'; \
+ _a++; \
+ _a; })
+int i = test();
+printf("%d\n", i);
+```
+
+In macros, the underline prefixes are usually used to avoid name conflicts with the upper block.
+
+#### Loop Statements
+
+C supports `while`, `for` and `do...while` loop statements (or iteration statements).
+
+Note that in the following example, the loop causes the `get_len` function to be executed multiple times.
+
+```c
+size_t get_len(const char* s)
+{
+    printf("%s\n", __func__);
+    return strlen(s);
+}
+
+int main(int argc, char* argv[])
+{
+    char *s = "abcde";
+    for (int i = 0; i < get_len(s); i++)
+    {
+        printf("%c\n", s[i]);
+    }
+
+    printf("\n");
+
+    return EXIT_SUCCESS;
+}
+```
+
+#### Selection Statements
+
+Selection statements include `if...else if...else...` and `switch { case ... }`.
+
+GCC supports the `switch` [case range](https://gcc.gnu.org/onlinedocs/gcc/Case-Ranges.html) extension.
+
+```c
+int x = 1;
+switch (x)
+{
+    case 0 ... 9: printf("0..9\n"); break;
+    case 10 ... 99: printf("10..99\n"); break;
+    default: printf("default\n"); break;
+}
+
+char c = 'C';
+switch (c)
+{
+     case 'a' ... 'z': printf("a..z\n"); break;
+     case 'A' ... 'Z': printf("A..Z\n"); break;
+     case '0' ... '9': printf("0..9\n"); break;
+     default: printf("default\n"); break;
+}
+```
+
 - - -
 
 ### References
