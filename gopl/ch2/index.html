@@ -785,6 +785,8 @@
         
             <li><a href="#imports">Imports</a></li>
         
+            <li><a href="#package-initialization">Package Initialization</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -1545,6 +1547,62 @@ named types cannot be compared directly:</p>
 <p>It is an error to import a package and then not refer to it. This check helps eliminate dependencies that become unnecessary as the code evolves, although it can be a nuisance during debugging. [p44]</p>
 <h5 id="goimports"><strong><code>goimports</code></strong> *</h5>
 <p>The <a href="https://godoc.org/golang.org/x/tools/cmd/goimports">golang.org/x/tools/cmd/goimports</a> tool automatically inserts and removes packages from the import declaration as necessary; most editors can be configured to run <code>goimports</code> each time you save a file. Like the <code>gofmt</code> tool, it also pretty-prints Go source files in the canonical format.</p>
+<h4 id="package-initialization">Package Initialization</h4>
+<p>Package initialization begins by initializing package-level variables in the order in which they are declared, except that dependencies are resolved first:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">a</span> <span class="p">=</span> <span class="nx">b</span> <span class="o">+</span> <span class="nx">c</span>  <span class="c1">// a initialized third, to 3</span>
+<span class="kd">var</span> <span class="nx">b</span> <span class="p">=</span> <span class="nx">f</span><span class="p">()</span>    <span class="c1">// b initialized second, to 2, by calling f</span>
+<span class="kd">var</span> <span class="nx">c</span> <span class="p">=</span> <span class="mi">1</span>      <span class="c1">// c initialized first, to 1</span>
+
+<span class="kd">func</span> <span class="nx">f</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">c</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>If the package has multiple <code>.go</code> files, they are sorted by the <code>go</code> tool, given to the compiler and initialized in this order.</p>
+<p>An variable declared at package level starts life with the value of its optional initializer expression. However, for some variables, like tables of data, it's not easy to set their initial values using initializer expressions, in which case the <code>init</code> function mechanism may be simpler. A file may contain any number of <code>init</code> functions like the following:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Except that <code>init</code> functions can’t be called or referenced, they are normal functions. Within each file, <code>init</code> functions are automatically executed when the program starts, in the order in which they are declared.</p>
+<ul>
+<li>One package is initialized at a time, in the order of imports in the program, dependencies first.<ul>
+<li>For example, if package <code>p</code> imports <code>q</code>, then <code>q</code> is fully initialized before <code>p</code>'s initialization begins.</li>
+</ul>
+</li>
+<li>Initialization proceeds from the bottom up; the <code>main</code> package is the last to be initialized. All packages are fully initialized before the application's <code>main</code> function begins.</li>
+</ul>
+<p>The package below defines a function <code>PopCount</code> that returns the number of set bits (bits whose value is 1) in a <code>uint64</code> value, which is called its <a href="https://en.wikipedia.org/wiki/Hamming_weight"><em>population count</em></a>. It uses an <code>init</code> function to precompute a table of results, <code>pc</code>, for each possible 8-bit value so that the <code>PopCount</code> function needn’t take 64 steps but can just return the sum of eight table lookups. (This is definitely not the fastest algorithm for counting bits, but it’s convenient for illustrating <code>init</code> functions, and for showing how to precompute a table of values, which is often a useful programming technique.)</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/popcount/main.go">gopl.io/ch2/popcount</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">popcount</span>
+
+<span class="c1">// pc[i] is the population count of i.</span>
+<span class="kd">var</span> <span class="nx">pc</span> <span class="p">[</span><span class="mi">256</span><span class="p">]</span><span class="kt">byte</span>
+
+<span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">pc</span> <span class="p">{</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">pc</span><span class="p">[</span><span class="nx">i</span><span class="o">/</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="nb">byte</span><span class="p">(</span><span class="nx">i</span><span class="o">&amp;</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// PopCount returns the population count (number of set bits) of x.</span>
+<span class="kd">func</span> <span class="nx">PopCount</span><span class="p">(</span><span class="nx">x</span> <span class="kt">uint64</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">0</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">1</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">4</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="mi">8</span><span class="p">))]</span> <span class="o">+</span>
+        <span class="nx">pc</span><span class="p">[</span><span class="nb">byte</span><span class="p">(</span><span class="nx">x</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="mi">7</span><span class="o">*</span><span class="mi">8</span><span class="p">))])</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that in the above code the <code>range</code> loop in <code>init</code> uses only the index, since the value is not need. The loop could also have been written as:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">pc</span> <span class="p">{</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>p32 on short variable declaration.</p>
@@ -1552,6 +1610,7 @@ named types cannot be compared directly:</p>
 <p>A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.</p>
 </blockquote>
 <p>What does "declarations in an outer block are ignored" mean?</p>
+<p>p45 on <code>init</code> function. What exact algorithm does <code>PopCount</code> use? It seems different from the Hamming weight algorithm on Wikipedia.</p>
             </div>
         </div>
 
