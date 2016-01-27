@@ -829,6 +829,66 @@ It is an error to import a package and then not refer to it. This check helps el
 
 The [golang.org/x/tools/cmd/goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) tool automatically inserts and removes packages from the import declaration as necessary; most editors can be configured to run `goimports` each time you save a file. Like the `gofmt` tool, it also pretty-prints Go source files in the canonical format.
 
+#### Package Initialization
+
+Package initialization begins by initializing package-level variables in the order in which they are declared, except that dependencies are resolved first:
+
+```go
+var a = b + c  // a initialized third, to 3
+var b = f()    // b initialized second, to 2, by calling f
+var c = 1      // c initialized first, to 1
+
+func f() int { return c + 1 }
+```
+
+If the package has multiple `.go` files, they are sorted by the `go` tool, given to the compiler and initialized in this order.
+
+An variable declared at package level starts life with the value of its optional initializer expression. However, for some variables, like tables of data, it's not easy to set their initial values using initializer expressions, in which case the `init` function mechanism may be simpler. A file may contain any number of `init` functions like the following:
+
+```go
+func init() { /* ... */ }
+```
+
+Except that `init` functions can’t be called or referenced, they are normal functions. Within each file, `init` functions are automatically executed when the program starts, in the order in which they are declared.
+
+* One package is initialized at a time, in the order of imports in the program, dependencies first.
+    * For example, if package `p` imports `q`, then `q` is fully initialized before `p`'s initialization begins.
+* Initialization proceeds from the bottom up; the `main` package is the last to be initialized. All packages are fully initialized before the application's `main` function begins.
+
+The package below defines a function `PopCount` that returns the number of set bits (bits whose value is 1) in a `uint64` value, which is called its [*population count*](https://en.wikipedia.org/wiki/Hamming_weight). It uses an `init` function to precompute a table of results, `pc`, for each possible 8-bit value so that the `PopCount` function needn’t take 64 steps but can just return the sum of eight table lookups. (This is definitely not the fastest algorithm for counting bits, but it’s convenient for illustrating `init` functions, and for showing how to precompute a table of values, which is often a useful programming technique.)
+
+<small>[gopl.io/ch2/popcount](https://github.com/shichao-an/gopl.io/blob/master/ch2/popcount/main.go)</small>
+
+```go
+package popcount
+
+// pc[i] is the population count of i.
+var pc [256]byte
+
+func init() {
+	for i := range pc {
+		pc[i] = pc[i/2] + byte(i&1)
+	}
+}
+
+// PopCount returns the population count (number of set bits) of x.
+func PopCount(x uint64) int {
+	return int(pc[byte(x>>(0*8))] +
+		pc[byte(x>>(1*8))] +
+		pc[byte(x>>(2*8))] +
+		pc[byte(x>>(3*8))] +
+		pc[byte(x>>(4*8))] +
+		pc[byte(x>>(5*8))] +
+		pc[byte(x>>(6*8))] +
+		pc[byte(x>>(7*8))])
+}
+```
+
+Note that in the above code the `range` loop in `init` uses only the index, since the value is not need. The loop could also have been written as:
+
+```go
+for i, _ := range pc {
+```
 
 ### Doubts and Solutions
 
@@ -839,3 +899,5 @@ p32 on short variable declaration.
 > A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.
 
 What does "declarations in an outer block are ignored" mean?
+
+p45 on `init` function. What exact algorithm does `PopCount` use? It seems different from the Hamming weight algorithm on Wikipedia.
