@@ -873,6 +873,18 @@
 <li>The peer responds with an RST, which tells the local TCP that the peer host has crashed and rebooted. The socket's pending error is set to <code>ECONNRESET</code> and the socket is closed.</li>
 <li>There is no response from the peer to the keep-alive probe. Berkeley-derived TCPs send 8 additional probes, 75 seconds apart, trying to elicit a response. TCP will give up if there is no response within 11 minutes and 15 seconds after sending the first probe.</li>
 </ol>
+<h5 id="no-response-and-errors"><strong>No response and errors</strong> *</h5>
+<ul>
+<li>If there is no response at all to TCP's keep-alive probes, the socket's pending error is set to <code>ETIMEDOUT</code> and the socket is closed.</li>
+<li>If the socket receives an ICMP error in response to one of the keep-alive probes, the corresponding error (<a href="../figure_a.15.png">Figures A.15</a> and <a href="../figure_a.16.png">Figure A.16</a>) is returned instead, and the socket is still closed.<ul>
+<li>A common ICMP error in this scenario is "host unreachable", where the pending error is set to <code>EHOSTUNREACH</code>. This can occur because of either of the following:<ul>
+<li>Network failure.</li>
+<li><u>The remote host has crashed and the last-hop router has detected the crash.</u></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 <h4 id="so_linger-socket-option"><code>SO_LINGER</code> Socket Option</h4>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
