@@ -555,6 +555,10 @@
         
             <li><a href="#the-use-method">The USE Method</a></li>
         
+            <li><a href="#workload-characterization">Workload Characterization</a></li>
+        
+            <li><a href="#latency-analysis">Latency Analysis</a></li>
+        
     
         <li class="main "><a href="#modeling">Modeling</a></li>
         
@@ -1435,6 +1439,91 @@ sense.</li>
 </tbody>
 </table>
 <p>Some of these may not be available from standard operating system tools and may require the use of dynamic tracing or the CPU performance counter facility.</p>
+<h5 id="software-resources"><strong>Software Resources</strong></h5>
+<p>Software resources, usually smaller components of software, can be examined. For example:</p>
+<ul>
+<li><strong>Mutex locks:</strong><ul>
+<li>Utilization is the time the lock was held.</li>
+<li>Saturation is the number of threads queued waiting on the lock.</li>
+</ul>
+</li>
+<li><strong>Thread pools</strong>:<ul>
+<li>Utilization is the time threads were busy processing work.</li>
+<li>Saturation is the number of requests waiting to be serviced by the thread pool.</li>
+</ul>
+</li>
+<li><strong>Process/thread capacity</strong>:<ul>
+<li>Utilization is the current usage of processes or threads in the system.</li>
+<li>Saturation is the number of process and threads waiting on allocation.</li>
+<li>Errors are when the allocation failed (e.g. "cannot fork").</li>
+</ul>
+</li>
+<li><strong>File descriptor capacity</strong>: similar to process/thread capacity, but for file descriptors.</li>
+</ul>
+<p>If these metrics do not work well in your case, use alternatives, such as <a href="#latency-analysis">latency analysis</a>.</p>
+<h5 id="suggested-interpretations"><strong>Suggested Interpretations</strong></h5>
+<p>Suggestions for interpreting the metric types:</p>
+<ul>
+<li>
+<p>Utilization:</p>
+<ul>
+<li>Utilization ~ 100%: usually a sign of a bottleneck (check saturation and its effect to confirm).</li>
+<li>
+<p>Utilization &gt; 60%: may be a problem, because:</p>
+<ul>
+<li>Depending on the interval, it can hide short bursts of 100% utilization.</li>
+<li>Some resources such as hard disks (but not CPUs) usually cannot be interrupted during an operation, even for higher-priority work. As utilization increases, queueing delays become more frequent and noticeable.</li>
+</ul>
+<p>See <a href="#queueing-theory">Section 2.6.5</a> on Queueing Theory, for more about 60% utilization.</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Saturation: Any degree of saturation can be a problem (nonzero). It may be measured as:</p>
+<ul>
+<li>The length of a wait queue.</li>
+<li>The time spent waiting on the queue.</li>
+</ul>
+</li>
+<li>Errors: Nonzero error counters are worth investigating, especially if they are increasing while performance is poor.</li>
+</ul>
+<p>[p48]</p>
+<h5 id="cloud-computing"><strong>Cloud Computing</strong></h5>
+<p>In a cloud computing environment, software resource controls may be in place to
+limit tenants who are sharing one system.</p>
+<p>OS virtualization at <a href="https://en.wikipedia.org/wiki/Joyent">Joyent</a> (<a href="https://en.wikipedia.org/wiki/SmartOS">SmartOS</a> Zones) imposes memory limits, CPU limits, and storage I/O throttling. Each of these resource limits can be examined with the USE method, similarly to examining the physical resources.</p>
+<p>For example:</p>
+<ul>
+<li>"Memory capacity utilization" can be the tenant’s memory usage versus its memory cap.</li>
+<li>"Memory capacity saturation" can be seen by anonymous paging activity, even though the traditional page scanner may be idle.</li>
+</ul>
+<h4 id="workload-characterization">Workload Characterization</h4>
+<p>Workload characterization is a simple and effective method for identifying load issues, by <u>focusing on the input to the system, rather than the resulting performance.</u> A system without architectural or configuration issues can be under more load than it can reasonably handle.</p>
+<h5 id="who-why-what-and-how"><strong>Who, Why, What and How?</strong> *</h5>
+<p>Workloads can be characterized by answering the following questions:</p>
+<ul>
+<li><strong>Who</strong> is causing the load? Process ID, user ID, remote IP address?</li>
+<li><strong>Why</strong> is the load being called? Code path, stack trace?</li>
+<li><strong>What</strong> are the load characteristics? IOPS, throughput, direction (read/write), type? Include variance (standard deviation) where appropriate.</li>
+<li><strong>How</strong> is the load changing over time? Is there a daily pattern?</li>
+</ul>
+<p>Checking all of these can be useful. You may be surprised even when you have expectations about the answer. For example, the performance issue with a database, whose clients are a pool of web servers, may be caused by the load originating from the Internet, i.e. being under denial-of-service (DoS) attack.</p>
+<h5 id="eliminating-unnecessary-work"><strong>Eliminating unnecessary work</strong> *</h5>
+<p>Eliminating unnecessary work is important, since sometimes unnecessary work is caused by:</p>
+<ul>
+<li>Applications malfunctioning. For example, a thread stuck in a loop creating unnecessary CPU work.</li>
+<li>Bad configurations. For example, system-wide backups that run during the day.</li>
+</ul>
+<p>Characterizing the workload can identify these issues, and with maintenance or reconfiguration they may be eliminated.</p>
+<h5 id="throttling-workload"><strong>Throttling workload</strong> *</h5>
+<p>If the identified workload cannot be eliminated, use system resource controls to throttle it. For example, a system backup task may be interfering with a production database by consuming CPU resources to compress the backup, and then network resources to transfer it. This CPU and network usage may be throttled using resource controls, so that the backup occurs more slowly without hurting the database.</p>
+<h5 id="simulation-benchmarks"><strong>Simulation benchmarks</strong> *</h5>
+<p>Apart from identifying issues, workload characterization can also be input for the design of simulation benchmarks. If the workload measurement is an average, ideally you will also collect details of the distribution and variation. This can be important for simulating the variety of workloads expected, rather than testing only an average workload. See <a href="#statistics">Section 2.8, Statistics</a>, for more about averages and variation (standard deviation), and <a href="ch12.md">Chapter 12, Benchmarking</a>.</p>
+<h5 id="separating-load-from-architecture"><strong>Separating load from architecture</strong> *</h5>
+<p><u>Analysis of the workload also helps separate problems of load from problems of architecture</u>, by identifying the former. Load versus architecture was introduced in <a href="#load-versus-architecture">Section 2.3, Concepts</a>.</p>
+<h5 id="tools-and-metrics"><strong>Tools and metrics</strong> *</h5>
+<p>The specific tools and metrics for performing workload characterization depend on the target. Some applications record detailed logs of client activity, which can be the source for statistical analysis. They may also already provide daily or monthly reports of client usage, which can be mined for details.</p>
+<h4 id="latency-analysis">Latency Analysis</h4>
 <h3 id="modeling">Modeling</h3>
 <h3 id="capacity-planning">Capacity Planning</h3>
 <h3 id="statistics">Statistics</h3>
@@ -1452,6 +1541,11 @@ sense.</li>
 <p>File system record size and network buffer size: small vs large</p>
 </blockquote>
 <p>Further reading may be required to understand these trade-offs.</p>
+<p>p49 on Workload Characterization:</p>
+<blockquote>
+<p>Apart from identifying issues, workload characterization can also be input for the design of simulation benchmarks.</p>
+</blockquote>
+<p>Does this mean something like <a href="https://en.wikipedia.org/wiki/Load_testing">load testing</a>? It seems awkward that this entire book never mentions "load testing".</p>
             </div>
         </div>
 
