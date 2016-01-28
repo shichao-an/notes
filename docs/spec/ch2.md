@@ -730,6 +730,97 @@ I/O interconnect | utilization | bus throughput/maximum bandwidth (performance c
 
 Some of these may not be available from standard operating system tools and may require the use of dynamic tracing or the CPU performance counter facility.
 
+##### **Software Resources**
+
+Software resources, usually smaller components of software, can be examined. For example:
+
+* **Mutex locks:**
+    * Utilization is the time the lock was held.
+    * Saturation is the number of threads queued waiting on the lock.
+* **Thread pools**:
+    * Utilization is the time threads were busy processing work.
+    * Saturation is the number of requests waiting to be serviced by the thread pool.
+* **Process/thread capacity**:
+    * Utilization is the current usage of processes or threads in the system.
+    * Saturation is the number of process and threads waiting on allocation.
+    * Errors are when the allocation failed (e.g. "cannot fork").
+* **File descriptor capacity**: similar to process/thread capacity, but for file descriptors.
+
+If these metrics do not work well in your case, use alternatives, such as [latency analysis](#latency-analysis).
+
+##### **Suggested Interpretations**
+
+Suggestions for interpreting the metric types:
+
+* Utilization:
+    * Utilization ~ 100%: usually a sign of a bottleneck (check saturation and its effect to confirm).
+    * Utilization > 60%: may be a problem, because:
+        * Depending on the interval, it can hide short bursts of 100% utilization.
+        * Some resources such as hard disks (but not CPUs) usually cannot be interrupted during an operation, even for higher-priority work. As utilization increases, queueing delays become more frequent and noticeable.
+
+        See [Section 2.6.5](#queueing-theory) on Queueing Theory, for more about 60% utilization.
+
+* Saturation: Any degree of saturation can be a problem (nonzero). It may be measured as:
+    * The length of a wait queue.
+    * The time spent waiting on the queue.
+* Errors: Nonzero error counters are worth investigating, especially if they are increasing while performance is poor.
+
+[p48]
+
+##### **Cloud Computing**
+
+In a cloud computing environment, software resource controls may be in place to
+limit tenants who are sharing one system.
+
+OS virtualization at [Joyent](https://en.wikipedia.org/wiki/Joyent) ([SmartOS](https://en.wikipedia.org/wiki/SmartOS) Zones) imposes memory limits, CPU limits, and storage I/O throttling. Each of these resource limits can be examined with the USE method, similarly to examining the physical resources.
+
+For example:
+
+* "Memory capacity utilization" can be the tenant’s memory usage versus its memory cap.
+* "Memory capacity saturation" can be seen by anonymous paging activity, even though the traditional page scanner may be idle.
+
+#### Workload Characterization
+
+Workload characterization is a simple and effective method for identifying load issues, by <u>focusing on the input to the system, rather than the resulting performance.</u> A system without architectural or configuration issues can be under more load than it can reasonably handle.
+
+##### **Who, Why, What and How?** *
+
+Workloads can be characterized by answering the following questions:
+
+* **Who** is causing the load? Process ID, user ID, remote IP address?
+* **Why** is the load being called? Code path, stack trace?
+* **What** are the load characteristics? IOPS, throughput, direction (read/write), type? Include variance (standard deviation) where appropriate.
+* **How** is the load changing over time? Is there a daily pattern?
+
+Checking all of these can be useful. You may be surprised even when you have expectations about the answer. For example, the performance issue with a database, whose clients are a pool of web servers, may be caused by the load originating from the Internet, i.e. being under denial-of-service (DoS) attack.
+
+##### **Eliminating unnecessary work** *
+
+Eliminating unnecessary work is important, since sometimes unnecessary work is caused by:
+
+* Applications malfunctioning. For example, a thread stuck in a loop creating unnecessary CPU work.
+* Bad configurations. For example, system-wide backups that run during the day.
+
+Characterizing the workload can identify these issues, and with maintenance or reconfiguration they may be eliminated.
+
+##### **Throttling workload** *
+
+If the identified workload cannot be eliminated, use system resource controls to throttle it. For example, a system backup task may be interfering with a production database by consuming CPU resources to compress the backup, and then network resources to transfer it. This CPU and network usage may be throttled using resource controls, so that the backup occurs more slowly without hurting the database.
+
+##### **Simulation benchmarks** *
+
+Apart from identifying issues, workload characterization can also be input for the design of simulation benchmarks. If the workload measurement is an average, ideally you will also collect details of the distribution and variation. This can be important for simulating the variety of workloads expected, rather than testing only an average workload. See [Section 2.8, Statistics](#statistics), for more about averages and variation (standard deviation), and [Chapter 12, Benchmarking](ch12.md).
+
+##### **Separating load from architecture** *
+
+<u>Analysis of the workload also helps separate problems of load from problems of architecture</u>, by identifying the former. Load versus architecture was introduced in [Section 2.3, Concepts](#load-versus-architecture).
+
+##### **Tools and metrics** *
+
+The specific tools and metrics for performing workload characterization depend on the target. Some applications record detailed logs of client activity, which can be the source for statistical analysis. They may also already provide daily or monthly reports of client usage, which can be mined for details.
+
+#### Latency Analysis
+
 ### Modeling
 
 ### Capacity Planning
@@ -755,3 +846,9 @@ p21 on Trade-offs:
 > File system record size and network buffer size: small vs large
 
 Further reading may be required to understand these trade-offs.
+
+p49 on Workload Characterization:
+
+> Apart from identifying issues, workload characterization can also be input for the design of simulation benchmarks.
+
+Does this mean something like [load testing](https://en.wikipedia.org/wiki/Load_testing)? It seems awkward that this entire book never mentions "load testing".
