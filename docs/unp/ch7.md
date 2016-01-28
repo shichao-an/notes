@@ -123,6 +123,15 @@ When the keep-alive option is set for a TCP socket and no data has been exchange
         * Network failure.
         * <u>The remote host has crashed and the last-hop router has detected the crash.</u>
 
+##### **Changing the inactivity time** *
+
+A common question regarding this option is about modifying the timing parameters (usually to reduce the two-hour period of inactivity to some shorter value). Appendix E of TCPv1 discusses how to change these timing parameters for various kernels, but be aware that most kernels maintain these parameters on a per-kernel basis, not on a per-socket basis. For example, changing the inactivity period from 2 hours to 15 minutes will affect all sockets on the host that enables this option. However, such questions usually result from a misunderstanding of the purpose of this option, as discussed below.
+
+##### **Misunderstanding of the purpose** *
+
+<u>The purpose of this option is to detect if the peer *host* crashes or becomes unreachable</u> (e.g., dial-up modem connection drops, power fails, etc.). If the *peer* process crashes, its TCP will send a FIN across the connection, which we can easily detect with `select`, which was why we used `select` in [Section 6.4](ch6.md#str_cli-function-revisited). If there is no response to any of the keep-alive probes (scenario 3), we are not guaranteed that the peer host has crashed, and TCP may well terminate a valid connection. It could be that some intermediate router has crashed for 15 minutes, and that period of time just happens to completely overlap our host's 11-minute and 15-second keep-alive probe period. In fact, this function might more properly be called "make-dead" rather than "keep-alive" since it can terminate live connections.
+
+
 #### `SO_LINGER` Socket Option
 
 ### ICMPv6 Socket Option
@@ -130,3 +139,14 @@ When the keep-alive option is set for a TCP socket and no data has been exchange
 ### IPv6 Socket Options
 
 ### TCP Socket Options
+
+
+### Doubts and Solutions
+
+#### Verbatim
+
+Section 7.5 on `SO_KEEPALIVE` Socket Option.
+
+> Appendix E of TCPv1 discusses how to change these timing parameters for various kernels, ...
+
+I did not find Appendix E (actually no appendix at all) in TCPv1 (3rd Edition).
