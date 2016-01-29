@@ -131,6 +131,11 @@ A common question regarding this option is about modifying the timing parameters
 
 <u>The purpose of this option is to detect if the peer *host* crashes or becomes unreachable</u> (e.g., dial-up modem connection drops, power fails, etc.). If the peer *process* crashes, its TCP will send a FIN across the connection, which we can easily detect with `select`, which was why we used `select` in [Section 6.4](ch6.md#str_cli-function-revisited). If there is no response to any of the keep-alive probes (scenario 3), we are not guaranteed that the peer host has crashed, and TCP may well terminate a valid connection. It could be that some intermediate router has crashed for 15 minutes, and that period of time just happens to completely overlap our host's 11-minute and 15-second keep-alive probe period. In fact, this function might more properly be called "make-dead" rather than "keep-alive" since it can terminate live connections.
 
+##### **Usages of the `SO_KEEPALIVE` option** *
+
+This option is normally used by servers, although clients can also use the option. Servers use the option because they spend most of their time blocked waiting for input across the TCP connection (waiting for a client request). The server process won't know if the client host's connection drops, is powered off, or crashes, and the server will continually wait for input (which never arrives). This is called a **half-open connection**. <u>The keep-alive option will detect these half-open connections and terminate them.</u>
+
+Some servers (e.g. FTP servers) provide an application timeout, often on the order of minutes. This is done by the application itself, normally around a call to `read`, reading the next client command. This timeout does not involve this socket option. This is often a better method of eliminating connections to missing clients, since the application has complete control if it implements the timeout itself.
 
 #### `SO_LINGER` Socket Option
 
