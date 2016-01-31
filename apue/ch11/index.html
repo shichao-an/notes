@@ -582,18 +582,18 @@
 <h3 id="thread-identification">Thread Identification</h3>
 <p>Unlike the process ID, which is unique in the system, the thread ID has significance only within the context of the process to which it belongs.</p>
 <p>A thread ID is represented by the <code>pthread_t</code> data type. Implementations are allowed to use a structure to represent the <code>pthread_t</code> data type, so portable implementations can’t treat them as integers (process ID's <code>pid_t</code> data type is a non-negative integer). The <code>pthread_equal</code> function (below) must be used to compare two thread IDs. A consequence of allowing the <code>pthread_t</code> data type to be a structure is that there is no portable way to print its value. Linux 3.2.0 uses an unsigned long integer for the <code>pthread_t</code> data type. FreeBSD 8.0 and Mac OS X 10.6.8 use a pointer to the <code>pthread</code> structure for the <code>pthread_t</code> data type.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_equal</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="n">tid1</span><span class="p">,</span> <span class="kt">pthread_t</span> <span class="n">tid2</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_equal</span><span class="p">(</span><span class="n">pthread_t</span> <span class="n">tid1</span><span class="p">,</span> <span class="n">pthread_t</span> <span class="n">tid2</span><span class="p">);</span>
 
 <span class="cm">/* Returns: nonzero if equal, 0 otherwise */</span>
 </pre></div>
 
 
 <p>A thread can obtain its own thread ID by calling the pthread_self function.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">pthread_t</span> <span class="nf">pthread_self</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<span class="n">pthread_t</span> <span class="nf">pthread_self</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
 
 <span class="nl">Returns</span><span class="p">:</span> <span class="n">the</span> <span class="kr">thread</span> <span class="n">ID</span> <span class="n">of</span> <span class="n">the</span> <span class="n">calling</span> <span class="kr">thread</span>
 </pre></div>
@@ -603,10 +603,10 @@
 <p><a href="../figure_11.1.png" title="Figure 11.1 Work queue example"><img alt="Figure 11.1 Work queue example" src="../figure_11.1.png" /></a></p>
 <h3 id="thread-creation">Thread Creation</h3>
 <p>The traditional UNIX process model (one thread of control per process) is conceptually the same as a threads-based model whereby each process is made up of only one thread. As the program runs, its behavior should be indistinguishable from the traditional process, until it creates more threads of control. [p385] Additional threads can be created by calling the <code>pthread_create</code> function:</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_create</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tidp</span><span class="p">,</span>
-                   <span class="k">const</span> <span class="kt">pthread_attr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">pthread_create</span><span class="p">(</span><span class="n">pthread_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tidp</span><span class="p">,</span>
+                   <span class="k">const</span> <span class="n">pthread_attr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
                    <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">start_rtn</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">arg</span><span class="p">);</span>
 
 <span class="cm">/* Returns: 0 if OK, error number on failure */</span>
@@ -622,16 +622,16 @@
 <p>When a thread is created, there is no guarantee whether the newly created thread or the calling thread. <u>The newly created thread has access to the process address space and inherits the calling thread’s floating-point environment (<a href="http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/fenv.h.html"><code>fenv.h</code></a>) and signal mask; however, the set of pending signals for the thread is cleared.</u></p>
 <p>The following example creates one thread and prints the process and thread IDs of the new thread and the initial thread:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/threadid.c">threads/threadid.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">pthread_t</span> <span class="n">ntid</span><span class="p">;</span>
+<span class="n">pthread_t</span> <span class="n">ntid</span><span class="p">;</span>
 
 <span class="kt">void</span>
 <span class="nf">printids</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">pid_t</span>       <span class="n">pid</span><span class="p">;</span>
-    <span class="kt">pthread_t</span>   <span class="n">tid</span><span class="p">;</span>
+    <span class="n">pthread_t</span>   <span class="n">tid</span><span class="p">;</span>
 
     <span class="n">pid</span> <span class="o">=</span> <span class="n">getpid</span><span class="p">();</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">pthread_self</span><span class="p">();</span>
@@ -676,16 +676,16 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <li>The thread can call <code>pthread_exit</code>.</li>
 </ol>
 <h4 id="the-pthread_exit-and-pthread_join-functions">The <code>pthread_exit</code> and <code>pthread_join</code> functions</h4>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="nf">pthread_exit</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">rval_ptr</span><span class="p">);</span>
 </pre></div>
 
 
 <p>The <em>rval_ptr</em> argument is a typeless pointer is available to other threads in the process by calling the <code>pthread_join</code> function.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_join</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="kr">thread</span><span class="p">,</span> <span class="kt">void</span> <span class="o">**</span><span class="n">rval_ptr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_join</span><span class="p">(</span><span class="n">pthread_t</span> <span class="kr">thread</span><span class="p">,</span> <span class="kt">void</span> <span class="o">**</span><span class="n">rval_ptr</span><span class="p">);</span>
 
 <span class="cm">/* Returns: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -701,8 +701,8 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>If the structure was allocated on the caller’s stack, the memory contents might have changed by the time the structure is used. If a thread allocates a structure on its stack and passes a pointer to this structure to <code>pthread_exit</code>, then the stack might be destroyed and its memory reused for something else by the time the caller of <code>pthread_join</code> tries to use it.</p>
 <p>The following example shows the problem with using an automatic variable (allocated on the stack) as the argument to <code>pthread_exit</code>:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/badexit2.c">threads/badexit2.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
     <span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">;</span>
@@ -739,7 +739,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">int</span>         <span class="n">err</span><span class="p">;</span>
-    <span class="kt">pthread_t</span>   <span class="n">tid1</span><span class="p">,</span> <span class="n">tid2</span><span class="p">;</span>
+    <span class="n">pthread_t</span>   <span class="n">tid1</span><span class="p">,</span> <span class="n">tid2</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">foo</span>  <span class="o">*</span><span class="n">fp</span><span class="p">;</span>
 
     <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
@@ -761,7 +761,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>When we run this program on Linux, we get:</p>
-<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<div class="codehilite"><pre><span class="gp">$</span> ./a.out
 <span class="go">thread 1:</span>
 <span class="go">structure at 0x7f2c83682ed0</span>
 <span class="go">foo.a = 1</span>
@@ -781,9 +781,9 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 <p>The contents of the structure (allocated on the stack of thread <em>tid1</em>) have changed by the time the main thread can access the structure. Note how the stack of the second thread (<em>tid2</em>) has overwritten the first thread’s stack. To solve this problem, we can either use a global structure or allocate the structure using <code>malloc</code>.</p>
 <h4 id="the-pthread_cancel-function">The <code>pthread_cancel</code> function</h4>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_cancel</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cancel</span><span class="p">(</span><span class="n">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
 
 <span class="cm">/* Returns: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -795,7 +795,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </ul>
 <h4 id="the-pthread_cleanup_push-and-pthread_cleanup_pop-functions">The <code>pthread_cleanup_push</code> and <code>pthread_cleanup_pop</code> functions</h4>
 <p>A thread can arrange for functions to be called when it exits, similar to the way that the <code>atexit</code> function (<a href="../ch7/#atexit-function">Section 7.3</a>). The functions are known as <strong>thread cleanup handlers</strong>. More than one cleanup handler can be established for a thread. The handlers are recorded in a stack, which means that they are executed in the reverse order from that with which they were registered.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="nf">pthread_cleanup_push</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">rtn</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">);</span>
 <span class="kt">void</span> <span class="nf">pthread_cleanup_pop</span><span class="p">(</span><span class="kt">int</span> <span class="n">execute</span><span class="p">);</span>
@@ -813,8 +813,8 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>Because they can be implemented as macros, they must be used in matched pairs within the same scope in a thread. The macro definition of <code>pthread_cleanup_push</code> can include a <code>{</code> character, in which case the matching <code>}</code> character is in the <code>pthread_cleanup_pop</code> definition.</p>
 <p>The following example shows how to use thread cleanup handlers. We need to match calls to <code>pthread_cleanup_pop</code> with the calls to <code>pthread_cleanup_push</code>; otherwise, the program might not compile. [p394]</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/cleanup.c">threads/cleanup.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span>
 <span class="nf">cleanup</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
@@ -854,7 +854,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">int</span>         <span class="n">err</span><span class="p">;</span>
-    <span class="kt">pthread_t</span>   <span class="n">tid1</span><span class="p">,</span> <span class="n">tid2</span><span class="p">;</span>
+    <span class="n">pthread_t</span>   <span class="n">tid1</span><span class="p">,</span> <span class="n">tid2</span><span class="p">;</span>
     <span class="kt">void</span>        <span class="o">*</span><span class="n">tret</span><span class="p">;</span>
 
     <span class="n">err</span> <span class="o">=</span> <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">thr_fn1</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mi">1</span><span class="p">);</span>
@@ -877,7 +877,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>Running the program  on Linux gives us:</p>
-<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<div class="codehilite"><pre><span class="gp">$</span> ./a.out
 <span class="go">thread 1 start</span>
 <span class="go">thread 1 push complete</span>
 <span class="go">thread 2 start</span>
@@ -934,9 +934,9 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </table>
 <h4 id="the-pthread_detach-function">The <code>pthread_detach</code> function</h4>
 <p>By default, a thread’s termination status is retained until we call <code>pthread_join</code> for that thread. A thread’s underlying storage can be reclaimed immediately on termination if the thread has been detached. After a thread is detached, we can’t use the <code>pthread_join</code> function to wait for its termination status, because calling <code>pthread_join</code> for a detached thread results in undefined behavior. We can detach a thread by calling <code>pthread_detach</code>.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_detach</span><span class="p">(</span><span class="kt">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_detach</span><span class="p">(</span><span class="n">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
 
 <span class="cm">/* Returns: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -981,12 +981,12 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>In this way, only one thread will proceed at a time.</p>
 <p>[p400]</p>
 <p>A mutex variable is represented by the <code>pthread_mutex_t</code> data type. Before we can use a mutex variable, we must first initialize it by either setting it to the constant <code>PTHREAD_MUTEX_INITIALIZER</code> (for statically allocated mutexes only) or calling <code>pthread_mutex_init</code>. If we allocate the mutex dynamically (by calling <code>malloc</code>, for example), then we need to call <code>pthread_mutex_destroy</code> before freeing the memory.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_mutex_init</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">pthread_mutexattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_init</span><span class="p">(</span><span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+                       <span class="k">const</span> <span class="n">pthread_mutexattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
 
-<span class="kt">int</span> <span class="nf">pthread_mutex_destroy</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_destroy</span><span class="p">(</span><span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -994,11 +994,11 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 <p>To initialize a mutex with the default attributes, we set <em>attr</em> to <code>NULL</code> (mutex attributes is discussed <a href="../ch12/#synchronization-attributes">Section 12.4</a>).</p>
 <p>To lock a mutex, we call <code>pthread_mutex_lock</code>. If the mutex is already locked, the calling thread will block until the mutex is unlocked. To unlock a mutex, we call <code>pthread_mutex_unlock</code>.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_mutex_lock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_mutex_trylock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_mutex_unlock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_lock</span><span class="p">(</span><span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_trylock</span><span class="p">(</span><span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_unlock</span><span class="p">(</span><span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="n">mutex</span><span class="p">);</span>
 
 <span class="cm">/* All return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1007,12 +1007,12 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>If a thread can’t afford to block, it can use <code>pthread_mutex_trylock</code> to lock the mutex conditionally. If the mutex is unlocked at the time <code>pthread_mutex_trylock</code> is called, then <code>pthread_mutex_trylock</code> will lock the mutex without blocking and return 0. Otherwise, <code>pthread_mutex_trylock</code> will fail, returning <code>EBUSY</code> without locking the mutex.</p>
 <p>The following example illustrates a mutex used to protect a data structure. When more than one thread needs to access a dynamically allocated object, we can embed a reference count in the object to ensure that we don’t free its memory before all threads are done using it.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex1.c">threads/mutex1.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
     <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span>
-    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="n">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
     <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
     <span class="cm">/* ... more stuff here ... */</span>
 <span class="p">};</span>
@@ -1070,19 +1070,19 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <h4 id="example-of-two-mutexes">Example of two mutexes</h4>
 <p>In the following example which shows the use of two mutexes, we avoid deadlocks by ensuring that when we need to acquire two mutexes at the same time, we always lock them in the same order. The second mutex protects a hash list that we use to keep track of the foo data structures. Thus the hashlock mutex protects both the fh hash table and the <code>f_next</code> hash link field in the foo structure. The <code>f_lock</code> mutex in the foo structure protects access to the remainder of the foo structure’s fields.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex2.c">threads/mutex2.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define NHASH 29</span>
 <span class="cp">#define HASH(id) (((unsigned long)id)%NHASH)</span>
 
 <span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fh</span><span class="p">[</span><span class="n">NHASH</span><span class="p">];</span>
 
-<span class="kt">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+<span class="n">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
 
 <span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
     <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span>
-    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="n">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
     <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">foo</span>     <span class="o">*</span><span class="n">f_next</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
     <span class="cm">/* ... more stuff here ... */</span>
@@ -1186,18 +1186,18 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <h4 id="example-of-two-mutexes-simplified">Example of two mutexes (simplified)</h4>
 <p>We can simplify the previous example considerably by using the hash list lock to protect the structure reference count. The structure mutex can be used to protect everything else in the <code>foo</code> structure.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex3.c">threads/mutex3.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define NHASH 29</span>
 <span class="cp">#define HASH(id) (((unsigned long)id)%NHASH)</span>
 
 <span class="k">struct</span> <span class="n">foo</span> <span class="o">*</span><span class="n">fh</span><span class="p">[</span><span class="n">NHASH</span><span class="p">];</span>
-<span class="kt">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+<span class="n">pthread_mutex_t</span> <span class="n">hashlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
 
 <span class="k">struct</span> <span class="n">foo</span> <span class="p">{</span>
     <span class="kt">int</span>             <span class="n">f_count</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
-    <span class="kt">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
+    <span class="n">pthread_mutex_t</span> <span class="n">f_lock</span><span class="p">;</span>
     <span class="kt">int</span>             <span class="n">f_id</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">foo</span>     <span class="o">*</span><span class="n">f_next</span><span class="p">;</span> <span class="cm">/* protected by hashlock */</span>
     <span class="cm">/* ... more stuff here ... */</span>
@@ -1287,10 +1287,10 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>As a programmer, you need to find the correct balance between code complexity and performance, while still satisfying your locking requirements.</p>
 <h4 id="pthread_mutex_timedlock-function"><code>pthread_mutex_timedlock</code> Function</h4>
 <p>The <code>pthread_mutex_timedlock</code> function allows us to bound the time that a thread blocks when a mutex it is trying to acquire is already locked is equivalent to <code>pthread_mutex_lock</code>, but if the timeout value is reached, <code>pthread_mutex_timedlock</code> will return the error code <code>ETIMEDOUT</code> without locking the mutex:</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
-<span class="cp">#include &lt;time.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;time.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_mutex_timedlock</span><span class="p">(</span><span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">pthread_mutex_timedlock</span><span class="p">(</span><span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
                             <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
 
 <span class="cm">/* Returns: 0 if OK, error number on failure */</span>
@@ -1300,8 +1300,8 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>The timeout is represented by the <code>timespec</code> structure (seconds and nanoseconds) and is <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_timedlock.html">absolute time</a>.</p>
 <p>The following example uses <code>pthread_mutex_timedlock</code> to avoid blocking indefinitely:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/timedlock.c">threads/timedlock.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1310,7 +1310,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
     <span class="k">struct</span> <span class="n">timespec</span> <span class="n">tout</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">tm</span> <span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
     <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">64</span><span class="p">];</span>
-    <span class="kt">pthread_mutex_t</span> <span class="n">lock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+    <span class="n">pthread_mutex_t</span> <span class="n">lock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
 
     <span class="n">pthread_mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">);</span>
     <span class="n">printf</span><span class="p">(</span><span class="s">&quot;mutex is locked</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
@@ -1335,7 +1335,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>The following is the output:</p>
-<div class="codehilite"><pre><span class="go">$ ./a.out</span>
+<div class="codehilite"><pre><span class="gp">$</span> ./a.out
 <span class="go">mutex is locked</span>
 <span class="go">current time is 11:41:58 AM</span>
 <span class="go">the time is now 11:42:08 AM</span>
@@ -1353,12 +1353,12 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <li>Unlocked
 Only one thread at a time can hold a reader–writer lock in write mode, but multiple threads can hold a reader–writer lock in read mode at the same time.</li>
 </ul>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_rwlock_init</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">pthread_rwlockattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_init</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+                        <span class="k">const</span> <span class="n">pthread_rwlockattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
 
-<span class="kt">int</span> <span class="nf">pthread_rwlock_destroy</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_destroy</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1367,11 +1367,11 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 <p>A reader–writer lock is initialized by <code>pthread_rwlock_init</code>. A <code>NULL</code> value of <em>attr</em> indicates default attributes.</p>
 <p>Before freeing the memory backing a reader–writer lock, we need to call <code>pthread_rwlock_destroy</code> to clean it up. If <code>pthread_rwlock_init</code> allocated any resources for the reader–writer lock, <code>pthread_rwlock_destroy</code> frees those resources. If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost (see <a href="#doubts-and-solutions">Doubts and Solutions</a>).</p>
 <p>A reader–writer lock can be read locked, write locked and unlocked with the following functions:</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_rwlock_rdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_rwlock_wrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_rwlock_unlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_rdlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_wrlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_unlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
 
 <span class="cm">/* All return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1382,10 +1382,10 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 <li><code>pthread_rwlock_wrlock</code> and <code>pthread_rwlock_unlock</code> have error returns and technically we should always check for errors when we call functions that can potentially fail. However, if we design our locking properly, we don’t need to check for errors. [p410]</li>
 </ul>
 <p>The SUS also defines conditional versions of the reader–writer locking primitives.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_rwlock_tryrdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_rwlock_trywrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_tryrdlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_trywrlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="n">rwlock</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1394,20 +1394,20 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 <p>When the lock can be acquired, these functions return 0. Otherwise, they return the error <code>EBUSY</code>. These functions can be used to avoid deadlocks in situations where conforming to a lock hierarchy is difficult.</p>
 <p>The program below illustrates the use of reader–writer locks. A queue of job requests is protected by a single reader–writer lock. This example shows a possible implementation of <a href="../figure_11.1.png">Figure 11.1</a>, whereby multiple worker threads obtain jobs assigned to them by a single master thread.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/rwlock.c">threads/rwlock.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="k">struct</span> <span class="n">job</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">j_next</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">j_prev</span><span class="p">;</span>
-    <span class="kt">pthread_t</span>   <span class="n">j_id</span><span class="p">;</span>   <span class="cm">/* tells which thread handles this job */</span>
+    <span class="n">pthread_t</span>   <span class="n">j_id</span><span class="p">;</span>   <span class="cm">/* tells which thread handles this job */</span>
     <span class="cm">/* ... more stuff here ... */</span>
 <span class="p">};</span>
 
 <span class="k">struct</span> <span class="n">queue</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="n">job</span>      <span class="o">*</span><span class="n">q_head</span><span class="p">;</span>
     <span class="k">struct</span> <span class="n">job</span>      <span class="o">*</span><span class="n">q_tail</span><span class="p">;</span>
-    <span class="kt">pthread_rwlock_t</span> <span class="n">q_lock</span><span class="p">;</span>
+    <span class="n">pthread_rwlock_t</span> <span class="n">q_lock</span><span class="p">;</span>
 <span class="p">};</span>
 
 <span class="cm">/*</span>
@@ -1488,7 +1488,7 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 <span class="cm"> * Find a job for the given thread ID.</span>
 <span class="cm"> */</span>
 <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span>
-<span class="nf">job_find</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">,</span> <span class="kt">pthread_t</span> <span class="n">id</span><span class="p">)</span>
+<span class="nf">job_find</span><span class="p">(</span><span class="k">struct</span> <span class="n">queue</span> <span class="o">*</span><span class="n">qp</span><span class="p">,</span> <span class="n">pthread_t</span> <span class="n">id</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="k">struct</span> <span class="n">job</span> <span class="o">*</span><span class="n">jp</span><span class="p">;</span>
 
@@ -1509,12 +1509,12 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 <h4 id="readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts</h4>
 <p>As with mutexes, the SUS provides functions to lock reader–writer locks with a timeout to give applications a way to avoid blocking
 indefinitely while trying to acquire a reader–writer lock.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
-<span class="cp">#include &lt;time.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;time.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_rwlock_timedrdlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_timedrdlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
                                <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_rwlock_timedwrlock</span><span class="p">(</span><span class="kt">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">pthread_rwlock_timedwrlock</span><span class="p">(</span><span class="n">pthread_rwlock_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">rwlock</span><span class="p">,</span>
                                <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1530,11 +1530,11 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <li>Use the <code>pthread_cond_init</code> function to initialize a dynamically allocated condition</li>
 </ul>
 <p><code>pthread_cond_destroy</code> deinitializes a condition variable before freeing its underlying memory.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_cond_init</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
-                      <span class="k">const</span> <span class="kt">pthread_condattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_cond_destroy</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_init</span><span class="p">(</span><span class="n">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                      <span class="k">const</span> <span class="n">pthread_condattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_destroy</span><span class="p">(</span><span class="n">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1542,13 +1542,13 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 
 <p>Unless using nondefault attributes, the <em>attr</em> argument to <code>pthread_cond_init</code> can be set to <code>NULL</code>.</p>
 <p>We use <code>pthread_cond_wait</code> to wait for a condition to be true. A variant <code>pthread_cond_timedwait</code> is provided to return an error code if the condition hasn’t been satisfied in the specified amount of time.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_cond_wait</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
-                      <span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_wait</span><span class="p">(</span><span class="n">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                      <span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">);</span>
 
-<span class="kt">int</span> <span class="nf">pthread_cond_timedwait</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
-                           <span class="kt">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_timedwait</span><span class="p">(</span><span class="n">pthread_cond_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">cond</span><span class="p">,</span>
+                           <span class="n">pthread_mutex_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">mutex</span><span class="p">,</span>
                            <span class="k">const</span> <span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">tsptr</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
@@ -1559,8 +1559,8 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <p>The <code>pthread_cond_timedwait</code> function provides the same functionality as the <code>pthread_cond_wait</code> function with the addition of the timeout (<em>tsptr</em>). The timeout value specifies how long we are willing to wait expressed as a <em>timespec</em> structure, as an absolute time instead of a relative time, as in the <a href="#pthread_mutex_timedlock-function">example</a> of <code>pthread_mutex_timedlock</code>.</p>
 <p>Alternatively to the <code>clock_gettime</code> function, we can use the <code>gettimeofday</code> function to get the current time expressed as a timeval structure and translate it into a <code>timespec</code> structure. The following function can be used to obtain the absolute time for the timeout value</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/maketimeout.c">threads/maketimeout.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;sys/time.h&gt;</span>
-<span class="cp">#include &lt;stdlib.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/time.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span>
 <span class="nf">maketimeout</span><span class="p">(</span><span class="k">struct</span> <span class="n">timespec</span> <span class="o">*</span><span class="n">tsp</span><span class="p">,</span> <span class="kt">long</span> <span class="n">minutes</span><span class="p">)</span>
@@ -1579,10 +1579,10 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 
 <p>If the timeout expires without the condition occurring, <code>pthread_cond_timedwait</code> will reacquire the mutex and return the error <code>ETIMEDOUT</code>. When it returns from a successful call to <code>pthread_cond_wait</code> or <code>pthread_cond_timedwait</code>, a thread needs to reevaluate the condition, since another thread might have run and already changed the condition.</p>
 <p>There are two functions to notify threads that a condition has been satisfied. The <code>pthread_cond_signal</code> function will wake up at least one thread waiting on a condition (The POSIX specification allows for implementations of <code>pthread_cond_signal</code> to wake up more than one thread, to make the implementation simpler.), whereas the <code>pthread_cond_broadcast</code> function will wake up all threads waiting on a condition.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_cond_signal</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_cond_broadcast</span><span class="p">(</span><span class="kt">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_signal</span><span class="p">(</span><span class="n">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_cond_broadcast</span><span class="p">(</span><span class="n">pthread_cond_t</span> <span class="o">*</span><span class="n">cond</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1591,7 +1591,7 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <p>When we call <code>pthread_cond_signal</code> or <code>pthread_cond_broadcast</code>, we are said to be signaling the thread or condition. We have to be careful to signal the threads only after changing the state of the condition.</p>
 <p>The following example shows how to use a condition variable and a mutex together to synchronize threads.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/condvar.c">threads/condvar.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="k">struct</span> <span class="n">msg</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">m_next</span><span class="p">;</span>
@@ -1600,9 +1600,9 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 
 <span class="k">struct</span> <span class="n">msg</span> <span class="o">*</span><span class="n">workq</span><span class="p">;</span>
 
-<span class="kt">pthread_cond_t</span> <span class="n">qready</span> <span class="o">=</span> <span class="n">PTHREAD_COND_INITIALIZER</span><span class="p">;</span>
+<span class="n">pthread_cond_t</span> <span class="n">qready</span> <span class="o">=</span> <span class="n">PTHREAD_COND_INITIALIZER</span><span class="p">;</span>
 
-<span class="kt">pthread_mutex_t</span> <span class="n">qlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
+<span class="n">pthread_mutex_t</span> <span class="n">qlock</span> <span class="o">=</span> <span class="n">PTHREAD_MUTEX_INITIALIZER</span><span class="p">;</span>
 
 <span class="kt">void</span>
 <span class="nf">process_msg</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1647,10 +1647,10 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 </ul>
 <p>Many mutex implementations are efficient: using mutex locks is equivalent to using spin locks in terms of an application's performance. Some mutex implementations will spin for a limited amount of time trying to acquire the mutex, and only sleep when the spin count threshold is reached. These factors, combined with faster context switch in modern processors, make spin locks useful only in limited circumstances. [p417]</p>
 <p>Similar to mutex (we can replace one with the other), we can initialize a spin lock with the <code>pthread_spin_init</code> function. To deinitialize a spin lock, we can call the <code>pthread_spin_destroy</code> function.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_spin_init</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">,</span> <span class="kt">int</span> <span class="n">pshared</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_spin_destroy</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_init</span><span class="p">(</span><span class="n">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">,</span> <span class="kt">int</span> <span class="n">pshared</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_destroy</span><span class="p">(</span><span class="n">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1668,11 +1668,11 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <em> <code>pthread_spin_lock</code>, which will spin until the lock is acquired
 </em> pthread_spin_trylock, which will return the <code>EBUSY</code> error if the lock can’t be acquired immediately. <u>Note that <code>pthread_spin_trylock</code> doesn’t spin.</u></p>
 <p>Regardless of how it was locked, a spin lock can be unlocked by calling <code>pthread_spin_unlock</code>.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_spin_lock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_spin_trylock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_spin_unlock</span><span class="p">(</span><span class="kt">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_lock</span><span class="p">(</span><span class="n">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_trylock</span><span class="p">(</span><span class="n">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_spin_unlock</span><span class="p">(</span><span class="n">pthread_spinlock_t</span> <span class="o">*</span><span class="n">lock</span><span class="p">);</span>
 
 <span class="cm">/* All return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1689,12 +1689,12 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 threads have reached the same point, and then continue executing from there. The <code>pthread_join</code> function acts as a barrier to allow one thread to wait until another thread exits.</p>
 <p>Barrier objects are more general. They allow an arbitrary number of threads to wait until all of the threads have completed processing, but <u>the threads don’t have to exit. They can continue working after all threads have reached the barrier.</u></p>
 <p>The <code>pthread_barrier_init</code> function initializes a barrier, and <code>pthread_barrier_destroy</code> function deinitializes a barrier.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_barrier_init</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">barrier</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">pthread_barrierattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">pthread_barrier_init</span><span class="p">(</span><span class="n">pthread_barrier_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">barrier</span><span class="p">,</span>
+                         <span class="k">const</span> <span class="n">pthread_barrierattr_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">attr</span><span class="p">,</span>
                          <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">count</span><span class="p">);</span>
-<span class="kt">int</span> <span class="nf">pthread_barrier_destroy</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_barrier_destroy</span><span class="p">(</span><span class="n">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
 
 <span class="cm">/* Both return: 0 if OK, error number on failure */</span>
 </pre></div>
@@ -1710,9 +1710,9 @@ threads have reached the same point, and then continue executing from there. The
 </ul>
 <p>If the <code>pthread_barrier_init</code> function allocated any resources for the barrier, the resources will be freed when we deinitialize the barrier by calling the <code>pthread_barrier_destroy</code> function.</p>
 <p>The <code>pthread_barrier_wait</code> function indicates that a thread is done with its work and is ready to wait for all the other threads to catch up.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;pthread.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span> <span class="nf">pthread_barrier_wait</span><span class="p">(</span><span class="kt">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">pthread_barrier_wait</span><span class="p">(</span><span class="n">pthread_barrier_t</span> <span class="o">*</span><span class="n">barrier</span><span class="p">);</span>
 
 <span class="cm">/* Returns: 0 or PTHREAD_BARRIER_SERIAL_THREAD if OK, error number on failure */</span>
 </pre></div>
@@ -1726,10 +1726,10 @@ threads have reached the same point, and then continue executing from there. The
 </ul>
 <p>The following example shows how a barrier can be used to synchronize threads cooperating on a single task.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/barrier.c">threads/barrier.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;pthread.h&gt;</span>
-<span class="cp">#include &lt;limits.h&gt;</span>
-<span class="cp">#include &lt;sys/time.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;limits.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/time.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define NTHR   8                </span><span class="cm">/* number of threads */</span><span class="cp"></span>
 <span class="cp">#define NUMNUM 8000000L         </span><span class="cm">/* number of numbers to sort */</span><span class="cp"></span>
@@ -1738,7 +1738,7 @@ threads have reached the same point, and then continue executing from there. The
 <span class="kt">long</span> <span class="n">nums</span><span class="p">[</span><span class="n">NUMNUM</span><span class="p">];</span>
 <span class="kt">long</span> <span class="n">snums</span><span class="p">[</span><span class="n">NUMNUM</span><span class="p">];</span>
 
-<span class="kt">pthread_barrier_t</span> <span class="n">b</span><span class="p">;</span>
+<span class="n">pthread_barrier_t</span> <span class="n">b</span><span class="p">;</span>
 
 <span class="cp">#ifdef SOLARIS</span>
 <span class="cp">#define heapsort qsort</span>
@@ -1813,7 +1813,7 @@ threads have reached the same point, and then continue executing from there. The
     <span class="kt">long</span> <span class="kt">long</span>       <span class="n">startusec</span><span class="p">,</span> <span class="n">endusec</span><span class="p">;</span>
     <span class="kt">double</span>          <span class="n">elapsed</span><span class="p">;</span>
     <span class="kt">int</span>             <span class="n">err</span><span class="p">;</span>
-    <span class="kt">pthread_t</span>       <span class="n">tid</span><span class="p">;</span>
+    <span class="n">pthread_t</span>       <span class="n">tid</span><span class="p">;</span>
 
     <span class="cm">/*</span>
 <span class="cm">     * Create the initial set of numbers to sort.</span>
