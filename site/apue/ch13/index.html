@@ -647,10 +647,10 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 </ol>
 <p>The code below shows the <code>daemonize</code> function that can be called from a program that wants to initialize itself as a daemon.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/init.c">daemons/init.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;syslog.h&gt;</span>
-<span class="cp">#include &lt;fcntl.h&gt;</span>
-<span class="cp">#include &lt;sys/resource.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;syslog.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/resource.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span>
 <span class="nf">daemonize</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmd</span><span class="p">)</span>
@@ -729,11 +729,11 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 
 
 <p>If the <code>daemonize</code> function is called from a <code>main</code> program that then goes to sleep, we can check the status of the daemon with the <code>ps</code> command:</p>
-<div class="codehilite"><pre><span class="go">$ ./a.out</span>
-<span class="go">$ ps -efj</span>
+<div class="codehilite"><pre><span class="gp">$</span> ./a.out
+<span class="gp">$</span> ps -efj
 <span class="go">UID PID PPID PGID SID TTY CMD</span>
 <span class="go">sar 13800 1 13799 13799 ? ./a.out</span>
-<span class="go">$ ps -efj | grep 13799</span>
+<span class="gp">$</span> ps -efj <span class="p">|</span> grep 13799
 <span class="go">sar 13800 1 13799 13799 ? ./a.out</span>
 </pre></div>
 
@@ -755,7 +755,7 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <li>A user process on this host or some other host that is connected to this host by a TCP/IP network, can send log messages to UDP port 514. Note that the <code>syslog</code> function never generates these UDP datagrams: they require explicit network programming by the process generating the log message.</li>
 </ol>
 <p>The <code>syslogd</code> daemon reads all three forms of log messages. On start-up, this daemon reads a configuration file, usually <code>/etc/syslog.conf</code>, which determines where different classes of messages are to be sent. For example, urgent messages can be sent to the system administrator (if logged in) and printed on the console, whereas warnings may be logged to a file.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;syslog.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;syslog.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="nf">openlog</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">ident</span><span class="p">,</span> <span class="kt">int</span> <span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">facility</span><span class="p">);</span>
 <span class="kt">void</span> <span class="nf">syslog</span><span class="p">(</span><span class="kt">int</span> <span class="n">priority</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span> <span class="p">...);</span>
@@ -971,8 +971,8 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 </ul>
 <p>The <code>logger(1)</code> program is also provided by many systems as a way to send log messages to the <code>syslog</code> facility. The <code>logger</code> command is intended for a shell script running noninteractively that needs to generate log messages.</p>
 <p>In addition to <code>syslog</code>, many platforms provide a variant that handles variable argument lists.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;syslog.h&gt;</span>
-<span class="cp">#include &lt;stdarg.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;syslog.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdarg.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="nf">vsyslog</span><span class="p">(</span><span class="kt">int</span> <span class="n">priority</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span> <span class="kt">va_list</span> <span class="n">arg</span><span class="p">);</span>
 </pre></div>
@@ -998,14 +998,14 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <p>[p473]</p>
 <h4 id="example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon</h4>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/single.c">daemons/single.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
-<span class="cp">#include &lt;stdlib.h&gt;</span>
-<span class="cp">#include &lt;fcntl.h&gt;</span>
-<span class="cp">#include &lt;syslog.h&gt;</span>
-<span class="cp">#include &lt;string.h&gt;</span>
-<span class="cp">#include &lt;errno.h&gt;</span>
-<span class="cp">#include &lt;stdio.h&gt;</span>
-<span class="cp">#include &lt;sys/stat.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;syslog.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;errno.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/stat.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define LOCKFILE &quot;/var/run/daemon.pid&quot;</span>
 <span class="cp">#define LOCKMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)</span>
@@ -1070,8 +1070,8 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <p>Servers usually <code>fork</code> and <code>exec</code> another program to provide service to a client. These servers often manage multiple file descriptors (e.g. communication endpoints, configuration files, log files). It would be careless to leave these file descriptors open in the child process, because they probably won’t be used in the program executed by the child, especially if the program is unrelated to the server. At worst, leaving them open could pose a security problem: the program executed could do something malicious, such as change the server’s configuration file or trick the client into thinking it is communicating with the server, thereby gaining access to unauthorized information.</p>
 <p>An easy solution to this problem is to set the close-on-exec flag for all file descriptors that the executed program won’t need. The following function does that:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/lib/setfd.c">lib/setfd.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;fcntl.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">set_cloexec</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">)</span>

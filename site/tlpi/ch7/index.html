@@ -507,7 +507,7 @@
 <p>Resizing the heap (allocating or deallocating memory) is actually as simple as telling the kernel to adjust its idea of where the process’s program break is. Initially, the program break lies just past the end of the uninitialized data segment (the same location as <code>&amp;end</code>, shown in <a href="../figure_6-1.png">Figure 6-1</a>).</p>
 <p>After the program break is increased, the program may access any address in the newly allocated area, but no physical memory pages are allocated yet. The kernel automatically allocates new physical pages on the first attempt by the process to access addresses in those pages.</p>
 <p>Traditionally, the UNIX system has provided two system calls for manipulating the program break, and these are both available on Linux: <code>brk()</code> and <code>sbrk()</code>.  Although these system calls are seldom used directly in programs, understanding them helps clarify how memory allocation works.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
 <span class="kt">int</span> <span class="nf">brk</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">end_data_segment</span><span class="p">);</span>
 <span class="cm">/* Returns 0 on success, or –1 on error */</span>
 
@@ -542,7 +542,7 @@
 <li>They allow us to arbitrarily deallocate blocks of memory, which are maintained on a free list and recycled in future calls to allocate memory.</li>
 </ul>
 <p>The <code>malloc()</code> function allocates <em>size</em> bytes from the heap and returns a pointer to the start of the newly allocated block of memory. The allocated memory is not initialized.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="o">*</span><span class="nf">malloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
 <span class="cm">/* Returns pointer to allocated memory on success, or NULL on error */</span>
@@ -553,7 +553,7 @@
 <p>SUSv3 specifies that the call <code>malloc(0)</code> may return either <code>NULL</code> or a pointer to a small piece of memory that can (and should) be freed with <code>free()</code>. On Linux, <code>malloc(0)</code> follows the latter behavior.</p>
 <p>If memory could not be allocated (perhaps because we reached the limit to which the program break could be raised), then <code>malloc()</code> returns <code>NULL</code> and sets <code>errno</code> to indicate the error. Although the possibility of failure in allocating memory is small, all calls to <code>malloc()</code>, and the related functions that we describe later, should check for this error return.</p>
 <p>The <code>free()</code> function deallocates the block of memory pointed to by its <em>ptr</em> argument, which should be an address previously returned by <code>malloc()</code> or one of the other heap memory allocation functions described later this chapter.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdlib.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="nf">free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
 </pre></div>
