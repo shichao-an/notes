@@ -535,6 +535,13 @@
             <li><a href="#package-initialization">Package Initialization</a></li>
         
     
+        <li class="main "><a href="#scope">Scope</a></li>
+        
+            <li><a href="#scope-vs-lifetime">Scope vs. Lifetime *</a></li>
+        
+            <li><a href="#lexical-blocks">Lexical Blocks *</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1347,6 +1354,183 @@ named types cannot be compared directly:</p>
 
 <p>Note that in the above code the <code>range</code> loop in <code>init</code> uses only the index, since the value is not need. The loop could also have been written as:</p>
 <div class="codehilite"><pre><span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">pc</span> <span class="p">{</span>
+</pre></div>
+
+
+<h3 id="scope">Scope</h3>
+<p>A declaration associates a name with a program entity, such as a function or a variable. The scope of a declaration is the part of the source code where a use of the declared name refers to that declaration.</p>
+<h4 id="scope-vs-lifetime">Scope vs. Lifetime *</h4>
+<p>Don’t confuse scope with lifetime.</p>
+<ul>
+<li>The scope of a declaration is a region of the program text; it is a compile-time property.</li>
+<li>The lifetime of a variable is the range of time during execution when the variable can be referred to by other parts of the program; it is a run-time property.</li>
+</ul>
+<h4 id="lexical-blocks">Lexical Blocks *</h4>
+<h5 id="syntactic-block-and-lexical-block"><strong>Syntactic Block and Lexical Block</strong> *</h5>
+<ul>
+<li>A <strong>syntactic block</strong> (or <a href="https://en.wikipedia.org/wiki/Block_(programming)">block</a>) is a sequence of statements enclosed in braces (e.g. function, loop). A name declared inside a syntactic block is not visible outside that block. The block encloses its declarations and determines their scope.</li>
+<li>A <strong>lexical block</strong> does not surround declarations with braces. It is generalized from the notion of syntactic blocks. Each of the following elements has a lexical block:<ul>
+<li>The entire source code, called <strong>universe block</strong></li>
+<li>Each package</li>
+<li>Each file</li>
+<li>Each <code>for</code>, <code>if</code>, and <code>switch</code> statement</li>
+<li>Each case in a <code>switch</code> or <code>select</code> statement</li>
+<li>Each explicit syntactic block</li>
+</ul>
+</li>
+</ul>
+<h5 id="determining-scopes"><strong>Determining Scopes</strong> *</h5>
+<p>The lexical block of a declaration determines its scope.</p>
+<ul>
+<li>Entire source code. The declarations of built-in types, functions, and constants (e.g. <code>int</code>, <code>len</code> and <code>true</code>) are in the universe block. They can be referred to throughout the entire program.</li>
+<li>Package. Declarations outside any function (i.e. at package level) can be referred to from any file in the same package.</li>
+<li>File. Imported packages (e.g. <code>fmt</code> in the <code>tempconv</code> example) are declared at the file level, so they can be referred to from the same file, but not from another file in the same package without another import.</li>
+<li>Local. Many declarations (e.g. the variable <code>c</code> in the <code>tempconv.CToF function</code>) are local, so they can be referred to only from within the same function or a part of it.</li>
+</ul>
+<p>The scope of a control-flow label, as used by <code>break</code>, <code>continue</code>, and <code>goto</code> statements, is the entire enclosing function.</p>
+<h5 id="multiple-declarations-of-the-same-name"><strong>Multiple declarations of the same name</strong> *</h5>
+<p>A program may contain multiple declarations of the same name as long as each declaration is in a different lexical block.</p>
+<p>For example:</p>
+<ul>
+<li>You can declare a local variable with the same name as a package-level variable.</li>
+<li>As shown in <a href="#the-new-function">Section 2.3.3</a>, you can declare a function parameter called <code>new</code>, even though a function of this name is predeclared in the universe block.</li>
+</ul>
+<p>However, this should not be overdone. The larger the scope of the redeclaration, the more likely you are to surprise the reader.</p>
+<p>When the compiler encounters a reference to a name, it looks for a declaration, starting with the innermost enclosing lexical block, up to the universe block:</p>
+<ul>
+<li>If the compiler finds no declaration, it reports an "undeclared name" error.</li>
+<li>If a name is declared in both an outer block and an inner block, the inner declaration will be found first. In that case, the inner declaration is said to <em>shadow</em> (or hide) the outer one, making it inaccessible.</li>
+</ul>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">f</span><span class="p">()</span> <span class="p">{}</span>
+
+<span class="kd">var</span> <span class="nx">g</span> <span class="p">=</span> <span class="s">&quot;g&quot;</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">f</span> <span class="o">:=</span> <span class="s">&quot;f&quot;</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="c1">// &quot;f&quot;; local var f shadows package-level func f</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">g</span><span class="p">)</span> <span class="c1">// &quot;g&quot;; package-level var</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">h</span><span class="p">)</span> <span class="c1">// compile error: undefined: h</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Within a function, lexical blocks may be nested to arbitrary depth, so one local declaration can shadow another. Most blocks are created by control-flow constructs like <code>if</code> statements and <code>for</code> loops.</p>
+<p>The program below has three different variables called <code>x</code> because each declaration appears in a different lexical block.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">x</span> <span class="o">:=</span> <span class="s">&quot;hello!&quot;</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">x</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nx">x</span> <span class="o">!=</span> <span class="sc">&#39;!&#39;</span> <span class="p">{</span>
+            <span class="nx">x</span> <span class="o">:=</span> <span class="nx">x</span> <span class="o">+</span> <span class="sc">&#39;A&#39;</span> <span class="o">-</span> <span class="sc">&#39;a&#39;</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%c&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="c1">// &quot;HELLO&quot; (one letter per iteration)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The expressions <code>x[i]</code> and <code>x + 'A' - 'a'</code> each refer to a declaration of <code>x</code> from an outer block. (Note that the latter expression is not equivalent to <code>unicode.ToUpper</code>). This is explained in detail below.</p>
+<h5 id="explicit-and-implicit-blocks"><strong>Explicit and Implicit Blocks</strong> *</h5>
+<p>Not all lexical blocks correspond to explicit brace-delimited sequences of statements; some of them also correspond to implicit blocks. In the previous example, the <code>for</code> loop above creates two lexical blocks:</p>
+<ul>
+<li>The explicit block for the loop body.</li>
+<li>An implicit block that additionally encloses the variables (e.g. <code>i</code>) declared by the initialization clause. The scope of a variable declared in the implicit block is the condition, post-statement (<code>i++</code>), and body of the <code>for</code> statement.</li>
+</ul>
+<p>The example below also has three variables named <code>x</code>, each declared in a different block: one in the function body, one in the <code>for</code> statement's block, and one in the loop body; but only two of the blocks are explicit:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">x</span> <span class="o">:=</span> <span class="s">&quot;hello&quot;</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">x</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">x</span> <span class="p">{</span>
+        <span class="nx">x</span> <span class="o">:=</span> <span class="nx">x</span> <span class="o">+</span> <span class="sc">&#39;A&#39;</span> <span class="o">-</span> <span class="sc">&#39;a&#39;</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%c&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="c1">// &quot;HELLO&quot; (one letter per iteration)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Like <code>for</code> loops, <code>if</code> statements and <code>switch</code> statements also create implicit blocks in addition to their body blocks. The code in the following <code>if-else</code> chain shows the scope of <code>x</code> and <code>y</code>:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">x</span> <span class="o">:=</span> <span class="nx">f</span><span class="p">();</span> <span class="nx">x</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">y</span> <span class="o">:=</span> <span class="nx">g</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span> <span class="nx">x</span> <span class="o">==</span> <span class="nx">y</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span> <span class="c1">// compile error: x and y are not visible here</span>
+</pre></div>
+
+
+<p><u>The second <code>if</code> statement is nested within the first, so variables declared within the first <code>if</code> statement's initializer are visible within the second.</u> Similar rules apply to each case of a <code>switch</code> statement: there is a block for the condition and a block for each case body.</p>
+<p>At the package level, the order in which declarations appear has no effect on their scope, so a declaration may refer to itself or to another that follows it. This enables us to declare recursive or mutually recursive types and functions. However, the compiler will report an error if a constant or variable declaration refers to itself.</p>
+<h5 id="examples-if-statement"><strong>Examples: <code>if</code> statement</strong> *</h5>
+<p>In the following program:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">fname</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span> <span class="c1">// compile error: unused: f</span>
+    <span class="k">return</span> <span class="nx">err</span>
+<span class="p">}</span>
+<span class="nx">f</span><span class="p">.</span><span class="nx">ReadByte</span><span class="p">()</span> <span class="c1">// compile error: undefined f</span>
+<span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>    <span class="c1">// compile error: undefined f</span>
+</pre></div>
+
+
+<p>The scope of <code>f</code> is just the <code>if</code> statement, so <code>f</code> is not accessible to the statements that follow, resulting in compiler errors: "undefined f". Depending on the compiler, you may get an additional error reporting that the local variable <code>f</code> was never used.</p>
+<p>Thus it is often necessary to declare <code>f</code> before the condition so that it is accessible after:</p>
+<div class="codehilite"><pre><span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">fname</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">err</span>
+<span class="p">}</span>
+<span class="nx">f</span><span class="p">.</span><span class="nx">ReadByte</span><span class="p">()</span>
+<span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+</pre></div>
+
+
+<p>You may be tempted to avoid declaring <code>f</code> and <code>err</code> in the outer block by moving the calls to <code>ReadByte</code> and <code>Close</code> inside an else block:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">fname</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">err</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="c1">// f and err are visible here too</span>
+    <span class="nx">f</span><span class="p">.</span><span class="nx">ReadByte</span><span class="p">()</span>
+    <span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>However, <u>the normal practice in Go is to deal with the error in the <code>if</code> block and then return, so that the successful execution path is not indented.</u></p>
+<h5 id="short-variable-declarations-and-scope"><strong>Short variable declarations and scope</strong> *</h5>
+<p>Short variable declarations require awareness of scope. The following program starts by obtaining its current working directory and saving it in a package-level variable. This could be done by calling <code>os.Getwd</code> in function main, but it might be better to separate this concern from the primary logic, especially if failing to get the directory is a fatal error.  The function <a href="https://golang.org/pkg/log/#Fatalf"><code>log.Fatalf</code></a> prints a message and calls <a href="https://golang.org/pkg/os/#Exit"><code>os.Exit(1)</code></a>.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">cwd</span> <span class="kt">string</span>
+<span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">cwd</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Getwd</span><span class="p">()</span> <span class="c1">// compile error: unused: cwd</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;os.Getwd failed: %v&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>:=</code> statement declares <code>cwd</code> and <code>err</code> as local variables. The inner declaration of <code>cwd</code> makes the outer one inaccessible, so the statement does not update the package-level <code>cwd</code> variable as intended. Current Go compilers detect that the local <code>cwd</code> variable is never used and report this as an error, but they are not strictly required to perform this check. A minor change (as shown below), such as the addition of a logging statement that refers to the local <code>cwd</code> as shown below, would defeat the check.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">cwd</span> <span class="kt">string</span>
+
+<span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">cwd</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Getwd</span><span class="p">()</span> <span class="c1">// NOTE: wrong!</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;os.Getwd failed: %v&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Working directory = %s&quot;</span><span class="p">,</span> <span class="nx">cwd</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The global <code>cwd</code> variable remains uninitialized, and the apparently normal <code>log</code> output obfuscates the bug.</p>
+<p>There are a number of ways to deal with this potential problem. The most direct is to avoid <code>:=</code> by declaring <code>err</code> in a separate <code>var</code> declaration:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">cwd</span> <span class="kt">string</span>
+
+<span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">err</span> <span class="kt">error</span>
+    <span class="nx">cwd</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Getwd</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;os.Getwd failed: %v&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 </pre></div>
 
 
