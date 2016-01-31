@@ -904,4 +904,4 @@ func ListenAndServe(addr string, handler Handler) error
 
 Besides documentation comments at the beginning of a program or package, it’s also good style to write a comment before the declaration of each function to specify its behavior. These conventions are important, because they are used by tools like `go doc` and `godoc` to locate and display documentation.
 
-For comments that span multiple lines or appear within an expression or statement, there is also the `/* ... */` notation familiar from other languages. Such comments are sometimes used at the beginning of a file for a large block of explanatory text to avoid a `//` on every line.  Within a comment, // and `/*` have no special meaning, so comments do not nest.
+For comments that span multiple lines or appear within an expression or statement, there is also the `/* ... */` notation familiar from other languages. Such comments are sometimes used at the beginning of a file for a large block of explanatory text to avoid a `//` on every line.  Within a comment, `//` and `/*` have no special meaning, so comments do not nest.

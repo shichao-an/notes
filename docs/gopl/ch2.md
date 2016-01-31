@@ -890,6 +890,210 @@ Note that in the above code the `range` loop in `init` uses only the index, sinc
 for i, _ := range pc {
 ```
 
+### Scope
+
+A declaration associates a name with a program entity, such as a function or a variable. The scope of a declaration is the part of the source code where a use of the declared name refers to that declaration.
+
+#### Scope vs. Lifetime *
+
+Don’t confuse scope with lifetime.
+
+* The scope of a declaration is a region of the program text; it is a compile-time property.
+* The lifetime of a variable is the range of time during execution when the variable can be referred to by other parts of the program; it is a run-time property.
+
+#### Lexical Blocks *
+
+##### **Syntactic Block and Lexical Block** *
+
+* A **syntactic block** (or [block](https://en.wikipedia.org/wiki/Block_(programming))) is a sequence of statements enclosed in braces (e.g. function, loop). A name declared inside a syntactic block is not visible outside that block. The block encloses its declarations and determines their scope.
+* A **lexical block** does not surround declarations with braces. It is generalized from the notion of syntactic blocks. Each of the following elements has a lexical block:
+    * The entire source code, called **universe block**
+    * Each package
+    * Each file
+    * Each `for`, `if`, and `switch` statement
+    * Each case in a `switch` or `select` statement
+    * Each explicit syntactic block
+
+##### **Determining Scopes** *
+
+The lexical block of a declaration determines its scope.
+
+* Entire source code. The declarations of built-in types, functions, and constants (e.g. `int`, `len` and `true`) are in the universe block. They can be referred to throughout the entire program.
+* Package. Declarations outside any function (i.e. at package level) can be referred to from any file in the same package.
+* File. Imported packages (e.g. `fmt` in the `tempconv` example) are declared at the file level, so they can be referred to from the same file, but not from another file in the same package without another import.
+* Local. Many declarations (e.g. the variable `c` in the `tempconv.CToF function`) are local, so they can be referred to only from within the same function or a part of it.
+
+The scope of a control-flow label, as used by `break`, `continue`, and `goto` statements, is the entire enclosing function.
+
+##### **Multiple declarations of the same name** *
+
+A program may contain multiple declarations of the same name as long as each declaration is in a different lexical block.
+
+For example:
+
+* You can declare a local variable with the same name as a package-level variable.
+* As shown in [Section 2.3.3](#the-new-function), you can declare a function parameter called `new`, even though a function of this name is predeclared in the universe block.
+
+However, this should not be overdone. The larger the scope of the redeclaration, the more likely you are to surprise the reader.
+
+When the compiler encounters a reference to a name, it looks for a declaration, starting with the innermost enclosing lexical block, up to the universe block:
+
+* If the compiler finds no declaration, it reports an "undeclared name" error.
+* If a name is declared in both an outer block and an inner block, the inner declaration will be found first. In that case, the inner declaration is said to *shadow* (or hide) the outer one, making it inaccessible.
+
+For example:
+
+```go
+func f() {}
+
+var g = "g"
+
+func main() {
+	f := "f"
+	fmt.Println(f) // "f"; local var f shadows package-level func f
+	fmt.Println(g) // "g"; package-level var
+	fmt.Println(h) // compile error: undefined: h
+}
+```
+
+Within a function, lexical blocks may be nested to arbitrary depth, so one local declaration can shadow another. Most blocks are created by control-flow constructs like `if` statements and `for` loops.
+
+The program below has three different variables called `x` because each declaration appears in a different lexical block.
+
+```go
+func main() {
+	x := "hello!"
+	for i := 0; i < len(x); i++ {
+		x := x[i]
+		if x != '!' {
+			x := x + 'A' - 'a'
+			fmt.Printf("%c", x) // "HELLO" (one letter per iteration)
+		}
+	}
+}
+```
+
+The expressions `x[i]` and `x + 'A' - 'a'` each refer to a declaration of `x` from an outer block. (Note that the latter expression is not equivalent to `unicode.ToUpper`). This is explained in detail below.
+
+##### **Explicit and Implicit Blocks** *
+
+Not all lexical blocks correspond to explicit brace-delimited sequences of statements; some of them also correspond to implicit blocks. In the previous example, the `for` loop above creates two lexical blocks:
+
+* The explicit block for the loop body.
+* An implicit block that additionally encloses the variables (e.g. `i`) declared by the initialization clause. The scope of a variable declared in the implicit block is the condition, post-statement (`i++`), and body of the `for` statement.
+
+The example below also has three variables named `x`, each declared in a different block: one in the function body, one in the `for` statement's block, and one in the loop body; but only two of the blocks are explicit:
+
+```go
+func main() {
+	x := "hello"
+	for _, x := range x {
+		x := x + 'A' - 'a'
+		fmt.Printf("%c", x) // "HELLO" (one letter per iteration)
+	}
+}
+```
+
+Like `for` loops, `if` statements and `switch` statements also create implicit blocks in addition to their body blocks. The code in the following `if-else` chain shows the scope of `x` and `y`:
+
+```go
+if x := f(); x == 0 {
+	fmt.Println(x)
+} else if y := g(x); x == y {
+	fmt.Println(x, y)
+} else {
+	fmt.Println(x, y)
+}
+fmt.Println(x, y) // compile error: x and y are not visible here
+```
+
+<u>The second `if` statement is nested within the first, so variables declared within the first `if` statement's initializer are visible within the second.</u> Similar rules apply to each case of a `switch` statement: there is a block for the condition and a block for each case body.
+
+At the package level, the order in which declarations appear has no effect on their scope, so a declaration may refer to itself or to another that follows it. This enables us to declare recursive or mutually recursive types and functions. However, the compiler will report an error if a constant or variable declaration refers to itself.
+
+##### **Examples: `if` statement** *
+
+In the following program:
+
+```go
+if f, err := os.Open(fname); err != nil { // compile error: unused: f
+	return err
+}
+f.ReadByte() // compile error: undefined f
+f.Close()    // compile error: undefined f
+```
+
+The scope of `f` is just the `if` statement, so `f` is not accessible to the statements that follow, resulting in compiler errors: "undefined f". Depending on the compiler, you may get an additional error reporting that the local variable `f` was never used.
+
+Thus it is often necessary to declare `f` before the condition so that it is accessible after:
+
+```go
+f, err := os.Open(fname)
+if err != nil {
+	return err
+}
+f.ReadByte()
+f.Close()
+```
+
+You may be tempted to avoid declaring `f` and `err` in the outer block by moving the calls to `ReadByte` and `Close` inside an else block:
+
+```go
+if f, err := os.Open(fname); err != nil {
+	return err
+} else {
+	// f and err are visible here too
+	f.ReadByte()
+	f.Close()
+}
+```
+
+However, <u>the normal practice in Go is to deal with the error in the `if` block and then return, so that the successful execution path is not indented.</u>
+
+##### **Short variable declarations and scope** *
+
+Short variable declarations require awareness of scope. The following program starts by obtaining its current working directory and saving it in a package-level variable. This could be done by calling `os.Getwd` in function main, but it might be better to separate this concern from the primary logic, especially if failing to get the directory is a fatal error.  The function [`log.Fatalf`](https://golang.org/pkg/log/#Fatalf) prints a message and calls [`os.Exit(1)`](https://golang.org/pkg/os/#Exit).
+
+```go
+var cwd string
+func init() {
+	cwd, err := os.Getwd() // compile error: unused: cwd
+	if err != nil {
+		log.Fatalf("os.Getwd failed: %v", err)
+	}
+}
+```
+
+The `:=` statement declares `cwd` and `err` as local variables. The inner declaration of `cwd` makes the outer one inaccessible, so the statement does not update the package-level `cwd` variable as intended. Current Go compilers detect that the local `cwd` variable is never used and report this as an error, but they are not strictly required to perform this check. A minor change (as shown below), such as the addition of a logging statement that refers to the local `cwd` as shown below, would defeat the check.
+
+```go
+var cwd string
+
+func init() {
+	cwd, err := os.Getwd() // NOTE: wrong!
+	if err != nil {
+		log.Fatalf("os.Getwd failed: %v", err)
+	}
+	log.Printf("Working directory = %s", cwd)
+}
+```
+
+The global `cwd` variable remains uninitialized, and the apparently normal `log` output obfuscates the bug.
+
+There are a number of ways to deal with this potential problem. The most direct is to avoid `:=` by declaring `err` in a separate `var` declaration:
+
+```go
+var cwd string
+
+func init() {
+	var err error
+	cwd, err = os.Getwd()
+		if err != nil {
+	log.Fatalf("os.Getwd failed: %v", err)
+	}
+}
+```
+
 ### Doubts and Solutions
 
 #### Verbatim
