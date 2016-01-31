@@ -581,7 +581,7 @@
 <p>FIFOs (Section 15.5) get around the second limitation, and that UNIX domain sockets (Section 17.2) get around both limitations.</p>
 <p>Despite these limitations, half-duplex pipes are still the most commonly used form of IPC. Every time you type a sequence of commands in a pipeline for the shell to execute, the shell creates a separate process for each command and links the standard output of one process to the standard input of the next using a pipe.</p>
 <p>A pipe is created by calling the <code>pipe</code> function.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;unistd.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span> <span class="nf">pipe</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">[</span><span class="mi">2</span><span class="p">]);</span>
 
@@ -614,7 +614,7 @@ indicate an end of file after all the data has been read.<ul>
 <p>When we’re writing to a pipe (or FIFO), the constant <code>PIPE_BUF</code> specifies the kernel’s pipe buffer size. A write of <code>PIPE_BUF</code> bytes or less will not be interleaved with the writes from other processes to the same pipe (or FIFO). But if multiple processes are writing to a pipe (or FIFO), and if we write more than <code>PIPE_BUF</code> bytes, the data might be interleaved with the data from the other writers. We can determine the value of <code>PIPE_BUF</code> by using <code>pathconf</code> or <code>fpathconf</code>.</p>
 <h4 id="example-creating-a-pipe-between-a-parent-and-its-child">Example: creating a pipe between a parent and its child</h4>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/">ipc1/pipe1.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -645,8 +645,8 @@ indicate an end of file after all the data has been read.<ul>
 <h4 id="example-pager">Example: pager</h4>
 <p>To avoid writing all the data to a temporary file and calling system to display that file, we want to pipe the output directly to the pager. To do this, we create a pipe, <code>fork</code> a child process, <u>set up the child’s standard input to be the read end of the pipe</u>, and <code>exec</code> the user’s pager program, as shown in the program below. [p538]</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/pipe2.c">ipc1/pipe2.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;sys/wait.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/wait.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define DEF_PAGER   &quot;/bin/more&quot;     </span><span class="cm">/* default pager program */</span><span class="cp"></span>
 
@@ -722,7 +722,7 @@ indicate an end of file after all the data has been read.<ul>
 <h4 id="implementation-of-the-tell-and-wait-functions-using-pipes">Implementation of the <code>TELL</code> and <code>WAIT</code> functions using pipes</h4>
 <p>Recall the five functions <code>TELL_WAIT</code>, <code>TELL_PARENT</code>, <code>TELL_CHILD</code>, <code>WAIT_PARENT</code>, and <code>WAIT_CHILD</code> from <a href="../ch8/#race-conditions">Section 8.9</a>. Here is an implementation using pipes:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/tellwait.c">ipc1/tellwait.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
 
 <span class="k">static</span> <span class="kt">int</span>  <span class="n">pfd1</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">pfd2</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
 
@@ -778,7 +778,7 @@ indicate an end of file after all the data has been read.<ul>
 <p>Each pipe has an extra reader, which doesn’t matter. That is, in addition to the child reading from <code>pfd1[0]</code>, the parent has this end of the top pipe open for reading. This doesn’t affect us, since the parent doesn’t try to read from this pipe.</p>
 <h3 id="popen-and-pclose-functions"><code>popen</code> and <code>pclose</code> Functions</h3>
 <p>The standard I/O library has historically provided the <code>popen</code> and <code>pclose</code> functions. These two functions handle all the dirty work that we’ve been doing ourselves: creating a pipe, <code>fork</code>ing a child, closing the unused ends of the pipe, executing a shell to run the command, and waiting for the command to terminate.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;stdio.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 
 <span class="kt">FILE</span> <span class="o">*</span><span class="nf">popen</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cmdstring</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">type</span><span class="p">);</span>
 
@@ -813,8 +813,8 @@ indicate an end of file after all the data has been read.<ul>
 <h4 id="example-pager-using-popen">Example: pager using <code>popen</code></h4>
 <p>The following program is an reimplementation of <a href="#example-pager">pager in the previous example</a> using <code>popen</code>:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/popen2.c">ipc1/popen2.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;sys/wait.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/wait.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define PAGER   &quot;${PAGER:-more}&quot; </span><span class="cm">/* environment variable, or default */</span><span class="cp"></span>
 
@@ -851,10 +851,10 @@ indicate an end of file after all the data has been read.<ul>
 <h4 id="example-popen-and-pclose-functions">Example: <code>popen</code> and <code>pclose</code> Functions</h4>
 <p>The following code shows our version of <code>popen</code> and <code>pclose</code>:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/popen.c">ipc1/popen.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;errno.h&gt;</span>
-<span class="cp">#include &lt;fcntl.h&gt;</span>
-<span class="cp">#include &lt;sys/wait.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;errno.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/wait.h&gt;</span><span class="cp"></span>
 
 <span class="cm">/*</span>
 <span class="cm"> * Pointer to array allocated at run-time.</span>
@@ -992,8 +992,8 @@ indicate an end of file after all the data has been read.<ul>
 <p><a href="../figure_15.13.png" title="Figure 15.13 Transforming input using popen"><img alt="Figure 15.13 Transforming input using popen" src="../figure_15.13.png" /></a></p>
 <p>The following program is a simple filter to demonstrate this operation:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/myuclc.c">ipc1/myuclc.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;ctype.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;ctype.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1016,8 +1016,8 @@ indicate an end of file after all the data has been read.<ul>
 <p>The filter copies standard input to standard output, converting any uppercase character to lowercase. The reason we’re careful to <code>fflush</code> standard output after writing a newline is discussed in the next section when we talk about coprocesses.</p>
 <p>We compile this filter into the executable file <code>myuclc</code>, which we then invoke from the program in the following code using <code>popen</code>:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/popen1.c">ipc1/popen1.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
-<span class="cp">#include &lt;sys/wait.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;sys/wait.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1053,7 +1053,7 @@ indicate an end of file after all the data has been read.<ul>
 <p><a href="../figure_15.16.png" title="Figure 15.16 Driving a coprocess by writing its standard input and reading its standard output"><img alt="Figure 15.16 Driving a coprocess by writing its standard input and reading its standard output" src="../figure_15.16.png" /></a></p>
 <p>The following program is a simple coprocess that reads two numbers from its standard input, computes their sum, and writes the sum to its standard output.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/add2.c">ipc1/add2.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1081,7 +1081,7 @@ indicate an end of file after all the data has been read.<ul>
 <p>We compile this program and leave the executable in the file <code>add2</code>.</p>
 <p>The following program invokes the <code>add2</code> coprocess after reading two numbers from its standard input. The value from the coprocess is written to its standard output.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/pipe4.c">ipc1/pipe4.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">sig_pipe</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>      <span class="cm">/* our signal handler */</span>
 
@@ -1155,7 +1155,7 @@ indicate an end of file after all the data has been read.<ul>
 <h4 id="example-invoking-add2-as-a-coprocess-using-standard-io">Example: invoking <code>add2</code> as a coprocess using standard I/O</h4>
 <p>The previous example of coprocess <code>add2</code> purposely used low-level I/O (UNIX system calls): <code>read</code> and <code>write</code>. What happens if we rewrite this coprocess to use standard I/O? The following program is the new version:</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/ipc1/add2stdio.c">ipc1/add2stdio.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#include &quot;apue.h&quot;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
 
 <span class="kt">int</span>
 <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -1198,7 +1198,7 @@ indicate an end of file after all the data has been read.<ul>
 <h3 id="fifos">FIFOs</h3>
 <p>FIFOs are sometimes called named pipes. Unnamed pipes can be used only between related processes when a common ancestor has created the pipe. With FIFOs, however, unrelated processes can exchange data.</p>
 <p>A FIFO is a type of file (<a href="../ch4/#file-types">Chapter 4</a>). One of the encodings of the <code>st_mode</code> member of the stat structure indicates that a file is a FIFO. We can test for this with the <code>S_ISFIFO</code> macro. Creating a FIFO is similar to creating a file; the <em>pathname</em> for a FIFO exists in the file system.</p>
-<div class="codehilite"><pre><span class="cp">#include &lt;sys/stat.h&gt;</span>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/stat.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span> <span class="nf">mkfifo</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">mode_t</span> <span class="n">mode</span><span class="p">);</span>
 <span class="kt">int</span> <span class="nf">mkfifoat</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">mode_t</span> <span class="n">mode</span><span class="p">);</span>
