@@ -724,6 +724,89 @@ switch (c)
 }
 ```
 
+#### Jump Statements
+
+The [jump statements](http://en.cppreference.com/w/c/language/statements#Jump_statements) unconditionally transfer flow control.
+
+* `break`
+* `continue`
+* [`goto`](http://en.cppreference.com/w/c/language/goto)
+* `return`
+
+`goto` only causes a jump within the function, which is commonly used to jump out of the nested loops. To jump out of the function, use [`longjmp`](http://en.cppreference.com/w/c/program/longjmp).
+
+[`setjmp`](http://en.cppreference.com/w/c/program/setjmp) saves the current execution context into a variable `env` of type `jmp_buf` and returns 0. When the subsequent code calls `longjmp` to jump, a status code is required. The code execution will return to the call site of `setjmp`, and returns the status code passed to `longjmp`.
+
+The following code:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <setjmp.h>
+
+void test(jmp_buf *env)
+{
+    printf("1....\n");
+    longjmp(*env, 10);
+}
+
+int main(int argc, char* argv[])
+{
+    jmp_buf env;
+    int ret = setjmp(env); // calling `longjmp` goes to here,
+                           // and `ret` is the value passed to `longjmp`
+    if (ret == 0)
+    {
+        test(&env);
+    }
+    else
+    {
+        printf("2....(%d)\n", ret);
+    }
+
+    return EXIT_SUCCESS;
+}
+```
+
+will output:
+
+```text
+1....
+2....(10)
+```
+
+### Functions
+
+A function can be defined once, but can be declared and called multiple times.
+
+#### Nested Functions
+
+The GCC supports the [nested functions](https://gcc.gnu.org/onlinedocs/gcc/Nested-Functions.html) extension.
+
+```c
+typedef void(*func_t)();
+
+func_t test()
+{
+    void func1()
+    {
+        printf("%s\n", __func__);
+    };
+
+    return func1;
+}
+
+int main(int argc, char* argv[])
+{
+    test()();
+    return EXIT_SUCCESS;
+}
+```
+
+
+
+
 - - -
 
 ### References
