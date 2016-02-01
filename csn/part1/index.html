@@ -533,6 +533,13 @@
         
             <li><a href="#selection-statements">Selection Statements</a></li>
         
+            <li><a href="#jump-statements">Jump Statements</a></li>
+        
+    
+        <li class="main "><a href="#functions">Functions</a></li>
+        
+            <li><a href="#nested-functions">Nested Functions</a></li>
+        
     
         <li class="main "><a href="#references">References</a></li>
         
@@ -1267,6 +1274,77 @@ Correct: *(p.f)
      <span class="k">case</span> <span class="sc">&#39;A&#39;</span> <span class="p">...</span> <span class="sc">&#39;Z&#39;</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;A..Z</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
      <span class="k">case</span> <span class="sc">&#39;0&#39;</span> <span class="p">...</span> <span class="sc">&#39;9&#39;</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;0..9</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
      <span class="k">default</span><span class="o">:</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;default</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="jump-statements">Jump Statements</h4>
+<p>The <a href="http://en.cppreference.com/w/c/language/statements#Jump_statements">jump statements</a> unconditionally transfer flow control.</p>
+<ul>
+<li><code>break</code></li>
+<li><code>continue</code></li>
+<li><a href="http://en.cppreference.com/w/c/language/goto"><code>goto</code></a></li>
+<li><code>return</code></li>
+</ul>
+<p><code>goto</code> only causes a jump within the function, which is commonly used to jump out of the nested loops. To jump out of the function, use <a href="http://en.cppreference.com/w/c/program/longjmp"><code>longjmp</code></a>.</p>
+<p><a href="http://en.cppreference.com/w/c/program/setjmp"><code>setjmp</code></a> saves the current execution context into a variable <code>env</code> of type <code>jmp_buf</code> and returns 0. When the subsequent code calls <code>longjmp</code> to jump, a status code is required. The code execution will return to the call site of <code>setjmp</code>, and returns the status code passed to <code>longjmp</code>.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdbool.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;setjmp.h&gt;</span><span class="cp"></span>
+
+<span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">jmp_buf</span> <span class="o">*</span><span class="n">env</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;1....</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">longjmp</span><span class="p">(</span><span class="o">*</span><span class="n">env</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">jmp_buf</span> <span class="n">env</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">setjmp</span><span class="p">(</span><span class="n">env</span><span class="p">);</span> <span class="c1">// calling `longjmp` goes to here,</span>
+                           <span class="c1">// and `ret` is the value passed to `longjmp`</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">test</span><span class="p">(</span><span class="o">&amp;</span><span class="n">env</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;2....(%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>1....
+2....(10)
+</pre></div>
+
+
+<h3 id="functions">Functions</h3>
+<p>A function can be defined once, but can be declared and called multiple times.</p>
+<h4 id="nested-functions">Nested Functions</h4>
+<p>The GCC supports the <a href="https://gcc.gnu.org/onlinedocs/gcc/Nested-Functions.html">nested functions</a> extension.</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="o">*</span><span class="n">func_t</span><span class="p">)();</span>
+
+<span class="n">func_t</span> <span class="nf">test</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">void</span> <span class="n">func1</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">__func__</span><span class="p">);</span>
+    <span class="p">};</span>
+
+    <span class="k">return</span> <span class="n">func1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">test</span><span class="p">()();</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 
