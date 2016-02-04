@@ -557,6 +557,8 @@
         
             <li><a href="#workload-characterization">Workload Characterization</a></li>
         
+            <li><a href="#drill-down-analysis">Drill-Down Analysis</a></li>
+        
             <li><a href="#latency-analysis">Latency Analysis</a></li>
         
     
@@ -1523,7 +1525,39 @@ limit tenants who are sharing one system.</p>
 <p><u>Analysis of the workload also helps separate problems of load from problems of architecture</u>, by identifying the former. Load versus architecture was introduced in <a href="#load-versus-architecture">Section 2.3, Concepts</a>.</p>
 <h5 id="tools-and-metrics"><strong>Tools and metrics</strong> *</h5>
 <p>The specific tools and metrics for performing workload characterization depend on the target. Some applications record detailed logs of client activity, which can be the source for statistical analysis. They may also already provide daily or monthly reports of client usage, which can be mined for details.</p>
+<h4 id="drill-down-analysis">Drill-Down Analysis</h4>
+<p>Drill-down analysis involves the following steps in order:</p>
+<ol>
+<li>Examine an issue at a high level.</li>
+<li>Narrow the focus based on the previous findings</li>
+<li>Discard uninteresting areas.</li>
+<li>Dig deeper into interesting areas.</li>
+</ol>
+<p>The process can involve digging down through deeper layers of the software stack (to hardware if necessary) to find the root cause of the issue.</p>
+<p>A drill-down analysis methodology has three stages:</p>
+<ol>
+<li><strong>Monitoring</strong>: This is used for continually recording high-level statistics over time, and identifying or alerting if a problem may be present.<ul>
+<li>Traditionally, <a href="https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol">Simple Network Monitoring Protocol</a> (SNMP) can be used to monitor supporting network-attached devices. The resulting data may reveal long-term patterns that may be missed when using command-line tools over short durations. Many monitoring solutions provide alerts if a problem is suspected, prompting analysis to move to the next stage.</li>
+</ul>
+</li>
+<li><strong>Identification</strong>: Given a suspected problem, this narrows the investigation to particular resources or areas of interest, identifying possible bottlenecks.
+    Identification is performed interactively on the server using standard observability tools (<code>vmstat(1)</code>, <code>iostat(1)</code>, and <code>mpstat(1)</code>) to check system components. [p50]</li>
+<li><strong>Analysis</strong>: Further examination of particular system areas is done to attempt to root-cause and quantify the issue.
+    Analysis tools include those based on tracing or profiling for deeper inspection of suspect areas, such as <code>strace(1)</code>, <a href="https://en.wikipedia.org/wiki/Truss_(Unix)"><code>truss(1)</code></a>, <a href="https://en.wikipedia.org/wiki/Perf_(Linux)">perf</a>, and <a href="https://en.wikipedia.org/wiki/DTrace">DTrace</a>.</li>
+</ol>
+<h5 id="five-whys"><strong>Five Whys</strong></h5>
+<p>Ask yourself "why?" then answer the question, and repeat up to five times in total (or more). For example:</p>
+<ol>
+<li>A database has begun to perform poorly for many queries. Why?</li>
+<li>It is delayed by disk I/O due to memory paging. Why?</li>
+<li>Database memory usage has grown too large. Why?</li>
+<li>The allocator is consuming more memory than it should. Why?</li>
+<li>The allocator has a memory fragmentation issue.</li>
+</ol>
+<p>This is a real-world example that very unexpectedly led to a fix in a system memory allocation library. It was the persistent questioning and drilling down to the core issue that led to the fix.</p>
 <h4 id="latency-analysis">Latency Analysis</h4>
+<p>Latency analysis examines the time taken to complete an operation, which is then broken down into smaller components. By subdividing the components with the highest latency, the root cause can be identified and quantified.</p>
+<p>Similarly to drill-down analysis, latency analysis may drill down through layers of the software stack to find the origin of latency issues.  Analysis can begin with the workload applied, examining how that workload was processed in the application, then drilling down into the operating system libraries, system calls, the kernel, and device drivers.</p>
 <h3 id="modeling">Modeling</h3>
 <h3 id="capacity-planning">Capacity Planning</h3>
 <h3 id="statistics">Statistics</h3>

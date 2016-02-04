@@ -819,7 +819,46 @@ Apart from identifying issues, workload characterization can also be input for t
 
 The specific tools and metrics for performing workload characterization depend on the target. Some applications record detailed logs of client activity, which can be the source for statistical analysis. They may also already provide daily or monthly reports of client usage, which can be mined for details.
 
+#### Drill-Down Analysis
+
+Drill-down analysis involves the following steps in order:
+
+1. Examine an issue at a high level.
+2. Narrow the focus based on the previous findings
+3. Discard uninteresting areas.
+4. Dig deeper into interesting areas.
+
+The process can involve digging down through deeper layers of the software stack (to hardware if necessary) to find the root cause of the issue.
+
+A drill-down analysis methodology has three stages:
+
+1. **Monitoring**: This is used for continually recording high-level statistics over time, and identifying or alerting if a problem may be present.
+    * Traditionally, [Simple Network Monitoring Protocol](https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol) (SNMP) can be used to monitor supporting network-attached devices. The resulting data may reveal long-term patterns that may be missed when using command-line tools over short durations. Many monitoring solutions provide alerts if a problem is suspected, prompting analysis to move to the next stage.
+2. **Identification**: Given a suspected problem, this narrows the investigation to particular resources or areas of interest, identifying possible bottlenecks.
+    Identification is performed interactively on the server using standard observability tools (`vmstat(1)`, `iostat(1)`, and `mpstat(1)`) to check system components. [p50]
+3. **Analysis**: Further examination of particular system areas is done to attempt to root-cause and quantify the issue.
+    Analysis tools include those based on tracing or profiling for deeper inspection of suspect areas, such as `strace(1)`, [`truss(1)`](https://en.wikipedia.org/wiki/Truss_(Unix)), [perf](https://en.wikipedia.org/wiki/Perf_(Linux)), and [DTrace](https://en.wikipedia.org/wiki/DTrace).
+
+##### **Five Whys**
+
+Ask yourself "why?" then answer the question, and repeat up to five times in total (or more). For example:
+
+1. A database has begun to perform poorly for many queries. Why?
+2. It is delayed by disk I/O due to memory paging. Why?
+3. Database memory usage has grown too large. Why?
+4. The allocator is consuming more memory than it should. Why?
+5. The allocator has a memory fragmentation issue.
+
+This is a real-world example that very unexpectedly led to a fix in a system memory allocation library. It was the persistent questioning and drilling down to the core issue that led to the fix.
+
 #### Latency Analysis
+
+Latency analysis examines the time taken to complete an operation, which is then broken down into smaller components. By subdividing the components with the highest latency, the root cause can be identified and quantified.
+
+Similarly to drill-down analysis, latency analysis may drill down through layers of the software stack to find the origin of latency issues.  Analysis can begin with the workload applied, examining how that workload was processed in the application, then drilling down into the operating system libraries, system calls, the kernel, and device drivers.
+
+
+
 
 ### Modeling
 
