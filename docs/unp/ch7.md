@@ -137,6 +137,17 @@ This option is normally used by servers, although clients can also use the optio
 
 Some servers (e.g. FTP servers) provide an application timeout, often on the order of minutes. This is done by the application itself, normally around a call to `read`, reading the next client command. This timeout does not involve this socket option. This is often a better method of eliminating connections to missing clients, since the application has complete control if it implements the timeout itself.
 
+##### **Ways to detect various TCP conditions**
+
+The following table (originally [figure_7.6.png](figure_7.6.png)) summarizes the various methods that we have to detect when something happens on the other end of a TCP connection. "Using `select` for readability" means calling `select` to test whether a socket is readable.
+
+Scenario | Peer process crashes | Peer host crashes | Peer host is unreachable
+-------- | -------------------- | ----------------- | ------------------------
+Our TCP is actively sending data | Peer TCP sends a FIN, which wan can detect immediately using `select` for readability. If TCP sends another segment, peer TCP responds with an RST. If the application write to the socket after TCP has received an RST, our socket implementation sends us `SIGPIPE`. | Our TCP will time out and our socket's pending error will be set to `ETIMEDOUT` | Our TCP will time out and our socket's pending error will be set to `EHOSTUNREACH`.
+Our TCP is actively receiving data | Peer TCP will send a FIN, which we will read as (possibly permature) EOF. | We will stop receiving data. | We will stop receiving data.
+Connection is idle, keep-alive set | Peer TCP sends a FIN, which we can detect immediately using `select` for readability. | Nine keep-alive probes are sent after two hours of inactivity and then our socket's pending error is set to `ETIMEDOUT`. | Nine keep-alive probes are sent after two hours of inactivity and then our socket's pending error is set to `EHOSTUNREACH`.
+Connection is idle, keep-alive not set | Peer TCP sends a FIN, which we can detect immediately using `select` for readability. | (Nothing) | (Nothing)
+
 #### `SO_LINGER` Socket Option
 
 ### ICMPv6 Socket Option
