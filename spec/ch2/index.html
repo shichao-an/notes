@@ -1557,7 +1557,21 @@ limit tenants who are sharing one system.</p>
 <p>This is a real-world example that very unexpectedly led to a fix in a system memory allocation library. It was the persistent questioning and drilling down to the core issue that led to the fix.</p>
 <h4 id="latency-analysis">Latency Analysis</h4>
 <p>Latency analysis examines the time taken to complete an operation, which is then broken down into smaller components. By subdividing the components with the highest latency, the root cause can be identified and quantified.</p>
-<p>Similarly to drill-down analysis, latency analysis may drill down through layers of the software stack to find the origin of latency issues.  Analysis can begin with the workload applied, examining how that workload was processed in the application, then drilling down into the operating system libraries, system calls, the kernel, and device drivers.</p>
+<p>Similar to drill-down analysis, latency analysis may drill down through layers of the software stack to find the origin of latency issues:</p>
+<ol>
+<li>Examine how that workload was processed in the application.</li>
+<li>Drill down into the operating system libraries, system calls, the kernel, and device drivers.</li>
+</ol>
+<p>For example, analysis of MySQL query latency could involve answering the following questions:</p>
+<ol>
+<li>Is there a query latency issue? (yes)</li>
+<li>Is the query time largely spent on-CPU or waiting off-CPU? (off-CPU)</li>
+<li>What is the off-CPU time spent waiting for? (file system I/O)</li>
+<li>Is the file system I/O time due to disk I/O or lock contention? (disk I/O)</li>
+<li>Is the disk I/O time likely due to random seeks or data transfer time? (transfer time)</li>
+</ol>
+<p>Each step of the process posed a question that divided the latency into two parts, and then proceeded to analyze the larger part, which is a binary search. This process is shown in the figure below:</p>
+<p><a href="../figure_2.14.png" title="Figure 2.14 Latency analysis procedure"><img alt="Figure 2.14 Latency analysis procedure" src="../figure_2.14.png" /></a></p>
 <h3 id="modeling">Modeling</h3>
 <h3 id="capacity-planning">Capacity Planning</h3>
 <h3 id="statistics">Statistics</h3>
