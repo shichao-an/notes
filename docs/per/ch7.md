@@ -30,7 +30,7 @@ x = Foo.add(3,4) # x = 7
 
 A common use of static methods is in writing classes where you might have many different ways to create new instances. Because there can only be one `__init__()` function, alternative creation functions are often defined as shown here:
 
-```c
+```python
 class Date(object):
     def __init__(self,year,month,day):
         self.year = year
