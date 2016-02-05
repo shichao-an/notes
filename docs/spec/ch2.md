@@ -855,7 +855,23 @@ This is a real-world example that very unexpectedly led to a fix in a system mem
 
 Latency analysis examines the time taken to complete an operation, which is then broken down into smaller components. By subdividing the components with the highest latency, the root cause can be identified and quantified.
 
-Similarly to drill-down analysis, latency analysis may drill down through layers of the software stack to find the origin of latency issues.  Analysis can begin with the workload applied, examining how that workload was processed in the application, then drilling down into the operating system libraries, system calls, the kernel, and device drivers.
+Similar to drill-down analysis, latency analysis may drill down through layers of the software stack to find the origin of latency issues:
+
+1. Examine how that workload was processed in the application.
+2. Drill down into the operating system libraries, system calls, the kernel, and device drivers.
+
+For example, analysis of MySQL query latency could involve answering the following questions:
+
+1. Is there a query latency issue? (yes)
+2. Is the query time largely spent on-CPU or waiting off-CPU? (off-CPU)
+3. What is the off-CPU time spent waiting for? (file system I/O)
+4. Is the file system I/O time due to disk I/O or lock contention? (disk I/O)
+5. Is the disk I/O time likely due to random seeks or data transfer time? (transfer time)
+
+Each step of the process posed a question that divided the latency into two parts, and then proceeded to analyze the larger part, which is a binary search. This process is shown in the figure below:
+
+[![Figure 2.14 Latency analysis procedure](figure_2.14.png)](figure_2.14.png "Figure 2.14 Latency analysis procedure")
+
 
 
 
