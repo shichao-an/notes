@@ -644,6 +644,44 @@
 <h5 id="usages-of-the-so_keepalive-option"><strong>Usages of the <code>SO_KEEPALIVE</code> option</strong> *</h5>
 <p>This option is normally used by servers, although clients can also use the option. Servers use the option because they spend most of their time blocked waiting for input across the TCP connection (waiting for a client request). The server process won't know if the client host's connection drops, is powered off, or crashes, and the server will continually wait for input (which never arrives). This is called a <strong>half-open connection</strong>. <u>The keep-alive option will detect these half-open connections and terminate them.</u></p>
 <p>Some servers (e.g. FTP servers) provide an application timeout, often on the order of minutes. This is done by the application itself, normally around a call to <code>read</code>, reading the next client command. This timeout does not involve this socket option. This is often a better method of eliminating connections to missing clients, since the application has complete control if it implements the timeout itself.</p>
+<h5 id="ways-to-detect-various-tcp-conditions"><strong>Ways to detect various TCP conditions</strong></h5>
+<p>The following table (originally <a href="../figure_7.6.png">figure_7.6.png</a>) summarizes the various methods that we have to detect when something happens on the other end of a TCP connection. "Using <code>select</code> for readability" means calling <code>select</code> to test whether a socket is readable.</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Peer process crashes</th>
+<th>Peer host crashes</th>
+<th>Peer host is unreachable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Our TCP is actively sending data</td>
+<td>Peer TCP sends a FIN, which wan can detect immediately using <code>select</code> for readability. If TCP sends another segment, peer TCP responds with an RST. If the application write to the socket after TCP has received an RST, our socket implementation sends us <code>SIGPIPE</code>.</td>
+<td>Our TCP will time out and our socket's pending error will be set to <code>ETIMEDOUT</code></td>
+<td>Our TCP will time out and our socket's pending error will be set to <code>EHOSTUNREACH</code>.</td>
+</tr>
+<tr>
+<td>Our TCP is actively receiving data</td>
+<td>Peer TCP will send a FIN, which we will read as (possibly permature) EOF.</td>
+<td>We will stop receiving data.</td>
+<td>We will stop receiving data.</td>
+</tr>
+<tr>
+<td>Connection is idle, keep-alive set</td>
+<td>Peer TCP sends a FIN, which we can detect immediately using <code>select</code> for readability.</td>
+<td>Nine keep-alive probes are sent after two hours of inactivity and then our socket's pending error is set to <code>ETIMEDOUT</code>.</td>
+<td>Nine keep-alive probes are sent after two hours of inactivity and then our socket's pending error is set to <code>EHOSTUNREACH</code>.</td>
+</tr>
+<tr>
+<td>Connection is idle, keep-alive not set</td>
+<td>Peer TCP sends a FIN, which we can detect immediately using <code>select</code> for readability.</td>
+<td>(Nothing)</td>
+<td>(Nothing)</td>
+</tr>
+</tbody>
+</table>
 <h4 id="so_linger-socket-option"><code>SO_LINGER</code> Socket Option</h4>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
