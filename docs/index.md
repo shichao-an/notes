@@ -24,7 +24,7 @@ This site documents reading and learning notes.
 
 ### Books and Materials
 
-See [Books and Materials](books.md).
+See [Books and Materials](books.md) ([Table of Contents](toc.md)).
 
 ### Roadmap
 
