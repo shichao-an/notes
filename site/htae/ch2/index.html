@@ -509,6 +509,8 @@
         
             <li><a href="#the-x86-processor">The x86 Processor</a></li>
         
+            <li><a href="#assembly-language">Assembly Language</a></li>
+        
     
     </ul>
 </div></div>
@@ -582,6 +584,7 @@ is an executable binary file, which is called a.out by default.</p>
 <p>Hackers get their edge from knowing how all the pieces interact within this bigger picture. To see the bigger picture in the realm of programming, simply realize that C code is meant to be compiled. The code can’t actually do anything until it’s compiled into an executable binary file. <u>Thinking of C-source as a program is a common misconception that is exploited by hackers every day.</u></p>
 <p>The binary <code>a.out</code>’s instructions are written in machine language. Compilers translate the language of C code into machine language for a variety of processor architectures. In this case, the processor is in a family that uses the <a href="https://en.wikipedia.org/wiki/X86">x86</a> architecture. There are also <a href="https://en.wikipedia.org/wiki/SPARC">Sparc</a> processor architectures (used in Sun Workstations) and the <a href="https://en.wikipedia.org/wiki/PowerPC">PowerPC</a> processor architecture (used in pre-Intel Macs). The compiler acts as a middle ground: translating C code into machine language for the target architecture.</p>
 <p>The average programmer is only concerned with source code, but a hacker realizes that the compiled program is what actually gets executed out in the real world. With a better understanding of how the CPU operates, a hacker can manipulate the programs that run on it.</p>
+<h5 id="objdump"><strong><code>objdump</code></strong> *</h5>
 <p>The GNU development tools include a program called <a href="https://en.wikipedia.org/wiki/Objdump">objdump</a>, which can be used to examine compiled binaries. Let’s look at the machine code the <code>main()</code> function was translated into.</p>
 <div class="codehilite"><pre><span class="gp"> $</span> objdump -D a.out <span class="p">|</span> grep -A20 main.:
 <span class="go">08048374 &lt;main&gt;:</span>
@@ -608,9 +611,197 @@ is an executable binary file, which is called a.out by default.</p>
 </pre></div>
 
 
+<h5 id="description-of-output-from-objdump"><strong>Description of output from <code>objdump</code></strong> *</h5>
 <p>The output is piped into <code>grep</code> with the command-line option to only display 20 lines after the regular expression <code>main.</code>:. Each byte is represented in hexadecimal notation, which is a base-16 numbering system. This is a convenient notation since a byte contains 8 bits, and each byte can be described with 2 hexadecimal digits.</p>
-<p>The numbers such as <code>0x8048374</code> on the far left are memory addresses. Memory can be thought of as a row of bytes, each with its own memory address. Older Intel x86 processors use a 32-bit addressing scheme, while newer ones use a 64-bit one. The 32-bit processors have 2<sup>32</sup> (or 4,294,967,296) possible addresses, while the 64-bit ones have 2<sup>64</sup> (1.84467441 × 10<sup>19</sup>) possible addresses. The 64-bit processors can run in 32-bit compatibility mode, which allows them to run 32-bit code quickly.</p>
+<ul>
+<li>The numbers such as <code>0x8048374</code> on the far left are memory addresses.<ul>
+<li>Memory can be thought of as a row of bytes, each with its own memory address. Older Intel x86 processors use a 32-bit addressing scheme, while newer ones use a 64-bit one. The 32-bit processors have 2<sup>32</sup> (or 4,294,967,296) possible addresses, while the 64-bit ones have 2<sup>64</sup> (1.84467441 × 10<sup>19</sup>) possible addresses. The 64-bit processors can run in 32-bit compatibility mode, which allows them to run 32-bit code quickly.</li>
+</ul>
+</li>
+<li>The hexadecimal bytes in the middle are the machine language instructions for the x86 processor. The machine code is displayed as hexadecimal bytes and each instruction is put on its own line.</li>
+<li>The instructions on the far right are in assembly language.</li>
+</ul>
+<h5 id="the-assembly-language"><strong>The Assembly Language</strong> *</h5>
+<p>Unlike C and other compiled languages, assembly language instructions have a direct one-to-one relationship with their corresponding machine language instructions. This means that since every processor architecture has different machine language instructions, each also has a different form of assembly language. Assembly is a way to represent the machine language instructions of the processor.</p>
+<p>There are the two main types of assembly language syntax:</p>
+<ul>
+<li>AT&amp;T syntax.</li>
+<li>Intel syntax.</li>
+</ul>
+<p>The assembly shown in the output above is AT&amp;T syntax. Nearly all of Linux’s disassembly tools use this syntax by default. It’s easy to recognize AT&amp;T syntax by the cacophony of <code>%</code> and <code>$</code> symbols prefixing everything. The same code can be shown in Intel syntax by providing an additional command-line option, <code>-M intel</code>, to <code>objdump</code>, as shown in the output below.</p>
+<div class="codehilite"><pre><span class="gp">$</span> objdump -M intel -D a.out <span class="p">|</span> grep -A20 main.:
+<span class="go">08048374 &lt;main&gt;:</span>
+<span class="go"> 8048374: 55 push ebp</span>
+<span class="go"> 8048375: 89 e5 mov ebp,esp</span>
+<span class="go"> 8048377: 83 ec 08 sub esp,0x8</span>
+<span class="go"> 804837a: 83 e4 f0 and esp,0xfffffff0</span>
+<span class="go"> 804837d: b8 00 00 00 00 mov eax,0x0</span>
+<span class="go"> 8048382: 29 c4 sub esp,eax</span>
+<span class="go"> 8048384: c7 45 fc 00 00 00 00 mov DWORD PTR [ebp-4],0x0</span>
+<span class="go"> 804838b: 83 7d fc 09 cmp DWORD PTR [ebp-4],0x9</span>
+<span class="go"> 804838f: 7e 02 jle 8048393 &lt;main+0x1f&gt;</span>
+<span class="go"> 8048391: eb 13 jmp 80483a6 &lt;main+0x32&gt;</span>
+<span class="go"> 8048393: c7 04 24 84 84 04 08 mov DWORD PTR [esp],0x8048484</span>
+<span class="go"> 804839a: e8 01 ff ff ff call 80482a0 &lt;printf@plt&gt;</span>
+<span class="go"> 804839f: 8d 45 fc lea eax,[ebp-4]</span>
+<span class="go"> 80483a2: ff 00 inc DWORD PTR [eax]</span>
+<span class="go"> 80483a4: eb e5 jmp 804838b &lt;main+0x17&gt;</span>
+<span class="go"> 80483a6: c9 leave</span>
+<span class="go"> 80483a7: c3 ret</span>
+<span class="go"> 80483a8: 90 nop</span>
+<span class="go"> 80483a9: 90 nop</span>
+<span class="go"> 80483aa: 90 nop</span>
+</pre></div>
+
+
+<p>Intel syntax is much more readable and easier to understand; this book will use this syntax.  Regardless of the assembly language representation, the commands a processor understands are quite simple. These instructions consist of an operation and sometimes additional arguments that describe the destination and/or the source for the operation. These operations move memory around, perform some sort of basic math, or interrupt the processor to get it to do something else. In the end, that’s all a computer processor can really do.</p>
+<p>Processors also have their own set of special variables called <a href="https://en.wikipedia.org/wiki/Processor_register">registers</a>. Most of the instructions use these registers to read or write data, so understanding the registers of a processor is essential to understanding the instructions.</p>
 <h4 id="the-x86-processor">The x86 Processor</h4>
+<p>The x86 processor has several registers, which are like internal variables for the processor. The GNU development tools also include a debugger called <a href="https://en.wikipedia.org/wiki/GNU_Debugger">GDB</a>. Debuggers are used by programmers to step through compiled programs, examine program memory, and view processor registers. A debugger can view the execution from all angles, pause it, and change anything along the way. [p23]</p>
+<p>Below, GDB is used to show the state of the processor registers right before the program starts.</p>
+<div class="codehilite"><pre><span class="gp">$</span> gdb -q ./a.out
+<span class="go">Using host libthread_db library &quot;/lib/tls/i686/cmov/libthread_db.so.1&quot;.</span>
+<span class="go">(gdb) break main</span>
+<span class="go">Breakpoint 1 at 0x804837a</span>
+<span class="go">(gdb) run</span>
+<span class="go">Starting program: /home/reader/booksrc/a.out</span>
+<span class="go">Breakpoint 1, 0x0804837a in main ()</span>
+<span class="go">(gdb) info registers</span>
+<span class="go">eax 0xbffff894 -1073743724</span>
+<span class="go">ecx 0x48e0fe81 1222704769</span>
+<span class="go">edx 0x1 1</span>
+<span class="go">ebx 0xb7fd6ff4 -1208127500</span>
+<span class="go">esp 0xbffff800 0xbffff800</span>
+<span class="go">ebp 0xbffff808 0xbffff808</span>
+<span class="go">esi 0xb8000ce0 -1207956256</span>
+<span class="go">edi 0x0 0</span>
+<span class="go">eip 0x804837a 0x804837a &lt;main+6&gt;</span>
+<span class="go">eflags 0x286 [ PF SF IF ]</span>
+<span class="go">cs 0x73 115</span>
+<span class="go">ss 0x7b 123</span>
+<span class="go">ds 0x7b 123</span>
+<span class="go">es 0x7b 123</span>
+<span class="go">fs 0x0 0</span>
+<span class="go">gs 0x33 51</span>
+<span class="go">(gdb) quit</span>
+<span class="go">The program is running. Exit anyway? (y or n) y</span>
+</pre></div>
+
+
+<p>A breakpoint is set on the <code>main()</code> function so execution will stop right before our code is executed. Then GDB runs the program, stops at the breakpoint, and is told to display all the processor registers and their current states.</p>
+<h5 id="eax-ecx-edx-and-ebx-registers"><strong>EAX, ECX, EDX, and EBX registers</strong> *</h5>
+<p>The first four registers (EAX, ECX, EDX, and EBX) are known as general-purpose registers. These are called the <em>Accumulator</em>, <em>Counter</em>, <em>Data</em>, and <em>Base</em> registers, respectively. They are used for a variety of purposes, but they mainly act as temporary variables for the CPU when it is executing machine instructions.</p>
+<h5 id="esp-ebp-esi-and-edi-registers"><strong>ESP, EBP, ESI, and EDI registers</strong> *</h5>
+<p>The second four registers (ESP, EBP, ESI, and EDI) are also general-purpose registers, but they are sometimes known as pointers and indexes. These stand for <em>Stack Pointer</em>, <em>Base Pointer</em>, <em>Source Index</em>, and <em>Destination Index</em>, respectively.</p>
+<ul>
+<li>The ESP and EBP registers are called pointers because they store 32-bit addresses, which essentially point to that location in memory. These registers are fairly important to program execution and memory management.</li>
+<li>The ESI and EDI registers are also technically pointers, which are commonly used to point to the source and destination when data needs to be read from or written to. There are load and store instructions that use these registers, but for the most part, these registers can be thought of as just simple general-purpose registers.</li>
+</ul>
+<h5 id="eip-register"><strong>EIP register</strong> *</h5>
+<p>The EIP register is the <em>Instruction Pointer</em> register, which points to the current instruction the processor is reading. This register is quite important and will be used a lot while debugging. Currently, it points to a memory address at 0x804838a.</p>
+<h5 id="eflags-register"><strong>EFLAGS register</strong> *</h5>
+<p>The remaining EFLAGS register actually consists of several bit flags that are used for comparisons and memory segmentations. The actual memory is split into several different segments and these registers keep track of that. For the most part, these registers can be ignored since they rarely need to be accessed directly.</p>
+<h4 id="assembly-language">Assembly Language</h4>
+<p>To use Intel syntax assembly language, our tools must be configured to use this syntax. Inside GDB, the disassembly syntax can be set to Intel by <code>typing set disassembly intel</code> or <code>set dis intel</code>. You can configure this setting to run every time GDB starts up by putting the command in the file <code>.gdbinit</code> in your home directory.</p>
+<div class="codehilite"><pre><span class="gp">$</span> gdb -q
+<span class="go">(gdb) set dis intel</span>
+<span class="go">(gdb) quit</span>
+<span class="gp">$</span> <span class="nb">echo</span> <span class="s2">&quot;set dis intel&quot;</span> &gt; ~/.gdbinit
+</pre></div>
+
+
+<p>The assembly instructions in Intel syntax generally follow this style:</p>
+<div class="codehilite"><pre>operation &lt;destination&gt;, &lt;source&gt;
+</pre></div>
+
+
+<p>The destination and source values will either be a register, a memory address, or a value. The operations are usually intuitive mnemonics. For example:</p>
+<ul>
+<li><code>mov</code> will move a value from the source to the destination.</li>
+<li><code>sub</code> will subtract.</li>
+<li><code>inc</code> will increment.</li>
+</ul>
+<p>The instructions below will move the value from ESP to EBP and then subtract 8 from ESP (storing the result in ESP).</p>
+<div class="codehilite"><pre>8048375: 89 e5         mov ebp,esp
+8048377: 83 ec 08      sub esp,0x8
+</pre></div>
+
+
+<p>There are also operations that are used to control the flow of execution.</p>
+<ul>
+<li>The <code>cmp</code> operation is used to compare values.</li>
+<li>Basically any operation beginning with <code>j</code> is used to jump to a different part of the code (depending on the result of the comparison).</li>
+</ul>
+<p>In the example below:</p>
+<ul>
+<li><code>cmp</code> compares a 4-byte value located at EBP minus 4 with the number 9.</li>
+<li>The next instruction <code>jle</code> is shorthand for "jump if less than or equal to", referring to the result of the previous comparison. If that value is less than or equal to 9, execution jumps to the instruction at 0x8048393. Otherwise, execution flows to the next instruction</li>
+<li><code>jmp</code> means an unconditional jump. If the value isn’t less than or equal to 9, execution will jump to 0x80483a6.</li>
+</ul>
+<div class="codehilite"><pre>804838b: 83 7d fc 09   cmp DWORD PTR [ebp-4],0x9
+804838f: 7e 02         jle 8048393 &lt;main+0x1f&gt;
+8048391: eb 13         jmp 80483a6 &lt;main+0x32&gt;
+</pre></div>
+
+
+<p>The <code>-g</code> flag can be used by the GCC compiler to include extra debugging information, which will give GDB access to the source code.</p>
+<div class="codehilite"><pre><span class="gp">$</span> gcc -g firstprog.c
+<span class="gp">$</span> ls -l a.out
+<span class="go">-rwxr-xr-x 1 matrix users 11977 Jul 4 17:29 a.out</span>
+<span class="gp">$</span> gdb -q ./a.out
+<span class="go">Using host libthread_db library &quot;/lib/libthread_db.so.1&quot;.</span>
+<span class="go">(gdb) list</span>
+<span class="go">1 #include &lt;stdio.h&gt;</span>
+<span class="go">2</span>
+<span class="go">3 int main()</span>
+<span class="go">4 {</span>
+<span class="go">5 int i;</span>
+<span class="go">6 for(i=0; i &lt; 10; i++)</span>
+<span class="go">7 {</span>
+<span class="go">8 printf(&quot;Hello, world!\n&quot;);</span>
+<span class="go">9 }</span>
+<span class="go">10 }</span>
+<span class="go">(gdb) disassemble main</span>
+<span class="go">Dump of assembler code for function main():</span>
+<span class="go">0x08048384 &lt;main+0&gt;: push ebp</span>
+<span class="go">0x08048385 &lt;main+1&gt;: mov ebp,esp</span>
+<span class="go">0x08048387 &lt;main+3&gt;: sub esp,0x8</span>
+<span class="go">0x0804838a &lt;main+6&gt;: and esp,0xfffffff0</span>
+<span class="go">0x0804838d &lt;main+9&gt;: mov eax,0x0</span>
+<span class="go">0x08048392 &lt;main+14&gt;: sub esp,eax</span>
+<span class="go">0x08048394 &lt;main+16&gt;: mov DWORD PTR [ebp-4],0x0</span>
+<span class="go">0x0804839b &lt;main+23&gt;: cmp DWORD PTR [ebp-4],0x9</span>
+<span class="go">0x0804839f &lt;main+27&gt;: jle 0x80483a3 &lt;main+31&gt;</span>
+<span class="go">0x080483a1 &lt;main+29&gt;: jmp 0x80483b6 &lt;main+50&gt;</span>
+<span class="go">0x080483a3 &lt;main+31&gt;: mov DWORD PTR [esp],0x80484d4</span>
+<span class="go">0x080483aa &lt;main+38&gt;: call 0x80482a8 &lt;_init+56&gt;</span>
+<span class="go">0x080483af &lt;main+43&gt;: lea eax,[ebp-4]</span>
+<span class="go">0x080483b2 &lt;main+46&gt;: inc DWORD PTR [eax]</span>
+<span class="go">0x080483b4 &lt;main+48&gt;: jmp 0x804839b &lt;main+23&gt;</span>
+<span class="go">0x080483b6 &lt;main+50&gt;: leave</span>
+<span class="go">0x080483b7 &lt;main+51&gt;: ret</span>
+<span class="go">End of assembler dump.</span>
+<span class="go">(gdb) break main</span>
+<span class="go">Breakpoint 1 at 0x8048394: file firstprog.c, line 6.</span>
+<span class="go">(gdb) run</span>
+<span class="go">Starting program: /hacking/a.out</span>
+<span class="go">Breakpoint 1, main() at firstprog.c:6</span>
+<span class="go">6 for(i=0; i &lt; 10; i++)</span>
+<span class="go">(gdb) info register eip</span>
+<span class="go">eip 0x8048394 0x8048394</span>
+<span class="go">(gdb)</span>
+</pre></div>
+
+
+<ol>
+<li>The source code is listed and the disassembly of the <code>main()</code> function is displayed.</li>
+<li>A breakpoint is set at the start of <code>main()</code>, and the program is run.<ul>
+<li>This breakpoint tells the debugger to pause the execution when it gets to that point. Since the breakpoint has been set at the start of the <code>main()</code> function, the program hits the breakpoint and pauses before actually executing any instructions in <code>main()</code>.</li>
+</ul>
+</li>
+<li>The value of EIP (the Instruction Pointer) is displayed.</li>
+</ol>
+<p>Notice that EIP contains a memory address (i.e. 0x8048394) that points to an instruction in the <code>main()</code> function’s disassembly. The instructions before this (from 0x08048384 to 0x08048392) are collectively known as the <a href="https://en.wikipedia.org/wiki/Function_prologue">function prologue</a> and are generated by the compiler to set up memory for the rest of the <code>main()</code> function’s local variables. Part of the reason why variables need to be declared in C is to aid the construction of this section of code. The debugger knows this part of the code is automatically generated and is smart enough to skip over it.</p>
             </div>
         </div>
 

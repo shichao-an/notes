@@ -114,12 +114,13 @@ I have read the most part of DevOps. In addition to finishing with DevOps, I wil
 * [LSP](../lsp/index.md)
 * [TLPI](../tlpi/index.md)
 
-#### Networks and Security <small>(4)</small>
+#### Networks and Security <small>(5)</small>
 
 * [TCPv1](../tcpv1/index.md)
 * [TCPIP](../tcpip/index.md)
 * [CNAPP](../cnapp/index.md)
 * [CNSPP](../cnspp/index.md)
+* [HTAE](../htae/index.md)
 
 #### System Architecture <small>(2)</small>
 
