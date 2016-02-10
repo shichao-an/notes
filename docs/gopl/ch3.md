@@ -67,6 +67,26 @@ var i int8 = 127
 fmt.Println(i, i+1, i*i) // "127 -128 1"
 ```
 
-[p53]
+##### **Comparison and comparability** *
 
-All values of basic type (booleans, numbers, and strings) are comparable. This means two values of the same type may be compared using the `==` and `!=` operators. Furthermore, integers, floating-point numbers, and strings are ordered by the comparison operators.
+Binary comparison operators are:
+
+* `==`: equal to
+* `!=`: not equal to
+* `<`: less than
+* `<=`: less than or equal to
+* `>`: greater than
+* `>=`: greater than or equal to
+
+The type of a comparison expression is a boolean.
+
+* All values of basic type (booleans, numbers, and strings) are *comparable*. This means two values of the same type may be compared using the `==` and `!=` operators.
+* Integers, floating-point numbers, and strings are *ordered* by the comparison operators.
+* The values of many other types are not comparable, and no other types are ordered.
+
+There are also unary addition and subtraction operators:
+
+* `+`: unary positive (no effect)
+* `-`: unary negation
+
+For integers, `+x` is a shorthand for `0+x` and `-x` is a shorthand for `0-x`; for floating-point and complex numbers, `+x` is just `x` and `-x` is the negation of `x`.
