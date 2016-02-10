@@ -150,6 +150,19 @@ Connection is idle, keep-alive not set | Peer TCP sends a FIN, which we can dete
 
 #### `SO_LINGER` Socket Option
 
+This option specifies how the `close` function operates for a connection-oriented protocol (for TCP, but not for UDP). By default, `close` returns immediately, but if there is any data still remaining in the socket send buffer, the system will try to deliver the data to the peer.
+
+The `SO_LINGER` socket option can change this default. This option requires the following structure to be passed between the user process and the kernel. It is defined by including `<sys/socket.h>`.
+
+```c
+struct linger {
+  int   l_onoff;        /* 0=off, nonzero=on */
+  int   l_linger;       /* linger time, POSIX specifies units as seconds */
+};
+```
+
+
+
 ### ICMPv6 Socket Option
 
 ### IPv6 Socket Options
