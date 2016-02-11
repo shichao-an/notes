@@ -872,8 +872,72 @@ Each step of the process posed a question that divided the latency into two part
 
 [![Figure 2.14 Latency analysis procedure](figure_2.14.png)](figure_2.14.png "Figure 2.14 Latency analysis procedure")
 
+#### Method R
+
+Method R is a performance analysis methodology developed for Oracle databases that focuses on finding the origin of latency.
+
+[p52]
+
+#### Event Tracing
+
+Systems operate by processing discrete events, including
+
+* CPU instructions
+* Disk I/O and other disk commands
+* Network packets
+* System calls
+* Library calls
+* Application transactions
+* Database queries
+
+Performance analysis usually studies summaries of these events, such as:
+
+* Operations per second
+* Bytes per second
+* Average latency
+
+Network troubleshooting often requires packet-by-packet inspection, with tools such as `tcpdump(1)` ([Chapter 10, Network](ch10.md)). The following example summarizes packets as single lines of text:
+
+```shell-session
+# tcpdump -ni eth4 -ttt
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth4, link-type EN10MB (Ethernet), capture size 65535 bytes
+00:00:00.000000 IP 10.2.203.2.22 > 10.2.0.2.33986: Flags [P.], seq
+1182098726:1182098918, ack 4234203806, win 132, options [nop,nop,TS val 1751498743
+ecr 1751639660], length 192
+00:00:00.000392 IP 10.2.0.2.33986 > 10.2.203.2.22: Flags [.], ack 192, win 501,
+options [nop,nop,TS val 1751639684 ecr 1751498743], length 0
+00:00:00.009561 IP 10.2.203.2.22 > 10.2.0.2.33986: Flags [P.], seq 192:560, ack 1,
+win 132, options [nop,nop,TS val 1751498744 ecr 1751639684], length 368
+00:00:00.000351 IP 10.2.0.2.33986 > 10.2.203.2.22: Flags [.], ack 560, win 501,
+options [nop,nop,TS val 1751639685 ecr 1751498744], length 0
+00:00:00.010489 IP 10.2.203.2.22 > 10.2.0.2.33986: Flags [P.], seq 560:896, ack 1,
+win 132, options [nop,nop,TS val 1751498745 ecr 1751639685], length 336
+00:00:00.000369 IP 10.2.0.2.33986 > 10.2.203.2.22: Flags [.], ack 896, win 501,
+options [nop,nop,TS val 1751639686 ecr 1751498745], length 0
+```
+
+Storage device I/O at the block device layer can be traced using [`iosnoop(1M)`](https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/iosnoop.1m.html) (DTrace-based, see [Chapter 9, Disks](ch9.md)). [p53-54]
+
+The system call layer is another common location for tracing, with tools including:
+
+* `strace(1)` on Linux
+* `truss(1)` on Solaris-based systems (see [Chapter 5, Applications](ch5.md))
 
 
+When performing event tracing, look for the following information:
+
+* Input: all attributes of an event request: type, direction, size, and so on
+* Times: start time, end time, latency (difference)
+* Result: error status, result of event (size)
+
+The following are useful for understanding performance issues:
+
+* Examine attributes of the event, for either the request or the result.
+* Include the timestamps to analyze latency when using event tracing tools.
+    * The preceding `tcpdump(1)` output included delta timestamps, measuring the time between packets, using -ttt.
+
+The study of prior events provides more information. A particularly bad latency event, known as a **latency [outlier](https://en.wikipedia.org/wiki/Outlier)**, may be caused by previous events rather than the event itself. For example, the event at the tail of a queue may have high latency but is caused by the previous queued events, not its own properties. This case can be identified from the traced events.
 
 
 ### Modeling

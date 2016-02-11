@@ -435,6 +435,34 @@
                             <a href="../ch3/">Chapter 3. Operating Systems</a>
                         </li>
                       
+                        <li>
+                            <a href="../ch4/">Chapter 4. Observability Tools</a>
+                        </li>
+                      
+                        <li>
+                            <a href="../ch5/">Chapter 5. Applications</a>
+                        </li>
+                      
+                        <li>
+                            <a href="../ch6/">Chapter 6. CPUs</a>
+                        </li>
+                      
+                        <li>
+                            <a href="../ch7/">Chapter 7. Memory</a>
+                        </li>
+                      
+                        <li>
+                            <a href="../ch8/">Chapter 8. File Systems</a>
+                        </li>
+                      
+                        <li>
+                            <a href="../ch9/">Chapter 9. Disks</a>
+                        </li>
+                      
+                        <li>
+                            <a href="../ch10/">Chapter 10. Network</a>
+                        </li>
+                      
                     </ul>
                 </li>
             <li class="dropdown">
@@ -560,6 +588,10 @@
             <li><a href="#drill-down-analysis">Drill-Down Analysis</a></li>
         
             <li><a href="#latency-analysis">Latency Analysis</a></li>
+        
+            <li><a href="#method-r">Method R</a></li>
+        
+            <li><a href="#event-tracing">Event Tracing</a></li>
         
     
         <li class="main "><a href="#modeling">Modeling</a></li>
@@ -947,7 +979,7 @@ queueing begins to be frequent and significant.</p>
 <h4 id="profiling">Profiling</h4>
 <p><strong>Profiling</strong> is typically performed by <a href="https://en.wikipedia.org/wiki/Sampling_(statistics)">sampling</a> the state of the system at timed intervals, and then studying the set of samples.</p>
 <p>Unlike the previous metrics covered, including IOPS and throughput, the use of sampling provides a <em>coarse</em> view of the target’s activity, depending on the rate of sampling.</p>
-<p>For example, CPU usage can be understood in reasonable detail by sampling the CPU program counter or stack backtrace at frequent intervals to gather statistics on the code paths that are consuming CPU resources, which is detailed in <a href="ch6.md">Chapter 6</a>.</p>
+<p>For example, CPU usage can be understood in reasonable detail by sampling the CPU program counter or stack backtrace at frequent intervals to gather statistics on the code paths that are consuming CPU resources, which is detailed in <a href="../ch6/">Chapter 6</a>.</p>
 <h4 id="caching">Caching</h4>
 <p>Frequently used to improve performance, a cache stores results from a slower storage tier in a faster storage tier for reference. An example is caching disk blocks in main memory (RAM).</p>
 <ul>
@@ -1338,7 +1370,7 @@ sense.</li>
 <li>Upgrade the main board</li>
 <li>Reduce load: for example, "<a href="https://en.wikipedia.org/wiki/Zero-copy">zero copy</a>" projects lighten memory bus load.</li>
 </ul>
-<p>For investigating interconnects, see CPU Performance Counters in <a href="ch6.md#hardware">Section 6.4.1</a> on hardware.</p>
+<p>For investigating interconnects, see CPU Performance Counters in <a href="../ch6/#hardware">Section 6.4.1</a> on hardware.</p>
 <h5 id="metrics_1"><strong>Metrics</strong></h5>
 <p>With list of resources, consider the metric types: utilization, saturation, and errors. These metrics can be either averages per interval or counts. The following table show some example resources and metric types:</p>
 <table>
@@ -1572,6 +1604,67 @@ limit tenants who are sharing one system.</p>
 </ol>
 <p>Each step of the process posed a question that divided the latency into two parts, and then proceeded to analyze the larger part, which is a binary search. This process is shown in the figure below:</p>
 <p><a href="../figure_2.14.png" title="Figure 2.14 Latency analysis procedure"><img alt="Figure 2.14 Latency analysis procedure" src="../figure_2.14.png" /></a></p>
+<h4 id="method-r">Method R</h4>
+<p>Method R is a performance analysis methodology developed for Oracle databases that focuses on finding the origin of latency.</p>
+<p>[p52]</p>
+<h4 id="event-tracing">Event Tracing</h4>
+<p>Systems operate by processing discrete events, including</p>
+<ul>
+<li>CPU instructions</li>
+<li>Disk I/O and other disk commands</li>
+<li>Network packets</li>
+<li>System calls</li>
+<li>Library calls</li>
+<li>Application transactions</li>
+<li>Database queries</li>
+</ul>
+<p>Performance analysis usually studies summaries of these events, such as:</p>
+<ul>
+<li>Operations per second</li>
+<li>Bytes per second</li>
+<li>Average latency</li>
+</ul>
+<p>Network troubleshooting often requires packet-by-packet inspection, with tools such as <code>tcpdump(1)</code> (<a href="../ch10/">Chapter 10, Network</a>). The following example summarizes packets as single lines of text:</p>
+<div class="codehilite"><pre><span class="gp">#</span> tcpdump -ni eth4 -ttt
+<span class="go">tcpdump: verbose output suppressed, use -v or -vv for full protocol decode</span>
+<span class="go">listening on eth4, link-type EN10MB (Ethernet), capture size 65535 bytes</span>
+<span class="go">00:00:00.000000 IP 10.2.203.2.22 &gt; 10.2.0.2.33986: Flags [P.], seq</span>
+<span class="go">1182098726:1182098918, ack 4234203806, win 132, options [nop,nop,TS val 1751498743</span>
+<span class="go">ecr 1751639660], length 192</span>
+<span class="go">00:00:00.000392 IP 10.2.0.2.33986 &gt; 10.2.203.2.22: Flags [.], ack 192, win 501,</span>
+<span class="go">options [nop,nop,TS val 1751639684 ecr 1751498743], length 0</span>
+<span class="go">00:00:00.009561 IP 10.2.203.2.22 &gt; 10.2.0.2.33986: Flags [P.], seq 192:560, ack 1,</span>
+<span class="go">win 132, options [nop,nop,TS val 1751498744 ecr 1751639684], length 368</span>
+<span class="go">00:00:00.000351 IP 10.2.0.2.33986 &gt; 10.2.203.2.22: Flags [.], ack 560, win 501,</span>
+<span class="go">options [nop,nop,TS val 1751639685 ecr 1751498744], length 0</span>
+<span class="go">00:00:00.010489 IP 10.2.203.2.22 &gt; 10.2.0.2.33986: Flags [P.], seq 560:896, ack 1,</span>
+<span class="go">win 132, options [nop,nop,TS val 1751498745 ecr 1751639685], length 336</span>
+<span class="go">00:00:00.000369 IP 10.2.0.2.33986 &gt; 10.2.203.2.22: Flags [.], ack 896, win 501,</span>
+<span class="go">options [nop,nop,TS val 1751639686 ecr 1751498745], length 0</span>
+</pre></div>
+
+
+<p>Storage device I/O at the block device layer can be traced using <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/iosnoop.1m.html"><code>iosnoop(1M)</code></a> (DTrace-based, see <a href="../ch9/">Chapter 9, Disks</a>). [p53-54]</p>
+<p>The system call layer is another common location for tracing, with tools including:</p>
+<ul>
+<li><code>strace(1)</code> on Linux</li>
+<li><code>truss(1)</code> on Solaris-based systems (see <a href="../ch5/">Chapter 5, Applications</a>)</li>
+</ul>
+<p>When performing event tracing, look for the following information:</p>
+<ul>
+<li>Input: all attributes of an event request: type, direction, size, and so on</li>
+<li>Times: start time, end time, latency (difference)</li>
+<li>Result: error status, result of event (size)</li>
+</ul>
+<p>The following are useful for understanding performance issues:</p>
+<ul>
+<li>Examine attributes of the event, for either the request or the result.</li>
+<li>Include the timestamps to analyze latency when using event tracing tools.<ul>
+<li>The preceding <code>tcpdump(1)</code> output included delta timestamps, measuring the time between packets, using -ttt.</li>
+</ul>
+</li>
+</ul>
+<p>The study of prior events provides more information. A particularly bad latency event, known as a <strong>latency <a href="https://en.wikipedia.org/wiki/Outlier">outlier</a></strong>, may be caused by previous events rather than the event itself. For example, the event at the tail of a queue may have high latency but is caused by the previous queued events, not its own properties. This case can be identified from the traced events.</p>
 <h3 id="modeling">Modeling</h3>
 <h3 id="capacity-planning">Capacity Planning</h3>
 <h3 id="statistics">Statistics</h3>
