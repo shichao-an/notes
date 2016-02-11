@@ -152,7 +152,7 @@ Connection is idle, keep-alive not set | Peer TCP sends a FIN, which we can dete
 
 This option specifies how the `close` function operates for a connection-oriented protocol (for TCP, but not for UDP). By default, `close` returns immediately, but if there is any data still remaining in the socket send buffer, the system will try to deliver the data to the peer.
 
-The `SO_LINGER` socket option can change this default. This option requires the following structure to be passed between the user process and the kernel. It is defined by including `<sys/socket.h>`.
+The `SO_LINGER` socket option can change this default. This option requires the following structure to be passed (as the `*optval` argument) between the user process and the kernel. It is defined by including `<sys/socket.h>`.
 
 ```c
 struct linger {
@@ -160,6 +160,20 @@ struct linger {
   int   l_linger;       /* linger time, POSIX specifies units as seconds */
 };
 ```
+
+Calling `setsockopt` leads to one of the following three scenarios, depending on the values of the two structure members:
+
+1. If `l_onoff` is 0, the option is turned off. The value of `l_linger` is ignored and the previously discussed TCP default applies: `close` returns immediately.
+2. If `l_onoff` is nonzero and `l_linger` is zero, TCP aborts the connection when it is closed.
+    * In this case, TCP discards any data still remaining in the socket send buffer and sends an RST to the peer, not the normal four-packet connection termination sequence ([Section 2.6](ch2.md#tcp-connection-establishment-and-termination)). See [example](https://github.com/shichao-an/unpv13e/blob/master/nonblock/tcpcli03.c).
+    * This scenario avoids TCP's TIME_WAIT state, but leaves open the possibility of another incarnation of this connection being created within 2MSL seconds ([Section 2.7](#time_wait-state)) and having old duplicate segments from the just-terminated connection being incorrectly delivered to the new incarnation.
+    * Occasional USENET postings advocate the use of this feature just to avoid the TIME_WAIT state and to be able to restart a listening server even if connections are still in use with the server's well-known port. This should NOT be done and could lead to data corruption, as detailed in [RFC 1337](https://tools.ietf.org/html/rfc1337). Instead, the `SO_REUSEADDR` socket option should always be used in the server before the call to `bind`. <u>We should make use of the TIME_WAIT state to let old duplicate segments expire in the network rather than trying to avoid it.</u>
+    * There are certain circumstances which warrant using this feature to send an abortive close. One example is an [RS-232](https://en.wikipedia.org/wiki/RS-232) terminal server, which might hang forever in CLOSE_WAIT trying to deliver data to a stuck terminal port, but would properly reset the stuck port if it got an RST to discard the pending data.
+3. If `l_onoff` is nonzero and `l_linger` is nonzero, then the kernel will linger when the socket is close
+    * In this scenario, if there is any data still remaining in the socket send buffer, the process is put to sleep until either:
+        1. All the data is sent and acknowledged by the peer TCP, or
+        2. The linger time expires.
+    * If the socket has been set to nonblocking, it will not wait for the `close` to complete, even if the linger time is nonzero. When using this feature of the `SO_LINGER` option, it is important for the application to check the return value from `close`, because if the linger time expires before the remaining data is sent and acknowledged, `close` returns `EWOULDBLOCK` and any remaining data in the send buffer is discarded.
 
 
 
@@ -179,3 +193,9 @@ Section 7.5 on `SO_KEEPALIVE` Socket Option.
 > Appendix E of TCPv1 discusses how to change these timing parameters for various kernels, ...
 
 I did not find Appendix E (actually no appendix at all) in TCPv1 (3rd Edition).
+
+Section 7.5 on `SO_LINGER`
+
+> One example is an RS-232 terminal server, which might hang forever in CLOSE_WAIT trying to deliver data to a stuck terminal port, but would properly reset the stuck port if it got an RST to discard the pending data.
+
+Not fully understood.

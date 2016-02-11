@@ -712,7 +712,7 @@
 </table>
 <h4 id="so_linger-socket-option"><code>SO_LINGER</code> Socket Option</h4>
 <p>This option specifies how the <code>close</code> function operates for a connection-oriented protocol (for TCP, but not for UDP). By default, <code>close</code> returns immediately, but if there is any data still remaining in the socket send buffer, the system will try to deliver the data to the peer.</p>
-<p>The <code>SO_LINGER</code> socket option can change this default. This option requires the following structure to be passed between the user process and the kernel. It is defined by including <code>&lt;sys/socket.h&gt;</code>.</p>
+<p>The <code>SO_LINGER</code> socket option can change this default. This option requires the following structure to be passed (as the <code>*optval</code> argument) between the user process and the kernel. It is defined by including <code>&lt;sys/socket.h&gt;</code>.</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">linger</span> <span class="p">{</span>
   <span class="kt">int</span>   <span class="n">l_onoff</span><span class="p">;</span>        <span class="cm">/* 0=off, nonzero=on */</span>
   <span class="kt">int</span>   <span class="n">l_linger</span><span class="p">;</span>       <span class="cm">/* linger time, POSIX specifies units as seconds */</span>
@@ -720,6 +720,26 @@
 </pre></div>
 
 
+<p>Calling <code>setsockopt</code> leads to one of the following three scenarios, depending on the values of the two structure members:</p>
+<ol>
+<li>If <code>l_onoff</code> is 0, the option is turned off. The value of <code>l_linger</code> is ignored and the previously discussed TCP default applies: <code>close</code> returns immediately.</li>
+<li>If <code>l_onoff</code> is nonzero and <code>l_linger</code> is zero, TCP aborts the connection when it is closed.<ul>
+<li>In this case, TCP discards any data still remaining in the socket send buffer and sends an RST to the peer, not the normal four-packet connection termination sequence (<a href="../ch2/#tcp-connection-establishment-and-termination">Section 2.6</a>). See <a href="https://github.com/shichao-an/unpv13e/blob/master/nonblock/tcpcli03.c">example</a>.</li>
+<li>This scenario avoids TCP's TIME_WAIT state, but leaves open the possibility of another incarnation of this connection being created within 2MSL seconds (<a href="#time_wait-state">Section 2.7</a>) and having old duplicate segments from the just-terminated connection being incorrectly delivered to the new incarnation.</li>
+<li>Occasional USENET postings advocate the use of this feature just to avoid the TIME_WAIT state and to be able to restart a listening server even if connections are still in use with the server's well-known port. This should NOT be done and could lead to data corruption, as detailed in <a href="https://tools.ietf.org/html/rfc1337">RFC 1337</a>. Instead, the <code>SO_REUSEADDR</code> socket option should always be used in the server before the call to <code>bind</code>. <u>We should make use of the TIME_WAIT state to let old duplicate segments expire in the network rather than trying to avoid it.</u></li>
+<li>There are certain circumstances which warrant using this feature to send an abortive close. One example is an <a href="https://en.wikipedia.org/wiki/RS-232">RS-232</a> terminal server, which might hang forever in CLOSE_WAIT trying to deliver data to a stuck terminal port, but would properly reset the stuck port if it got an RST to discard the pending data.</li>
+</ul>
+</li>
+<li>If <code>l_onoff</code> is nonzero and <code>l_linger</code> is nonzero, then the kernel will linger when the socket is close<ul>
+<li>In this scenario, if there is any data still remaining in the socket send buffer, the process is put to sleep until either:<ol>
+<li>All the data is sent and acknowledged by the peer TCP, or</li>
+<li>The linger time expires.</li>
+</ol>
+</li>
+<li>If the socket has been set to nonblocking, it will not wait for the <code>close</code> to complete, even if the linger time is nonzero. When using this feature of the <code>SO_LINGER</code> option, it is important for the application to check the return value from <code>close</code>, because if the linger time expires before the remaining data is sent and acknowledged, <code>close</code> returns <code>EWOULDBLOCK</code> and any remaining data in the send buffer is discarded.</li>
+</ul>
+</li>
+</ol>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>
@@ -730,6 +750,11 @@
 <p>Appendix E of TCPv1 discusses how to change these timing parameters for various kernels, ...</p>
 </blockquote>
 <p>I did not find Appendix E (actually no appendix at all) in TCPv1 (3rd Edition).</p>
+<p>Section 7.5 on <code>SO_LINGER</code></p>
+<blockquote>
+<p>One example is an RS-232 terminal server, which might hang forever in CLOSE_WAIT trying to deliver data to a stuck terminal port, but would properly reset the stuck port if it got an RST to discard the pending data.</p>
+</blockquote>
+<p>Not fully understood.</p>
             </div>
         </div>
 
