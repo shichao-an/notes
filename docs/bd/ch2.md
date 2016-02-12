@@ -160,8 +160,84 @@ A trade-off of the immutable approach is that it uses more storage than a mutabl
 1. The user ID is specified for every property, rather than once per row in a mutable approach.
 2. The entire history of events is stored rather than the current view of the world.
 
-You should take advantage of Big Data's ability to store large amounts of data using Big Data technologies to get the benefits of immutability. Hving a simple and strongly human-fault tolerant master dataset is important.
+You should take advantage of Big Data's ability to store large amounts of data using Big Data technologies to get the benefits of immutability. Having a simple and strongly human-fault tolerant master dataset is important.
 
 #### Data is eternally true
 
-###  The fact-based model for representing data
+The key consequence of immutability is that each piece of data is true forever. Tagging each piece of data with a timestamp is a practical way to make data eternally true.
+
+In general, your master dataset consistently grows by adding new immutable and eternally true pieces of data. There are some special cases in which you delete data, and these cases are not incompatible with data being eternally true. Consider the following cases:
+
+* **Garbage collection**. When you perform garbage collection, you delete all data units that have low value. You can use garbage collection to implement data-retention policies that control the growth of the master dataset. For example, you may decide to implement a policy that keeps only one location per person per year instead of the full history of each time a user changes locations.
+* **Regulations**. Government regulations may require you to purge data from your databases under certain conditions.
+
+Deleting the data is not a statement about the truthfulness of the data, but instead the value of the data. Although the data is eternally true, you may prefer to "forget" the information either because you must or because it doesn't provide enough value for the storage cost.
+
+It is important to distinguish that the deleting we are referring to is a special and rare case. In normal usage, data is immutable, and you enforce that property by taking actions such as setting the appropriate permissions. Since deleting data is rare, the utmost care can be taken to ensure that it is done safely. We believe deleting data is most safely accomplished by producing a second copy of the master dataset with the offending data filtered out, running analytic jobs to verify that the correct data was filtered, and then and only then replacing the old version of the master dataset.
+
+### The fact-based model for representing data
+
+Data is the set of information that can’t be derived from anything else, but there are many ways to represent it within the master dataset, such as:
+
+* Traditional relational tables
+* Structured XML
+* Semistructured JSON documents
+
+There are other possibilities for storing data. However, we recommend the fact-based model for this purpose. In the fact-based model, you deconstruct the data into fundamental units called *facts*.
+
+#### Example facts and their properties
+
+The following figure depicts examples of facts about Tom from the FaceSpace data, as well as two core properties of facts: they are *atomic* and *timestamped*.
+
+[![Figure 2.11 All of the raw data concerning Tom is deconstructed into timestamped, atomic units we call facts.](figure_2.11_600.png)](figure_2.11.png "Figure 2.11 All of the raw data concerning Tom is deconstructed into timestamped, atomic units we call facts.")
+
+* **Atomicity.** Facts are atomic and cannot be subdivided into smaller meaningful components.
+    * Collective data, such as Tom’s friend list in the figure, are represented as multiple, independent facts. As a consequence of being atomic, there’s no redundancy of information across distinct facts.
+* **Timestamp.** Facts are timestamped to make them immutable and eternally true.
+
+##### **Making Facts Identifiable**
+
+Besides being atomic and timestamped, facts should be associated with a uniquely identifiable piece of data.
+
+Suppose you want to store data about pageviews on FaceSpace. Your first approach
+might look something like this (in pseudo-code):
+
+```text
+struct PageView:
+  DateTime timestamp
+  String url
+  String ip_address
+```
+
+Facts using this structure don’t uniquely identify a particular pageview event. If multiple pageviews come in at the same time for the same URL from the same IP address, each pageview will have the exact same data record and there’s no way to tell whether they refer to distinct events or duplicate entries were accidentally introduced into your dataset.
+
+To distinguish different pageviews, you can add a *nonce* (a 64-bit number randomly generated for each pageview) to your schema :
+
+```text
+struct PageView:
+  Datetime timestamp
+  String url
+  String ip_address
+  Long nonce
+```
+
+The addition of the nonce makes it possible to distinguish pageview events from each other, and if two pageview data units are identical (all fields, including the nonce), they refer to the exact same event.
+
+Making facts identifiable means that you can write the same fact to the master dataset multiple times without changing the semantics of the master dataset. Your queries can filter out the duplicate facts when doing their computations. Having distinguishable facts makes implementing the rest of the Lambda Architecture much easier.
+
+##### **Duplicates aren’t as rare as you might think**
+
+Once FaceSpace becomes a hit, it will require hundreds, then thousands, of web servers. Building the master dataset will require aggregating the data from each of these servers to a central system—no trivial task. There are data collection tools suitable for this situation: Facebook’s [Scribe](https://en.wikipedia.org/wiki/Scribe_(log_server)), [Apache Flume](https://en.wikipedia.org/wiki/Apache_Flume), [syslog-ng](https://en.wikipedia.org/wiki/Syslog-ng), etc., but any solution must be fault tolerant.
+
+A common "fault" these systems must anticipate is a network partition where the destination datastore becomes unavailable. Fault-tolerant systems commonly handle failed operations by retrying until they succeed. Because the sender will not know which data was last received, a standard approach is to resend all data yet to be acknowledged by the recipient. But if part of the original attempt did make it to the metastore, you’d end up with duplicates in your dataset. This approach is simpler and has less performance costs than the transactional approach. By embracing distinguishable facts, it removes the need for transactional appends to the master dataset and make it easier to reason about the correctness of the full system.
+
+
+#### Benefits of the fact-based model
+
+### Doubts and Solutions
+
+p37 on deleting immutable data
+
+> We believe deleting data is most safely accomplished by producing a second copy of the master dataset with the offending data filtered out, running analytic jobs to verify that the correct data was filtered, and then and only then replacing the old version of the master dataset.
+
+"Producing a second copy of the master dataset"? It this real? What's the cost of storage and time to do this?

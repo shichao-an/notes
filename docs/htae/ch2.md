@@ -476,3 +476,28 @@ $1 = (void *) 0xbffff804
 0xbffff804: 0x080483c0
 (gdb)
 ```
+
+It is shown from the above example that:
+
+* The EBP register contains the address `0xbffff808`, and the assembly instruction will be writing `0xbffff804` (4 less than `0xbffff808`). The *examine* command can examine this memory address directly or by doing the math on the fly.
+* The `print` command can also be used to do simple math, but the result is stored in a temporary variable in the debugger. This variable named `$1` can be used later to quickly re-access a particular location in memory.
+
+These methods shown above will accomplish the same task: displaying the 4 garbage bytes found in memory that will be zeroed out when the current instruction executes.
+
+To execute the current instruction, run the command `nexti`, which is short for *next instruction*. The processor will read the instruction at EIP, execute it, and advance EIP to the next instruction.
+
+```text
+(gdb) nexti
+0x0804838b 6 for(i=0; i < 10; i++)
+(gdb) x/4xb $1
+0xbffff804: 0x00 0x00 0x00 0x00
+(gdb) x/dw $1
+0xbffff804: 0
+(gdb) i r eip
+eip 0x804838b 0x804838b <main+23>
+(gdb) x/i $eip
+0x804838b <main+23>: cmp DWORD PTR [ebp-4],0x9
+(gdb)
+```
+
+As predicted, the previous command zeroes out the 4 bytes found at EBP minus 4, which is memory set aside for the C variable `i`. Then EIP advances to the next instruction.
