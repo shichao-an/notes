@@ -526,6 +526,13 @@
     
         <li class="main "><a href="#the-fact-based-model-for-representing-data">The fact-based model for representing data</a></li>
         
+            <li><a href="#example-facts-and-their-properties">Example facts and their properties</a></li>
+        
+            <li><a href="#benefits-of-the-fact-based-model">Benefits of the fact-based model</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
     
     </ul>
 </div></div>
@@ -655,9 +662,67 @@
 <li>The user ID is specified for every property, rather than once per row in a mutable approach.</li>
 <li>The entire history of events is stored rather than the current view of the world.</li>
 </ol>
-<p>You should take advantage of Big Data's ability to store large amounts of data using Big Data technologies to get the benefits of immutability. Hving a simple and strongly human-fault tolerant master dataset is important.</p>
+<p>You should take advantage of Big Data's ability to store large amounts of data using Big Data technologies to get the benefits of immutability. Having a simple and strongly human-fault tolerant master dataset is important.</p>
 <h4 id="data-is-eternally-true">Data is eternally true</h4>
+<p>The key consequence of immutability is that each piece of data is true forever. Tagging each piece of data with a timestamp is a practical way to make data eternally true.</p>
+<p>In general, your master dataset consistently grows by adding new immutable and eternally true pieces of data. There are some special cases in which you delete data, and these cases are not incompatible with data being eternally true. Consider the following cases:</p>
+<ul>
+<li><strong>Garbage collection</strong>. When you perform garbage collection, you delete all data units that have low value. You can use garbage collection to implement data-retention policies that control the growth of the master dataset. For example, you may decide to implement a policy that keeps only one location per person per year instead of the full history of each time a user changes locations.</li>
+<li><strong>Regulations</strong>. Government regulations may require you to purge data from your databases under certain conditions.</li>
+</ul>
+<p>Deleting the data is not a statement about the truthfulness of the data, but instead the value of the data. Although the data is eternally true, you may prefer to "forget" the information either because you must or because it doesn't provide enough value for the storage cost.</p>
+<p>It is important to distinguish that the deleting we are referring to is a special and rare case. In normal usage, data is immutable, and you enforce that property by taking actions such as setting the appropriate permissions. Since deleting data is rare, the utmost care can be taken to ensure that it is done safely. We believe deleting data is most safely accomplished by producing a second copy of the master dataset with the offending data filtered out, running analytic jobs to verify that the correct data was filtered, and then and only then replacing the old version of the master dataset.</p>
 <h3 id="the-fact-based-model-for-representing-data">The fact-based model for representing data</h3>
+<p>Data is the set of information that can’t be derived from anything else, but there are many ways to represent it within the master dataset, such as:</p>
+<ul>
+<li>Traditional relational tables</li>
+<li>Structured XML</li>
+<li>Semistructured JSON documents</li>
+</ul>
+<p>There are other possibilities for storing data. However, we recommend the fact-based model for this purpose. In the fact-based model, you deconstruct the data into fundamental units called <em>facts</em>.</p>
+<h4 id="example-facts-and-their-properties">Example facts and their properties</h4>
+<p>The following figure depicts examples of facts about Tom from the FaceSpace data, as well as two core properties of facts: they are <em>atomic</em> and <em>timestamped</em>.</p>
+<p><a href="../figure_2.11.png" title="Figure 2.11 All of the raw data concerning Tom is deconstructed into timestamped, atomic units we call facts."><img alt="Figure 2.11 All of the raw data concerning Tom is deconstructed into timestamped, atomic units we call facts." src="../figure_2.11_600.png" /></a></p>
+<ul>
+<li><strong>Atomicity.</strong> Facts are atomic and cannot be subdivided into smaller meaningful components.<ul>
+<li>Collective data, such as Tom’s friend list in the figure, are represented as multiple, independent facts. As a consequence of being atomic, there’s no redundancy of information across distinct facts.</li>
+</ul>
+</li>
+<li><strong>Timestamp.</strong> Facts are timestamped to make them immutable and eternally true.</li>
+</ul>
+<h5 id="making-facts-identifiable"><strong>Making Facts Identifiable</strong></h5>
+<p>Besides being atomic and timestamped, facts should be associated with a uniquely identifiable piece of data.</p>
+<p>Suppose you want to store data about pageviews on FaceSpace. Your first approach
+might look something like this (in pseudo-code):</p>
+<div class="codehilite"><pre>struct PageView:
+  DateTime timestamp
+  String url
+  String ip_address
+</pre></div>
+
+
+<p>Facts using this structure don’t uniquely identify a particular pageview event. If multiple pageviews come in at the same time for the same URL from the same IP address, each pageview will have the exact same data record and there’s no way to tell whether they refer to distinct events or duplicate entries were accidentally introduced into your dataset.</p>
+<p>To distinguish different pageviews, you can add a <em>nonce</em> (a 64-bit number randomly generated for each pageview) to your schema :</p>
+<div class="codehilite"><pre>struct PageView:
+  Datetime timestamp
+  String url
+  String ip_address
+  Long nonce
+</pre></div>
+
+
+<p>The addition of the nonce makes it possible to distinguish pageview events from each other, and if two pageview data units are identical (all fields, including the nonce), they refer to the exact same event.</p>
+<p>Making facts identifiable means that you can write the same fact to the master dataset multiple times without changing the semantics of the master dataset. Your queries can filter out the duplicate facts when doing their computations. Having distinguishable facts makes implementing the rest of the Lambda Architecture much easier.</p>
+<h5 id="duplicates-arent-as-rare-as-you-might-think"><strong>Duplicates aren’t as rare as you might think</strong></h5>
+<p>Once FaceSpace becomes a hit, it will require hundreds, then thousands, of web servers. Building the master dataset will require aggregating the data from each of these servers to a central system—no trivial task. There are data collection tools suitable for this situation: Facebook’s <a href="https://en.wikipedia.org/wiki/Scribe_(log_server)">Scribe</a>, <a href="https://en.wikipedia.org/wiki/Apache_Flume">Apache Flume</a>, <a href="https://en.wikipedia.org/wiki/Syslog-ng">syslog-ng</a>, etc., but any solution must be fault tolerant.</p>
+<p>A common "fault" these systems must anticipate is a network partition where the destination datastore becomes unavailable. Fault-tolerant systems commonly handle failed operations by retrying until they succeed. Because the sender will not know which data was last received, a standard approach is to resend all data yet to be acknowledged by the recipient. But if part of the original attempt did make it to the metastore, you’d end up with duplicates in your dataset. This approach is simpler and has less performance costs than the transactional approach. By embracing distinguishable facts, it removes the need for transactional appends to the master dataset and make it easier to reason about the correctness of the full system.</p>
+<h4 id="benefits-of-the-fact-based-model">Benefits of the fact-based model</h4>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<p>p37 on deleting immutable data</p>
+<blockquote>
+<p>We believe deleting data is most safely accomplished by producing a second copy of the master dataset with the offending data filtered out, running analytic jobs to verify that the correct data was filtered, and then and only then replacing the old version of the master dataset.</p>
+</blockquote>
+<p>"Producing a second copy of the master dataset"? It this real? What's the cost of storage and time to do this?</p>
             </div>
         </div>
 
