@@ -964,6 +964,30 @@ $1 = (void *) 0xbffff804
 0xbffff804: 0x080483c0
 (gdb)
 </pre></div>
+
+
+<p>It is shown from the above example that:</p>
+<ul>
+<li>The EBP register contains the address <code>0xbffff808</code>, and the assembly instruction will be writing <code>0xbffff804</code> (4 less than <code>0xbffff808</code>). The <em>examine</em> command can examine this memory address directly or by doing the math on the fly.</li>
+<li>The <code>print</code> command can also be used to do simple math, but the result is stored in a temporary variable in the debugger. This variable named <code>$1</code> can be used later to quickly re-access a particular location in memory.</li>
+</ul>
+<p>These methods shown above will accomplish the same task: displaying the 4 garbage bytes found in memory that will be zeroed out when the current instruction executes.</p>
+<p>To execute the current instruction, run the command <code>nexti</code>, which is short for <em>next instruction</em>. The processor will read the instruction at EIP, execute it, and advance EIP to the next instruction.</p>
+<div class="codehilite"><pre>(gdb) nexti
+0x0804838b 6 for(i=0; i &lt; 10; i++)
+(gdb) x/4xb $1
+0xbffff804: 0x00 0x00 0x00 0x00
+(gdb) x/dw $1
+0xbffff804: 0
+(gdb) i r eip
+eip 0x804838b 0x804838b &lt;main+23&gt;
+(gdb) x/i $eip
+0x804838b &lt;main+23&gt;: cmp DWORD PTR [ebp-4],0x9
+(gdb)
+</pre></div>
+
+
+<p>As predicted, the previous command zeroes out the 4 bytes found at EBP minus 4, which is memory set aside for the C variable <code>i</code>. Then EIP advances to the next instruction.</p>
             </div>
         </div>
 
