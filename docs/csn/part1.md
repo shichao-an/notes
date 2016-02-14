@@ -571,7 +571,7 @@ size = sizeof &x;
 
 Do not use `int` in place of `size_t`, because `size_t` has different sizes on 32-bit and 64-bit platforms.
 
-#### Comma operator
+#### Comma Operator
 
 The [comma operator](http://en.cppreference.com/w/c/language/operator_other#Comma_operator) is a binary operator, which guarantees that the operands are evaluated from left to right and returns the value and type of the right operand.
 
@@ -804,7 +804,152 @@ int main(int argc, char* argv[])
 }
 ```
 
+The inner function can "read and write" the parameters and variables from the outer function; the outer variables have to be defined before the nested function.
 
+The following code:
+
+```c
+#define pp() ({ \
+    printf("%s: x = %d(%p), y = %d(%p), s = %s(%p);\n", __func__, x, &x, y, &y, s, s); \
+})
+
+void test2(int x, char *s)
+{
+    int y = 88;
+    pp();
+
+    void func1()
+    {
+        y++;
+        x++;
+        pp();
+    }
+
+    func1();
+
+    x++;
+    func1();
+    pp();
+}
+
+int main (int argc, char * argv[])
+{
+    test2(1234, "abc");
+    return EXIT_SUCCESS;
+}
+```
+
+will output:
+
+```text
+test2: x = 1234(0xbffff7d4), y = 88(0xbffff7d8), s = abc(0x4ad3);
+func1: x = 1235(0xbffff7d4), y = 89(0xbffff7d8), s = abc(0x4ad3);
+func1: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
+test2: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
+```
+
+#### Types
+
+Do not confuse "function type" and "function pointer type". The name of a function is a pointer to that function.
+
+```c
+typedef void(func_t)();      // function type
+typedef void(*func_ptr_t)(); // function pointer type
+
+void test()
+{
+    printf("%s\n", __func__);
+}
+
+int main(int argc, char* argv[])
+{
+    func_t* func = test;     // delcare a pointer
+    func_ptr_t func2 = test; // already a pointer type
+
+    void (*func3)();         // declare a function pointer variable, which
+                             // includes a function prototype
+    func3 = test;
+
+    func();
+    func2();
+    func3();
+
+    return EXIT_SUCCESS;
+}
+```
+
+#### Function Calls
+
+By default, C uses the [cdecl](https://en.wikipedia.org/wiki/X86_calling_conventions#cdecl) calling convention. The arguments are pushed on the stack in the right-to-left order. It is the caller that pushes arguments on the stack and cleans arguments from the stack.
+
+The following code:
+
+```c
+int main(int argc, char* argv[])
+{
+    int a()
+    {
+        printf("a\n");
+        return 1;
+    }
+
+    char* s()
+    {
+        printf("s\n");
+        return "abc";
+    }
+
+    printf("call: %d, %s\n", a(), s());
+    return EXIT_SUCCESS;
+}
+```
+
+will output:
+
+```text
+s
+a
+call: 1, abc
+```
+
+Every [object](http://en.cppreference.com/w/c/language/object) in C, including the pointer, is passed in a "[call by value](https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_value)" (pass by value) way. We can pass a "pointer to the pointer" as the argument.
+
+```c
+void test(int** x)
+{
+    int* p = malloc(sizeof(int));
+    *p = 123;
+    *x = p;
+}
+
+int main(int argc, char* argv[])
+{
+    int* p;
+    test(&p);
+    printf("%d\n", *p);
+    free(p);
+    return EXIT_SUCCESS;
+}
+```
+
+Note: do not return the stack variable in `test`.
+
+#### Storage-class Specifiers
+
+C99 has the following storage-class specifiers:
+
+* `extern`: default specifier.
+    * On functions: used to specify that a function has external linkage. These functions can be used in any program files.
+    * On variables: used to specify that a variable is defined in other [translation units](https://en.wikipedia.org/wiki/Translation_unit_(programming)).
+* `static`: used to specify that a function is available only in its translation unit (source code file). It can also be used to represent static variables.
+* [`inline`](http://en.cppreference.com/w/c/language/inline): used to recommend the compiler to inline the body the function to the [call site](https://en.wikipedia.org/wiki/Call_site), but the complier decides whether to perform inlining. Normally, the functions that contain loops and recursive functions cannot be defined as an inline function.
+
+Some notes about [GNU inline](https://gcc.gnu.org/onlinedocs/gcc/Inline.html):
+
+* `static inline`: internal linkage function. Inlining is performed within the current translation unit. When `-O0` is specified, the function is still called.
+* `inline`: external linkage function. Inlining is performed within the current translation unit. In other translation unit, it is a normal external linkage function. (the `inline` keyword cannot be specified to the header files)
+
+The `inline` keyword can only used in function definitions.
 
 
 - - -
