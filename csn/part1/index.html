@@ -548,7 +548,7 @@
         
             <li><a href="#sizeof">sizeof</a></li>
         
-            <li><a href="#comma-operator">Comma operator</a></li>
+            <li><a href="#comma-operator">Comma Operator</a></li>
         
             <li><a href="#precedence">Precedence</a></li>
         
@@ -567,6 +567,12 @@
         <li class="main "><a href="#functions">Functions</a></li>
         
             <li><a href="#nested-functions">Nested Functions</a></li>
+        
+            <li><a href="#types">Types</a></li>
+        
+            <li><a href="#function-calls">Function Calls</a></li>
+        
+            <li><a href="#storage-class-specifiers">Storage-class Specifiers</a></li>
         
     
         <li class="main "><a href="#references">References</a></li>
@@ -1080,7 +1086,7 @@ printf(&quot;%p, %x, %d\n&quot;, p, px, *(int*)px);
 
 
 <p>Do not use <code>int</code> in place of <code>size_t</code>, because <code>size_t</code> has different sizes on 32-bit and 64-bit platforms.</p>
-<h4 id="comma-operator">Comma operator</h4>
+<h4 id="comma-operator">Comma Operator</h4>
 <p>The <a href="http://en.cppreference.com/w/c/language/operator_other#Comma_operator">comma operator</a> is a binary operator, which guarantees that the operands are evaluated from left to right and returns the value and type of the right operand.</p>
 <div class="codehilite"><pre><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
 <span class="kt">long</span> <span class="kt">long</span> <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">++</span><span class="p">,</span> <span class="p">(</span><span class="kt">long</span> <span class="kt">long</span><span class="p">)</span><span class="n">i</span><span class="p">);</span>
@@ -1377,6 +1383,142 @@ Correct: *(p.f)
 </pre></div>
 
 
+<p>The inner function can "read and write" the parameters and variables from the outer function; the outer variables have to be defined before the nested function.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="cp">#define pp() ({ \</span>
+<span class="cp">    printf(&quot;%s: x = %d(%p), y = %d(%p), s = %s(%p);\n&quot;, __func__, x, &amp;x, y, &amp;y, s, s); \</span>
+<span class="cp">})</span>
+
+<span class="kt">void</span> <span class="nf">test2</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">88</span><span class="p">;</span>
+    <span class="n">pp</span><span class="p">();</span>
+
+    <span class="kt">void</span> <span class="n">func1</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="n">y</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">x</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">pp</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="n">func1</span><span class="p">();</span>
+
+    <span class="n">x</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">func1</span><span class="p">();</span>
+    <span class="n">pp</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">test2</span><span class="p">(</span><span class="mi">1234</span><span class="p">,</span> <span class="s">&quot;abc&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>test2: x = 1234(0xbffff7d4), y = 88(0xbffff7d8), s = abc(0x4ad3);
+func1: x = 1235(0xbffff7d4), y = 89(0xbffff7d8), s = abc(0x4ad3);
+func1: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
+test2: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
+</pre></div>
+
+
+<h4 id="types">Types</h4>
+<p>Do not confuse "function type" and "function pointer type". The name of a function is a pointer to that function.</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="n">func_t</span><span class="p">)();</span>      <span class="c1">// function type</span>
+<span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="o">*</span><span class="n">func_ptr_t</span><span class="p">)();</span> <span class="c1">// function pointer type</span>
+
+<span class="kt">void</span> <span class="nf">test</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">__func__</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">func_t</span><span class="o">*</span> <span class="n">func</span> <span class="o">=</span> <span class="n">test</span><span class="p">;</span>     <span class="c1">// delcare a pointer</span>
+    <span class="n">func_ptr_t</span> <span class="n">func2</span> <span class="o">=</span> <span class="n">test</span><span class="p">;</span> <span class="c1">// already a pointer type</span>
+
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func3</span><span class="p">)();</span>         <span class="c1">// declare a function pointer variable, which</span>
+                             <span class="c1">// includes a function prototype</span>
+    <span class="n">func3</span> <span class="o">=</span> <span class="n">test</span><span class="p">;</span>
+
+    <span class="n">func</span><span class="p">();</span>
+    <span class="n">func2</span><span class="p">();</span>
+    <span class="n">func3</span><span class="p">();</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="function-calls">Function Calls</h4>
+<p>By default, C uses the <a href="https://en.wikipedia.org/wiki/X86_calling_conventions#cdecl">cdecl</a> calling convention. The arguments are pushed on the stack in the right-to-left order. It is the caller that pushes arguments on the stack and cleans arguments from the stack.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">a</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;a</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">char</span><span class="o">*</span> <span class="n">s</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="s">&quot;abc&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;call: %d, %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">(),</span> <span class="n">s</span><span class="p">());</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>s
+a
+call: 1, abc
+</pre></div>
+
+
+<p>Every <a href="http://en.cppreference.com/w/c/language/object">object</a> in C, including the pointer, is passed in a "<a href="https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_value">call by value</a>" (pass by value) way. We can pass a "pointer to the pointer" as the argument.</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">int</span><span class="o">**</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">123</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">x</span> <span class="o">=</span> <span class="n">p</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">p</span><span class="p">;</span>
+    <span class="n">test</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note: do not return the stack variable in <code>test</code>.</p>
+<h4 id="storage-class-specifiers">Storage-class Specifiers</h4>
+<p>C99 has the following storage-class specifiers:</p>
+<ul>
+<li><code>extern</code>: default specifier.<ul>
+<li>On functions: used to specify that a function has external linkage. These functions can be used in any program files.</li>
+<li>On variables: used to specify that a variable is defined in other <a href="https://en.wikipedia.org/wiki/Translation_unit_(programming)">translation units</a>.</li>
+</ul>
+</li>
+<li><code>static</code>: used to specify that a function is available only in its translation unit (source code file). It can also be used to represent static variables.</li>
+<li><a href="http://en.cppreference.com/w/c/language/inline"><code>inline</code></a>: used to recommend the compiler to inline the body the function to the <a href="https://en.wikipedia.org/wiki/Call_site">call site</a>, but the complier decides whether to perform inlining. Normally, the functions that contain loops and recursive functions cannot be defined as an inline function.</li>
+</ul>
+<p>Some notes about <a href="https://gcc.gnu.org/onlinedocs/gcc/Inline.html">GNU inline</a>:</p>
+<ul>
+<li><code>static inline</code>: internal linkage function. Inlining is performed within the current translation unit. When <code>-O0</code> is specified, the function is still called.</li>
+<li><code>inline</code>: external linkage function. Inlining is performed within the current translation unit. In other translation unit, it is a normal external linkage function. (the <code>inline</code> keyword cannot be specified to the header files)</li>
+</ul>
+<p>The <code>inline</code> keyword can only used in function definitions.</p>
 <hr />
 <h3 id="references">References</h3>
 <ul>
