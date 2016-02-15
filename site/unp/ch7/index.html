@@ -740,6 +740,16 @@
 </ul>
 </li>
 </ol>
+<p>Given the above three scenarios, consider the situations when a <code>close</code> on a socket returns. Assume that the client writes data to the socket and then calls <code>close</code>.</p>
+<h5 id="default-operation-of-close-it-returns-immediately"><strong>Default operation of <code>close</code>: it returns immediately</strong> *</h5>
+<p><a href="../figure_7.7.png" title="Figure 7.7. Default operation of close: it returns immediately."><img alt="Figure 7.7. Default operation of close: it returns immediately." src="../figure_7.7.png" /></a></p>
+<p>Assume that when the client's data arrives, the server is temporarily busy, so the data is added to the socket receive buffer by its TCP. Similarly, the next segment, the client's FIN, is also added to the socket receive buffer. But by default, the client's <code>close</code> returns immediately. In the scenario shown above, the client's <code>close</code> can return before the server reads the remaining data in its socket receive buffer. Therefore, it is possible for the server host to crash before the server application reads this remaining data, and the client application will never know.</p>
+<h5 id="close-with-so_linger-socket-option-set-and-l_linger-a-positive-value"><strong><code>close</code> with <code>SO_LINGER</code> socket option set and <code>l_linger</code> a positive value</strong> *</h5>
+<p>The client can set the <code>SO_LINGER</code> socket option, specifying some positive linger time. When this occurs, the client's <code>close</code> does not return until all the client's data and its FIN have been acknowledged by the server TCP, as shown in the figure below.</p>
+<p><a href="../figure_7.8.png" title="Figure 7.8. close with SO_LINGER socket option set and l_linger a positive value."><img alt="Figure 7.8. close with SO_LINGER socket option set and l_linger a positive value." src="../figure_7.8.png" /></a></p>
+<p>But this still has the same problem as in <a href="../figure_7.7.png">Figure 7.7</a>: The server host can crash before the server application reads its remaining data, and the client application will never know. Worse, the following figure shows what can happen when the <code>SO_LINGER</code> option is set to a value that is too low.</p>
+<p><a href="../figure_7.9.png" title="Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value."><img alt="Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value." src="../figure_7.9.png" /></a></p>
+<h5 id="using-shutdown-to-know-that-peer-has-received-our-data"><strong>Using <code>shutdown</code> to know that peer has received our data</strong> *</h5>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>

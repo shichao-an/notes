@@ -1098,10 +1098,12 @@ func init() {
 
 #### Verbatim
 
-p32 on short variable declaration.
+##### **p32 on short variable declaration**
 
 > A short variable declaration acts like an assignment only to variables that were already declared in the same lexical block; declarations in an outer block are ignored.
 
-What does "declarations in an outer block are ignored" mean?
+<span class="text-danger">Question</span>: What does "declarations in an outer block are ignored" mean?
 
-p45 on `init` function. What exact algorithm does `PopCount` use? It seems different from the Hamming weight algorithm on Wikipedia.
+##### **p45 on `init` function**
+
+<span class="text-danger">Question</span>: What exact algorithm does `PopCount` use? It seems different from the Hamming weight algorithm on Wikipedia.
