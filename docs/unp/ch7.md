@@ -175,6 +175,25 @@ Calling `setsockopt` leads to one of the following three scenarios, depending on
         2. The linger time expires.
     * If the socket has been set to nonblocking, it will not wait for the `close` to complete, even if the linger time is nonzero. When using this feature of the `SO_LINGER` option, it is important for the application to check the return value from `close`, because if the linger time expires before the remaining data is sent and acknowledged, `close` returns `EWOULDBLOCK` and any remaining data in the send buffer is discarded.
 
+Given the above three scenarios, consider the situations when a `close` on a socket returns. Assume that the client writes data to the socket and then calls `close`.
+
+##### **Default operation of `close`: it returns immediately** *
+
+[![Figure 7.7. Default operation of close: it returns immediately.](figure_7.7.png)](figure_7.7.png "Figure 7.7. Default operation of close: it returns immediately.")
+
+Assume that when the client's data arrives, the server is temporarily busy, so the data is added to the socket receive buffer by its TCP. Similarly, the next segment, the client's FIN, is also added to the socket receive buffer. But by default, the client's `close` returns immediately. In the scenario shown above, the client's `close` can return before the server reads the remaining data in its socket receive buffer. Therefore, it is possible for the server host to crash before the server application reads this remaining data, and the client application will never know.
+
+##### **`close` with `SO_LINGER` socket option set and `l_linger` a positive value** *
+
+The client can set the `SO_LINGER` socket option, specifying some positive linger time. When this occurs, the client's `close` does not return until all the client's data and its FIN have been acknowledged by the server TCP, as shown in the figure below.
+
+[![Figure 7.8. close with SO_LINGER socket option set and l_linger a positive value.](figure_7.8.png)](figure_7.8.png "Figure 7.8. close with SO_LINGER socket option set and l_linger a positive value.")
+
+But this still has the same problem as in [Figure 7.7](figure_7.7.png): The server host can crash before the server application reads its remaining data, and the client application will never know. Worse, the following figure shows what can happen when the `SO_LINGER` option is set to a value that is too low.
+
+[![Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value.](figure_7.9.png)](figure_7.9.png "Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value.")
+
+##### **Using `shutdown` to know that peer has received our data** *
 
 
 ### ICMPv6 Socket Option

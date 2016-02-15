@@ -522,6 +522,11 @@
             <li><a href="#binary-operators">Binary operators *</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -598,12 +603,163 @@ code point. The two names may be used interchangeably.</li>
 <li>Integers, floating-point numbers, and strings are <em>ordered</em> by the comparison operators.</li>
 <li>The values of many other types are not comparable, and no other types are ordered.</li>
 </ul>
+<h5 id="unary-operators"><strong>Unary operators</strong> *</h5>
 <p>There are also unary addition and subtraction operators:</p>
 <ul>
 <li><code>+</code>: unary positive (no effect)</li>
 <li><code>-</code>: unary negation</li>
 </ul>
 <p>For integers, <code>+x</code> is a shorthand for <code>0+x</code> and <code>-x</code> is a shorthand for <code>0-x</code>; for floating-point and complex numbers, <code>+x</code> is just <code>x</code> and <code>-x</code> is the negation of <code>x</code>.</p>
+<h5 id="bitwise-binary-operators"><strong>Bitwise binary operators</strong> *</h5>
+<p>The following are bitwise binary operators. The first four of them treat their operands as bit patterns with no concept of arithmetic carry or sign:</p>
+<ul>
+<li><code>&amp;</code>: bitwise AND</li>
+<li><code>|</code>: bitwise OR</li>
+<li><code>^</code>: bitwise XOR</li>
+<li><code>&amp;^</code>: bit clear (AND NOT)</li>
+<li><code>&lt;&lt;</code>: left shift</li>
+<li><code>&gt;&gt;</code>: right shift</li>
+</ul>
+<p>The operator <code>^</code> has two usages:</p>
+<ul>
+<li>When used as a binary operator, it is bitwise exclusive OR (XOR)</li>
+<li>When used as a unary prefix operator, it is bitwise negation or complement, which means it returns a value with each bit in its operand inverted.</li>
+</ul>
+<p>The <code>&amp;^</code> operator is bit clear (AND NOT): in the expression <code>z = x &amp;^ y</code>, each bit of <code>z</code> is 0 if the corresponding bit of <code>y</code> is 1; otherwise it equals the corresponding bit of <code>x</code>.</p>
+<h5 id="bitwise-operation-examples"><strong>Bitwise operation examples</strong> *</h5>
+<p>The code below shows how bitwise operations can be used to interpret a <code>uint8</code> value as a compact and efficient set of 8 independent bits. It uses <code>Printf</code>'s <code>%b</code> verb to print a number’s binary digits; <code>08</code> modifies <code>%b</code> to pad the result with zeros to exactly 8 digits.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="kt">uint8</span> <span class="p">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">1</span> <span class="p">|</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">5</span>
+<span class="kd">var</span> <span class="nx">y</span> <span class="kt">uint8</span> <span class="p">=</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">1</span> <span class="p">|</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">2</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>    <span class="c1">// &quot;00100010&quot;, the set {1, 5}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span>    <span class="c1">// &quot;00000110&quot;, the set {1, 2}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="o">&amp;</span><span class="nx">y</span><span class="p">)</span>  <span class="c1">// &quot;00000010&quot;, the intersection {1}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">|</span><span class="nx">y</span><span class="p">)</span>  <span class="c1">// &quot;00100110&quot;, the union {1, 2, 5}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">^</span><span class="nx">y</span><span class="p">)</span>  <span class="c1">// &quot;00100100&quot;, the symmetric difference {2, 5}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="o">&amp;^</span><span class="nx">y</span><span class="p">)</span> <span class="c1">// &quot;00100000&quot;, the difference {5}</span>
+
+<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="nb">uint</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">8</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">x</span><span class="o">&amp;</span><span class="p">(</span><span class="mi">1</span><span class="o">&lt;&lt;</span><span class="nx">i</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">{</span> <span class="c1">// membership test</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="c1">// &quot;1&quot;, &quot;5&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="p">)</span> <span class="c1">// &quot;01000100&quot;, the set {2, 6}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%08b\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="o">&gt;&gt;</span><span class="mi">1</span><span class="p">)</span> <span class="c1">// &quot;00010001&quot;, the set {0, 4}</span>
+</pre></div>
+
+
+<p><a href="../ch6/#example-bit-vector-type">Section 6.5</a> shows an implementation of integer sets that can be much bigger than a byte.</p>
+<p>In the shift operations <code>x&lt;&lt;n</code> and <code>x&gt;&gt;n</code>:</p>
+<ul>
+<li>The <code>n</code> operand determines the number of bit positions to shift and must be unsigned.</li>
+<li>The <code>x</code> operand may be unsigned or signed.</li>
+</ul>
+<p>Arithmetically:</p>
+<ul>
+<li>A left shift <code>x&lt;&lt;n</code> is equivalent to multiplication by 2<sup>n</sup>.</li>
+<li>A right shift <code>x&gt;&gt;n</code> is equivalent to the floor of division by 2<sup>n</sup>.</li>
+</ul>
+<p>For unsigned numbers, both left and right shifts fill the vacated bits with zeros. However, <u>right shifts of signed numbers fill the vacated bits with copies of the sign bit.</u> For this reason, it is important to use unsigned arithmetic when you’re treating an integer as a bit pattern.</p>
+<h5 id="usages-of-unsigned-numbers"><strong>Usages of unsigned numbers</strong></h5>
+<p>Although Go provides unsigned numbers and arithmetic, we tend to use the signed <code>int</code> form even for quantities that can’t be negative, such as the length of an array (though <code>uint</code> might seem a more obvious choice). The built-in <code>len</code> function returns a signed <code>int</code>. Consider the following example:</p>
+<div class="codehilite"><pre><span class="nx">medals</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;gold&quot;</span><span class="p">,</span> <span class="s">&quot;silver&quot;</span><span class="p">,</span> <span class="s">&quot;bronze&quot;</span><span class="p">}</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">medals</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">--</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">medals</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span> <span class="c1">// &quot;bronze&quot;, &quot;silver&quot;, &quot;gold&quot;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If <code>len</code> returned an unsigned number, then <code>i</code> would be a <code>uint</code>, and the condition <code>i &gt;= 0</code> would always be true by definition. After the third iteration, in which <code>i == 0</code>, the <code>i--</code> statement would cause <code>i</code> to become not <code>−1</code>, but the maximum <code>uint</code> value (for example, 2<sup>64</sup>−1), and the evaluation of <code>medals[i]</code> would fail at run time, or panic (<a href="../ch5/#panic">Section 5.9</a>), by attempting to access an element outside the bounds of the slice.</p>
+<p>For this reason, unsigned numbers tend to be used only when their bitwise operators or peculiar arithmetic operators are required, such as</p>
+<ul>
+<li>Implementing bit sets</li>
+<li>Parsing binary file formats</li>
+<li>For hashing and cryptography.</li>
+</ul>
+<p>They are typically not used for merely non-negative quantities.</p>
+<p>Binary operators for arithmetic and logic (except shifts) must have operands of the same type. In cases where operands have different types, an explicit conversion is required. This eliminates a whole class of problems and makes programs easier to understand.</p>
+<p>Consider this sequence:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">apples</span> <span class="kt">int32</span> <span class="p">=</span> <span class="mi">1</span>
+<span class="kd">var</span> <span class="nx">oranges</span> <span class="kt">int16</span> <span class="p">=</span> <span class="mi">2</span>
+<span class="kd">var</span> <span class="nx">compote</span> <span class="kt">int</span> <span class="p">=</span> <span class="nx">apples</span> <span class="o">+</span> <span class="nx">oranges</span> <span class="c1">// compile error</span>
+</pre></div>
+
+
+<p>Attempting to compile these three declarations produces an error message:</p>
+<div class="codehilite"><pre>invalid operation: apples + oranges (mismatched types int32 and int16)
+</pre></div>
+
+
+<p>This type mismatch can be fixed in several ways, most directly by converting everything to a common type:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">compote</span> <span class="p">=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">apples</span><span class="p">)</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="nx">oranges</span><span class="p">)</span>
+</pre></div>
+
+
+<p>As described in <a href="../ch2/#type-declarations">Section 2.5</a>, for every type <code>T</code>, the conversion operation <code>T(x)</code> converts the value <code>x</code> to type <code>T</code> if the conversion is allowed. Many integer-to-integer conversions do not entail any change in value, but only tell the compiler how to interpret a value. However, some conversions may change the value or lose precision:</p>
+<ul>
+<li>A conversion that narrows a big integer into a smaller one.</li>
+<li>A conversion from integer to floating-point or vice versa.</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">f</span> <span class="o">:=</span> <span class="mf">3.141</span> <span class="c1">// a float64</span>
+<span class="nx">i</span> <span class="o">:=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span>
+<span class="c1">// &quot;3.141 3&quot;</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="mf">1.99</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nx">f</span><span class="p">))</span> <span class="c1">// &quot;1&quot;</span>
+</pre></div>
+
+
+<p>Float to integer conversion discards any fractional part, truncating toward zero. You should avoid conversions in which the operand is out of range for the target type, because the behavior depends on the implementation:</p>
+<div class="codehilite"><pre><span class="nx">f</span> <span class="o">:=</span> <span class="mf">1e100</span>  <span class="c1">// a float64</span>
+<span class="nx">i</span> <span class="o">:=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="c1">// result is implementation-dependent</span>
+</pre></div>
+
+
+<p>Integer literals of any size and type can be written as one of the following:</p>
+<ul>
+<li>Ordinary decimal numbers,</li>
+<li>Octal numbers, if they begin with 0, e.g. 0666</li>
+<li>Hexadecimal, if they begin with 0x or 0X, e.g. 0xdeadbeef. Hex digits may be upper or lower case.</li>
+</ul>
+<p>Nowadays octal numbers seem to be used for exactly one purpose: file permissions on POSIX systems. Hexadecimal numbers are widely used to emphasize the bit pattern of a number over its numeric value.  When printing numbers using the <code>fmt</code> package, we can control the <a href="https://en.wikipedia.org/wiki/Radix">radix</a> and format with the <code>%d</code>, <code>%o</code>, and <code>%x</code> verbs, as shown in this example:</p>
+<div class="codehilite"><pre><span class="nx">o</span> <span class="o">:=</span> <span class="mo">0666</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d %[1]o %#[1]o\n&quot;</span><span class="p">,</span> <span class="nx">o</span><span class="p">)</span> <span class="c1">// &quot;438 666 0666&quot;</span>
+<span class="nx">x</span> <span class="o">:=</span> <span class="nb">int64</span><span class="p">(</span><span class="mh">0xdeadbeef</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d %[1]x %#[1]x %#[1]X\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// 3735928559 deadbeef 0xdeadbeef 0XDEADBEEF</span>
+</pre></div>
+
+
+<p>The above example describes two <code>fmt</code> tricks.</p>
+<ol>
+<li>Usually a <code>Printf</code> format string containing multiple <code>%</code> verbs would require the same number of extra operands, but the <code>[1]</code> "adverbs" after <code>%</code> tell <code>Printf</code> to use the first operand.</li>
+<li>The <code>#</code> adverb for <code>%o</code> or <code>%x</code> or <code>%X</code> tells <code>Printf</code> to emit a <code>0</code> or <code>0x</code> or <code>0X</code> prefix respectively.</li>
+</ol>
+<p>Rune literals are written as a character within single quotes. The simplest example is an ASCII character like <code>'a'</code>, but it’s possible to write any Unicode code point either directly or with numeric escapes. This will be discussed in later sections.</p>
+<p>Runes are printed with <code>%c</code>, or with <code>%q</code> if quoting is desired:</p>
+<div class="codehilite"><pre><span class="nx">ascii</span> <span class="o">:=</span> <span class="sc">&#39;a&#39;</span>
+<span class="nx">unicode</span> <span class="o">:=</span> <span class="sc">&#39;D&#39;</span>
+<span class="nx">newline</span> <span class="o">:=</span> <span class="sc">&#39;\n&#39;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d %[1]c %[1]q\n&quot;</span><span class="p">,</span> <span class="nx">ascii</span><span class="p">)</span>   <span class="c1">// &quot;97 a &#39;a&#39;&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d %[1]c %[1]q\n&quot;</span><span class="p">,</span> <span class="nx">unicode</span><span class="p">)</span> <span class="c1">// &quot;22269 D &#39;D&#39;&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d %[1]q\n&quot;</span><span class="p">,</span> <span class="nx">newline</span><span class="p">)</span>       <span class="c1">// &quot;10 &#39;\n&#39;&quot;</span>
+</pre></div>
+
+
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>
+<blockquote>
+<p>The <code>&amp;^</code> operator is bit clear (AND NOT): in the expression <code>z = x &amp;^ y</code>, each bit of <code>z</code> is 0 if the corresponding bit of <code>y</code> is 1; otherwise it equals the corresponding bit of <code>x</code>.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean?</p>
+<p><span class="text-info">Solution</span>:</p>
+<ul>
+<li><a href="http://stackoverflow.com/questions/28432398/difference-between-some-operators-golang">Stack Overflow</a>: <code>x &amp;^ y</code> means to get the bits that are in <code>x</code> AND NOT in <code>y</code>. See also <a href="#bitwise-operation-examples">bitwise operation examples</a>.</li>
+</ul>
             </div>
         </div>
 
