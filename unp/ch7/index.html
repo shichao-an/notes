@@ -730,7 +730,7 @@
 <li>There are certain circumstances which warrant using this feature to send an abortive close. One example is an <a href="https://en.wikipedia.org/wiki/RS-232">RS-232</a> terminal server, which might hang forever in CLOSE_WAIT trying to deliver data to a stuck terminal port, but would properly reset the stuck port if it got an RST to discard the pending data.</li>
 </ul>
 </li>
-<li>If <code>l_onoff</code> is nonzero and <code>l_linger</code> is nonzero, then the kernel will linger when the socket is close<ul>
+<li>If <code>l_onoff</code> is nonzero and <code>l_linger</code> is nonzero, then the kernel will linger when the socket is closed.<ul>
 <li>In this scenario, if there is any data still remaining in the socket send buffer, the process is put to sleep until either:<ol>
 <li>All the data is sent and acknowledged by the peer TCP, or</li>
 <li>The linger time expires.</li>
@@ -749,7 +749,34 @@
 <p><a href="../figure_7.8.png" title="Figure 7.8. close with SO_LINGER socket option set and l_linger a positive value."><img alt="Figure 7.8. close with SO_LINGER socket option set and l_linger a positive value." src="../figure_7.8.png" /></a></p>
 <p>But this still has the same problem as in <a href="../figure_7.7.png">Figure 7.7</a>: The server host can crash before the server application reads its remaining data, and the client application will never know. Worse, the following figure shows what can happen when the <code>SO_LINGER</code> option is set to a value that is too low.</p>
 <p><a href="../figure_7.9.png" title="Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value."><img alt="Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value." src="../figure_7.9.png" /></a></p>
+<p>It is important to know that a successful return from <code>close</code>, with the <code>SO_LINGER</code> socket option set, only tells us that the data we sent (and our FIN) have been acknowledged by the peer TCP. This does not tell us whether the peer application has read the data. If we do not set the <code>SO_LINGER</code> socket option, we do not know whether the peer TCP has acknowledged the data.</p>
 <h5 id="using-shutdown-to-know-that-peer-has-received-our-data"><strong>Using <code>shutdown</code> to know that peer has received our data</strong> *</h5>
+<p>One way for the client to know that the server has read its data is to call <code>shutdown</code> (with a second argument of <code>SHUT_WR</code>) instead of <code>close</code> and wait for the peer to <code>close</code> its end of the connection. This scenario is shown in the figure below:</p>
+<p><a href="../figure_7.10.png" title="Figure 7.10. Using shutdown to know that peer has received our data."><img alt="Figure 7.10. Using shutdown to know that peer has received our data." src="../figure_7.10.png" /></a></p>
+<p>Depending on the function called (<code>close</code> or <code>shutdown</code>) and whether the <code>SO_LINGER</code> socket option is set, the return can occur at three different times:</p>
+<ol>
+<li><code>close</code> returns immediately, without waiting at all (the default; <a href="../figure_7.7.png">Figure 7.7</a>).</li>
+<li><code>close</code> lingers until the ACK of our FIN is received (<a href="../figure_7.8.png">Figure 7.8</a> and <a href="../figure_7.9.png">Figure 7.9</a>).</li>
+<li><code>shutdown</code> followed by a <code>read</code> waits until we receive the peer's FIN (<a href="../figure_7.10.png">Figure 7.10</a>).</li>
+</ol>
+<p>Another way to know that the peer application has read our data is to use an <em>application-level acknowledgment</em>, or <em>application ACK</em>. For example, in the following, the client sends its data to the server and then calls <code>read</code> for one byte of data:</p>
+<div class="codehilite"><pre><span class="kt">char</span>  <span class="n">ack</span><span class="p">;</span>
+
+<span class="n">Write</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">nbytes</span><span class="p">);</span>       <span class="cm">/* data from client to server */</span>
+<span class="n">n</span> <span class="o">=</span> <span class="n">Read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ack</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>         <span class="cm">/* wait for application-level ACK */</span>
+</pre></div>
+
+
+<p>The server reads the data from the client and then sends back the one-byte application-level ACK:</p>
+<div class="codehilite"><pre><span class="n">nbytes</span> <span class="o">=</span> <span class="n">Read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buff</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buff</span><span class="p">));</span> <span class="cm">/* data from client */</span>
+         <span class="cm">/* server verifies it received correct</span>
+<span class="cm">            amount of data from client */</span>
+<span class="n">Write</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>           <span class="cm">/* server&#39;s ACK back to client */</span>
+</pre></div>
+
+
+<p>It is guaranteed that when the <code>read</code> in the client returns, the server process has read the data we sent. (This assumes that either the server knows how much data the client is sending, or there is some application-defined end-of-record marker.) Here, the application-level ACK is a byte of 0, but the contents of this byte could be used to signal other conditions from the server to the client. The following figure shows the possible packet exchange.</p>
+<p><a href="../figure_7.11.png" title="Figure 7.11. Application ACK."><img alt="Figure 7.11. Application ACK." src="../figure_7.11.png" /></a></p>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>
