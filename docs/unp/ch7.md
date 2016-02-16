@@ -169,7 +169,7 @@ Calling `setsockopt` leads to one of the following three scenarios, depending on
     * This scenario avoids TCP's TIME_WAIT state, but leaves open the possibility of another incarnation of this connection being created within 2MSL seconds ([Section 2.7](#time_wait-state)) and having old duplicate segments from the just-terminated connection being incorrectly delivered to the new incarnation.
     * Occasional USENET postings advocate the use of this feature just to avoid the TIME_WAIT state and to be able to restart a listening server even if connections are still in use with the server's well-known port. This should NOT be done and could lead to data corruption, as detailed in [RFC 1337](https://tools.ietf.org/html/rfc1337). Instead, the `SO_REUSEADDR` socket option should always be used in the server before the call to `bind`. <u>We should make use of the TIME_WAIT state to let old duplicate segments expire in the network rather than trying to avoid it.</u>
     * There are certain circumstances which warrant using this feature to send an abortive close. One example is an [RS-232](https://en.wikipedia.org/wiki/RS-232) terminal server, which might hang forever in CLOSE_WAIT trying to deliver data to a stuck terminal port, but would properly reset the stuck port if it got an RST to discard the pending data.
-3. If `l_onoff` is nonzero and `l_linger` is nonzero, then the kernel will linger when the socket is close
+3. If `l_onoff` is nonzero and `l_linger` is nonzero, then the kernel will linger when the socket is closed.
     * In this scenario, if there is any data still remaining in the socket send buffer, the process is put to sleep until either:
         1. All the data is sent and acknowledged by the peer TCP, or
         2. The linger time expires.
@@ -193,7 +193,42 @@ But this still has the same problem as in [Figure 7.7](figure_7.7.png): The serv
 
 [![Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value.](figure_7.9.png)](figure_7.9.png "Figure 7.9. close with SO_LINGER socket option set and l_linger a small positive value.")
 
+It is important to know that a successful return from `close`, with the `SO_LINGER` socket option set, only tells us that the data we sent (and our FIN) have been acknowledged by the peer TCP. This does not tell us whether the peer application has read the data. If we do not set the `SO_LINGER` socket option, we do not know whether the peer TCP has acknowledged the data.
+
 ##### **Using `shutdown` to know that peer has received our data** *
+
+One way for the client to know that the server has read its data is to call `shutdown` (with a second argument of `SHUT_WR`) instead of `close` and wait for the peer to `close` its end of the connection. This scenario is shown in the figure below:
+
+[![Figure 7.10. Using shutdown to know that peer has received our data.](figure_7.10.png)](figure_7.10.png "Figure 7.10. Using shutdown to know that peer has received our data.")
+
+Depending on the function called (`close` or `shutdown`) and whether the `SO_LINGER` socket option is set, the return can occur at three different times:
+
+1. `close` returns immediately, without waiting at all (the default; [Figure 7.7](figure_7.7.png)).
+2. `close` lingers until the ACK of our FIN is received ([Figure 7.8](figure_7.8.png) and [Figure 7.9](figure_7.9.png)).
+3. `shutdown` followed by a `read` waits until we receive the peer's FIN ([Figure 7.10](figure_7.10.png)).
+
+Another way to know that the peer application has read our data is to use an *application-level acknowledgment*, or *application ACK*. For example, in the following, the client sends its data to the server and then calls `read` for one byte of data:
+
+```c
+char  ack;
+
+Write(sockfd, data, nbytes);       /* data from client to server */
+n = Read(sockfd, &ack, 1);         /* wait for application-level ACK */
+```
+
+The server reads the data from the client and then sends back the one-byte application-level ACK:
+
+```c
+nbytes = Read(sockfd, buff, sizeof(buff)); /* data from client */
+         /* server verifies it received correct
+            amount of data from client */
+Write(sockfd, "", 1);           /* server's ACK back to client */
+```
+
+It is guaranteed that when the `read` in the client returns, the server process has read the data we sent. (This assumes that either the server knows how much data the client is sending, or there is some application-defined end-of-record marker.) Here, the application-level ACK is a byte of 0, but the contents of this byte could be used to signal other conditions from the server to the client. The following figure shows the possible packet exchange.
+
+[![Figure 7.11. Application ACK.](figure_7.11.png)](figure_7.11.png "Figure 7.11. Application ACK.")
+
 
 
 ### ICMPv6 Socket Option

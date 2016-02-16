@@ -251,6 +251,33 @@ fmt.Printf("%d %[1]c %[1]q\n", unicode) // "22269 D 'D'"
 fmt.Printf("%d %[1]q\n", newline)       // "10 '\n'"
 ```
 
+### Floating-Point Numbers
+
+There are two sizes of floating-point numbers, whose properties are governed by the [IEEE 754 standard](https://en.wikipedia.org/wiki/IEEE_floating_point) (implemented by all modern CPUs). The limits of floating-point values can be found in the `math` package.
+
+* `float32`
+    * The largest `float32` is the constant `math.MaxFloat32`, which is about `3.4e38`.
+    * The smallest positive value is `1.4e-45`.
+* `float64`
+    * The largest `float64` is the constant `math.MaxFloat64`, which is about `1.8e308`.
+    * The smallest positive value is `4.9e-324`.
+
+A `float32` provides approximately six decimal digits of precision, whereas a `float64` provides about 15 digits. <u>`float64` should be preferred for most purposes because `float32` computations accumulate error rapidly if not careful</u>; the smallest positive integer that cannot be exactly represented as a `float32` is not large:
+
+Floating-point numbers can be written literally using decimals. For example:
+
+```go
+const e = 2.71828 // (approximately)
+```
+
+Digits may be omitted before the decimal point (e.g. `.707`) or after it (e.g. `1.`). Very small or very large numbers are better written in scientific notation, with the letter `e` or `E` preceding the decimal exponent:
+
+```go
+const Avogadro = 6.02214129e23
+const Planck = 6.62606957e-34
+```
+
+
 ### Doubts and Solution
 
 #### Verbatim
