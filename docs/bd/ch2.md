@@ -236,8 +236,10 @@ A common "fault" these systems must anticipate is a network partition where the 
 
 ### Doubts and Solutions
 
-p37 on deleting immutable data
+#### Verbatim
+
+##### **p37 on deleting immutable data**
 
 > We believe deleting data is most safely accomplished by producing a second copy of the master dataset with the offending data filtered out, running analytic jobs to verify that the correct data was filtered, and then and only then replacing the old version of the master dataset.
 
-"Producing a second copy of the master dataset"? It this real? What's the cost of storage and time to do this?
+<span class="text-danger">Question</span>: "Producing a second copy of the master dataset"? It this real? What's the cost of storage and time to do this?

@@ -544,8 +544,8 @@ The next chapter discusses how to build the Lambda Architecture. You’ll start 
 
 #### Verbatim
 
-p10 on Operational complexity
+##### **p10 on Operational complexity**
 
 > In a read/write database, as a disk index is incrementally added to and modified, parts of the index become unused. These unused parts take up space and eventually need to be reclaimed to prevent the disk from filling up. Reclaiming space as soon as it becomes unused is too expensive, so the space is occasionally reclaimed in bulk in a process called *compaction*.
 
-What is a disk index?
+<span class="text-danger">Question</span>: What is a disk index?
