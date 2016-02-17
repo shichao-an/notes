@@ -951,6 +951,114 @@ Some notes about [GNU inline](https://gcc.gnu.org/onlinedocs/gcc/Inline.html):
 
 The `inline` keyword can only used in function definitions.
 
+#### Variadic Arguments
+
+Variadic arguments are used to implement [variadic functions](https://en.wikipedia.org/wiki/Variadic_function):
+
+* `va_start`: initialize the argument pointer of type `va_list` with the argument preceding the variadic arguments.
+* `va_arg`: access the current variadic argument and modify the argument pointer to point to the next argument.
+* `va_end`: perform cleanup so that the argument pointer is no longer usable.
+* `va_copy`: use the existing argument pointer (`va_list`) to initialize another pointer.
+
+```c
+#include <stdarg.h>
+/* specify number of variadic arguments */
+
+void test(int count, ...)
+{
+    va_list args;
+    va_start(args, count);
+
+    for (int i = 0; i < count; i++)
+    {
+        int value = va_arg(args, int);
+        printf("%d\n", value);
+    }
+
+    va_end(args);
+}
+
+/* end by NULL */
+void test2(const char* s, ...)
+{
+    printf("%s\n", s);
+
+    va_list args;
+    va_start(args, s);
+
+    char* value;
+    do
+    {
+        value = va_arg(args, char*);
+        if (value) printf("%s\n", value);
+    }
+    while (value != NULL);
+
+    va_end(args);
+}
+
+/* directly pass va_list to the other variadic function */
+void test3(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}
+
+int main(int argc, char* argv[])
+{
+    test(3, 11, 22, 33);
+    test2("hello", "aa", "bb", "cc", "dd", NULL);
+    test3("%s, %d\n", "hello, world!", 1234);
+    return EXIT_SUCCESS;
+}
+```
+
+### Arrays
+
+#### [Variable-Length Arrays](https://en.wikipedia.org/wiki/Variable-length_array)
+
+If an array has automatic storage duration and is without the `static` specifier, then it can be defined using a non-constant expression.
+
+```c
+void test(int n)
+{
+    int x[n];
+    for (int i = 0; i < n; i++)
+    {
+        x[i] = i;
+    }
+
+    struct data { int x[n]; } d;
+    printf("%d\n", sizeof(d));
+}
+
+int main(int argc, char* argv[])
+{
+    int x[] = { 1, 2, 3, 4 };
+    printf("%d\n", sizeof(x));
+
+    test(2);
+    return EXIT_SUCCESS;
+}
+```
+
+#### Subscripts
+
+`x[i]` is equivalent to `*(x + i)`; the array name by default is a pointer that points to the first element.
+
+```c
+int x[] = { 1, 2, 3, 4 };
+
+x[1] = 10;
+printf("%d\n", *(x + 1));
+
+*(x + 2) = 20;
+printf("%d\n", x[2]);
+```
+
+Since C does not perform range checking on array subscripts, care must be taken to ensure [out-of-bounds checking](https://en.wikipedia.org/wiki/Bounds_checking) when coding. An array's name by default is a constant pointer to the first element; `&x[i]` returns a `int*` pointer, which points to element `x[i]`.
 
 - - -
 
