@@ -574,6 +574,15 @@
         
             <li><a href="#storage-class-specifiers">Storage-class Specifiers</a></li>
         
+            <li><a href="#variadic-arguments">Variadic Arguments</a></li>
+        
+    
+        <li class="main "><a href="#arrays">Arrays</a></li>
+        
+            <li><a href="#variable-length-arrays">Variable-Length Arrays</a></li>
+        
+            <li><a href="#subscripts">Subscripts</a></li>
+        
     
         <li class="main "><a href="#references">References</a></li>
         
@@ -1519,6 +1528,108 @@ call: 1, abc
 <li><code>inline</code>: external linkage function. Inlining is performed within the current translation unit. In other translation unit, it is a normal external linkage function. (the <code>inline</code> keyword cannot be specified to the header files)</li>
 </ul>
 <p>The <code>inline</code> keyword can only used in function definitions.</p>
+<h4 id="variadic-arguments">Variadic Arguments</h4>
+<p>Variadic arguments are used to implement <a href="https://en.wikipedia.org/wiki/Variadic_function">variadic functions</a>:</p>
+<ul>
+<li><code>va_start</code>: initialize the argument pointer of type <code>va_list</code> with the argument preceding the variadic arguments.</li>
+<li><code>va_arg</code>: access the current variadic argument and modify the argument pointer to point to the next argument.</li>
+<li><code>va_end</code>: perform cleanup so that the argument pointer is no longer usable.</li>
+<li><code>va_copy</code>: use the existing argument pointer (<code>va_list</code>) to initialize another pointer.</li>
+</ul>
+<div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdarg.h&gt;</span><span class="cp"></span>
+<span class="cm">/* specify number of variadic arguments */</span>
+
+<span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">int</span> <span class="n">count</span><span class="p">,</span> <span class="p">...)</span>
+<span class="p">{</span>
+    <span class="kt">va_list</span> <span class="n">args</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">count</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">va_arg</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">va_end</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* end by NULL */</span>
+<span class="kt">void</span> <span class="nf">test2</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">s</span><span class="p">,</span> <span class="p">...)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+
+    <span class="kt">va_list</span> <span class="n">args</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+
+    <span class="kt">char</span><span class="o">*</span> <span class="n">value</span><span class="p">;</span>
+    <span class="k">do</span>
+    <span class="p">{</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">va_arg</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">value</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="n">va_end</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* directly pass va_list to the other variadic function */</span>
+<span class="kt">void</span> <span class="nf">test3</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">format</span><span class="p">,</span> <span class="p">...)</span>
+<span class="p">{</span>
+    <span class="kt">va_list</span> <span class="n">args</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">format</span><span class="p">);</span>
+    <span class="n">vprintf</span><span class="p">(</span><span class="n">format</span><span class="p">,</span> <span class="n">args</span><span class="p">);</span>
+    <span class="n">va_end</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">test</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">33</span><span class="p">);</span>
+    <span class="n">test2</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">,</span> <span class="s">&quot;aa&quot;</span><span class="p">,</span> <span class="s">&quot;bb&quot;</span><span class="p">,</span> <span class="s">&quot;cc&quot;</span><span class="p">,</span> <span class="s">&quot;dd&quot;</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">test3</span><span class="p">(</span><span class="s">&quot;%s, %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="s">&quot;hello, world!&quot;</span><span class="p">,</span> <span class="mi">1234</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="arrays">Arrays</h3>
+<h4 id="variable-length-arrays"><a href="https://en.wikipedia.org/wiki/Variable-length_array">Variable-Length Arrays</a></h4>
+<p>If an array has automatic storage duration and is without the <code>static</code> specifier, then it can be defined using a non-constant expression.</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">[</span><span class="n">n</span><span class="p">];</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">struct</span> <span class="n">data</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">x</span><span class="p">[</span><span class="n">n</span><span class="p">];</span> <span class="p">}</span> <span class="n">d</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">d</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+
+    <span class="n">test</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="subscripts">Subscripts</h4>
+<p><code>x[i]</code> is equivalent to <code>*(x + i)</code>; the array name by default is a pointer that points to the first element.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+
+<span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">));</span>
+
+<span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]);</span>
+</pre></div>
+
+
+<p>Since C does not perform range checking on array subscripts, care must be taken to ensure <a href="https://en.wikipedia.org/wiki/Bounds_checking">out-of-bounds checking</a> when coding. An array's name by default is a constant pointer to the first element; <code>&amp;x[i]</code> returns a <code>int*</code> pointer, which points to element <code>x[i]</code>.</p>
 <hr />
 <h3 id="references">References</h3>
 <ul>
