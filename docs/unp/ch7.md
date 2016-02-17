@@ -229,6 +229,16 @@ It is guaranteed that when the `read` in the client returns, the server process 
 
 [![Figure 7.11. Application ACK.](figure_7.11.png)](figure_7.11.png "Figure 7.11. Application ACK.")
 
+The following table summarizes the two possible calls to `shutdown` and the three possible calls to `close` (with `SO_LINGER` scenarios), and the effect on a TCP socket.
+
+Function | Description
+-------- | -----------
+`shutdown`, `SHUT_RD` | No more receives can be issued on the socket; process can still send on socket; socket receive buffer discarded; any further data received is discarded by TCP; no effect on socket send buffer.
+`shutdown`, `SHUT_WR` | No more sends can be issued on socket; process can still receive on socket; contents of socket send buffer sent to other end, followed by normal TCP connection termination (FIN); no effect on socket receive buffer.
+`close`, `l_onoff = 0` (default) | No more receives or sends can be issued on socket; contents of socket send buffer sent to other end. If descriptor reference count becomes 0: normal TCP connection termination (FIN) sent following data in send buffer and socket receive buffer discarded.
+`close`, `l_onoff = 1`, `l_linger = 0` | No more receives or sends can be issued on socket. If descriptor reference count becomes 0: RST sent to other end; connection state set to CLOSED (no TIME_WAIT state); socket send buffer and socket receive buffer discarded.
+`close`, `l_onoff = 1`, `l_linger != 0` | No more receives or sends can be issued on socket; contents of socket send buffer sent to other end. If descriptor reference count becomes 0: normal TCP connection termination (FIN) sent following data in send buffer; socket receive buffer discarded; and if linger time expires before connection CLOSED, `close` returns `EWOULDBLOCK`.
+
 
 
 ### ICMPv6 Socket Option
