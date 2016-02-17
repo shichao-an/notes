@@ -777,6 +777,37 @@
 
 <p>It is guaranteed that when the <code>read</code> in the client returns, the server process has read the data we sent. (This assumes that either the server knows how much data the client is sending, or there is some application-defined end-of-record marker.) Here, the application-level ACK is a byte of 0, but the contents of this byte could be used to signal other conditions from the server to the client. The following figure shows the possible packet exchange.</p>
 <p><a href="../figure_7.11.png" title="Figure 7.11. Application ACK."><img alt="Figure 7.11. Application ACK." src="../figure_7.11.png" /></a></p>
+<p>The following table summarizes the two possible calls to <code>shutdown</code> and the three possible calls to <code>close</code> (with <code>SO_LINGER</code> scenarios), and the effect on a TCP socket.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shutdown</code>, <code>SHUT_RD</code></td>
+<td>No more receives can be issued on the socket; process can still send on socket; socket receive buffer discarded; any further data received is discarded by TCP; no effect on socket send buffer.</td>
+</tr>
+<tr>
+<td><code>shutdown</code>, <code>SHUT_WR</code></td>
+<td>No more sends can be issued on socket; process can still receive on socket; contents of socket send buffer sent to other end, followed by normal TCP connection termination (FIN); no effect on socket receive buffer.</td>
+</tr>
+<tr>
+<td><code>close</code>, <code>l_onoff = 0</code> (default)</td>
+<td>No more receives or sends can be issued on socket; contents of socket send buffer sent to other end. If descriptor reference count becomes 0: normal TCP connection termination (FIN) sent following data in send buffer and socket receive buffer discarded.</td>
+</tr>
+<tr>
+<td><code>close</code>, <code>l_onoff = 1</code>, <code>l_linger = 0</code></td>
+<td>No more receives or sends can be issued on socket. If descriptor reference count becomes 0: RST sent to other end; connection state set to CLOSED (no TIME_WAIT state); socket send buffer and socket receive buffer discarded.</td>
+</tr>
+<tr>
+<td><code>close</code>, <code>l_onoff = 1</code>, <code>l_linger != 0</code></td>
+<td>No more receives or sends can be issued on socket; contents of socket send buffer sent to other end. If descriptor reference count becomes 0: normal TCP connection termination (FIN) sent following data in send buffer; socket receive buffer discarded; and if linger time expires before connection CLOSED, <code>close</code> returns <code>EWOULDBLOCK</code>.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>
