@@ -1,6 +1,10 @@
 ### **Chapter 1. Introduction to the Linux Kernel**
 
+<div class="alert alert-info" role="alert"><strong>TODO:</strong> Expand this chapter.</div>
+
 ### Overview of Operating Systems and Kernels
+
+[![Figure 1.1 Relationship between applications, the kernel, and hardware.](figure_1.1_600.png)](figure_1.1.png "Figure 1.1 Relationship between applications, the kernel, and hardware.")
 
 In Linux, we can generalize that each processor is doing exactly one of three things at any given moment:
 
@@ -22,7 +26,7 @@ Notable differences exist between the Linux kernel and classic Unix systems:
 
 ### Linux Kernel Versions
 
-Linux kernels come in two flavors: stable and development. 
+Linux kernels come in two flavors: stable and development.
 
 [![Figure 1.2 Kernel version naming convention.](figure_1.2.png)](figure_1.2.png "Figure 1.2 Kernel version naming convention.")
 
