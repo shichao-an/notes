@@ -593,6 +593,14 @@
         
             <li><a href="#event-tracing">Event Tracing</a></li>
         
+            <li><a href="#baseline-statistics">Baseline Statistics</a></li>
+        
+            <li><a href="#static-performance-tuning">Static Performance Tuning</a></li>
+        
+            <li><a href="#cache-tuning">Cache Tuning</a></li>
+        
+            <li><a href="#micro-benchmarking">Micro-Benchmarking</a></li>
+        
     
         <li class="main "><a href="#modeling">Modeling</a></li>
         
@@ -1665,6 +1673,51 @@ limit tenants who are sharing one system.</p>
 </li>
 </ul>
 <p>The study of prior events provides more information. A particularly bad latency event, known as a <strong>latency <a href="https://en.wikipedia.org/wiki/Outlier">outlier</a></strong>, may be caused by previous events rather than the event itself. For example, the event at the tail of a queue may have high latency but is caused by the previous queued events, not its own properties. This case can be identified from the traced events.</p>
+<h4 id="baseline-statistics">Baseline Statistics</h4>
+<p>Comparing current performance metrics with past values is often enlightening:</p>
+<ul>
+<li>Changes in load or resource usage can be identified.</li>
+<li>Problems can be traced back to when they first began.</li>
+</ul>
+<p>Some observability tools (based on kernel counters) can show the summary-since-boot for comparison with current activity. which is coarse.</p>
+<p><strong>Baseline statistics</strong> is another approach that involves a wide range of system observability tools and logging the output for future reference. Unlike the summary-since-boot, which can hide variation, the baseline can include per-second statistics so that variation can be seen.</p>
+<p>A baseline may be collected before and after system or application changes, so that performance changes can be analyzed. It may also be collected irregularly and included with site documentation, so that administrators have a reference for what is "normal". To perform this task at regular intervals each day is an activity that is served by <em>performance monitoring</em> (<a href="#Montoring">Section 2.9, Monitoring</a>).</p>
+<h4 id="static-performance-tuning">Static Performance Tuning</h4>
+<p>Static performance tuning focuses on issues of the configured architecture, contrary to methodologies that focus on the performance of the applied load (dynamic performance). Static performance analysis can be performed when the system is at rest and no load is applied.</p>
+<p>For static performance analysis and tuning, step through all the components of the system and check the following:</p>
+<ul>
+<li>Does the component make sense?</li>
+<li>Does the configuration make sense for the intended workload?</li>
+<li>Was the component autoconfigured in the best state for the intended workload?</li>
+<li>Has the component experienced an error and is it in a degraded state?</li>
+</ul>
+<p>Some examples of issues that may be found using static performance tuning:</p>
+<ul>
+<li>Network interface negotiation: selecting 100 Mbits/s instead of 1 Gbit/s</li>
+<li>Failed disk in a RAID pool</li>
+<li>Older version of the operating system, applications, or firmware used</li>
+<li>Mismatched file system record size compared to workload I/O size</li>
+<li>Server accidentally configured as a router</li>
+<li>Server configured to use resources, such as authentication, from a remote data center instead of locally</li>
+</ul>
+<p>These types of issues are easy to check for, but difficult to remember to do it.</p>
+<h4 id="cache-tuning">Cache Tuning</h4>
+<p>Applications and operating systems may employ multiple caches for improving I/O performance, from the application down to the disks (detailed in <a href="../ch3/#caching">Section 3.2.11</a>).</p>
+<p>The general strategy for tuning each cache level:</p>
+<ol>
+<li><u>Cache as high in the stack as possible (closer to where the work is performed) to reduce the operational overhead of cache hits.</u></li>
+<li>Check that the cache is enabled and working.</li>
+<li>Check the cache hit/miss ratios and miss rate.</li>
+<li>If the cache size is dynamic, check its current size.</li>
+<li>Tune the cache for the workload. This task depends on available cache tunable parameters.</li>
+<li>Tune the workload for the cache. For example:<ul>
+<li>Reduce unnecessary consumers of the cache, which frees up more space for the target workload.</li>
+<li>Look out for double caching, e.g. two different caches that consume main memory and cache the same data twice.</li>
+</ul>
+</li>
+</ol>
+<p>Also consider the overall performance gain of each level of cache tuning. Tuning the CPU Level 1 cache may save nanoseconds, as cache misses may then be served by Level 2. But improving CPU Level 3 cache may avoid much slower DRAM accesses and result in a greater overall performance gain. (CPU caches are described in <a href="../ch6/">Chapter 6 CPUs</a>)</p>
+<h4 id="micro-benchmarking">Micro-Benchmarking</h4>
 <h3 id="modeling">Modeling</h3>
 <h3 id="capacity-planning">Capacity Planning</h3>
 <h3 id="statistics">Statistics</h3>
