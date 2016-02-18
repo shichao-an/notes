@@ -30,3 +30,17 @@ The following is the core operating system terminology in this book:
 * **Processor**: a physical chip containing one or more CPUs.
 * **Trap**: a signal sent to the kernel, requesting a system routine (privileged action). Trap types include system calls, processor exceptions, and interrupts.
 * **Interrupt**: a signal sent by physical devices to the kernel, usually to request servicing of I/O. An interrupt is a type of trap.
+
+### Background
+
+The following sections describe operating system concepts and kernel internals.
+
+#### Kernel
+
+The kernel manages CPU scheduling, memory, file systems, network protocols, and system devices (disks, network interfaces, etc.). It provides access to devices and kernel services via system calls. The role of the kernel is shown in the following figure:
+
+[![Figure 3.1 Role of the operating system kernel](figure_3.1.png)](figure_3.1.png "Figure 3.1 Role of the operating system kernel")
+
+* System libraries are often used to provide a richer and easier programming interface than the system calls alone.
+    * It is pictured as a broken ring to show that applications can call system calls directly (if permitted by the operating system). [p87]
+* Applications include all running user-level software, including databases, web servers, administration tools, and operating system shells.

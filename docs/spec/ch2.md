@@ -939,6 +939,60 @@ The following are useful for understanding performance issues:
 
 The study of prior events provides more information. A particularly bad latency event, known as a **latency [outlier](https://en.wikipedia.org/wiki/Outlier)**, may be caused by previous events rather than the event itself. For example, the event at the tail of a queue may have high latency but is caused by the previous queued events, not its own properties. This case can be identified from the traced events.
 
+#### Baseline Statistics
+
+Comparing current performance metrics with past values is often enlightening:
+
+* Changes in load or resource usage can be identified.
+* Problems can be traced back to when they first began.
+
+Some observability tools (based on kernel counters) can show the summary-since-boot for comparison with current activity. which is coarse.
+
+**Baseline statistics** is another approach that involves a wide range of system observability tools and logging the output for future reference. Unlike the summary-since-boot, which can hide variation, the baseline can include per-second statistics so that variation can be seen.
+
+A baseline may be collected before and after system or application changes, so that performance changes can be analyzed. It may also be collected irregularly and included with site documentation, so that administrators have a reference for what is "normal". To perform this task at regular intervals each day is an activity that is served by *performance monitoring* ([Section 2.9, Monitoring](#Montoring)).
+
+#### Static Performance Tuning
+
+Static performance tuning focuses on issues of the configured architecture, contrary to methodologies that focus on the performance of the applied load (dynamic performance). Static performance analysis can be performed when the system is at rest and no load is applied.
+
+For static performance analysis and tuning, step through all the components of the system and check the following:
+
+* Does the component make sense?
+* Does the configuration make sense for the intended workload?
+* Was the component autoconfigured in the best state for the intended workload?
+* Has the component experienced an error and is it in a degraded state?
+
+Some examples of issues that may be found using static performance tuning:
+
+* Network interface negotiation: selecting 100 Mbits/s instead of 1 Gbit/s
+* Failed disk in a RAID pool
+* Older version of the operating system, applications, or firmware used
+* Mismatched file system record size compared to workload I/O size
+* Server accidentally configured as a router
+* Server configured to use resources, such as authentication, from a remote data center instead of locally
+
+These types of issues are easy to check for, but difficult to remember to do it.
+
+#### Cache Tuning
+
+Applications and operating systems may employ multiple caches for improving I/O performance, from the application down to the disks (detailed in [Section 3.2.11](ch3.md#caching)).
+
+The general strategy for tuning each cache level:
+
+1. <u>Cache as high in the stack as possible (closer to where the work is performed) to reduce the operational overhead of cache hits.</u>
+2. Check that the cache is enabled and working.
+3. Check the cache hit/miss ratios and miss rate.
+4. If the cache size is dynamic, check its current size.
+5. Tune the cache for the workload. This task depends on available cache tunable parameters.
+6. Tune the workload for the cache. For example:
+    * Reduce unnecessary consumers of the cache, which frees up more space for the target workload.
+    * Look out for double caching, e.g. two different caches that consume main memory and cache the same data twice.
+
+Also consider the overall performance gain of each level of cache tuning. Tuning the CPU Level 1 cache may save nanoseconds, as cache misses may then be served by Level 2. But improving CPU Level 3 cache may avoid much slower DRAM accesses and result in a greater overall performance gain. (CPU caches are described in [Chapter 6 CPUs](ch6.md))
+
+#### Micro-Benchmarking
+
 
 ### Modeling
 
