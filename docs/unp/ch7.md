@@ -32,22 +32,22 @@ The following table lists socket and IP-layer socket options for `getsockopt` an
 *level* | *optname* | `get` | `set` | Description | Flag | Datatype
 ------- | --------- | ----- | ----- | ----------- | ---- | --------
 `SOL_SOCKET` | `SO_BROADCAST` | x | x | Permit sending of broadcast datagrams | x | `int`
-| `SO_DEBUG` | x | x | Enable debug tracing | x | `int`
-| `SO_DONTROUTE` | x | x | Bypass routing table lookup | x | `int`
-| `SO_ERROR` | x | | Get pending error and clear | | `int`
-| `SO_KEEPALIVE` | x | x | Periodically test if connection still alive | x | `int`
-| `SO_LINGER` | x | x | Linger on close if data to send | | `linger{}`
-| `SO_OOBINLINE` | x | x | Leave received out-of-band data inline | x | `int`
-| `SO_RCVBUF` | x | x | Receive buffer size | | `int`
-| `SO_SNDBUF` | x | x | Send buffer size | | `int`
-| `SO_RCVLOWAT` | x | x | Receive buffer low-water mark | | `int`
-| `SO_SNDLOWAT` | x | x | Send buffer low-water mark | | `int`
-| `SO_RCVTIMEO` | x | x | Receive timeout | | `timeval{}`
-| `SO_SNDTIMEO` | x | x | Send timeout | | `timeval{}`
-| `SO_REUSEADDR` | x | x | Allow local address reuse | x | `int`
-| `SO_REUSEPORT` | x | x | Allow local port reuse | x | `int`
-| `SO_TYPE` | x | | Get socket type | | `int`
-| `SO_USELOOPBACK` | x | x | Routing socket gets copy of what it sends | x | `int`
+  | `SO_DEBUG` | x | x | Enable debug tracing | x | `int`
+  | `SO_DONTROUTE` | x | x | Bypass routing table lookup | x | `int`
+  | `SO_ERROR` | x | | Get pending error and clear | | `int`
+  | `SO_KEEPALIVE` | x | x | Periodically test if connection still alive | x | `int`
+  | `SO_LINGER` | x | x | Linger on close if data to send | | `linger{}`
+  | `SO_OOBINLINE` | x | x | Leave received out-of-band data inline | x | `int`
+  | `SO_RCVBUF` | x | x | Receive buffer size | | `int`
+  | `SO_SNDBUF` | x | x | Send buffer size | | `int`
+  | `SO_RCVLOWAT` | x | x | Receive buffer low-water mark | | `int`
+  | `SO_SNDLOWAT` | x | x | Send buffer low-water mark | | `int`
+  | `SO_RCVTIMEO` | x | x | Receive timeout | | `timeval{}`
+  | `SO_SNDTIMEO` | x | x | Send timeout | | `timeval{}`
+  | `SO_REUSEADDR` | x | x | Allow local address reuse | x | `int`
+  | `SO_REUSEPORT` | x | x | Allow local port reuse | x | `int`
+  | `SO_TYPE` | x | | Get socket type | | `int`
+  | `SO_USELOOPBACK` | x | x | Routing socket gets copy of what it sends | x | `int`
 
 [![Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.](figure_7.1.png)](figure_7.1.png "Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.")
 
