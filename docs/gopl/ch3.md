@@ -277,6 +277,33 @@ const Avogadro = 6.02214129e23
 const Planck = 6.62606957e-34
 ```
 
+Floating-point values can be printed with `Printf`'s following verbs:
+
+* `%g`: it chooses the most compact representation that has adequate precision, i.e. `%e` for large exponents, `%f` otherwise
+* `%e` (exponent): decimal point with exponent (scientific notation)
+* `%f`: decimal point but no exponent
+
+All three verbs allow field width and numeric precision to be controlled.
+
+```go
+for x := 0; x < 8; x++ {
+	fmt.Printf("x = %d e**x = %8.3f\n", x, math.Exp(float64(x)))
+}
+```
+
+The code above prints the powers of *e* with three decimal digits of precision, aligned in an eight-character field:
+
+```text
+x = 0 e**x =    1.000
+x = 1 e**x =    2.718
+x = 2 e**x =    7.389
+x = 3 e**x =   20.086
+x = 4 e**x =   54.598
+x = 5 e**x =  148.413
+x = 6 e**x =  403.429
+x = 7 e**x = 1096.633
+```
+
 
 ### Doubts and Solution
 
