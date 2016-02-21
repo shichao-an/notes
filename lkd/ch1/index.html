@@ -517,6 +517,12 @@
     
         <li class="main "><a href="#overview-of-operating-systems-and-kernels">Overview of Operating Systems and Kernels</a></li>
         
+            <li><a href="#kernel-space-and-user-space">Kernel-Space and User-Space *</a></li>
+        
+            <li><a href="#system-calls-and-library-calls">System Calls and Library Calls *</a></li>
+        
+            <li><a href="#interrupts">Interrupts</a></li>
+        
     
         <li class="main "><a href="#linux-versus-classic-unix-kernels">Linux Versus Classic Unix Kernels</a></li>
         
@@ -533,9 +539,32 @@
               
 
 <h3 id="chapter-1-introduction-to-the-linux-kernel"><strong>Chapter 1. Introduction to the Linux Kernel</strong></h3>
-<div class="alert alert-info" role="alert"><strong>TODO:</strong> Expand this chapter.</div>
-
 <h3 id="overview-of-operating-systems-and-kernels">Overview of Operating Systems and Kernels</h3>
+<p>The <strong>operating system</strong> is the parts of the system responsible for basic use and administration. This includes the kernel and device drivers, boot loader, command shell or other user interface, and basic file and system utilities.</p>
+<p>The <strong>kernel</strong> is the innermost portion of the operating system. It is the core internals: the software that provides basic services for all other parts of the system, manages hardware, and distributes system resource.</p>
+<p>Typical components of a kernel are:</p>
+<ul>
+<li>Interrupt handlers to service interrupt requests.</li>
+<li>A scheduler to share processor time among multiple processes.</li>
+<li>A memory management system to manage process address spaces.</li>
+<li>System services such as networking and interprocess communication.</li>
+</ul>
+<h4 id="kernel-space-and-user-space">Kernel-Space and User-Space *</h4>
+<ul>
+<li><strong>Kernel-space</strong>: on modern systems with protected memory management units, the kernel typically resides in an elevated system state, which includes a protected memory space and full access to the hardware. This system state and memory space is collectively referred to as kernel-space.</li>
+<li><strong>User-space</strong>: applications execute in user-space, where they can access a subset of the machine’s available resources and can perform certain system functions, directly access hardware, access memory outside of that allotted them by the kernel, or otherwise misbehave.</li>
+</ul>
+<p>When executing kernel code, the system is in kernel-space executing in kernel mode. When running a regular process, the system is in user-space executing in user mode.</p>
+<h4 id="system-calls-and-library-calls">System Calls and Library Calls *</h4>
+<p>Applications communicate with the kernel via system calls (<a href="../figure_1.1.png">Figure 1.1</a>). An application typically calls functions in a library (e.g. C library) which rely on the system call interface to instruct the kernel to carry out tasks on the application's behalf.</p>
+<ul>
+<li>Some library calls provide many features not found in the system call. Therefore, calling into the kernel is just one step in an otherwise large function. For example, the <code>printf()</code> function provides formatting and buffering of the data; only one step in its work is invoking <code>write()</code> to write the data to the console.</li>
+<li>Some library calls have a one-to-one relationship with the kernel. For example, the <code>open()</code> library function does little except call the <code>open()</code> system call.</li>
+<li>Other C library functions, such as <code>strcpy()</code>, make no direct use of the kernel at all.</li>
+</ul>
+<p>When an application executes a system call, the kernel is executing on behalf of the application. Furthermore, the application is said to be executing a system call in kernel-space, and the kernel is running in process context. This relationship (that applications call into the kernel via the system call interface) is the fundamental manner in which applications get work done.</p>
+<h4 id="interrupts">Interrupts</h4>
+<p>The kernel manages the system’s hardware through <strong>interrupts</strong>. When hardware wants to communicate with the system, it issues an interrupt that interrupts the processor, which in turn interrupts the kernel. A number identifies interrupts and the kernel uses this number to execute a specific <strong>interrupt handler</strong> to process and respond to the interrupt. To provide synchronization, the kernel can disable interrupts (either all interrupts or just one specific interrupt number). In Linux, the interrupt handlers do not run in a process context. Instead, they run in a special interrupt context that is not associated with any process. This special context exists solely to let an interrupt handler quickly respond to an interrupt, and then exit.</p>
 <p><a href="../figure_1.1.png" title="Figure 1.1 Relationship between applications, the kernel, and hardware."><img alt="Figure 1.1 Relationship between applications, the kernel, and hardware." src="../figure_1.1_600.png" /></a></p>
 <p>In Linux, we can generalize that each processor is doing exactly one of three things at any given moment:</p>
 <ul>
