@@ -304,6 +304,186 @@ x = 6 e**x =  403.429
 x = 7 e**x = 1096.633
 ```
 
+In addition to mathematical functions, the `math` package has functions for creating and detecting the special values defined by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point):
+
+* Positive and negative infinities, which represent numbers of excessive magnitude and the result of division by zero;
+* [NaN](https://en.wikipedia.org/wiki/NaN) ("not a number"), the result of such mathematically dubious operations as `0/0` or `Sqrt(-1)`.
+
+```go
+var z float64
+fmt.Println(z, -z, 1/z, -1/z, z/z) // "0 -0 +Inf -Inf NaN"
+```
+
+The function `math.IsNaN` tests whether its argument is a not-a-number value, and `math.NaN` returns such a value. It’s tempting to use NaN as a sentinel value in a numeric computation. Be careful when testing whether a specific computational result is equal to NaN: any comparison with NaN always yields `false`.
+
+```go
+nan := math.NaN()
+fmt.Println(nan == nan, nan < nan, nan > nan) // "false false false"
+```
+
+If a function that returns a floating-point result might fail, it’s better to report the failure separately, like this:
+
+```go
+func compute() (value float64, ok bool) {
+	// ...
+	if failed {
+		return 0, false
+	}
+	return result, true
+}
+```
+
+[p58-60]
+
+### Complex Numbers
+
+Go provides two sizes of complex numbers, `complex64` and `complex128`, whose components are `float32` and `float64` respectively. The built-in function `complex` creates a complex number from its real and imaginary components, and the built-in `real` and `imag` functions extract those components:
+
+```go
+var x complex128 = complex(1, 2) // 1+2i
+var y complex128 = complex(3, 4) // 3+4i
+fmt.Println(x*y)                 // "(-5+10i)"
+fmt.Println(real(x*y))           // "-5"
+fmt.Println(imag(x*y))           // "10"
+```
+
+If a floating-point literal or decimal integer literal is immediately followed by `i`, such as `3.141592i` or `2i`, it becomes an *imaginary literal*, denoting a complex number with a zero real component:
+
+```go
+fmt.Println(1i * 1i) // "(-1+0i)", i$ = -1
+```
+
+Complex numbers use the rules for constant arithmetic; complex constants can be added to other constants. Therefore, complex numbers can be written naturally, like `1+2i` or `2i+1`. The declarations of `x` and `y` above can be simplified:
+
+```go
+x := 1 + 2i
+y := 3 + 4i
+```
+
+Complex numbers may be compared for equality with `==` and `!=`. Two complex numbers are equal if their real parts are equal and their imaginary parts are equal. The `math/cmplx` package provides library functions for working with complex numbers, such as the complex square root and exponentiation functions.
+
+```go
+fmt.Println(cmplx.Sqrt(-1)) // "(0+1i)"
+```
+
+[p61-63]
+
+### Booleans
+
+A value of type `bool`, or [**boolean**](https://en.wikipedia.org/wiki/Boolean_data_type), has only two possible values, `true` and `false`.
+
+* The conditions in `if` and `for` statements are booleans
+* Comparison operators (e.g. `==`, `<>`) produce a boolean result.
+* The unary operator `!` is logical negation. For example, `!true` is `false`, or, `(!true==false)==true`.
+* Redundant boolean expressions can be simplified, like `x==true` to `x`.
+
+Boolean values can be combined with the `&&` (AND) and `||` (OR) operators, which have [short-circuit behavior](https://en.wikipedia.org/wiki/Short-circuit_evaluation): <u>if the answer is already determined by the value of the left operand, the right operand is not evaluated, making it safe to write expressions like this:</u>
+
+```go
+s != "" && s[0] == 'x'
+```
+
+where `s[0]` would panic if applied to an empty string.
+
+Since `&&` has higher precedence than `||` (mnemonic: `&&` is boolean multiplication, `||` is boolean addition), no parentheses are required for conditions of this form:
+
+```go
+if 'a' <= c && c <= 'z' ||
+	'A' <= c && c <= 'Z' ||
+	'0' <= c && c <= '9' {
+	// ...ASCII letter or digit...
+}
+```
+
+There is no implicit conversion from a boolean value to a numeric value like 0 or 1, or vice versa.
+
+It might be worth writing conversion functions:
+
+```go
+// btoi returns 1 if b is true and 0 if false.
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+		return 0
+}
+
+// itob reports whether i is non-zero.
+func itob(i int) bool { return i != 0 }
+```
+### Strings
+
+A string is an immutable sequence of bytes. Strings may contain arbitrary data, including bytes with value 0, but usually they contain human-readable text. <u>Text strings are conventionally interpreted as UTF-8-encoded sequences of Unicode code points (runes).</u>
+
+The built-in `len` function returns the number of bytes (not runes) in a string, and the index operation `s[i]` retrieves the `i`-th byte of string `s`, where 0 ≤ `i` < `len(s)`.
+
+```go
+s := "hello, world"
+fmt.Println(len(s)) // "12"
+fmt.Println(s[0], s[7]) // "104 119" ('h' and 'w')
+```
+
+In the above code, `s[0]` and `s[7]` [is of `uint8` type](http://play.golang.org/p/X1hEmf1qts).
+
+Attempting to access a byte outside this range results in a panic:
+
+```go
+c := s[len(s)] // panic: index out of range
+```
+
+The `i`-th byte of a string is not necessarily the `i`-th character of a string, because the UTF-8 encoding of a non-ASCII code point requires two or more bytes.
+
+#### The substring operation *
+
+The *substring* operation `s[i:j]` yields a new string consisting of the bytes of the original string starting at index `i` and continuing up to, but not including, the byte at index `j`. The result contains `j-i` bytes.
+
+```go
+fmt.Println(s[0:5]) // "hello"
+```
+
+A panic results if either index is out of bounds or if `j` is less than `i`.
+
+Either or both of the `i` and `j` operands may be omitted:
+
+* If `i` is omitted, it defaults to 0 (the start of the string)
+* If `j` is omitted, it defaults to `len(s)` (its end).
+
+```go
+fmt.Println(s[:5]) // "hello"
+fmt.Println(s[7:]) // "world"
+fmt.Println(s[:]) // "hello, world"
+```
+
+#### String concatenation, comparison and immutability *
+
+The `+` operator makes a new string by concatenating two strings:
+
+```go
+fmt.Println("goodbye" + s[5:]) // "goodbye, world"
+```
+
+Strings may be compared with comparison operators (e.g. `==` and `<`); the comparison is done byte by byte, so the result is the natural lexicographic ordering.
+
+String values are immutable: the byte sequence contained in a string value can never be changed.
+
+```go
+s[0] = 'L' // compile error: cannot assign to s[0]
+```
+
+However, we can assign a new value to a string variable. `+=` can be used to append one string to another:
+
+```go
+s := "left foot"
+t := s
+s += ", right foot"
+```
+
+This does not modify the string that `s` originally held but causes `s` to hold the new string formed by the `+=` statement; meanwhile, `t` still contain`s` the old string.
+
+Immutability means that it is safe for two copies of a string to share the same underlying memory, making it cheap to copy strings of any length. Similarly, a string `s` and a substring like `s[7:]` may safely share the same data, so the substring operation is also cheap. No new memory is allocated in either case. The following figure illustrates the arrangement of a string and two of its substrings sharing the same underlying byte array.
+
+[![Figure 3.4. The string "hello, world" and two substrings.](figure_3.4_600.png)](figure_3.4.png "Figure 3.4. The string "hello, world" and two substrings.")
+
 
 ### Doubts and Solution
 
