@@ -525,6 +525,19 @@
         <li class="main "><a href="#floating-point-numbers">Floating-Point Numbers</a></li>
         
     
+        <li class="main "><a href="#complex-numbers">Complex Numbers</a></li>
+        
+    
+        <li class="main "><a href="#booleans">Booleans</a></li>
+        
+    
+        <li class="main "><a href="#strings">Strings</a></li>
+        
+            <li><a href="#the-substring-operation">The substring operation *</a></li>
+        
+            <li><a href="#string-concatenation-comparison-and-immutability">String concatenation, comparison and immutability *</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -803,6 +816,155 @@ x = 7 e**x = 1096.633
 </pre></div>
 
 
+<p>In addition to mathematical functions, the <code>math</code> package has functions for creating and detecting the special values defined by <a href="https://en.wikipedia.org/wiki/IEEE_floating_point">IEEE 754</a>:</p>
+<ul>
+<li>Positive and negative infinities, which represent numbers of excessive magnitude and the result of division by zero;</li>
+<li><a href="https://en.wikipedia.org/wiki/NaN">NaN</a> ("not a number"), the result of such mathematically dubious operations as <code>0/0</code> or <code>Sqrt(-1)</code>.</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">z</span> <span class="kt">float64</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">z</span><span class="p">,</span> <span class="o">-</span><span class="nx">z</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="nx">z</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="nx">z</span><span class="p">,</span> <span class="nx">z</span><span class="o">/</span><span class="nx">z</span><span class="p">)</span> <span class="c1">// &quot;0 -0 +Inf -Inf NaN&quot;</span>
+</pre></div>
+
+
+<p>The function <code>math.IsNaN</code> tests whether its argument is a not-a-number value, and <code>math.NaN</code> returns such a value. It’s tempting to use NaN as a sentinel value in a numeric computation. Be careful when testing whether a specific computational result is equal to NaN: any comparison with NaN always yields <code>false</code>.</p>
+<div class="codehilite"><pre><span class="nx">nan</span> <span class="o">:=</span> <span class="nx">math</span><span class="p">.</span><span class="nx">NaN</span><span class="p">()</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">nan</span> <span class="o">==</span> <span class="nx">nan</span><span class="p">,</span> <span class="nx">nan</span> <span class="p">&lt;</span> <span class="nx">nan</span><span class="p">,</span> <span class="nx">nan</span> <span class="p">&gt;</span> <span class="nx">nan</span><span class="p">)</span> <span class="c1">// &quot;false false false&quot;</span>
+</pre></div>
+
+
+<p>If a function that returns a floating-point result might fail, it’s better to report the failure separately, like this:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">compute</span><span class="p">()</span> <span class="p">(</span><span class="nx">value</span> <span class="kt">float64</span><span class="p">,</span> <span class="nx">ok</span> <span class="kt">bool</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+    <span class="k">if</span> <span class="nx">failed</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">false</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">result</span><span class="p">,</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>[p58-60]</p>
+<h3 id="complex-numbers">Complex Numbers</h3>
+<p>Go provides two sizes of complex numbers, <code>complex64</code> and <code>complex128</code>, whose components are <code>float32</code> and <code>float64</code> respectively. The built-in function <code>complex</code> creates a complex number from its real and imaginary components, and the built-in <code>real</code> and <code>imag</code> functions extract those components:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="kt">complex128</span> <span class="p">=</span> <span class="nb">complex</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1">// 1+2i</span>
+<span class="kd">var</span> <span class="nx">y</span> <span class="kt">complex128</span> <span class="p">=</span> <span class="nb">complex</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="c1">// 3+4i</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="o">*</span><span class="nx">y</span><span class="p">)</span>                 <span class="c1">// &quot;(-5+10i)&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">real</span><span class="p">(</span><span class="nx">x</span><span class="o">*</span><span class="nx">y</span><span class="p">))</span>           <span class="c1">// &quot;-5&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">imag</span><span class="p">(</span><span class="nx">x</span><span class="o">*</span><span class="nx">y</span><span class="p">))</span>           <span class="c1">// &quot;10&quot;</span>
+</pre></div>
+
+
+<p>If a floating-point literal or decimal integer literal is immediately followed by <code>i</code>, such as <code>3.141592i</code> or <code>2i</code>, it becomes an <em>imaginary literal</em>, denoting a complex number with a zero real component:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="m">1i</span> <span class="o">*</span> <span class="m">1i</span><span class="p">)</span> <span class="c1">// &quot;(-1+0i)&quot;, i$ = -1</span>
+</pre></div>
+
+
+<p>Complex numbers use the rules for constant arithmetic; complex constants can be added to other constants. Therefore, complex numbers can be written naturally, like <code>1+2i</code> or <code>2i+1</code>. The declarations of <code>x</code> and <code>y</code> above can be simplified:</p>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">1</span> <span class="o">+</span> <span class="m">2i</span>
+<span class="nx">y</span> <span class="o">:=</span> <span class="mi">3</span> <span class="o">+</span> <span class="m">4i</span>
+</pre></div>
+
+
+<p>Complex numbers may be compared for equality with <code>==</code> and <code>!=</code>. Two complex numbers are equal if their real parts are equal and their imaginary parts are equal. The <code>math/cmplx</code> package provides library functions for working with complex numbers, such as the complex square root and exponentiation functions.</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">cmplx</span><span class="p">.</span><span class="nx">Sqrt</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="c1">// &quot;(0+1i)&quot;</span>
+</pre></div>
+
+
+<p>[p61-63]</p>
+<h3 id="booleans">Booleans</h3>
+<p>A value of type <code>bool</code>, or <a href="https://en.wikipedia.org/wiki/Boolean_data_type"><strong>boolean</strong></a>, has only two possible values, <code>true</code> and <code>false</code>.</p>
+<ul>
+<li>The conditions in <code>if</code> and <code>for</code> statements are booleans</li>
+<li>Comparison operators (e.g. <code>==</code>, <code>&lt;&gt;</code>) produce a boolean result.</li>
+<li>The unary operator <code>!</code> is logical negation. For example, <code>!true</code> is <code>false</code>, or, <code>(!true==false)==true</code>.</li>
+<li>Redundant boolean expressions can be simplified, like <code>x==true</code> to <code>x</code>.</li>
+</ul>
+<p>Boolean values can be combined with the <code>&amp;&amp;</code> (AND) and <code>||</code> (OR) operators, which have <a href="https://en.wikipedia.org/wiki/Short-circuit_evaluation">short-circuit behavior</a>: <u>if the answer is already determined by the value of the left operand, the right operand is not evaluated, making it safe to write expressions like this:</u></p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span> <span class="o">&amp;&amp;</span> <span class="nx">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">&#39;x&#39;</span>
+</pre></div>
+
+
+<p>where <code>s[0]</code> would panic if applied to an empty string.</p>
+<p>Since <code>&amp;&amp;</code> has higher precedence than <code>||</code> (mnemonic: <code>&amp;&amp;</code> is boolean multiplication, <code>||</code> is boolean addition), no parentheses are required for conditions of this form:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="sc">&#39;a&#39;</span> <span class="o">&lt;=</span> <span class="nx">c</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span> <span class="o">&lt;=</span> <span class="sc">&#39;z&#39;</span> <span class="o">||</span>
+    <span class="sc">&#39;A&#39;</span> <span class="o">&lt;=</span> <span class="nx">c</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span> <span class="o">&lt;=</span> <span class="sc">&#39;Z&#39;</span> <span class="o">||</span>
+    <span class="sc">&#39;0&#39;</span> <span class="o">&lt;=</span> <span class="nx">c</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span> <span class="o">&lt;=</span> <span class="sc">&#39;9&#39;</span> <span class="p">{</span>
+    <span class="c1">// ...ASCII letter or digit...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>There is no implicit conversion from a boolean value to a numeric value like 0 or 1, or vice versa.</p>
+<p>It might be worth writing conversion functions:</p>
+<div class="codehilite"><pre><span class="c1">// btoi returns 1 if b is true and 0 if false.</span>
+<span class="kd">func</span> <span class="nx">btoi</span><span class="p">(</span><span class="nx">b</span> <span class="kt">bool</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">b</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="p">}</span>
+        <span class="k">return</span> <span class="mi">0</span>
+<span class="p">}</span>
+
+<span class="c1">// itob reports whether i is non-zero.</span>
+<span class="kd">func</span> <span class="nx">itob</span><span class="p">(</span><span class="nx">i</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">i</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">}</span>
+</pre></div>
+
+
+<h3 id="strings">Strings</h3>
+<p>A string is an immutable sequence of bytes. Strings may contain arbitrary data, including bytes with value 0, but usually they contain human-readable text. <u>Text strings are conventionally interpreted as UTF-8-encoded sequences of Unicode code points (runes).</u></p>
+<p>The built-in <code>len</code> function returns the number of bytes (not runes) in a string, and the index operation <code>s[i]</code> retrieves the <code>i</code>-th byte of string <code>s</code>, where 0 ≤ <code>i</code> &lt; <code>len(s)</code>.</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">:=</span> <span class="s">&quot;hello, world&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">))</span> <span class="c1">// &quot;12&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nx">s</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span> <span class="c1">// &quot;104 119&quot; (&#39;h&#39; and &#39;w&#39;)</span>
+</pre></div>
+
+
+<p>In the above code, <code>s[0]</code> and <code>s[7]</code> <a href="http://play.golang.org/p/X1hEmf1qts">is of <code>uint8</code> type</a>.</p>
+<p>Attempting to access a byte outside this range results in a panic:</p>
+<div class="codehilite"><pre><span class="nx">c</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)]</span> <span class="c1">// panic: index out of range</span>
+</pre></div>
+
+
+<p>The <code>i</code>-th byte of a string is not necessarily the <code>i</code>-th character of a string, because the UTF-8 encoding of a non-ASCII code point requires two or more bytes.</p>
+<h4 id="the-substring-operation">The substring operation *</h4>
+<p>The <em>substring</em> operation <code>s[i:j]</code> yields a new string consisting of the bytes of the original string starting at index <code>i</code> and continuing up to, but not including, the byte at index <code>j</code>. The result contains <code>j-i</code> bytes.</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">5</span><span class="p">])</span> <span class="c1">// &quot;hello&quot;</span>
+</pre></div>
+
+
+<p>A panic results if either index is out of bounds or if <code>j</code> is less than <code>i</code>.</p>
+<p>Either or both of the <code>i</code> and <code>j</code> operands may be omitted:</p>
+<ul>
+<li>If <code>i</code> is omitted, it defaults to 0 (the start of the string)</li>
+<li>If <code>j</code> is omitted, it defaults to <code>len(s)</code> (its end).</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span> <span class="c1">// &quot;hello&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="mi">7</span><span class="p">:])</span> <span class="c1">// &quot;world&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">[:])</span> <span class="c1">// &quot;hello, world&quot;</span>
+</pre></div>
+
+
+<h4 id="string-concatenation-comparison-and-immutability">String concatenation, comparison and immutability *</h4>
+<p>The <code>+</code> operator makes a new string by concatenating two strings:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;goodbye&quot;</span> <span class="o">+</span> <span class="nx">s</span><span class="p">[</span><span class="mi">5</span><span class="p">:])</span> <span class="c1">// &quot;goodbye, world&quot;</span>
+</pre></div>
+
+
+<p>Strings may be compared with comparison operators (e.g. <code>==</code> and <code>&lt;</code>); the comparison is done byte by byte, so the result is the natural lexicographic ordering.</p>
+<p>String values are immutable: the byte sequence contained in a string value can never be changed.</p>
+<div class="codehilite"><pre><span class="nx">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">=</span> <span class="sc">&#39;L&#39;</span> <span class="c1">// compile error: cannot assign to s[0]</span>
+</pre></div>
+
+
+<p>However, we can assign a new value to a string variable. <code>+=</code> can be used to append one string to another:</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">:=</span> <span class="s">&quot;left foot&quot;</span>
+<span class="nx">t</span> <span class="o">:=</span> <span class="nx">s</span>
+<span class="nx">s</span> <span class="o">+=</span> <span class="s">&quot;, right foot&quot;</span>
+</pre></div>
+
+
+<p>This does not modify the string that <code>s</code> originally held but causes <code>s</code> to hold the new string formed by the <code>+=</code> statement; meanwhile, <code>t</code> still contain<code>s</code> the old string.</p>
+<p>Immutability means that it is safe for two copies of a string to share the same underlying memory, making it cheap to copy strings of any length. Similarly, a string <code>s</code> and a substring like <code>s[7:]</code> may safely share the same data, so the substring operation is also cheap. No new memory is allocated in either case. The following figure illustrates the arrangement of a string and two of its substrings sharing the same underlying byte array.</p>
+<p><a href="../figure_3.4.png" title="Figure 3.4. The string &quot;hello, world&quot; and two substrings."><img alt="Figure 3.4. The string &quot;hello, world&quot; and two substrings." src="../figure_3.4_600.png" /></a></p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>
