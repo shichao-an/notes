@@ -484,6 +484,47 @@ Immutability means that it is safe for two copies of a string to share the same 
 
 [![Figure 3.4. The string "hello, world" and two substrings.](figure_3.4_600.png)](figure_3.4.png "Figure 3.4. The string "hello, world" and two substrings.")
 
+#### String Literals
+
+A string value can be written as a **string literal**, a sequence of bytes enclosed in double quotes:
+
+```go
+"Hello, 世界"
+```
+
+Go source files are always encoded in UTF-8 and Go text strings are conventionally interpreted as UTF-8. We can include Unicode code points in string literals.
+
+Within a double-quoted string literal, [**escape sequences**](https://en.wikipedia.org/wiki/Escape_sequence) that begin with a backslash `\` can be used to insert arbitrary byte values into the string. Some escapes handles [ASCII control codes](https://en.wikipedia.org/wiki/Control_character#In_ASCII) like newline, carriage return, and tab:
+
+* `\a`: "alert" or bell
+* `\b`: backspace
+* `\f`: form feed
+* `\n`: newline
+* `\r`: carriage return
+* `\t`: tab
+* `\v`: vertical tab
+* `\'`: single quote (only in the rune literal `'\''`)
+* `\"`: double quote (only within `"..."` literals)
+* `\\`: backslash
+
+Arbitrary bytes can also be included in literal strings using hexadecimal or octal escapes.
+
+* A hexadecimal escape is written `\xhh`, with exactly two hexadecimal digits `h` (in upper or lower case).
+* An octal escape is written `\ooo` with exactly three octal digits o (0 through 7) not exceeding `\377` (255 in decimal).
+
+Both denote a single byte with the specified value.
+
+A **raw string literal** is written `` `...` ``, using [backquotes](https://en.wikipedia.org/wiki/Grave_accent#Use_in_programming) instead of double quotes. Within a raw string literal, no escape sequences are processed; the contents are taken literally, including backslashes and newlines, so a raw string literal may spread over several lines in the program source. <u>The only processing is that [carriage returns](https://en.wikipedia.org/wiki/Carriage_return) are deleted so that the value of the string is the same on all platforms,</u> including those that conventionally put carriage returns in text files.
+
+Raw string literals are a convenient way to write regular expressions, which tend to have lots of backslashes. They are also useful for HTML templates, JSON literals, and command usage messages, which often extend over multiple lines.
+
+```
+const GoUsage = `Go is a tool for managing Go source code.
+Usage:
+go command [arguments]
+...`
+```
+
 
 ### Doubts and Solution
 
