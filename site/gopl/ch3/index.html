@@ -539,6 +539,11 @@
         
             <li><a href="#string-literals">String Literals</a></li>
         
+            <li><a href="#unicode">Unicode</a></li>
+        
+    
+        <li class="main "><a href="#utf-8">UTF-8</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -990,7 +995,7 @@ x = 7 e**x = 1096.633
 <p>Arbitrary bytes can also be included in literal strings using hexadecimal or octal escapes.</p>
 <ul>
 <li>A hexadecimal escape is written <code>\xhh</code>, with exactly two hexadecimal digits <code>h</code> (in upper or lower case).</li>
-<li>An octal escape is written <code>\ooo</code> with exactly three octal digits o (0 through 7) not exceeding <code>\377</code> (255 in decimal).</li>
+<li>An octal escape is written <code>\ooo</code> with exactly three octal digits <code>o</code> (0 through 7) not exceeding <code>\377</code> (255 in decimal).</li>
 </ul>
 <p>Both denote a single byte with the specified value.</p>
 <p>A <strong>raw string literal</strong> is written <code>`...`</code>, using <a href="https://en.wikipedia.org/wiki/Grave_accent#Use_in_programming">backquotes</a> instead of double quotes. Within a raw string literal, no escape sequences are processed; the contents are taken literally, including backslashes and newlines, so a raw string literal may spread over several lines in the program source. <u>The only processing is that <a href="https://en.wikipedia.org/wiki/Carriage_return">carriage returns</a> are deleted so that the value of the string is the same on all platforms,</u> including those that conventionally put carriage returns in text files.</p>
@@ -1002,6 +1007,62 @@ go command [arguments]
 </pre></div>
 
 
+<h4 id="unicode">Unicode</h4>
+<p>In early days, <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a> (short for American Standard Code for Information Interchange), or more precisely US-ASCII, uses 7 bits to represent 128 "characters": the upper- and lower-case letters of English, digits, and a variety of punctuation and device-control characters. With the growth of the Internet, data in various languages has become much more common. How to deal with this variety?</p>
+<p>The answer is <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a> (<a href="http://unicode.org/">unicode.org</a>), which collects all of the characters in all of the world's writing systems, plus:</p>
+<ul>
+<li>Accents and other diacritical marks</li>
+<li>Control codes like tab and carriage return</li>
+<li>Plenty of esoterica</li>
+</ul>
+<p>Each of these characters is assigned a standard number called a <strong>Unicode code point</strong> or, in Go terminology, a <strong>rune</strong>.</p>
+<p>Unicode version 8 defines code points for over 120,000 characters in over 100 languages and scripts. In computer programs and data, the natural data type to hold a single rune is <code>int32</code>. This is what Go uses and is why it has the synonym <code>rune</code> for precisely this purpose.</p>
+<p>A sequence of runes can be represented as a sequence of <code>int32</code> values. In this representation, which is called <a href="https://en.wikipedia.org/wiki/UTF-32">UTF-32</a> or UCS-4, the encoding of each Unicode code point has the same size, 32 bits. This is simple and uniform, but it uses much more space than necessary since most computer-readable text is in ASCII, which requires only 8 bits or 1 byte per character. All the characters in widespread use still number fewer than 65,536, which would fit in 16 bits.</p>
+<h3 id="utf-8">UTF-8</h3>
+<p><a href="https://en.wikipedia.org/wiki/UTF-8">UTF-8</a> is a variable-length encoding of Unicode code points as bytes. UTF-8 was invented by <a href="https://en.wikipedia.org/wiki/Ken_Thompson">Ken Thompson</a> and <a href="https://en.wikipedia.org/wiki/Rob_Pike">Rob Pike</a>, two of the creators of Go, and is now a Unicode standard. It uses between 1 and 4 bytes to represent each rune, but only 1 byte for ASCII characters, and only 2 or 3 bytes for most runes in common use. <u>The high-order bits of the first byte of the encoding for a rune indicate how many bytes follow:</u></p>
+<ul>
+<li><u>A high-order <code>0</code> indicates 7-bit ASCII, where each rune takes only 1 byte, so it is identical to conventional ASCII.</u></li>
+<li>A high-order <code>110</code> indicates that the rune takes 2 bytes; the second byte begins with 10.</li>
+<li>Larger runes have analogous encodings.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Encoding Format</th>
+<th>Range</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0xxxxxx</code></td>
+<td>runes 0−127</td>
+<td>(ASCII)</td>
+</tr>
+<tr>
+<td><code>11xxxxx 10xxxxxx</code></td>
+<td>128−2047</td>
+<td>(values &lt;128 unused)</td>
+</tr>
+<tr>
+<td><code>110xxxx 10xxxxxx 10xxxxxx</code></td>
+<td>2048−65535</td>
+<td>(values &lt;2048 unused)</td>
+</tr>
+<tr>
+<td><code>1110xxx 10xxxxxx 10xxxxxx 10xxxxxx</code></td>
+<td>65536−0x10ffff</td>
+<td>(other values unused)</td>
+</tr>
+</tbody>
+</table>
+<p>Although a variable-length encoding precludes direct indexing to access the <em>n</em>-th character of a string, UTF-8 has many desirable properties:</p>
+<ul>
+<li>The UTF-8 encoding is compact, compatible with ASCII, and self-synchronizing: it's possible to find the beginning of a character by backing up no more than three bytes.</li>
+<li>It's a prefix code, so it can be decoded from left to right without any ambiguity or lookahead. No rune’s encoding is a substring of any other, or even of a sequence of others, so you can search for a rune by just searching for its bytes, without worrying about the preceding context.</li>
+<li>The lexicographic byte order equals the Unicode code point order, so sorting UTF-8 works naturally.</li>
+<li>There are no embedded NUL (zero) bytes, which is convenient for programming languages that use NUL to terminate strings.</li>
+</ul>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>

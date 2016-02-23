@@ -48,6 +48,19 @@ The following table lists socket and IP-layer socket options for `getsockopt` an
   | `SO_REUSEPORT` | x | x | Allow local port reuse | x | `int`
   | `SO_TYPE` | x | | Get socket type | | `int`
   | `SO_USELOOPBACK` | x | x | Routing socket gets copy of what it sends | x | `int`
+`IPPROTO_IP` | `IP_HDRINCL` | x | x | IP header included with data | x | `int`
+  | `IP_OPTIONS` | x | x | IP header options | | (see text)
+  | `IP_RECVDSTADDR` | x | x | Return destination IP address | x | `int`
+  | `IP_RECVIF` | x | x | Return destination IP address | x | `int`
+  | `IP_TOS` | x | x | Type-of-service and precedence | | `int`
+  | `IP_TTL` | x | x | TTL | | `int`
+  | `IP_MULTICAST_IF` | x | x | Specify outgoing interface | | `in_addr{}`
+  | `IP_MULTICAST_TTL` | x | x | Specify outgoing TTL | | `u_char`
+  | `IP_MULTICAST_LOOP` | x | x | Specify loopback | | `u_char`
+  | `IP_{ADD,DROP}_MEMBERSHIP` | | x | Join or leave multicast group | | `ip_mreq{}`
+  | `IP_{BLOCK,UNBLOCK}_SOURCE` | | x | Block or unblock multicast source | | `ip_mreq_source{}`
+  | `IP_{ADD,DROP}_SOURCE_MEMBERSHIP` | | x | Join or leave source-specific multicast | | `ip_mreq_source{}`
+
 
 [![Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.](figure_7.1.png)](figure_7.1.png "Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.")
 

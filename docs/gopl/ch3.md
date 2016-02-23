@@ -510,7 +510,7 @@ Within a double-quoted string literal, [**escape sequences**](https://en.wikiped
 Arbitrary bytes can also be included in literal strings using hexadecimal or octal escapes.
 
 * A hexadecimal escape is written `\xhh`, with exactly two hexadecimal digits `h` (in upper or lower case).
-* An octal escape is written `\ooo` with exactly three octal digits o (0 through 7) not exceeding `\377` (255 in decimal).
+* An octal escape is written `\ooo` with exactly three octal digits `o` (0 through 7) not exceeding `\377` (255 in decimal).
 
 Both denote a single byte with the specified value.
 
@@ -524,6 +524,44 @@ Usage:
 go command [arguments]
 ...`
 ```
+
+#### Unicode
+
+In early days, [ASCII](https://en.wikipedia.org/wiki/ASCII) (short for American Standard Code for Information Interchange), or more precisely US-ASCII, uses 7 bits to represent 128 "characters": the upper- and lower-case letters of English, digits, and a variety of punctuation and device-control characters. With the growth of the Internet, data in various languages has become much more common. How to deal with this variety?
+
+The answer is [Unicode](https://en.wikipedia.org/wiki/Unicode) ([unicode.org](http://unicode.org/)), which collects all of the characters in all of the world's writing systems, plus:
+
+* Accents and other diacritical marks
+* Control codes like tab and carriage return
+* Plenty of esoterica
+
+Each of these characters is assigned a standard number called a **Unicode code point** or, in Go terminology, a **rune**.
+
+Unicode version 8 defines code points for over 120,000 characters in over 100 languages and scripts. In computer programs and data, the natural data type to hold a single rune is `int32`. This is what Go uses and is why it has the synonym `rune` for precisely this purpose.
+
+A sequence of runes can be represented as a sequence of `int32` values. In this representation, which is called [UTF-32](https://en.wikipedia.org/wiki/UTF-32) or UCS-4, the encoding of each Unicode code point has the same size, 32 bits. This is simple and uniform, but it uses much more space than necessary since most computer-readable text is in ASCII, which requires only 8 bits or 1 byte per character. All the characters in widespread use still number fewer than 65,536, which would fit in 16 bits.
+
+### UTF-8
+
+[UTF-8](https://en.wikipedia.org/wiki/UTF-8) is a variable-length encoding of Unicode code points as bytes. UTF-8 was invented by [Ken Thompson](https://en.wikipedia.org/wiki/Ken_Thompson) and [Rob Pike](https://en.wikipedia.org/wiki/Rob_Pike), two of the creators of Go, and is now a Unicode standard. It uses between 1 and 4 bytes to represent each rune, but only 1 byte for ASCII characters, and only 2 or 3 bytes for most runes in common use. <u>The high-order bits of the first byte of the encoding for a rune indicate how many bytes follow:</u>
+
+* <u>A high-order `0` indicates 7-bit ASCII, where each rune takes only 1 byte, so it is identical to conventional ASCII.</u>
+* A high-order `110` indicates that the rune takes 2 bytes; the second byte begins with 10.
+* Larger runes have analogous encodings.
+
+Encoding Format | Range | Description
+----------------|-------|------------
+`0xxxxxx` | runes 0−127 | (ASCII)
+`11xxxxx 10xxxxxx` | 128−2047 | (values <128 unused)
+`110xxxx 10xxxxxx 10xxxxxx` | 2048−65535 | (values <2048 unused)
+`1110xxx 10xxxxxx 10xxxxxx 10xxxxxx` | 65536−0x10ffff | (other values unused)
+
+Although a variable-length encoding precludes direct indexing to access the *n*-th character of a string, UTF-8 has many desirable properties:
+
+* The UTF-8 encoding is compact, compatible with ASCII, and self-synchronizing: it's possible to find the beginning of a character by backing up no more than three bytes.
+* It's a prefix code, so it can be decoded from left to right without any ambiguity or lookahead. No rune’s encoding is a substring of any other, or even of a sequence of others, so you can search for a rune by just searching for its bytes, without worrying about the preceding context.
+* The lexicographic byte order equals the Unicode code point order, so sorting UTF-8 works naturally.
+* There are no embedded NUL (zero) bytes, which is convenient for programming languages that use NUL to terminate strings.
 
 
 ### Doubts and Solution
