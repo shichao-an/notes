@@ -563,6 +563,124 @@ Although a variable-length encoding precludes direct indexing to access the *n*-
 * The lexicographic byte order equals the Unicode code point order, so sorting UTF-8 works naturally.
 * There are no embedded NUL (zero) bytes, which is convenient for programming languages that use NUL to terminate strings.
 
+Go source files are always encoded in UTF-8, and UTF-8 is the preferred encoding for text strings manipulated by Go programs.
+
+* The [`unicode`](https://golang.org/pkg/unicode/) package provides functions for working with individual runes (such as distinguishing letters from numbers, or converting an uppercase letter to a lower-case one)
+* The [`unicode/utf8`](https://golang.org/pkg/unicode/utf8/) package provides functions for encoding and decoding runes as bytes using UTF-8.
+
+Many Unicode characters are hard to type on a keyboard or to distinguish visually from similar-looking ones; some are even invisible. Unicode escapes in Go string literals can be specified by their numeric code point value. There are two forms:
+
+* `\u`*hhhh* for a 16-bit value
+* `\U`*hhhhhhhh* for a 32-bit value
+
+Each *h* is a hexadecimal digit, though the 32-bit form is used very infrequently. Each denotes the UTF-8 encoding of the specified code point. For example, the following **string literals** all represent the same [*six-byte*](https://play.golang.org/p/Y3nE6aDtMX) string:
+
+```go
+"世界"
+"\xe4\xb8\x96\xe7\x95\x8c"
+"\u4e16\u754c"
+"\U00004e16\U0000754c"
+```
+
+The three escape sequences above provide alternative notations for the first string, but the values they denote are identical. Unicode escapes may also be used in rune literals. These three **rune literals** are equivalent:
+
+```go
+'世'
+'\u4e16'
+'\U00004e16'
+```
+
+A rune whose value is less than 256 may be written with a single hexadecimal escape, such as `'\x41'` for `'A'`, but for higher values, a `\u` or `\U` escape must be used. Consequently, <u>`'\xe4\xb8\x96'` is not a legal rune literal, even though those three bytes are a valid UTF-8 encoding of a single code point.</u>
+
+<u>Due to the properties of UTF-8, many string operations don't require decoding.</u>
+
+We can test whether one string contains another:
+
+* As a prefix:
+
+```go
+func HasPrefix(s, prefix string) bool {
+	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
+}
+```
+
+* As a suffix:
+
+```go
+func HasSuffix(s, suffix string) bool {
+	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
+}
+```
+
+* A as a substring:
+
+```go
+func Contains(s, substr string) bool {
+	for i := 0; i < len(s); i++ {
+		if HasPrefix(s[i:], substr) {
+			return true
+		}
+	}
+	return false
+}
+```
+
+These functions, which are drawn from the `strings` package, use the same logic for UTF-8-encoded text as for raw bytes. This is not true for other encodings.
+
+If we care about the individual Unicode characters, we have to use other mechanisms. Consider the string from our very first example, "Hello, 世界", which includes two East Asian characters. The following figure illustrates its representation in memory.
+
+[![Figure 3.5. A range loop decodes a UTF-8-encoded string.](figure_3.5_600.png)](figure_3.5.png "Figure 3.5. A range loop decodes a UTF-8-encoded string.")
+
+The string contains 13 bytes, but interpreted as UTF-8, it encodes only nine code points or runes:
+
+```go
+import "unicode/utf8"
+
+s := "Hello, 世界"
+fmt.Println(len(s)) // "13"
+fmt.Println(utf8.RuneCountInString(s)) // "9"
+```
+
+The `unicode/utf8` package provides the decoder to process those characters, with which we can use like this:
+
+```go
+for i := 0; i < len(s); {
+	r, size := utf8.DecodeRuneInString(s[i:])
+	fmt.Printf("%d\t%c\n", i, r)
+	i += size
+}
+```
+
+Each call to `DecodeRuneInString` returns `r`, the rune itself, and size, the number of bytes occupied by the UTF-8 encoding of `r`. The size is used to update the byte index `i` of the next rune in the string.
+
+Go’s `range` loop, when applied to a string, performs UTF-8 decoding implicitly. The output of the loop below is also shown in [Figure 3.5](figure_3.5.png); notice how the index jumps by more than 1 for each non-ASCII rune.
+
+```go
+for i, r := range "Hello, 世界" {
+	fmt.Printf("%d\t%q\t%d\n", i, r, r)
+}
+```
+
+We could use a simple range loop to count the number of runes in a string, like this:
+
+```go
+n := 0
+for _, _ = range s {
+	n++
+}
+```
+
+As with the other forms of range loop, we can omit the variables we don’t need:
+
+```go
+n := 0
+for range s {
+	n++
+}
+```
+
+The result of `n` is the same to that of `utf8.RuneCountInString(s)`.
+
 
 ### Doubts and Solution
 
@@ -577,3 +695,4 @@ Although a variable-length encoding precludes direct indexing to access the *n*-
 <span class="text-info">Solution</span>:
 
 * [Stack Overflow](http://stackoverflow.com/questions/28432398/difference-between-some-operators-golang): `x &^ y` means to get the bits that are in `x` AND NOT in `y`. See also [bitwise operation examples](#bitwise-operation-examples).
+"BF"
