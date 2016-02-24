@@ -1063,6 +1063,112 @@ go command [arguments]
 <li>The lexicographic byte order equals the Unicode code point order, so sorting UTF-8 works naturally.</li>
 <li>There are no embedded NUL (zero) bytes, which is convenient for programming languages that use NUL to terminate strings.</li>
 </ul>
+<p>Go source files are always encoded in UTF-8, and UTF-8 is the preferred encoding for text strings manipulated by Go programs.</p>
+<ul>
+<li>The <a href="https://golang.org/pkg/unicode/"><code>unicode</code></a> package provides functions for working with individual runes (such as distinguishing letters from numbers, or converting an uppercase letter to a lower-case one)</li>
+<li>The <a href="https://golang.org/pkg/unicode/utf8/"><code>unicode/utf8</code></a> package provides functions for encoding and decoding runes as bytes using UTF-8.</li>
+</ul>
+<p>Many Unicode characters are hard to type on a keyboard or to distinguish visually from similar-looking ones; some are even invisible. Unicode escapes in Go string literals can be specified by their numeric code point value. There are two forms:</p>
+<ul>
+<li><code>\u</code><em>hhhh</em> for a 16-bit value</li>
+<li><code>\U</code><em>hhhhhhhh</em> for a 32-bit value</li>
+</ul>
+<p>Each <em>h</em> is a hexadecimal digit, though the 32-bit form is used very infrequently. Each denotes the UTF-8 encoding of the specified code point. For example, the following <strong>string literals</strong> all represent the same <a href="https://play.golang.org/p/Y3nE6aDtMX"><em>six-byte</em></a> string:</p>
+<div class="codehilite"><pre><span class="s">&quot;世界&quot;</span>
+<span class="s">&quot;\xe4\xb8\x96\xe7\x95\x8c&quot;</span>
+<span class="s">&quot;\u4e16\u754c&quot;</span>
+<span class="s">&quot;\U00004e16\U0000754c&quot;</span>
+</pre></div>
+
+
+<p>The three escape sequences above provide alternative notations for the first string, but the values they denote are identical. Unicode escapes may also be used in rune literals. These three <strong>rune literals</strong> are equivalent:</p>
+<div class="codehilite"><pre><span class="sc">&#39;世&#39;</span>
+<span class="sc">&#39;\u4e16&#39;</span>
+<span class="sc">&#39;\U00004e16&#39;</span>
+</pre></div>
+
+
+<p>A rune whose value is less than 256 may be written with a single hexadecimal escape, such as <code>'\x41'</code> for <code>'A'</code>, but for higher values, a <code>\u</code> or <code>\U</code> escape must be used. Consequently, <u><code>'\xe4\xb8\x96'</code> is not a legal rune literal, even though those three bytes are a valid UTF-8 encoding of a single code point.</u></p>
+<p><u>Due to the properties of UTF-8, many string operations don't require decoding.</u></p>
+<p>We can test whether one string contains another:</p>
+<ul>
+<li>As a prefix:</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">HasPrefix</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">prefix</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">prefix</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">s</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="nx">prefix</span><span class="p">)]</span> <span class="o">==</span> <span class="nx">prefix</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>As a suffix:</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">HasSuffix</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">suffix</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">suffix</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">s</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="nx">suffix</span><span class="p">):]</span> <span class="o">==</span> <span class="nx">suffix</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>A as a substring:</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Contains</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">substr</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">HasPrefix</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">:],</span> <span class="nx">substr</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">true</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">false</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>These functions, which are drawn from the <code>strings</code> package, use the same logic for UTF-8-encoded text as for raw bytes. This is not true for other encodings.</p>
+<p>If we care about the individual Unicode characters, we have to use other mechanisms. Consider the string from our very first example, "Hello, 世界", which includes two East Asian characters. The following figure illustrates its representation in memory.</p>
+<p><a href="../figure_3.5.png" title="Figure 3.5. A range loop decodes a UTF-8-encoded string."><img alt="Figure 3.5. A range loop decodes a UTF-8-encoded string." src="../figure_3.5_600.png" /></a></p>
+<p>The string contains 13 bytes, but interpreted as UTF-8, it encodes only nine code points or runes:</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;unicode/utf8&quot;</span>
+
+<span class="nx">s</span> <span class="o">:=</span> <span class="s">&quot;Hello, 世界&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">))</span> <span class="c1">// &quot;13&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">utf8</span><span class="p">.</span><span class="nx">RuneCountInString</span><span class="p">(</span><span class="nx">s</span><span class="p">))</span> <span class="c1">// &quot;9&quot;</span>
+</pre></div>
+
+
+<p>The <code>unicode/utf8</code> package provides the decoder to process those characters, with which we can use like this:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">);</span> <span class="p">{</span>
+    <span class="nx">r</span><span class="p">,</span> <span class="nx">size</span> <span class="o">:=</span> <span class="nx">utf8</span><span class="p">.</span><span class="nx">DecodeRuneInString</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">:])</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d\t%c\n&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">r</span><span class="p">)</span>
+    <span class="nx">i</span> <span class="o">+=</span> <span class="nx">size</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each call to <code>DecodeRuneInString</code> returns <code>r</code>, the rune itself, and size, the number of bytes occupied by the UTF-8 encoding of <code>r</code>. The size is used to update the byte index <code>i</code> of the next rune in the string.</p>
+<p>Go’s <code>range</code> loop, when applied to a string, performs UTF-8 decoding implicitly. The output of the loop below is also shown in <a href="../figure_3.5.png">Figure 3.5</a>; notice how the index jumps by more than 1 for each non-ASCII rune.</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">r</span> <span class="o">:=</span> <span class="k">range</span> <span class="s">&quot;Hello, 世界&quot;</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d\t%q\t%d\n&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="nx">r</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We could use a simple range loop to count the number of runes in a string, like this:</p>
+<div class="codehilite"><pre><span class="nx">n</span> <span class="o">:=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">_</span> <span class="p">=</span> <span class="k">range</span> <span class="nx">s</span> <span class="p">{</span>
+    <span class="nx">n</span><span class="o">++</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>As with the other forms of range loop, we can omit the variables we don’t need:</p>
+<div class="codehilite"><pre><span class="nx">n</span> <span class="o">:=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="k">range</span> <span class="nx">s</span> <span class="p">{</span>
+    <span class="nx">n</span><span class="o">++</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The result of <code>n</code> is the same to that of <code>utf8.RuneCountInString(s)</code>.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>
@@ -1072,7 +1178,8 @@ go command [arguments]
 <p><span class="text-danger">Question</span>: What does it mean?</p>
 <p><span class="text-info">Solution</span>:</p>
 <ul>
-<li><a href="http://stackoverflow.com/questions/28432398/difference-between-some-operators-golang">Stack Overflow</a>: <code>x &amp;^ y</code> means to get the bits that are in <code>x</code> AND NOT in <code>y</code>. See also <a href="#bitwise-operation-examples">bitwise operation examples</a>.</li>
+<li><a href="http://stackoverflow.com/questions/28432398/difference-between-some-operators-golang">Stack Overflow</a>: <code>x &amp;^ y</code> means to get the bits that are in <code>x</code> AND NOT in <code>y</code>. See also <a href="#bitwise-operation-examples">bitwise operation examples</a>.
+"BF"</li>
 </ul>
             </div>
         </div>
