@@ -60,7 +60,27 @@ The following table lists socket and IP-layer socket options for `getsockopt` an
   | `IP_{ADD,DROP}_MEMBERSHIP` | | x | Join or leave multicast group | | `ip_mreq{}`
   | `IP_{BLOCK,UNBLOCK}_SOURCE` | | x | Block or unblock multicast source | | `ip_mreq_source{}`
   | `IP_{ADD,DROP}_SOURCE_MEMBERSHIP` | | x | Join or leave source-specific multicast | | `ip_mreq_source{}`
-
+`IPPROTO_ICMPV6` | `ICMP6_FILTER` | x | x | Specify ICMPv6 message types to pass | | `icmp6_filter{}`
+`IPPROTO_IPV6` | `IPV6_CHECKSUM` | x | x | Offset of checksum field for raw sockets | | `int`
+  | `IPV6_DONTFRAG` | x | x | Drop instead of fragment large packets | x | `int`
+  | `IPV6_NEXTHOP` | x | x | Specify next-hop address | | `sockaddr_in6{}`
+  | `IPV6_PATHMTU` | x | | Retrieve current path MTU | | `ip6_mtuinfo{}`
+  | `IPV6_RECVDSTOPTS` | x | | Receive destination options | x | `int`
+  | `IPV6_RECVHOPLIMIT` | x | x | Receive unicast hop limit | x | `int`
+  | `IPV6_RECVHOPOPTS` | x | x | Receive hop-by-hop options | x | `int`
+  | `IPV6_RECVPATHMTU` | x | x | Receive path MTU | x | `int`
+  | `IPV6_RECVPKTINFO` | x | x | Receive packet information | x | `int`
+  | `IPV6_RECVRTHDR` | x | x | Receive source route | x | `int`
+  | `IPV6_RECVTCLASS` | x | x | Receive traffic class | x | `int`
+  | `IPV6_UNICAT_HOPS` | x | x | Default unicast hop limit | | `int`
+  | `IPV6_USE_MIN_MTU` | x | x | Use minimum MTU | x | `int`
+  | `IPV6_V6ONLY` | x | x | Disable v4 compatibility | x | `int`
+  | `IPV6_XXX` | x | x | Sticky ancillary data | | (see text)
+  | `IPV6_MULTICAST_IF` | x | x | Specify outgoing interface | | `u_int`
+  | `IPV6_MULTICAST_HOPS` | x | x | Specify outgoing hop limit | | `int`
+  | `IPV6_MULTICAST_LOOP` | x | x | Specify loopback | x | `u_int`
+  | `IPV6_JOIN_GROUP` | | x | Join multicast group | | `ipv6_mreq{}`
+  | `IPV6_LEAVE_GROUP` | | x | Leave multicast group | | `ipv6_mreq{}`
 
 [![Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.](figure_7.1.png)](figure_7.1.png "Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.")
 
