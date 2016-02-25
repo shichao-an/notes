@@ -44,3 +44,38 @@ The kernel manages CPU scheduling, memory, file systems, network protocols, and 
 * System libraries are often used to provide a richer and easier programming interface than the system calls alone.
     * It is pictured as a broken ring to show that applications can call system calls directly (if permitted by the operating system). [p87]
 * Applications include all running user-level software, including databases, web servers, administration tools, and operating system shells.
+
+##### **Kernel Execution**
+
+The kernel is a large program, which primarily executes on demand, when a user-level program makes a system call or a device sends an interrupt. <u>Some kernel threads operate asynchronously for housekeeping, which may include the kernel clock routine and memory management tasks, but these try to be lightweight and consume very little CPU resources.</u>
+
+* Workloads that perform frequent I/O frequently execute in kernel context.
+* Workloads that are compute-intensive are left alone as much as possible by the kernel, so they can run uninterrupted on-CPU.
+
+It may be tempting to think that the kernel cannot affect the performance of these workloads, but there are many cases where it does. The most obvious is CPU contention, when other threads are competing for CPU resources and the kernel scheduler needs to decide which will run and which will wait. The kernel also chooses which CPU a thread will run on and can choose CPUs with warmer hardware caches or better memory locality for the process, to significantly improve performance.
+
+##### **Clock**
+
+A core component of the original Unix kernel is the `clock()` routine, executed from a timer interrupt. It has historically been executed at 60, 100, or 1,000 times per second (250 for Linux 2.6.13) and each execution is called a *tick*. Its functions include:
+
+* Updating the system time
+* Expiring timers and time slices for thread scheduling
+* Maintaining CPU statistics
+* Executing *callouts* (scheduled kernel routines)
+
+Some performance issues with the clock are improved in later kernels, including:
+
+* **Tick latency**: For 100 Hz clocks, up to 10 ms of additional latency may be encountered for a timer as it waits to be processed on the next tick. This has been fixed using high-resolution real-time interrupts, so that execution occurs immediately without waiting.
+* **Tick overhead**: Modern processors have dynamic power features, which can power down parts during idle periods. The clock routine interrupts this process, which for idle systems can consume power needlessly. Linux has implemented [dynamic ticks](https://www.kernel.org/doc/Documentation/timers/highres.txt), so that when the system is idle, the timer routine (clock) does not fire.
+
+Modern kernels have moved much functionality out of the clock routine to on-demand interrupts, in an effort to create a *tickless kernel*. This includes Linux, where the clock routine (which is the *system timer interrupt*) performs little work other than updating the system clock and jiffies counter (*jiffies* is a Linux unit of time, similar to *ticks*).
+
+### Doubts and Solutions
+
+#### Verbatim
+
+##### **p88 on kernel `clock()` routine**
+
+> Linux has implemented [dynamic ticks](https://www.kernel.org/doc/Documentation/timers/highres.txt), so that when the system is idle, the timer routine (clock) does not fire.
+
+<span class="text-danger">Question</span>: Need in-depth understanding of dynamic ticks.
