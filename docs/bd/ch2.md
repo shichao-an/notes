@@ -231,8 +231,62 @@ Once FaceSpace becomes a hit, it will require hundreds, then thousands, of web s
 
 A common "fault" these systems must anticipate is a network partition where the destination datastore becomes unavailable. Fault-tolerant systems commonly handle failed operations by retrying until they succeed. Because the sender will not know which data was last received, a standard approach is to resend all data yet to be acknowledged by the recipient. But if part of the original attempt did make it to the metastore, you’d end up with duplicates in your dataset. This approach is simpler and has less performance costs than the transactional approach. By embracing distinguishable facts, it removes the need for transactional appends to the master dataset and make it easier to reason about the correctness of the full system.
 
-
 #### Benefits of the fact-based model
+
+With a fact-based model, the master dataset will be an ever-growing list of immutable, atomic facts, which has the following advantages:
+
+* Is queryable at any time in its history
+* Tolerates human errors
+* Handles partial information
+* Has the advantages of both normalized and [denormalized](https://en.wikipedia.org/wiki/Denormalization) forms
+
+##### **The dataset is queryable at any time in its history**
+
+You have the ability to query your data for any time covered by your dataset. This is a direct consequence of facts being timestamped and immutable. "Updates" and "deletes" are performed by adding new facts with more recent timestamps. You can reconstruct the state of the world at the time specified by your query.
+
+##### **The data is human-fault tolerant**
+
+Human-fault tolerance is achieved by simply deleting any erroneous facts. As shown in the following figure, human faults can easily be corrected by simply deleting erroneous facts. The record is automatically reset by using earlier timestamps.
+
+[![Figure 2.12 To correct for human errors, simply remove the incorrect facts. This process automatically resets to an earlier state by “uncovering” any relevant previous facts.](figure_2.12_600.png)](figure_2.12.png "Figure 2.12 To correct for human errors, simply remove the incorrect facts. This process automatically resets to an earlier state by “uncovering” any relevant previous facts.")
+
+##### **The dataset easily handles partial information**
+
+Storing one fact per record makes it easy to handle partial information about an entity without introducing NULL values into your dataset. Your dataset would only have facts for the known information. <u>Any "absent" fact would be logically equivalent to NULL.</u> Additional information provided at a later time would naturally be introduced via new facts.
+
+##### **The data storage and query processing layers are separate**
+
+There is another key advantage of the fact-based model that is in part due to the structure of the Lambda Architecture itself. By storing the information at both the batch and serving layers, you have the benefit of keeping your data in both normalized and denormalized forms and reaping the benefits of both.
+
+Normalization is an overloaded term. Data normalization is completely unrelated to the [semantic normalization](#unstructured-data-is-rawer-than-normalized-data) term used earlier in this chapter. In this case, [data normalization](https://en.wikipedia.org/wiki/Database_normalization) refers to storing data in a structured manner to minimize redundancy and promote consistency.
+
+##### **Normalization and denormalization** *
+
+Relational tables require you to choose between normalized and denormalized schemas based on what’s most important to you: query efficiency or data consistency. Suppose you wanted to store the employment information. The following figure offers a simple denormalized schema.
+
+[![Figure 2.13 A simple denormalized schema for storing employment information](figure_2.13_600.png)](figure_2.13.png "Figure 2.13 A simple denormalized schema for storing employment information")
+
+In this denormalized schema, the same company name is stored in multiple rows. This would allow you to quickly determine the number of employees for each company, but you would need to update many rows should a company change its name. Having information stored in multiple locations increases the risk of it becoming inconsistent.
+
+In comparison, in the figure below, data in a normalized schema is stored in only one location. If BackRub should change its name to Google, there's a single row in the Company table that needs to be altered. This removes the risk of inconsistency, but you must join the tables to answer queries, which is a potentially expensive computation.
+
+[![Figure 2.14 Two normalized tables for storing the same employment information](figure_2.14_600.png)](figure_2.14.png "Figure 2.14 Two normalized tables for storing the same employment information")
+
+In relational databases, queries are performed directly on the data at the storage level. You must weigh the importance of query efficiency versus data consistency and choose between the normalized and denormalized schema types.
+
+In contrast, the objectives of query processing and data storage are cleanly separated
+in the Lambda Architecture. Look at the batch and server layers in the figure below:
+
+[![Figure 2.15 The Lambda Architecture has the benefits of both normalization and denormalization by separating objectives at different layers.](figure_2.15_600.png)](figure_2.15.png "Figure 2.15 The Lambda Architecture has the benefits of both normalization and denormalization by separating objectives at different layers.")
+
+The Lambda Architecture gives you the conceptual benefits of full normalization with the performance benefits of indexing data in different ways to optimize queries:
+
+* The master dataset is fully normalized.
+    * No data is stored redundantly (as in earlier discussion of the fact-based model). Updates are easily handled because adding a new fact with a current timestamp "overrides" any previous related facts.
+* The batch views are like denormalized tables, because one piece of data from the master dataset may get indexed into many batch views.
+    * The key difference is that the batch views are defined as functions on the master dataset. Accordingly, there is no need to update a batch view because it will be continually rebuilt from the master dataset. This has the additional benefit that the batch views and master dataset will never be out of sync.
+
+With all of these benefits, the fact-based model is an excellent choice for your master dataset.
 
 ### Doubts and Solutions
 
