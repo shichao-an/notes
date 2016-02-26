@@ -81,6 +81,12 @@ The following table lists socket and IP-layer socket options for `getsockopt` an
   | `IPV6_MULTICAST_LOOP` | x | x | Specify loopback | x | `u_int`
   | `IPV6_JOIN_GROUP` | | x | Join multicast group | | `ipv6_mreq{}`
   | `IPV6_LEAVE_GROUP` | | x | Leave multicast group | | `ipv6_mreq{}`
+`IPPROTO_IP` or `IPPROTO_IPV6` | `MCAST_JOIN_GROUP` | | x | Join multicast group | | `group_req{}`
+  | `MCAST_LEAVE_GROUP` | | x | Leave multicast group | | `group_source_req{}`
+  | `MCAST_BLOCK_SOURCE` | | x | Block multicast source | | `group_source_req{}`
+  | `MCAST_UNBLOCK_SOURCE` | | x | Unblock multicast source | | `group_source_req{}`
+  | `MCAST_JOIN_SOURCE_GROUP` | | x | Join source-specific multicast | | `group_source_req{}`
+  | `MCAST_LEAVE_SOURCE_GROUP` | | x | Leave source-specific multicast | | `group_source_req{}`
 
 [![Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.](figure_7.1.png)](figure_7.1.png "Figure 7.1. Summary of socket and IP-layer socket options for getsockopt and setsockopt.")
 
@@ -292,6 +298,9 @@ Function | Description
 `close`, `l_onoff = 1`, `l_linger = 0` | No more receives or sends can be issued on socket. If descriptor reference count becomes 0: RST sent to other end; connection state set to CLOSED (no TIME_WAIT state); socket send buffer and socket receive buffer discarded.
 `close`, `l_onoff = 1`, `l_linger != 0` | No more receives or sends can be issued on socket; contents of socket send buffer sent to other end. If descriptor reference count becomes 0: normal TCP connection termination (FIN) sent following data in send buffer; socket receive buffer discarded; and if linger time expires before connection CLOSED, `close` returns `EWOULDBLOCK`.
 
+#### `SO_OOBINLINE` Socket Option
+
+When this option is set, [out-of-band data](https://en.wikipedia.org/wiki/Out-of-band_data) will be placed in the normal input queue (i.e., inline). When this occurs, the `MSG_OOB` flag to the receive functions cannot be used to read the out-of-band data. Out-of-band data is detailed in [Chapter 24](ch24.md).
 
 
 ### ICMPv6 Socket Option
