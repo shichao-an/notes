@@ -541,7 +541,7 @@ Unicode version 8 defines code points for over 120,000 characters in over 100 la
 
 A sequence of runes can be represented as a sequence of `int32` values. In this representation, which is called [UTF-32](https://en.wikipedia.org/wiki/UTF-32) or UCS-4, the encoding of each Unicode code point has the same size, 32 bits. This is simple and uniform, but it uses much more space than necessary since most computer-readable text is in ASCII, which requires only 8 bits or 1 byte per character. All the characters in widespread use still number fewer than 65,536, which would fit in 16 bits.
 
-### UTF-8
+#### UTF-8
 
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8) is a variable-length encoding of Unicode code points as bytes. UTF-8 was invented by [Ken Thompson](https://en.wikipedia.org/wiki/Ken_Thompson) and [Rob Pike](https://en.wikipedia.org/wiki/Rob_Pike), two of the creators of Go, and is now a Unicode standard. It uses between 1 and 4 bytes to represent each rune, but only 1 byte for ASCII characters, and only 2 or 3 bytes for most runes in common use. <u>The high-order bits of the first byte of the encoding for a rune indicate how many bytes follow:</u>
 
@@ -681,6 +681,187 @@ for range s {
 
 The result of `n` is the same to that of `utf8.RuneCountInString(s)`.
 
+In Go, although it is a matter of convention that text strings are interpreted as UTF-8-encoded sequences of Unicode code points, it's a necessity for correct use of `range` loops on strings.
+
+##### **The replacement characters** *
+
+What happens if we range over a string containing arbitrary binary data or UTF-8 data containing errors?
+
+Each time a UTF-8 decoder, whether explicit in a call to `utf8.DecodeRuneInString` or implicit in a `range` loop, consumes an unexpected input byte, it generates a special Unicode [replacement character](https://en.wikipedia.org/wiki/Specials_(Unicode_block)#Replacement_character), `'\uFFFD'`, which is usually printed as a white question mark inside a black hexagonal or diamond-like shape �. When a program encounters this rune value, it’s often a sign that some upstream part of the system that generated the string data has been careless in its treatment of text encodings.
+
+UTF-8 is convenient as an interchange format, but within a program <u>runes may be more convenient because they are of uniform size and are thus easily indexed in arrays and slices.</u>
+
+##### **`[]rune` conversion** *
+
+A `[]rune` conversion applied to a UTF-8-encoded string returns the sequence of Unicode code points that the string encodes:
+
+```go
+// "program" in Japanese katakana
+s := "プログラム"
+fmt.Printf("% x\n", s) // "e3 83 97 e3 83 ad e3 82 b0 e3 83 a9 e3 83 a0"
+r := []rune(s)
+fmt.Printf("%x\n", r) // "[30d7 30ed 30b0 30e9 30e0]"
+```
+
+If a slice of runes is converted to a string, it produces the concatenation of the UTF-8 encodings of each rune:
+
+```go
+fmt.Println(string(r)) // "プログラム"
+```
+
+Converting an integer value to a string interprets the integer as a rune value, and yields the UTF-8 representation of that rune:
+
+```go
+fmt.Println(string(65))     // "A", not "65"
+fmt.Println(string(0x4eac)) // "京"
+```
+
+If the rune is invalid, the replacement character is substituted:
+
+```go
+fmt.Println(string(1234567)) // "�"
+```
+
+#### Strings and Byte Slices
+
+Four standard packages are particularly important for manipulating strings:
+
+* `bytes`
+* `strings`
+* `strconv`
+* `unicode`
+
+The `strings` package provides many functions for searching, replacing, comparing, trimming, splitting, and joining strings.
+
+The `bytes` package has similar functions for manipulating slices of bytes, of type `[]byte`, which share some properties with `strings`. Because strings are immutable, building up strings incrementally can involve a lot of allocation and copying. In such cases, it’s more efficient to use the `bytes.Buffer` type.
+
+The `strconv` package provides functions for converting boolean, integer, and floating-point values to and from their string representations, and functions for quoting and unquoting strings.
+
+The `unicode` package provides functions that use the Unicode standard categories for letters, digits, etc:
+
+* Rune classifying functions like `IsDigit`, `IsLetter`, `IsUpper`, and `IsLower`. Each function takes a single rune argument and returns a boolean.
+* Conversion functions like `ToUpper` and `ToLower` convert a rune into the given case if it is a letter.
+    * The `strings` package has similar functions, also called `ToUpper` and `ToLower`, that return a new string with the specified transformation applied to each character of the original string.
+
+##### **The `basename` function** *
+
+The `basename` function in the following example was inspired by the Unix shell utility [`basename`](https://en.wikipedia.org/wiki/Basename). In our version, `basename(s)` removes any prefix of `s` that looks like a file system path with components separated by slashes, and it removes any suffix that looks like a file type:
+
+```go
+fmt.Println(basename("a/b/c.go")) // "c"
+fmt.Println(basename("c.d.go"))   // "c.d"
+fmt.Println(basename("abc"))      // "abc"
+```
+
+The first version of `basename` does not use any libraries:
+
+<small>[gopl.io/ch3/basename1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch3/basename1/main.go)</small>
+
+A simpler version uses the `strings.LastIndex` library function:
+
+<small>[gopl.io/ch3/basename2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch3/basename2/main.go)</small>
+
+```go
+func basename(s string) string {
+	slash := strings.LastIndex(s, "/") // -1 if "/" not found
+	s = s[slash+1:]
+	if dot := strings.LastIndex(s, "."); dot >= 0 {
+		s = s[:dot]
+	}
+	return s
+}
+```
+
+##### **The `path` and `path/filepath` packages** *
+
+The `path` and `path/filepath` packages provide a set of functions for manipulating hierarchical names.
+
+* The `path` package works with slash-delimited paths on any platform. It shouldn’t be used for file names, but it is appropriate for other domains, like URL.
+* The `path/filepath` package manipulates file names using the rules for the host platform, such as `/foo/bar` for POSIX or `c:\foo\bar` on Microsoft Windows.
+
+
+##### **A substring example: `comma`** *
+
+The task is to take a string representation of an integer, such as "12345", and insert commas every three places, as in "12,345".
+
+<small>[gopl.io/ch3/comma/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch3/comma/main.go)</small>
+
+```go
+// comma inserts commas in a non-negative decimal integer string.
+func comma(s string) string {
+	n := len(s)
+	if n <= 3 {
+		return s
+	}
+	return comma(s[:n-3]) + "," + s[n-3:]
+}
+```
+[p73]
+
+
+A string contains an array of bytes that, once created, is immutable. By contrast, the elements of a byte slice can be freely modified.
+
+Strings can be converted to byte slices and back again:
+
+```go
+s := "abc"
+b := []byte(s)
+s2 := string(b)
+```
+
+* The `[]byte(s)` conversion allocates a new byte array holding a copy of the bytes of `s`, and yields a slice that references the entirety of that array.
+* The `string(b)` conversion from byte slice back to string also makes a copy, to ensure immutability of the resulting string `s2`.
+
+To avoid conversions and unnecessary memory allocation, many of the utility functions in the `bytes` package directly parallel their counterparts in the `strings` package. For example, the following functions are from `strings`:
+
+```go
+func Contains(s, substr string) bool
+func Count(s, sep string) int
+func Fields(s string) []string
+func HasPrefix(s, prefix string) bool
+func Index(s, sep string) int
+func Join(a []string, sep string) string
+```
+
+and the corresponding ones from `bytes`:
+
+```go
+func Contains(b, subslice []byte) bool
+func Count(s, sep []byte) int
+func Fields(s []byte) [][]byte
+func HasPrefix(s, prefix []byte) bool
+func Index(s, sep []byte) int
+func Join(s [][]byte, sep []byte) []byte
+```
+
+The only difference is that strings have been replaced by byte slices.
+
+The `bytes` package provides the `Buffer` type for efficient manipulation of byte slices. A `Buffer` starts out empty but grows as data of types like `string`, `byte`, and `[]byte` are written to it. A `bytes.Buffer` variable requires no initialization because its zero value is usable:
+
+<small>[gopl.io/ch3/printints/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch3/printints/main.go)</small>
+
+```go
+// intsToString is like fmt.Sprintf(values) but adds commas.
+func intsToString(values []int) string {
+	var buf bytes.Buffer
+	buf.WriteByte('[')
+	for i, v := range values {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		fmt.Fprintf(&buf, "%d", v)
+	}
+	buf.WriteByte(']')
+	return buf.String()
+}
+```
+
+When appending the UTF-8 encoding of an arbitrary rune to a `bytes.Buffer`, it’s best to use `bytes.Buffer`’s `WriteRune` method, but `WriteByte` is fine for ASCII characters such as `'['` and `']'`.
+
+The `bytes.Buffer` type is extremely versatile. [Chapter 7](ch7.md) discusses how it may be used as a replacement for a file whenever an I/O function requires either of:
+
+* A sink for bytes (`io.Writer`) as `Fprintf` does above.
+* A source of bytes (`io.Reader`).
 
 ### Doubts and Solution
 
