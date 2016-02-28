@@ -541,8 +541,9 @@
         
             <li><a href="#unicode">Unicode</a></li>
         
-    
-        <li class="main "><a href="#utf-8">UTF-8</a></li>
+            <li><a href="#utf-8">UTF-8</a></li>
+        
+            <li><a href="#strings-and-byte-slices">Strings and Byte Slices</a></li>
         
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
@@ -1018,7 +1019,7 @@ go command [arguments]
 <p>Each of these characters is assigned a standard number called a <strong>Unicode code point</strong> or, in Go terminology, a <strong>rune</strong>.</p>
 <p>Unicode version 8 defines code points for over 120,000 characters in over 100 languages and scripts. In computer programs and data, the natural data type to hold a single rune is <code>int32</code>. This is what Go uses and is why it has the synonym <code>rune</code> for precisely this purpose.</p>
 <p>A sequence of runes can be represented as a sequence of <code>int32</code> values. In this representation, which is called <a href="https://en.wikipedia.org/wiki/UTF-32">UTF-32</a> or UCS-4, the encoding of each Unicode code point has the same size, 32 bits. This is simple and uniform, but it uses much more space than necessary since most computer-readable text is in ASCII, which requires only 8 bits or 1 byte per character. All the characters in widespread use still number fewer than 65,536, which would fit in 16 bits.</p>
-<h3 id="utf-8">UTF-8</h3>
+<h4 id="utf-8">UTF-8</h4>
 <p><a href="https://en.wikipedia.org/wiki/UTF-8">UTF-8</a> is a variable-length encoding of Unicode code points as bytes. UTF-8 was invented by <a href="https://en.wikipedia.org/wiki/Ken_Thompson">Ken Thompson</a> and <a href="https://en.wikipedia.org/wiki/Rob_Pike">Rob Pike</a>, two of the creators of Go, and is now a Unicode standard. It uses between 1 and 4 bytes to represent each rune, but only 1 byte for ASCII characters, and only 2 or 3 bytes for most runes in common use. <u>The high-order bits of the first byte of the encoding for a rune indicate how many bytes follow:</u></p>
 <ul>
 <li><u>A high-order <code>0</code> indicates 7-bit ASCII, where each rune takes only 1 byte, so it is identical to conventional ASCII.</u></li>
@@ -1169,6 +1170,157 @@ go command [arguments]
 
 
 <p>The result of <code>n</code> is the same to that of <code>utf8.RuneCountInString(s)</code>.</p>
+<p>In Go, although it is a matter of convention that text strings are interpreted as UTF-8-encoded sequences of Unicode code points, it's a necessity for correct use of <code>range</code> loops on strings.</p>
+<h5 id="the-replacement-characters"><strong>The replacement characters</strong> *</h5>
+<p>What happens if we range over a string containing arbitrary binary data or UTF-8 data containing errors?</p>
+<p>Each time a UTF-8 decoder, whether explicit in a call to <code>utf8.DecodeRuneInString</code> or implicit in a <code>range</code> loop, consumes an unexpected input byte, it generates a special Unicode <a href="https://en.wikipedia.org/wiki/Specials_(Unicode_block)#Replacement_character">replacement character</a>, <code>'\uFFFD'</code>, which is usually printed as a white question mark inside a black hexagonal or diamond-like shape �. When a program encounters this rune value, it’s often a sign that some upstream part of the system that generated the string data has been careless in its treatment of text encodings.</p>
+<p>UTF-8 is convenient as an interchange format, but within a program <u>runes may be more convenient because they are of uniform size and are thus easily indexed in arrays and slices.</u></p>
+<h5 id="rune-conversion"><strong><code>[]rune</code> conversion</strong> *</h5>
+<p>A <code>[]rune</code> conversion applied to a UTF-8-encoded string returns the sequence of Unicode code points that the string encodes:</p>
+<div class="codehilite"><pre><span class="c1">// &quot;program&quot; in Japanese katakana</span>
+<span class="nx">s</span> <span class="o">:=</span> <span class="s">&quot;プログラム&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;% x\n&quot;</span><span class="p">,</span> <span class="nx">s</span><span class="p">)</span> <span class="c1">// &quot;e3 83 97 e3 83 ad e3 82 b0 e3 83 a9 e3 83 a0&quot;</span>
+<span class="nx">r</span> <span class="o">:=</span> <span class="p">[]</span><span class="nb">rune</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%x\n&quot;</span><span class="p">,</span> <span class="nx">r</span><span class="p">)</span> <span class="c1">// &quot;[30d7 30ed 30b0 30e9 30e0]&quot;</span>
+</pre></div>
+
+
+<p>If a slice of runes is converted to a string, it produces the concatenation of the UTF-8 encodings of each rune:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">r</span><span class="p">))</span> <span class="c1">// &quot;プログラム&quot;</span>
+</pre></div>
+
+
+<p>Converting an integer value to a string interprets the integer as a rune value, and yields the UTF-8 representation of that rune:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="mi">65</span><span class="p">))</span>     <span class="c1">// &quot;A&quot;, not &quot;65&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="mh">0x4eac</span><span class="p">))</span> <span class="c1">// &quot;京&quot;</span>
+</pre></div>
+
+
+<p>If the rune is invalid, the replacement character is substituted:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="mi">1234567</span><span class="p">))</span> <span class="c1">// &quot;�&quot;</span>
+</pre></div>
+
+
+<h4 id="strings-and-byte-slices">Strings and Byte Slices</h4>
+<p>Four standard packages are particularly important for manipulating strings:</p>
+<ul>
+<li><code>bytes</code></li>
+<li><code>strings</code></li>
+<li><code>strconv</code></li>
+<li><code>unicode</code></li>
+</ul>
+<p>The <code>strings</code> package provides many functions for searching, replacing, comparing, trimming, splitting, and joining strings.</p>
+<p>The <code>bytes</code> package has similar functions for manipulating slices of bytes, of type <code>[]byte</code>, which share some properties with <code>strings</code>. Because strings are immutable, building up strings incrementally can involve a lot of allocation and copying. In such cases, it’s more efficient to use the <code>bytes.Buffer</code> type.</p>
+<p>The <code>strconv</code> package provides functions for converting boolean, integer, and floating-point values to and from their string representations, and functions for quoting and unquoting strings.</p>
+<p>The <code>unicode</code> package provides functions that use the Unicode standard categories for letters, digits, etc:</p>
+<ul>
+<li>Rune classifying functions like <code>IsDigit</code>, <code>IsLetter</code>, <code>IsUpper</code>, and <code>IsLower</code>. Each function takes a single rune argument and returns a boolean.</li>
+<li>Conversion functions like <code>ToUpper</code> and <code>ToLower</code> convert a rune into the given case if it is a letter.<ul>
+<li>The <code>strings</code> package has similar functions, also called <code>ToUpper</code> and <code>ToLower</code>, that return a new string with the specified transformation applied to each character of the original string.</li>
+</ul>
+</li>
+</ul>
+<h5 id="the-basename-function"><strong>The <code>basename</code> function</strong> *</h5>
+<p>The <code>basename</code> function in the following example was inspired by the Unix shell utility <a href="https://en.wikipedia.org/wiki/Basename"><code>basename</code></a>. In our version, <code>basename(s)</code> removes any prefix of <code>s</code> that looks like a file system path with components separated by slashes, and it removes any suffix that looks like a file type:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">basename</span><span class="p">(</span><span class="s">&quot;a/b/c.go&quot;</span><span class="p">))</span> <span class="c1">// &quot;c&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">basename</span><span class="p">(</span><span class="s">&quot;c.d.go&quot;</span><span class="p">))</span>   <span class="c1">// &quot;c.d&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">basename</span><span class="p">(</span><span class="s">&quot;abc&quot;</span><span class="p">))</span>      <span class="c1">// &quot;abc&quot;</span>
+</pre></div>
+
+
+<p>The first version of <code>basename</code> does not use any libraries:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/basename1/main.go">gopl.io/ch3/basename1/main.go</a></small></p>
+<p>A simpler version uses the <code>strings.LastIndex</code> library function:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/basename2/main.go">gopl.io/ch3/basename2/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">basename</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">slash</span> <span class="o">:=</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">LastIndex</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span> <span class="c1">// -1 if &quot;/&quot; not found</span>
+    <span class="nx">s</span> <span class="p">=</span> <span class="nx">s</span><span class="p">[</span><span class="nx">slash</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">if</span> <span class="nx">dot</span> <span class="o">:=</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">LastIndex</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="s">&quot;.&quot;</span><span class="p">);</span> <span class="nx">dot</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">s</span> <span class="p">=</span> <span class="nx">s</span><span class="p">[:</span><span class="nx">dot</span><span class="p">]</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">s</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h5 id="the-path-and-pathfilepath-packages"><strong>The <code>path</code> and <code>path/filepath</code> packages</strong> *</h5>
+<p>The <code>path</code> and <code>path/filepath</code> packages provide a set of functions for manipulating hierarchical names.</p>
+<ul>
+<li>The <code>path</code> package works with slash-delimited paths on any platform. It shouldn’t be used for file names, but it is appropriate for other domains, like URL.</li>
+<li>The <code>path/filepath</code> package manipulates file names using the rules for the host platform, such as <code>/foo/bar</code> for POSIX or <code>c:\foo\bar</code> on Microsoft Windows.</li>
+</ul>
+<h5 id="a-substring-example-comma"><strong>A substring example: <code>comma</code></strong> *</h5>
+<p>The task is to take a string representation of an integer, such as "12345", and insert commas every three places, as in "12,345".</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/comma/main.go">gopl.io/ch3/comma/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// comma inserts commas in a non-negative decimal integer string.</span>
+<span class="kd">func</span> <span class="nx">comma</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">n</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">n</span> <span class="o">&lt;=</span> <span class="mi">3</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">s</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">comma</span><span class="p">(</span><span class="nx">s</span><span class="p">[:</span><span class="nx">n</span><span class="o">-</span><span class="mi">3</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="nx">s</span><span class="p">[</span><span class="nx">n</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>[p73]</p>
+<p>A string contains an array of bytes that, once created, is immutable. By contrast, the elements of a byte slice can be freely modified.</p>
+<p>Strings can be converted to byte slices and back again:</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">:=</span> <span class="s">&quot;abc&quot;</span>
+<span class="nx">b</span> <span class="o">:=</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+<span class="nx">s2</span> <span class="o">:=</span> <span class="nb">string</span><span class="p">(</span><span class="nx">b</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>[]byte(s)</code> conversion allocates a new byte array holding a copy of the bytes of <code>s</code>, and yields a slice that references the entirety of that array.</li>
+<li>The <code>string(b)</code> conversion from byte slice back to string also makes a copy, to ensure immutability of the resulting string <code>s2</code>.</li>
+</ul>
+<p>To avoid conversions and unnecessary memory allocation, many of the utility functions in the <code>bytes</code> package directly parallel their counterparts in the <code>strings</code> package. For example, the following functions are from <code>strings</code>:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Contains</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">substr</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span>
+<span class="kd">func</span> <span class="nx">Count</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span>
+<span class="kd">func</span> <span class="nx">Fields</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span>
+<span class="kd">func</span> <span class="nx">HasPrefix</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">prefix</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span>
+<span class="kd">func</span> <span class="nx">Index</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span>
+<span class="kd">func</span> <span class="nx">Join</span><span class="p">(</span><span class="nx">a</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">sep</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span>
+</pre></div>
+
+
+<p>and the corresponding ones from <code>bytes</code>:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Contains</span><span class="p">(</span><span class="nx">b</span><span class="p">,</span> <span class="nx">subslice</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="kt">bool</span>
+<span class="kd">func</span> <span class="nx">Count</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="kt">int</span>
+<span class="kd">func</span> <span class="nx">Fields</span><span class="p">(</span><span class="nx">s</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">[][]</span><span class="kt">byte</span>
+<span class="kd">func</span> <span class="nx">HasPrefix</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">prefix</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="kt">bool</span>
+<span class="kd">func</span> <span class="nx">Index</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="kt">int</span>
+<span class="kd">func</span> <span class="nx">Join</span><span class="p">(</span><span class="nx">s</span> <span class="p">[][]</span><span class="kt">byte</span><span class="p">,</span> <span class="nx">sep</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">[]</span><span class="kt">byte</span>
+</pre></div>
+
+
+<p>The only difference is that strings have been replaced by byte slices.</p>
+<p>The <code>bytes</code> package provides the <code>Buffer</code> type for efficient manipulation of byte slices. A <code>Buffer</code> starts out empty but grows as data of types like <code>string</code>, <code>byte</code>, and <code>[]byte</code> are written to it. A <code>bytes.Buffer</code> variable requires no initialization because its zero value is usable:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/printints/main.go">gopl.io/ch3/printints/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// intsToString is like fmt.Sprintf(values) but adds commas.</span>
+<span class="kd">func</span> <span class="nx">intsToString</span><span class="p">(</span><span class="nx">values</span> <span class="p">[]</span><span class="kt">int</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">buf</span> <span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
+    <span class="nx">buf</span><span class="p">.</span><span class="nx">WriteByte</span><span class="p">(</span><span class="sc">&#39;[&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">values</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+            <span class="nx">buf</span><span class="p">.</span><span class="nx">WriteString</span><span class="p">(</span><span class="s">&quot;, &quot;</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">buf</span><span class="p">,</span> <span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">buf</span><span class="p">.</span><span class="nx">WriteByte</span><span class="p">(</span><span class="sc">&#39;]&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">buf</span><span class="p">.</span><span class="nx">String</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When appending the UTF-8 encoding of an arbitrary rune to a <code>bytes.Buffer</code>, it’s best to use <code>bytes.Buffer</code>’s <code>WriteRune</code> method, but <code>WriteByte</code> is fine for ASCII characters such as <code>'['</code> and <code>']'</code>.</p>
+<p>The <code>bytes.Buffer</code> type is extremely versatile. <a href="../ch7/">Chapter 7</a> discusses how it may be used as a replacement for a file whenever an I/O function requires either of:</p>
+<ul>
+<li>A sink for bytes (<code>io.Writer</code>) as <code>Fprintf</code> does above.</li>
+<li>A source of bytes (<code>io.Reader</code>).</li>
+</ul>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>
