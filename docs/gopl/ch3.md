@@ -896,10 +896,28 @@ x, err := strconv.Atoi("123") // x is an int
 y, err := strconv.ParseInt("123", 10, 64) // base 10, up to 64 bits
 ```
 
-The third argument of `ParseInt` gives the size of the integer type that the result must fit into: the special value of 0 implies `int`. In any case, the type of the result `y` is always `int64`, which you can then convert to a smaller type. Sometimes `fmt.Scanf` is useful for parsing input that consists of orderly mixtures of strings and numbers all on a single line, but it can be inflexible, especially when handling incomplete or irregular input.
+The third argument of `ParseInt` gives the size of the integer type that the result must fit into: the special value of 0 implies `int`. In any case, the type of the result `y` is always `int64`, which you can then convert to a smaller type.
+
+[`fmt.Scanf`](https://golang.org/pkg/fmt/#Scanf) can be used to parse input that consists of orderly mixtures of strings and numbers all on a single line, but it is inflexible, especially when handling incomplete or irregular input.
 
 ### Constants
 
+<u>Constants are expressions whose value is known to the compiler and whose evaluation is guaranteed to occur at compile time, not at run time.</u> The underlying type of every constant is a basic type: boolean, string, or number.
+
+A `const` declaration defines named values that look syntactically like variables but whose value is constant, which prevents accidental changes during program execution.
+
+```go
+const pi = 3.14159 // approximately; math.Pi is a better approximation
+```
+
+As with variables, a sequence of constants can appear in one declaration, appropriate for a group of related values:
+
+```go
+const (
+	e  = 2.71828
+	pi = 3.14159
+)
+```
 
 ### Doubts and Solution
 
