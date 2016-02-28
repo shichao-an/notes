@@ -545,6 +545,11 @@
         
             <li><a href="#strings-and-byte-slices">Strings and Byte Slices</a></li>
         
+            <li><a href="#conversions-between-strings-and-numbers">Conversions between Strings and Numbers</a></li>
+        
+    
+        <li class="main "><a href="#constants">Constants</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -1204,10 +1209,10 @@ go command [arguments]
 <h4 id="strings-and-byte-slices">Strings and Byte Slices</h4>
 <p>Four standard packages are particularly important for manipulating strings:</p>
 <ul>
-<li><code>bytes</code></li>
-<li><code>strings</code></li>
-<li><code>strconv</code></li>
-<li><code>unicode</code></li>
+<li><a href="https://golang.org/pkg/bytes/"><code>bytes</code></a></li>
+<li><a href="https://golang.org/pkg/strings/"><code>strings</code></a></li>
+<li><a href="https://golang.org/pkg/strconv/"><code>strconv</code></a></li>
+<li><a href="https://golang.org/pkg/unicode/"><code>unicode</code></a></li>
 </ul>
 <p>The <code>strings</code> package provides many functions for searching, replacing, comparing, trimming, splitting, and joining strings.</p>
 <p>The <code>bytes</code> package has similar functions for manipulating slices of bytes, of type <code>[]byte</code>, which share some properties with <code>strings</code>. Because strings are immutable, building up strings incrementally can involve a lot of allocation and copying. In such cases, it’s more efficient to use the <code>bytes.Buffer</code> type.</p>
@@ -1244,7 +1249,7 @@ go command [arguments]
 
 
 <h5 id="the-path-and-pathfilepath-packages"><strong>The <code>path</code> and <code>path/filepath</code> packages</strong> *</h5>
-<p>The <code>path</code> and <code>path/filepath</code> packages provide a set of functions for manipulating hierarchical names.</p>
+<p>The <a href="https://golang.org/pkg/path/"><code>path</code></a> and <a href="https://golang.org/pkg/path/filepath/"><code>path/filepath</code></a> packages provide a set of functions for manipulating hierarchical names.</p>
 <ul>
 <li>The <code>path</code> package works with slash-delimited paths on any platform. It shouldn’t be used for file names, but it is appropriate for other domains, like URL.</li>
 <li>The <code>path/filepath</code> package manipulates file names using the rules for the host platform, such as <code>/foo/bar</code> for POSIX or <code>c:\foo\bar</code> on Microsoft Windows.</li>
@@ -1297,7 +1302,7 @@ go command [arguments]
 
 
 <p>The only difference is that strings have been replaced by byte slices.</p>
-<p>The <code>bytes</code> package provides the <code>Buffer</code> type for efficient manipulation of byte slices. A <code>Buffer</code> starts out empty but grows as data of types like <code>string</code>, <code>byte</code>, and <code>[]byte</code> are written to it. A <code>bytes.Buffer</code> variable requires no initialization because its zero value is usable:</p>
+<p>The <code>bytes</code> package provides the <a href="https://golang.org/pkg/bytes/#Buffer"><code>Buffer</code></a> type for efficient manipulation of byte slices. A <code>Buffer</code> starts out empty but grows as data of types like <code>string</code>, <code>byte</code>, and <code>[]byte</code> are written to it. A <code>bytes.Buffer</code> variable requires no initialization because its zero value is usable:</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/printints/main.go">gopl.io/ch3/printints/main.go</a></small></p>
 <div class="codehilite"><pre><span class="c1">// intsToString is like fmt.Sprintf(values) but adds commas.</span>
 <span class="kd">func</span> <span class="nx">intsToString</span><span class="p">(</span><span class="nx">values</span> <span class="p">[]</span><span class="kt">int</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
@@ -1321,6 +1326,37 @@ go command [arguments]
 <li>A sink for bytes (<code>io.Writer</code>) as <code>Fprintf</code> does above.</li>
 <li>A source of bytes (<code>io.Reader</code>).</li>
 </ul>
+<h4 id="conversions-between-strings-and-numbers">Conversions between Strings and Numbers</h4>
+<p>In addition to conversions between strings, runes, and bytes, it's often necessary to convert between numeric values and their string representations, which is done with functions from the <code>strconv</code> package.</p>
+<p>To convert an integer to a string, there are two options:</p>
+<ul>
+<li><code>fmt.Sprintf</code></li>
+<li><code>strconv.Itoa("integer to ASCII")</code>:</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">123</span>
+<span class="nx">y</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">y</span><span class="p">,</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span> <span class="c1">// &quot;123 123&quot;</span>
+</pre></div>
+
+
+<p><code>FormatInt</code> and <code>FormatUint</code> can be used to format numbers in a different base:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">strconv</span><span class="p">.</span><span class="nx">FormatInt</span><span class="p">(</span><span class="nb">int64</span><span class="p">(</span><span class="nx">x</span><span class="p">),</span> <span class="mi">2</span><span class="p">))</span> <span class="c1">// &quot;1111011&quot;</span>
+</pre></div>
+
+
+<p>The <code>fmt.Printf</code> verbs <code>%b</code>, <code>%d</code>, <code>%u</code>, and <code>%x</code> are often more convenient than Format functions, especially if we want to include additional information besides the number:</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;x=%b&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="c1">// &quot;x=1111011&quot;</span>
+</pre></div>
+
+
+<p>To parse a string representing an integer, use the <code>strconv</code> functions <code>Atoi</code> or <code>ParseInt</code>, or <code>ParseUint</code> for unsigned integers:</p>
+<div class="codehilite"><pre><span class="nx">x</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">Atoi</span><span class="p">(</span><span class="s">&quot;123&quot;</span><span class="p">)</span> <span class="c1">// x is an int</span>
+<span class="nx">y</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">ParseInt</span><span class="p">(</span><span class="s">&quot;123&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span> <span class="c1">// base 10, up to 64 bits</span>
+</pre></div>
+
+
+<p>The third argument of <code>ParseInt</code> gives the size of the integer type that the result must fit into: the special value of 0 implies <code>int</code>. In any case, the type of the result <code>y</code> is always <code>int64</code>, which you can then convert to a smaller type. Sometimes <code>fmt.Scanf</code> is useful for parsing input that consists of orderly mixtures of strings and numbers all on a single line, but it can be inflexible, especially when handling incomplete or irregular input.</p>
+<h3 id="constants">Constants</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>

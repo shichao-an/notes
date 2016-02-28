@@ -726,10 +726,10 @@ fmt.Println(string(1234567)) // "�"
 
 Four standard packages are particularly important for manipulating strings:
 
-* `bytes`
-* `strings`
-* `strconv`
-* `unicode`
+* [`bytes`](https://golang.org/pkg/bytes/)
+* [`strings`](https://golang.org/pkg/strings/)
+* [`strconv`](https://golang.org/pkg/strconv/)
+* [`unicode`](https://golang.org/pkg/unicode/)
 
 The `strings` package provides many functions for searching, replacing, comparing, trimming, splitting, and joining strings.
 
@@ -774,11 +774,10 @@ func basename(s string) string {
 
 ##### **The `path` and `path/filepath` packages** *
 
-The `path` and `path/filepath` packages provide a set of functions for manipulating hierarchical names.
+The [`path`](https://golang.org/pkg/path/) and [`path/filepath`](https://golang.org/pkg/path/filepath/) packages provide a set of functions for manipulating hierarchical names.
 
 * The `path` package works with slash-delimited paths on any platform. It shouldn’t be used for file names, but it is appropriate for other domains, like URL.
 * The `path/filepath` package manipulates file names using the rules for the host platform, such as `/foo/bar` for POSIX or `c:\foo\bar` on Microsoft Windows.
-
 
 ##### **A substring example: `comma`** *
 
@@ -836,7 +835,7 @@ func Join(s [][]byte, sep []byte) []byte
 
 The only difference is that strings have been replaced by byte slices.
 
-The `bytes` package provides the `Buffer` type for efficient manipulation of byte slices. A `Buffer` starts out empty but grows as data of types like `string`, `byte`, and `[]byte` are written to it. A `bytes.Buffer` variable requires no initialization because its zero value is usable:
+The `bytes` package provides the [`Buffer`](https://golang.org/pkg/bytes/#Buffer) type for efficient manipulation of byte slices. A `Buffer` starts out empty but grows as data of types like `string`, `byte`, and `[]byte` are written to it. A `bytes.Buffer` variable requires no initialization because its zero value is usable:
 
 <small>[gopl.io/ch3/printints/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch3/printints/main.go)</small>
 
@@ -862,6 +861,45 @@ The `bytes.Buffer` type is extremely versatile. [Chapter 7](ch7.md) discusses ho
 
 * A sink for bytes (`io.Writer`) as `Fprintf` does above.
 * A source of bytes (`io.Reader`).
+
+#### Conversions between Strings and Numbers
+
+In addition to conversions between strings, runes, and bytes, it's often necessary to convert between numeric values and their string representations, which is done with functions from the `strconv` package.
+
+To convert an integer to a string, there are two options:
+
+* `fmt.Sprintf`
+* `strconv.Itoa("integer to ASCII")`:
+
+```go
+x := 123
+y := fmt.Sprintf("%d", x)
+fmt.Println(y, strconv.Itoa(x)) // "123 123"
+```
+
+`FormatInt` and `FormatUint` can be used to format numbers in a different base:
+
+```go
+fmt.Println(strconv.FormatInt(int64(x), 2)) // "1111011"
+```
+
+The `fmt.Printf` verbs `%b`, `%d`, `%u`, and `%x` are often more convenient than Format functions, especially if we want to include additional information besides the number:
+
+```go
+s := fmt.Sprintf("x=%b", x) // "x=1111011"
+```
+
+To parse a string representing an integer, use the `strconv` functions `Atoi` or `ParseInt`, or `ParseUint` for unsigned integers:
+
+```go
+x, err := strconv.Atoi("123") // x is an int
+y, err := strconv.ParseInt("123", 10, 64) // base 10, up to 64 bits
+```
+
+The third argument of `ParseInt` gives the size of the integer type that the result must fit into: the special value of 0 implies `int`. In any case, the type of the result `y` is always `int64`, which you can then convert to a smaller type. Sometimes `fmt.Scanf` is useful for parsing input that consists of orderly mixtures of strings and numbers all on a single line, but it can be inflexible, especially when handling incomplete or irregular input.
+
+### Constants
+
 
 ### Doubts and Solution
 
