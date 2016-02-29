@@ -1208,20 +1208,22 @@ The following code:
 ```c
 int x[][2] =
 {
- { 1, 11 },
- { 2, 22 },
- { 3, 33 },
- [4][1] = 100,
- { 6, 66 },
- [7] = { 9, 99 }
+    { 1, 11 },
+    { 2, 22 },
+    { 3, 33 },
+    [4][1] = 100,
+    { 6, 66 },
+    [7] = { 9, 99 }
 };
+
 int col = 2, row = sizeof(x) / sizeof(int) / col;
+
 for (int r = 0; r < row; r++)
 {
- for (int c = 0; c < col; c++)
- {
- printf("x[%d][%d] = %d\n", r, c, x[r][c]);
- }
+    for (int c = 0; c < col; c++)
+    {
+        printf("x[%d][%d] = %d\n", r, c, x[r][c]);
+    }
 }
 ```
 
