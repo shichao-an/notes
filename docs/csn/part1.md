@@ -1060,6 +1060,217 @@ printf("%d\n", x[2]);
 
 Since C does not perform range checking on array subscripts, care must be taken to ensure [out-of-bounds checking](https://en.wikipedia.org/wiki/Bounds_checking) when coding. An array's name by default is a constant pointer to the first element; `&x[i]` returns a `int*` pointer, which points to element `x[i]`.
 
+#### Initialization
+
+Besides using subscripts, an array can also be [initialized](http://en.cppreference.com/w/c/language/array_initialization) using initializers.
+
+```c
+int x[] = { 1, 2, 3 };
+int y[5] = { 1, 2 };
+int a[3] = {};
+
+int z[][2] =
+{
+    { 1, 1 },
+    { 2, 1 },
+    { 3, 1 },
+};
+```
+
+Rules of initialization are:
+
+* If the array has [static storage duration](http://en.cppreference.com/w/c/language/storage_duration#Storage_duration), then the initializers must be [constant expressions](http://en.cppreference.com/w/c/language/constant_expression).
+* If initializers are present, then the size of the array can be omitted, which is determined by the last initializer.
+* If both the size of the array and initializers are present, then the elements without initializers are initialized to 0 or `NULL`.
+
+We can also initialize specific elements in the initializers. For example, the following code:
+
+```c
+int x[] = { 1, 2, [6] = 10, 11 };
+int len = sizeof(x) / sizeof(int);
+
+for (int i = 0; i < len; i++)
+{
+    printf("x[%d] = %d\n", i, x[i]);
+}
+```
+
+will output:
+
+```text
+x[0] = 1
+x[1] = 2
+x[2] = 0
+x[3] = 0
+x[4] = 0
+x[5] = 0
+x[6] = 10
+x[7] = 11
+```
+
+#### Strings
+
+A string is a `char` array ending with `\0`.
+
+The following code:
+
+```c
+char s[10] = "abc";
+char x[] = "abc";
+
+printf("s, size=%d, len=%d\n", sizeof(s), strlen(s));
+printf("x, size=%d, len=%d\n", sizeof(x), strlen(x));
+```
+
+will output:
+
+```text
+s, size=10, len=3
+x, size=4, len=3
+```
+
+### Multidimensional Arrays
+
+A multidimensional array is an array whose elements are arrays. Note that elements are arrays, not array pointers.
+
+The first dimension subscript can be omitted.
+
+The following code:
+
+```c
+int x[][2] =
+{
+    { 1, 11 },
+    { 2, 22 },
+    { 3, 33 }
+};
+
+int col = 2, row = sizeof(x) / sizeof(int) / col;
+
+for (int r = 0; r < row; r++)
+{
+    for (int c = 0; c < col; c++)
+    {
+        printf("x[%d][%d] = %d\n", r, c, x[r][c]);
+    }
+}
+```
+
+will output:
+
+```text
+x[0][0] = 1
+x[0][1] = 11
+x[1][0] = 2
+x[1][1] = 22
+x[2][0] = 3
+x[2][1] = 33
+```
+
+A two-dimensional array is usually called a "matrix", like a `row * column` table. For example, `x[3][2]` is a table with 3 rows and 2 columns.
+
+The elements in a multidimensional array are contiguously allocated, which is another factor that differentiate it from a pointer array.
+
+The following code:
+
+```c
+int x[][2] =
+{
+    { 1, 11 },
+    { 2, 22 },
+    { 3, 33 }
+};
+
+int len = sizeof(x) / sizeof(int);
+int* p = (int*)x;
+
+for (int i = 0; i < len; i++)
+{
+    printf("x[%d] = %d\n", i, p[i]);
+}
+```
+
+will output:
+
+```text
+x[0] = 1
+x[1] = 11
+x[2] = 2
+x[3] = 22
+x[4] = 3
+x[5] = 33
+```
+
+Similarly, we can initialize specific elements.
+
+The following code:
+
+```c
+int x[][2] =
+{
+ { 1, 11 },
+ { 2, 22 },
+ { 3, 33 },
+ [4][1] = 100,
+ { 6, 66 },
+ [7] = { 9, 99 }
+};
+int col = 2, row = sizeof(x) / sizeof(int) / col;
+for (int r = 0; r < row; r++)
+{
+ for (int c = 0; c < col; c++)
+ {
+ printf("x[%d][%d] = %d\n", r, c, x[r][c]);
+ }
+}
+```
+
+will output:
+
+```text
+x[0][0] = 1
+x[0][1] = 11
+x[1][0] = 2
+x[1][1] = 22
+x[2][0] = 0
+x[2][1] = 0
+x[3][0] = 0
+x[3][1] = 0
+x[4][0] = 0
+x[4][1] = 100
+x[5][0] = 6
+x[5][1] = 66
+x[6][0] = 0
+x[6][1] = 0
+x[7][0] = 9
+x[7][1] = 99
+```
+
+### Doubts and Solutions
+
+#### Verbatim
+
+##### **p29 on multidimensional arrays**
+
+```c
+int x[][2] =
+{
+    { 1, 11 },
+    { 2, 22 },
+    { 3, 33 }
+};
+
+int len = sizeof(x) / sizeof(int);
+int* p = (int*)x;
+
+for (int i = 0; i < len; i++)
+{
+    printf("x[%d] = %d\n", i, p[i]);
+}
+```
+
+<span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flatten" version of `x`?
+
 - - -
 
 ### References
