@@ -919,6 +919,48 @@ const (
 )
 ```
 
+Computations on constants can be evaluated at compile time, reducing the work necessary at run time and enabling other compiler optimizations. Errors ordinarily detected at run time can be reported at compile time when their operands are constants, such as:
+
+* Integer division by zeros
+* String indexing out of bounds
+* Floating-point operation that would result in a non-finite value
+
+The results of all arithmetic, logical, and comparison operations applied to constant operands are themselves constants, as are the results of conversions and calls to certain built-in functions such as `len`, `cap`, `real`, `imag`, `complex`, and [`unsafe.Sizeof`](https://golang.org/pkg/unsafe/#Sizeof).
+
+Constant expressions may appear in types, specifically as the length of an array type:
+
+```go
+const IPv4Len = 4
+// parseIPv4 parses an IPv4 address (d.d.d.d).
+func parseIPv4(s string) IP {
+	var p [IPv4Len]byte
+	// ...
+}
+```
+
+A constant declaration may have a type and a value. In the absence of an explicit type, the type is inferred from the expression on the right-hand side. In the following, `time.Duration` is a named type whose underlying type is `int64`, and `time.Minute` is a constant of that type. Both of the constants declared below have the type `time.Duration` (revealed by `%T`):
+
+```go
+const noDelay time.Duration = 0
+const timeout = 5 * time.Minute
+fmt.Printf("%T %[1]v\n", noDelay)     // "time.Duration 0"
+fmt.Printf("%T %[1]v\n", timeout)     // "time.Duration 5m0s
+fmt.Printf("%T %[1]v\n", time.Minute) // "time.Duration 1m0s"
+```
+
+When a sequence of constants is declared as a group, the right-hand side expression may be omitted for all but the first of the group, implying that the previous expression and its type should be used again. For example:
+
+```go
+const (
+	a = 1
+	b
+	c = 2
+	d
+)
+
+fmt.Println(a, b, c, d) // "1 1 2 2"
+```
+
 ### Doubts and Solution
 
 #### Verbatim
