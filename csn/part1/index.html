@@ -583,6 +583,18 @@
         
             <li><a href="#subscripts">Subscripts</a></li>
         
+            <li><a href="#initialization">Initialization</a></li>
+        
+            <li><a href="#strings">Strings</a></li>
+        
+    
+        <li class="main "><a href="#multidimensional-arrays">Multidimensional Arrays</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
         <li class="main "><a href="#references">References</a></li>
         
@@ -1630,6 +1642,193 @@ call: 1, abc
 
 
 <p>Since C does not perform range checking on array subscripts, care must be taken to ensure <a href="https://en.wikipedia.org/wiki/Bounds_checking">out-of-bounds checking</a> when coding. An array's name by default is a constant pointer to the first element; <code>&amp;x[i]</code> returns a <code>int*</code> pointer, which points to element <code>x[i]</code>.</p>
+<h4 id="initialization">Initialization</h4>
+<p>Besides using subscripts, an array can also be <a href="http://en.cppreference.com/w/c/language/array_initialization">initialized</a> using initializers.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">y</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+
+<span class="kt">int</span> <span class="n">z</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+<span class="p">{</span>
+    <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span> <span class="p">},</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Rules of initialization are:</p>
+<ul>
+<li>If the array has <a href="http://en.cppreference.com/w/c/language/storage_duration#Storage_duration">static storage duration</a>, then the initializers must be <a href="http://en.cppreference.com/w/c/language/constant_expression">constant expressions</a>.</li>
+<li>If initializers are present, then the size of the array can be omitted, which is determined by the last initializer.</li>
+<li>If both the size of the array and initializers are present, then the elements without initializers are initialized to 0 or <code>NULL</code>.</li>
+</ul>
+<p>We can also initialize specific elements in the initializers. For example, the following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>x[0] = 1
+x[1] = 2
+x[2] = 0
+x[3] = 0
+x[4] = 0
+x[5] = 0
+x[6] = 10
+x[7] = 11
+</pre></div>
+
+
+<h4 id="strings">Strings</h4>
+<p>A string is a <code>char</code> array ending with <code>\0</code>.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">char</span> <span class="n">s</span><span class="p">[</span><span class="mi">10</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;abc&quot;</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="s">&quot;abc&quot;</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;s, size=%d, len=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">strlen</span><span class="p">(</span><span class="n">s</span><span class="p">));</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;x, size=%d, len=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">strlen</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>s, size=10, len=3
+x, size=4, len=3
+</pre></div>
+
+
+<h3 id="multidimensional-arrays">Multidimensional Arrays</h3>
+<p>A multidimensional array is an array whose elements are arrays. Note that elements are arrays, not array pointers.</p>
+<p>The first dimension subscript can be omitted.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+<span class="p">{</span>
+    <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">11</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="n">col</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">row</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="o">/</span> <span class="n">col</span><span class="p">;</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">r</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">row</span><span class="p">;</span> <span class="n">r</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">col</span><span class="p">;</span> <span class="n">c</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d][%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">]);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>x[0][0] = 1
+x[0][1] = 11
+x[1][0] = 2
+x[1][1] = 22
+x[2][0] = 3
+x[2][1] = 33
+</pre></div>
+
+
+<p>A two-dimensional array is usually called a "matrix", like a <code>row * column</code> table. For example, <code>x[3][2]</code> is a table with 3 rows and 2 columns.</p>
+<p>The elements in a multidimensional array are contiguously allocated, which is another factor that differentiate it from a pointer array.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+<span class="p">{</span>
+    <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">11</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">x</span><span class="p">;</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>x[0] = 1
+x[1] = 11
+x[2] = 2
+x[3] = 22
+x[4] = 3
+x[5] = 33
+</pre></div>
+
+
+<p>Similarly, we can initialize specific elements.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+<span class="p">{</span>
+ <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">11</span> <span class="p">},</span>
+ <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">},</span>
+ <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span> <span class="p">},</span>
+ <span class="p">[</span><span class="mi">4</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+ <span class="p">{</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">66</span> <span class="p">},</span>
+ <span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">99</span> <span class="p">}</span>
+<span class="p">};</span>
+<span class="kt">int</span> <span class="n">col</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">row</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="o">/</span> <span class="n">col</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">r</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">row</span><span class="p">;</span> <span class="n">r</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+ <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">col</span><span class="p">;</span> <span class="n">c</span><span class="o">++</span><span class="p">)</span>
+ <span class="p">{</span>
+ <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d][%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">]);</span>
+ <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>x[0][0] = 1
+x[0][1] = 11
+x[1][0] = 2
+x[1][1] = 22
+x[2][0] = 0
+x[2][1] = 0
+x[3][0] = 0
+x[3][1] = 0
+x[4][0] = 0
+x[4][1] = 100
+x[5][0] = 6
+x[5][1] = 66
+x[6][0] = 0
+x[6][1] = 0
+x[7][0] = 9
+x[7][1] = 99
+</pre></div>
+
+
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+<span class="p">{</span>
+    <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">11</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">x</span><span class="p">;</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><span class="text-danger">Question</span>: The array <code>x</code> is cast into a pointer p of type <code>int*</code> and iterated over like a one-dimensional regular array. Does this mean <code>p</code> is a "flatten" version of <code>x</code>?</p>
 <hr />
 <h3 id="references">References</h3>
 <ul>

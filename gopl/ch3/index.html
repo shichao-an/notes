@@ -1372,6 +1372,44 @@ go command [arguments]
 </pre></div>
 
 
+<p>Computations on constants can be evaluated at compile time, reducing the work necessary at run time and enabling other compiler optimizations. Errors ordinarily detected at run time can be reported at compile time when their operands are constants, such as:</p>
+<ul>
+<li>Integer division by zeros</li>
+<li>String indexing out of bounds</li>
+<li>Floating-point operation that would result in a non-finite value</li>
+</ul>
+<p>The results of all arithmetic, logical, and comparison operations applied to constant operands are themselves constants, as are the results of conversions and calls to certain built-in functions such as <code>len</code>, <code>cap</code>, <code>real</code>, <code>imag</code>, <code>complex</code>, and <a href="https://golang.org/pkg/unsafe/#Sizeof"><code>unsafe.Sizeof</code></a>.</p>
+<p>Constant expressions may appear in types, specifically as the length of an array type:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">IPv4Len</span> <span class="p">=</span> <span class="mi">4</span>
+<span class="c1">// parseIPv4 parses an IPv4 address (d.d.d.d).</span>
+<span class="kd">func</span> <span class="nx">parseIPv4</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">IP</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">p</span> <span class="p">[</span><span class="nx">IPv4Len</span><span class="p">]</span><span class="kt">byte</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A constant declaration may have a type and a value. In the absence of an explicit type, the type is inferred from the expression on the right-hand side. In the following, <code>time.Duration</code> is a named type whose underlying type is <code>int64</code>, and <code>time.Minute</code> is a constant of that type. Both of the constants declared below have the type <code>time.Duration</code> (revealed by <code>%T</code>):</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">noDelay</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span> <span class="p">=</span> <span class="mi">0</span>
+<span class="kd">const</span> <span class="nx">timeout</span> <span class="p">=</span> <span class="mi">5</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Minute</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T %[1]v\n&quot;</span><span class="p">,</span> <span class="nx">noDelay</span><span class="p">)</span>     <span class="c1">// &quot;time.Duration 0&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T %[1]v\n&quot;</span><span class="p">,</span> <span class="nx">timeout</span><span class="p">)</span>     <span class="c1">// &quot;time.Duration 5m0s</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T %[1]v\n&quot;</span><span class="p">,</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Minute</span><span class="p">)</span> <span class="c1">// &quot;time.Duration 1m0s&quot;</span>
+</pre></div>
+
+
+<p>When a sequence of constants is declared as a group, the right-hand side expression may be omitted for all but the first of the group, implying that the previous expression and its type should be used again. For example:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">a</span> <span class="p">=</span> <span class="mi">1</span>
+    <span class="nx">b</span>
+    <span class="nx">c</span> <span class="p">=</span> <span class="mi">2</span>
+    <span class="nx">d</span>
+<span class="p">)</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">,</span> <span class="nx">c</span><span class="p">,</span> <span class="nx">d</span><span class="p">)</span> <span class="c1">// &quot;1 1 2 2&quot;</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>
