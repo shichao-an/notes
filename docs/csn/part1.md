@@ -1273,6 +1273,44 @@ for (int i = 0; i < len; i++)
 
 <span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flatten" version of `x`?
 
+#### Array Arguments
+
+When an array is used as a function parameter, it is always implicitly converted to a pointer that points to the first element of the array. This means `sizeof` is no longer available to be used to obtain the array size.
+
+The following code:
+
+```c
+void test(int x[])
+{
+    printf("%d\n", sizeof(x));
+}
+
+void test2(int* x)
+{
+    printf("%d\n", sizeof(x));
+}
+
+int main(int argc, char* argv[])
+{
+    int x[] = { 1, 2, 3 };
+    printf("%d\n", sizeof(x));
+    test(x);
+    test2(x);
+    return EXIT_SUCCESS;
+}
+```
+
+will output:
+
+```text
+12
+4
+4
+```
+
+In the above code, `sizeof(x)` in `test` and `test2` is actually `sizeof(int*)`. We must either explicitly pass the length of the array, or use a special character (`NULL`) to mark the end of the array.
+
+
 - - -
 
 ### References
