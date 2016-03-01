@@ -595,6 +595,8 @@
         
             <li><a href="#verbatim">Verbatim</a></li>
         
+            <li><a href="#array-arguments">Array Arguments</a></li>
+        
     
         <li class="main "><a href="#references">References</a></li>
         
@@ -1831,6 +1833,38 @@ x[7][1] = 99
 
 
 <p><span class="text-danger">Question</span>: The array <code>x</code> is cast into a pointer p of type <code>int*</code> and iterated over like a one-dimensional regular array. Does this mean <code>p</code> is a "flatten" version of <code>x</code>?</p>
+<h4 id="array-arguments">Array Arguments</h4>
+<p>When an array is used as a function parameter, it is always implicitly converted to a pointer that points to the first element of the array. This means <code>sizeof</code> is no longer available to be used to obtain the array size.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">test2</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+    <span class="n">test</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="n">test2</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>12
+4
+4
+</pre></div>
+
+
+<p>In the above code, <code>sizeof(x)</code> in <code>test</code> and <code>test2</code> is actually <code>sizeof(int*)</code>. We must either explicitly pass the length of the array, or use a special character (<code>NULL</code>) to mark the end of the array.</p>
 <hr />
 <h3 id="references">References</h3>
 <ul>
