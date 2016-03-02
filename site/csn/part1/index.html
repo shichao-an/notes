@@ -587,15 +587,19 @@
         
             <li><a href="#strings">Strings</a></li>
         
+            <li><a href="#multidimensional-arrays">Multidimensional Arrays</a></li>
+        
+            <li><a href="#array-arguments">Array Arguments</a></li>
+        
     
-        <li class="main "><a href="#multidimensional-arrays">Multidimensional Arrays</a></li>
+        <li class="main "><a href="#pointers">Pointers</a></li>
+        
+            <li><a href="#void-pointers">void pointers</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
-        
-            <li><a href="#array-arguments">Array Arguments</a></li>
         
     
         <li class="main "><a href="#references">References</a></li>
@@ -1705,7 +1709,7 @@ x, size=4, len=3
 </pre></div>
 
 
-<h3 id="multidimensional-arrays">Multidimensional Arrays</h3>
+<h4 id="multidimensional-arrays">Multidimensional Arrays</h4>
 <p>A multidimensional array is an array whose elements are arrays. Note that elements are arrays, not array pointers.</p>
 <p>The first dimension subscript can be omitted.</p>
 <p>The following code:</p>
@@ -1812,27 +1816,6 @@ x[7][1] = 99
 </pre></div>
 
 
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
-<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
-<span class="p">{</span>
-    <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">11</span> <span class="p">},</span>
-    <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">},</span>
-    <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span> <span class="p">}</span>
-<span class="p">};</span>
-
-<span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
-<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">x</span><span class="p">;</span>
-
-<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
-<span class="p">}</span>
-</pre></div>
-
-
-<p><span class="text-danger">Question</span>: The array <code>x</code> is cast into a pointer p of type <code>int*</code> and iterated over like a one-dimensional regular array. Does this mean <code>p</code> is a "flatten" version of <code>x</code>?</p>
 <h4 id="array-arguments">Array Arguments</h4>
 <p>When an array is used as a function parameter, it is always implicitly converted to a pointer that points to the first element of the array. This means <code>sizeof</code> is no longer available to be used to obtain the array size.</p>
 <p>The following code:</p>
@@ -1865,6 +1848,224 @@ x[7][1] = 99
 
 
 <p>In the above code, <code>sizeof(x)</code> in <code>test</code> and <code>test2</code> is actually <code>sizeof(int*)</code>. We must either explicitly pass the length of the array, or use a special character (<code>NULL</code>) to mark the end of the array.</p>
+<p>C99 supports arrays of variable size used as function parameters. Possible forms of passing array arguments are:</p>
+<p><small><a href="https://gist.github.com/shichao-an/9497fd38d97760ceee5f#file-array-params-c">array-params.c</a></small></p>
+<div class="codehilite"><pre><span class="cm">/* the array name by default is a pointer to its first element,</span>
+<span class="cm"> * similar to test2</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">test1</span><span class="p">(</span><span class="kt">int</span> <span class="n">len</span><span class="p">,</span> <span class="kt">int</span> <span class="n">x</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d; &quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* pass the pointer to the first element */</span>
+<span class="kt">void</span> <span class="nf">test2</span><span class="p">(</span><span class="kt">int</span> <span class="n">len</span><span class="p">,</span> <span class="kt">int</span><span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d; &quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">i</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* array pointer: the array name by default points to the first element;</span>
+<span class="cm"> * &amp;array returns the pointer to the entire array</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">test3</span><span class="p">(</span><span class="kt">int</span> <span class="n">len</span><span class="p">,</span> <span class="kt">int</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)[</span><span class="n">len</span><span class="p">])</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d; &quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* multidimensional array: the array name by default is a pointer to its</span>
+<span class="cm"> * first elements, which is also int(*)[]</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">test4</span><span class="p">(</span><span class="kt">int</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">c</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">[][</span><span class="n">c</span><span class="p">])</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">;</span> <span class="n">a</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">c</span><span class="p">;</span> <span class="n">b</span><span class="o">++</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;y[%d][%d] = %d; &quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">a</span><span class="p">][</span><span class="n">b</span><span class="p">]);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* multidimensional array: pass the pointer to the first element */</span>
+<span class="kt">void</span> <span class="nf">test5</span><span class="p">(</span><span class="kt">int</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">c</span><span class="p">,</span> <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">y</span><span class="p">)[</span><span class="n">c</span><span class="p">])</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">;</span> <span class="n">a</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">c</span><span class="p">;</span> <span class="n">b</span><span class="o">++</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;y[%d][%d] = %d; &quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">y</span><span class="p">)[</span><span class="n">b</span><span class="p">]);</span>
+        <span class="p">}</span>
+
+        <span class="n">y</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* multidimensional array */</span>
+<span class="kt">void</span> <span class="nf">test6</span><span class="p">(</span><span class="kt">int</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">c</span><span class="p">,</span> <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">y</span><span class="p">)[][</span><span class="n">c</span><span class="p">])</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">;</span> <span class="n">a</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">c</span><span class="p">;</span> <span class="n">b</span><span class="o">++</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;y[%d][%d] = %d; &quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">y</span><span class="p">)[</span><span class="n">a</span><span class="p">][</span><span class="n">b</span><span class="p">]);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* pointer array whose elements are pointers, equivalent to test8 */</span>
+<span class="kt">void</span> <span class="nf">test7</span><span class="p">(</span><span class="kt">int</span> <span class="n">count</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span> <span class="n">s</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s; &quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="o">++</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">test8</span><span class="p">(</span><span class="kt">int</span> <span class="n">count</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="n">count</span><span class="p">])</span>
+<span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s; &quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* pointer array ending with NULL */</span>
+<span class="kt">void</span> <span class="nf">test9</span><span class="p">(</span><span class="kt">int</span><span class="o">**</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">p</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">((</span><span class="n">p</span> <span class="o">=</span> <span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d; &quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+        <span class="n">x</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+
+    <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+    <span class="n">test1</span><span class="p">(</span><span class="n">len</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+    <span class="n">test2</span><span class="p">(</span><span class="n">len</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+    <span class="n">test3</span><span class="p">(</span><span class="n">len</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">);</span>
+
+    <span class="kt">int</span> <span class="n">y</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+    <span class="p">{</span>
+        <span class="p">{</span><span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">},</span>
+        <span class="p">{</span><span class="mi">20</span><span class="p">,</span> <span class="mi">21</span><span class="p">},</span>
+        <span class="p">{</span><span class="mi">30</span><span class="p">,</span> <span class="mi">31</span><span class="p">}</span>
+    <span class="p">};</span>
+
+    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="n">test4</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">test5</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">test6</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">y</span><span class="p">);</span>
+
+    <span class="kt">char</span><span class="o">*</span> <span class="n">s</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&quot;aaa&quot;</span><span class="p">,</span> <span class="s">&quot;bbb&quot;</span><span class="p">,</span> <span class="s">&quot;ccc&quot;</span> <span class="p">};</span>
+    <span class="n">test7</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">),</span> <span class="n">s</span><span class="p">);</span>
+    <span class="n">test8</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">),</span> <span class="n">s</span><span class="p">);</span>
+
+    <span class="kt">int</span><span class="o">*</span> <span class="n">xx</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="o">&amp;</span><span class="p">(</span><span class="kt">int</span><span class="p">){</span><span class="mi">111</span><span class="p">},</span> <span class="o">&amp;</span><span class="p">(</span><span class="kt">int</span><span class="p">){</span><span class="mi">222</span><span class="p">},</span> <span class="o">&amp;</span><span class="p">(</span><span class="kt">int</span><span class="p">){</span><span class="mi">333</span><span class="p">},</span> <span class="nb">NULL</span> <span class="p">};</span>
+    <span class="n">test9</span><span class="p">(</span><span class="n">xx</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The above code will output:</p>
+<div class="codehilite"><pre>x[0] = 1; x[1] = 2; x[2] = 3;
+x[0] = 1; x[1] = 2; x[2] = 3;
+x[0] = 1; x[1] = 2; x[2] = 3;
+y[0][0] = 10; y[0][1] = 11; y[1][0] = 20; y[1][1] = 21; y[2][0] = 30; y[2][1] = 31;
+y[0][0] = 10; y[0][1] = 11; y[1][0] = 20; y[1][1] = 21; y[2][0] = 30; y[2][1] = 31;
+y[0][0] = 10; y[0][1] = 11; y[1][0] = 20; y[1][1] = 21; y[2][0] = 30; y[2][1] = 31;
+aaa; bbb; ccc;
+aaa; bbb; ccc;
+111; 222; 333;
+</pre></div>
+
+
+<h3 id="pointers">Pointers</h3>
+<h4 id="void-pointers"><code>void</code> pointers</h4>
+<p><code>void*</code> (<code>void</code> pointer, or <a href="http://en.cppreference.com/w/c/language/pointer#Pointers_to_void">pointer to void</a>) is also called the "versatile pointer". It is able to store an address of any object, but does not have the type of this object. This means the pointer must be converted (to the correct type) before operating on the object. Pointer to object of any type can be implicitly converted to <code>void</code> pointer to void, and vice versa.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span><span class="o">*</span> <span class="n">cp</span> <span class="o">=</span> <span class="n">p</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%02x &quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">cp</span> <span class="o">+</span> <span class="n">i</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mh">0x00112233</span><span class="p">;</span>
+    <span class="n">test</span><span class="p">(</span><span class="o">&amp;</span><span class="n">x</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>33 22 11 00
+</pre></div>
+
+
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+<span class="p">{</span>
+    <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">11</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">x</span><span class="p">;</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><span class="text-danger">Question</span>: The array <code>x</code> is cast into a pointer p of type <code>int*</code> and iterated over like a one-dimensional regular array. Does this mean <code>p</code> is a "flatten" version of <code>x</code>?</p>
 <hr />
 <h3 id="references">References</h3>
 <ul>

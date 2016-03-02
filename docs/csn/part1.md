@@ -1129,7 +1129,7 @@ s, size=10, len=3
 x, size=4, len=3
 ```
 
-### Multidimensional Arrays
+#### Multidimensional Arrays
 
 A multidimensional array is an array whose elements are arrays. Note that elements are arrays, not array pointers.
 
@@ -1248,31 +1248,6 @@ x[7][0] = 9
 x[7][1] = 99
 ```
 
-### Doubts and Solutions
-
-#### Verbatim
-
-##### **p29 on multidimensional arrays**
-
-```c
-int x[][2] =
-{
-    { 1, 11 },
-    { 2, 22 },
-    { 3, 33 }
-};
-
-int len = sizeof(x) / sizeof(int);
-int* p = (int*)x;
-
-for (int i = 0; i < len; i++)
-{
-    printf("x[%d] = %d\n", i, p[i]);
-}
-```
-
-<span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flatten" version of `x`?
-
 #### Array Arguments
 
 When an array is used as a function parameter, it is always implicitly converted to a pointer that points to the first element of the array. This means `sizeof` is no longer available to be used to obtain the array size.
@@ -1309,6 +1284,238 @@ will output:
 ```
 
 In the above code, `sizeof(x)` in `test` and `test2` is actually `sizeof(int*)`. We must either explicitly pass the length of the array, or use a special character (`NULL`) to mark the end of the array.
+
+
+C99 supports arrays of variable size used as function parameters. Possible forms of passing array arguments are:
+
+<small>[array-params.c](https://gist.github.com/shichao-an/9497fd38d97760ceee5f#file-array-params-c)</small>
+
+```c
+/* the array name by default is a pointer to its first element,
+ * similar to test2
+ */
+void test1(int len, int x[])
+{
+    int i;
+    for (i = 0; i < len; i++)
+    {
+        printf("x[%d] = %d; ", i, x[i]);
+    }
+
+    printf("\n");
+}
+
+/* pass the pointer to the first element */
+void test2(int len, int* x)
+{
+    for (int i = 0; i < len; i++)
+    {
+        printf("x[%d] = %d; ", i, *(x + i));
+    }
+
+    printf("\n");
+}
+
+/* array pointer: the array name by default points to the first element;
+ * &array returns the pointer to the entire array
+ */
+void test3(int len, int(*x)[len])
+{
+    for (int i = 0; i < len; i++)
+    {
+        printf("x[%d] = %d; ", i, (*x)[i]);
+    }
+
+    printf("\n");
+}
+
+/* multidimensional array: the array name by default is a pointer to its
+ * first elements, which is also int(*)[]
+ */
+void test4(int r, int c, int y[][c])
+{
+    for (int a = 0; a < r; a++)
+    {
+        for (int b = 0; b < c; b++)
+        {
+            printf("y[%d][%d] = %d; ", a, b, y[a][b]);
+        }
+    }
+
+    printf("\n");
+}
+
+/* multidimensional array: pass the pointer to the first element */
+void test5(int r, int c, int (*y)[c])
+{
+    for (int a = 0; a < r; a++)
+    {
+        for (int b = 0; b < c; b++)
+        {
+            printf("y[%d][%d] = %d; ", a, b, (*y)[b]);
+        }
+
+        y++;
+    }
+
+    printf("\n");
+}
+
+/* multidimensional array */
+void test6(int r, int c, int (*y)[][c])
+{
+    for (int a = 0; a < r; a++)
+    {
+        for (int b = 0; b < c; b++)
+        {
+            printf("y[%d][%d] = %d; ", a, b, (*y)[a][b]);
+        }
+    }
+
+    printf("\n");
+}
+
+/* pointer array whose elements are pointers, equivalent to test8 */
+void test7(int count, char** s)
+{
+    for (int i = 0; i < count; i++)
+    {
+        printf("%s; ", *(s++));
+    }
+
+    printf("\n");
+}
+
+void test8(int count, char* s[count])
+{
+    for (int i = 0; i < count; i++)
+    {
+        printf("%s; ", s[i]);
+    }
+
+    printf("\n");
+}
+
+/* pointer array ending with NULL */
+void test9(int** x)
+{
+    int* p;
+    while ((p = *x) != NULL)
+    {
+        printf("%d; ", *p);
+        x++;
+    }
+
+    printf("\n");
+}
+
+int main(int argc, char* argv[])
+{
+    int x[] = { 1, 2, 3 };
+
+    int len = sizeof(x) / sizeof(int);
+    test1(len, x);
+    test2(len, x);
+    test3(len, &x);
+
+    int y[][2] =
+    {
+        {10, 11},
+        {20, 21},
+        {30, 31}
+    };
+
+    int a = sizeof(y) / (sizeof(int) * 2);
+    int b = 2;
+    test4(a, b, y);
+    test5(a, b, y);
+    test6(a, b, &y);
+
+    char* s[] = { "aaa", "bbb", "ccc" };
+    test7(sizeof(s) / sizeof(char*), s);
+    test8(sizeof(s) / sizeof(char*), s);
+
+    int* xx[] = { &(int){111}, &(int){222}, &(int){333}, NULL };
+    test9(xx);
+
+    return EXIT_SUCCESS;
+}
+```
+
+The above code will output:
+
+```text
+x[0] = 1; x[1] = 2; x[2] = 3;
+x[0] = 1; x[1] = 2; x[2] = 3;
+x[0] = 1; x[1] = 2; x[2] = 3;
+y[0][0] = 10; y[0][1] = 11; y[1][0] = 20; y[1][1] = 21; y[2][0] = 30; y[2][1] = 31;
+y[0][0] = 10; y[0][1] = 11; y[1][0] = 20; y[1][1] = 21; y[2][0] = 30; y[2][1] = 31;
+y[0][0] = 10; y[0][1] = 11; y[1][0] = 20; y[1][1] = 21; y[2][0] = 30; y[2][1] = 31;
+aaa; bbb; ccc;
+aaa; bbb; ccc;
+111; 222; 333;
+```
+
+### Pointers
+
+#### `void` pointers
+
+`void*` (`void` pointer, or [pointer to void](http://en.cppreference.com/w/c/language/pointer#Pointers_to_void)) is also called the "versatile pointer". It is able to store an address of any object, but does not have the type of this object. This means the pointer must be converted (to the correct type) before operating on the object. Pointer to object of any type can be implicitly converted to `void` pointer to void, and vice versa.
+
+The following code:
+
+```c
+void test(void* p, size_t len)
+{
+    unsigned char* cp = p;
+
+    for (int i = 0; i < len; i++)
+    {
+        printf("%02x ", *(cp + i));
+    }
+
+    printf("\n");
+}
+
+int main(int argc, char* argv[])
+{
+    int x = 0x00112233;
+    test(&x, sizeof(x));
+    return EXIT_SUCCESS;
+}
+```
+
+will output:
+
+```text
+33 22 11 00
+```
+
+
+### Doubts and Solutions
+
+#### Verbatim
+
+##### **p29 on multidimensional arrays**
+
+```c
+int x[][2] =
+{
+    { 1, 11 },
+    { 2, 22 },
+    { 3, 33 }
+};
+
+int len = sizeof(x) / sizeof(int);
+int* p = (int*)x;
+
+for (int i = 0; i < len; i++)
+{
+    printf("x[%d] = %d\n", i, p[i]);
+}
+```
+
+<span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flatten" version of `x`?
 
 
 - - -
