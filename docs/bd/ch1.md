@@ -4,7 +4,7 @@
 
 Traditional systems, and the data management techniques associated with them, have failed to scale to Big Data.
 
-To tackle the challenges of Big Data, a lof of new technologies has emerged, many of which have been grouped under the term *NoSQL*. In some ways, these new technologies are more complex than traditional databases, and in other ways they’re simpler. These systems can scale to vastly larger sets of data, but using these technologies effectively requires a fundamentally new set of techniques.  They aren’t one-size-fits-all solutions.
+To tackle the challenges of Big Data, a lot of new technologies have emerged, many of which have been grouped under the term *NoSQL*. In some ways, these new technologies are more complex than traditional databases, and in other ways they’re simpler. These systems can scale to vastly larger sets of data, but using these technologies effectively requires a fundamentally new set of techniques. They aren't one-size-fits-all solutions.
 
 Many of these Big Data systems were pioneered by Google, including:
 
@@ -39,7 +39,7 @@ The following subsections discuss what problems emerge as you evolve the applica
 
 #### Scaling with a queue
 
-As the traffic to your application is growing, you got a lot of "Timeout error on inserting to the database" error, sincet the database can’t keep up with the load, so write requests to increment pageviews are timing out.
+As the traffic to your application is growing, you got a lot of "Timeout error on inserting to the database" error, since the database can't keep up with the load, so write requests to increment pageviews are timing out.
 
 Instead of having the web server hit the database directly, you insert a queue between the web server and the database. Whenever you receive a new pageview, that event is added to the queue. You then create a worker process that reads 100 events at a time off the queue, and batches them into a single database update. This is illustrated in the figure below:
 
