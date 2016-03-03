@@ -417,7 +417,7 @@ movl $0x000F, %eax          # Store the value F into the eax register
 #### Move: `mov`
 
 ```gas
-mov src, dest  # GAS Synatx
+mov src, dest  # GAS Syntax
 ```
 ```nasm
 mov dest, src  ; Intel Syntax
