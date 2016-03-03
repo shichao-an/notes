@@ -70,6 +70,34 @@ Some performance issues with the clock are improved in later kernels, including:
 
 Modern kernels have moved much functionality out of the clock routine to on-demand interrupts, in an effort to create a *tickless kernel*. This includes Linux, where the clock routine (which is the *system timer interrupt*) performs little work other than updating the system clock and jiffies counter (*jiffies* is a Linux unit of time, similar to *ticks*).
 
+##### **Kernel Mode**
+
+The **kernel mode** is a special CPU mode, where the kernel is running. This mode allows full access to devices and the execution of privileged instructions. The kernel arbitrates device access to support multitasking, preventing processes and users from accessing each other's data unless explicitly allowed.
+
+User programs (processes) run in **user mode**, where they request privileged operations (e.g. I/O) from the kernel via system calls. To perform a system call, execution will *mode-switch* from user to kernel mode, and then execute with the higher privilege level.
+
+[![Figure 3.2 System call execution modes](figure_3.2.png)](figure_3.2.png "Figure 3.2 System call execution modes")
+
+Each mode has its own software execution state including a stack and registers. The execution of privileged instructions in user mode causes **exceptions**, which are then properly handled by the kernel.
+
+The switch between these modes takes time (CPU cycles), which adds a small amount of overhead for each I/O. Some services, such as NFS, have been implemented as kernel-mode software (instead of a user-mode daemon), so that they can perform I/O from and to devices without needing to switch to user mode.
+
+If the system call blocks during execution, the process may switch off CPU and be replaced by another: a **context-switch**.
+
+#### Stacks
+
+A stack contains the execution ancestry for a thread in terms of functions and registers. <u>Stacks are used by CPUs for efficient processing of function execution in native software.</u>
+
+When a function is called:
+
+1. The current set of CPU registers (which store the state of the CPU) is saved to the stack.
+2. A new stack frame is added to the top for the current execution of the thread.
+
+When a function ends the execution and returns, it calls a "return" CPU instruction, which removes the current stack and returns execution to the previous one, restoring its state.
+
+Stack inspection is an invaluable tool for debugging and performance analysis. Stacks show the call path to current execution, which often answers *why* something is executing.
+
+
 ### Doubts and Solutions
 
 #### Verbatim
