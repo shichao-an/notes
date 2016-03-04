@@ -517,9 +517,17 @@
     
         <li class="main "><a href="#stack">Stack</a></li>
         
-            <li><a href="#the-stack">The Stack</a></li>
-        
             <li><a href="#push-and-pop">Push and Pop</a></li>
+        
+    
+        <li class="main "><a href="#esp-in-action">ESP In Action</a></li>
+        
+            <li><a href="#reading-without-popping">Reading Without Popping</a></li>
+        
+            <li><a href="#data-allocation">Data Allocation</a></li>
+        
+    
+        <li class="main "><a href="#functions-and-stack-frames">Functions and Stack Frames</a></li>
         
     
         <li class="main "><a href="#references">References</a></li>
@@ -533,7 +541,6 @@
 <h3 id="x86-disassembly"><strong>x86 Disassembly</strong></h3>
 <h3 id="stack">Stack</h3>
 <p><small><a href="https://en.wikibooks.org/wiki/X86_Disassembly/The_Stack">The Stack</a></small></p>
-<h4 id="the-stack">The Stack</h4>
 <p>A <strong>stack</strong> is a data structure that stores data values contiguously in memory.</p>
 <ul>
 <li>To read from the stack is said "to pop".</li>
@@ -578,9 +585,65 @@
 <p>In the above assembly code:</p>
 <ul>
 <li><a href="https://msdn.microsoft.com/en-us/library/6ykwckb8.aspx"><code>DWORD</code></a> <a href="https://msdn.microsoft.com/en-us/library/ek20ye9k.aspx"><code>PTR</code></a>: specifies a pointer to a double word (4 bytes) type.</li>
-<li><code>SS:[esp]</code>: the <a href="https://msdn.microsoft.com/en-us/library/94b6khh4.aspx">colon</a> (:) indicates overriding the default segment of <code>[esp]</code> with the Stack Segment (SS) register. SS is used as a segment prefix and ESP is dereferenced.</li>
+<li><code>SS:[esp]</code>: the <a href="https://msdn.microsoft.com/en-us/library/94b6khh4.aspx">colon</a> (:) means overriding the default segment of <code>[esp]</code> with the Stack Segment (SS). SS is used as a segment prefix and ESP is dereferenced.</li>
 </ul>
-<p>The single command actually performs much faster than the alternative. It can be visualized that the stack grows from right to left, and ESP decreases as the stack grows in size.</p>
+<p>The single command actually performs much faster than the alternative. It can be visualized that the stack grows from right to left, and ESP decreases as the stack grows in size. The following figure shows a push operation.</p>
+<p><a href="./figure_01.png" title="Figure 01 Push to a stack"><img alt="Figure 01 Push to a stack" src="./figure_01.png" /></a></p>
+<h3 id="esp-in-action">ESP In Action</h3>
+<p>The following code discards 3 items that were pushed earlier onto the stack, without saving the values:</p>
+<div class="codehilite"><pre><span class="nf">pop</span> <span class="nb">eax</span>
+<span class="nf">pop</span> <span class="nb">eax</span>
+<span class="nf">pop</span> <span class="nb">eax</span>
+</pre></div>
+
+
+<p>A faster method is to simply perform some basic arithmetic on ESP to make the pointer go "above" the data items, so they cannot be read anymore, and can be overwritten with the next round of <code>push</code> commands:</p>
+<div class="codehilite"><pre><span class="nf">add</span> <span class="nb">esp</span><span class="p">,</span> <span class="mi">12</span>  <span class="c1">; 3 DWORDs (4 bytes * 3)</span>
+</pre></div>
+
+
+<p>If we want to reserve room on the stack for an item bigger than a <code>DWORD</code>, we can use a subtraction to artificially move ESP forward. We can then access our reserved memory directly as a memory pointer, or we can access it indirectly as an offset value from ESP itself.</p>
+<p>For example, to create an array of 100 byte values on the stack and store the pointer to the base of this array in EDI:</p>
+<div class="codehilite"><pre><span class="nf">sub</span> <span class="nb">esp</span><span class="p">,</span> <span class="mi">100</span>  <span class="c1">; num of bytes in our array</span>
+<span class="nf">mov</span> <span class="nb">edi</span><span class="p">,</span> <span class="nb">esp</span>  <span class="c1">; copy address of 100 bytes area to edi</span>
+</pre></div>
+
+
+<p>To destroy that array, use the following instruction:</p>
+<div class="codehilite"><pre>add esp, 100
+</pre></div>
+
+
+<h4 id="reading-without-popping">Reading Without Popping</h4>
+<p>To read values on the stack without popping them off the stack, ESP can be used with an offset. For instance, to read the 3 <code>DWORD</code> values from the top of the stack into EAX, we can use the instructions:</p>
+<div class="codehilite"><pre><span class="nf">mov</span> <span class="nb">eax</span><span class="p">,</span> <span class="kt">DWORD</span> <span class="nv">PTR</span> <span class="nb">SS</span><span class="p">:[</span><span class="nb">esp</span><span class="p">]</span>
+<span class="nf">mov</span> <span class="nb">eax</span><span class="p">,</span> <span class="kt">DWORD</span> <span class="nv">PTR</span> <span class="nb">SS</span><span class="p">:[</span><span class="nb">esp</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span>
+<span class="nf">mov</span> <span class="nb">eax</span><span class="p">,</span> <span class="kt">DWORD</span> <span class="nv">PTR</span> <span class="nb">SS</span><span class="p">:[</span><span class="nb">esp</span> <span class="o">+</span> <span class="mi">8</span><span class="p">]</span>
+</pre></div>
+
+
+<p>Since ESP moves downward as the stack grows, data on the stack can be accessed with a positive offset. <u>A negative offset should never be used because data "above" the stack cannot be counted on to stay the way you left it.</u> The operation of reading from the stack without popping is often referred to as "peeking".</p>
+<h4 id="data-allocation">Data Allocation</h4>
+<p>There are two areas in the computer memory where a program can store data:</p>
+<ol>
+<li>The <strong>stack</strong> is a linear LIFO buffer that allows fast allocations and deallocations, but has a limited size.</li>
+<li>The <strong>heap</strong> is typically a non-linear data storage area, typically implemented using linked lists, binary trees, or other more exotic methods.<ul>
+<li>Heaps are slightly more difficult to interface with and to maintain than a stack, and allocations and deallocations are performed more slowly. However, heaps can grow as the data grows, and new heaps can be allocated when data quantities become too large.</li>
+</ul>
+</li>
+</ol>
+<p>Explicitly declared variables are allocated on the stack.</p>
+<ul>
+<li>Stack variables are finite in number, and have a definite size.</li>
+<li>Heap variables can be varied in number and in size.</li>
+</ul>
+<h3 id="functions-and-stack-frames">Functions and Stack Frames</h3>
+<p>Functions are frequently set up with a <strong>stack frame</strong> to allow access to both function parameters and automatic function variables in the execution environment. <u>The idea behind a stack frame is that each subroutine can act independently of its location on the stack, and each subroutine can act as if it is the top of the stack.</u></p>
+<ul>
+<li>When a function is called, a new <a href="https://en.wikipedia.org/wiki/Call_stack#Structure">stack frame</a> is created at the current ESP location.</li>
+<li>All items from previous functions are higher up on the stack, and should not be modified. The current function has access to the remainder of the stack.</li>
+<li>The current function always has access to the "top" of the stack, and so functions do not need to take account of the memory usage of other functions or programs.</li>
+</ul>
 <hr />
 <h3 id="references">References</h3>
 <ul>
