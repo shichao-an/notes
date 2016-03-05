@@ -120,7 +120,7 @@ Functions are frequently set up with a **stack frame** to allow access to both f
 
 * When a function is called, a new [stack frame](https://en.wikipedia.org/wiki/Call_stack#Structure) is created at the current ESP location.
 * All items from previous functions are higher up on the stack, and should not be modified. The current function has access to the remainder of the stack.
-* The current function always has access to the "top" of the stack, and so functions do not need to take account of the memory usage of other functions or programs.
+* The current function always has access to the "top" of the stack. Therefore, functions do not need to take account of the memory usage of other functions or programs.
 
 
 
