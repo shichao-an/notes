@@ -55,13 +55,19 @@ I will read PER for extensive coverage.
 
 > I'm fairly interested in computer networks and security, but lack a lot of knowledge in the related fields, such as TCP/IP and cryptography.
 
-For networks, I have read some chapters of TCPv1, so I need to continue reading it, along with TCPIP as a supplement and reference. To learn cryptography, I will read CNSPP.
+For networks, I have read some chapters of TCPv1, so I need to continue reading it, along with TCPIP as a supplement and reference. To learn cryptography, I will read CNSPP. To learn security techniques, I will read HTAE.
 
 ##### **System Architecture**
 
 > Large-scale distributed systems are highly relevant to my job.
 
 I have read the most part of DevOps. In addition to finishing with DevOps, I will read BD.
+
+##### **Miscellanea**
+
+> The x86 assembly language is essential for learning the Linux kernel, system programming, and security.
+
+I will read x86 assembly and x86 disassembly.
 
 #### Methods of Notes
 
@@ -83,7 +89,12 @@ I have read the most part of DevOps. In addition to finishing with DevOps, I wil
 
 ### Catalog
 
-#### Programming Languages <small>(5)</small>
+#### Programming Languages <small>(7)</small>
+
+##### **x86 Assembly**
+
+* [x86 assembly](asm/index.md)
+* [x86 disassembly](disassembly/index.md)
 
 ##### **C**
 
