@@ -22,9 +22,13 @@ This site documents reading and learning notes.
   </div>
 </div>
 
+### TOC
+
+See [Table of Contents](toc.md).
+
 ### Books and Materials
 
-See [Books and Materials](books.md) ([Table of Contents](toc.md)).
+See [Books and Materials](books.md).
 
 ### Roadmap
 
