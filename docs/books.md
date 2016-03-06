@@ -136,7 +136,7 @@ Big Data: Principles and Best Practices of Scalable Realtime Data Systems
 
 Cryptography and Network Security: Principles and Practice (6th Edition)
 
-<small>William Stallings</small>
+<small>by William Stallings</small>
 
 #### [HTAE](htae/index.md)
 
