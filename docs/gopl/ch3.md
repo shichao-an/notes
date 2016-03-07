@@ -961,6 +961,117 @@ const (
 fmt.Println(a, b, c, d) // "1 1 2 2"
 ```
 
+#### The Constant Generator `iota`
+
+The *constant generator* [`iota`](https://golang.org/ref/spec#Iota) can be used in a `const` declaration to create a sequence of related values; the value of `iota` begins at zero and increments by one for each item in the sequence.
+
+The following example is from the [`time`](https://golang.org/pkg/time/) package, which defines named constants of type `Weekday` for the days of the week. This kind of types are often called [enumerations](https://en.wikipedia.org/wiki/Enumeration), or enums for short.
+
+```go
+type Weekday int
+
+const (
+	Sunday Weekday = iota
+	Monday
+	Tuesday
+	Wednesday
+	Thursday
+	Friday
+	Saturday
+)
+```
+
+This declares `Sunday` to be 0, `Monday` to be 1, and so on.
+
+`iota` can also be used in more complex expression. The following example is from the [`net`](https://golang.org/pkg/net/) package where each of the lowest 5 bits of an unsigned integer is given a distinct name and boolean interpretation:
+
+```go
+type Flags uint
+
+const (
+	FlagUp Flags = 1 << iota // is up
+	FlagBroadcast            // supports broadcast access capability
+	FlagLoopback             // is a loopback interface
+	FlagPointToPoint         // belongs to a point-to-point link
+	FlagMulticast            // supports multicast access capability
+)
+```
+
+As `iota` increments, each constant is assigned the value of `1 << iota`, which evaluates to successive powers of two (each corresponding to a single bit). The functions in [gopl.io/ch3/netflag/netflag.go](https://github.com/shichao-an/gopl.io/blob/master/ch3/netflag/netflag.go) test, set or clear bits of those constants.
+
+The following declaration names the powers of 1024:
+
+```go
+const (
+	_ = 1 << (10 * iota)
+	KiB // 1024
+	MiB // 1048576
+	GiB // 1073741824
+	TiB // 1099511627776 (exceeds 1 << 32)
+	PiB // 1125899906842624
+	EiB // 1152921504606846976
+	ZiB // 1180591620717411303424 (exceeds 1 << 64)
+	YiB // 1208925819614629174706176
+)
+```
+
+[p78]
+
+#### Untyped Constants
+
+Although a constant can have any of the basic data types (e.g. `int`, `float64`, `time.Duration`), many constants are not committed to a particular type. The compiler represents these uncommitted constants with much greater numeric precision than values of basic types, and arithmetic on them is more precise than machine arithmetic; you may assume at least 256 bits of precision. There are six flavors of these uncommitted constants
+
+* Untyped boolean
+* Untyped integer
+* Untyped rune
+* Untyped floating-point
+* Untyped complex
+* Untyped string
+
+Untyped constants can retain higher precision and participate in many more expressions than committed constants without requiring conversions. For example, the values `ZiB` and `YiB` in the example above are too big to store in any integer variable, but they are legitimate constants that may be used in expressions like this one:
+
+```go
+fmt.Println(YiB/ZiB) // "1024"
+```
+
+The floating-point constant `math.Pi` may be used wherever any floating-point or complex value is needed:
+
+```go
+var x float32 = math.Pi
+var y float64 = math.Pi
+var z complex128 = math.Pi
+```
+
+If `math.Pi` had been committed to a specific type such as `float64`, the result would not be as precise, and type conversions would be required:
+
+```go
+const Pi64 float64 = math.Pi
+var x float32 = float32(Pi64)
+var y float64 = Pi64
+var z complex128 = complex128(Pi64)
+```
+
+For literals, syntax determines flavor. The literals in the table below all denote constants of the same value but different flavors:
+
+Literal | Flavor
+------- | ------
+`0` | untyped integer
+`0.0` | untyped floating-point
+`0i` | untyped complex
+`\u0000` | untyped rune
+
+Similarly, `true` and `false` are untyped booleans and string literals are untyped strings.
+
+`/` may represent integer or floating-point division depending on its operands. Consequently, the choice of literal may affect the result of a constant division expression:
+
+```go
+var f float64 = 212
+fmt.Println((f - 32) * 5 / 9)     // "100"; (f - 32) * 5 is a float64
+fmt.Println(5 / 9 * (f - 32))     // "0"; 5/9 is an untyped integer, 0
+fmt.Println(5.0 / 9.0 * (f - 32)) // "100"; 5.0/9.0 is an untyped float
+```
+
+
 ### Doubts and Solution
 
 #### Verbatim
