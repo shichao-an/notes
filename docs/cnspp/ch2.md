@@ -64,6 +64,50 @@ An opponent, observing *Y* but not having access to *K* or *X*, may attempt to r
 * Recover *X* by generating a plaintext estimate \(\hat{X}\), if the opponent is interested in only this particular message.
 * Recover *K* by generating an estimate \(\hat{K}\), if the opponent is interested in being able to read future messages.
 
+#### Cryptography
+
+Cryptographic systems are characterized along three independent dimensions:
+
+1. **Type of operations for transforming plaintext to ciphertext**. All encryption algorithms are based on two general principles:
+    * **Substitution**: each element in the plaintext (bit, letter, group of bits or letters) is mapped into another element,
+    * **Transposition**: elements in the plaintext are rearranged.
+
+    The fundamental requirement is that no information be lost (all operations are reversible). *Product systems* involve multiple stages of substitutions and transpositions.
+
+2. **Number of keys used**.
+    * If both sender and receiver use the same key, the system is referred to as symmetric, single-key, secret-key, or conventional encryption.
+    * If the sender and receiver use different keys, the system is referred to as asymmetric, two-key, or public-key encryption.
+3. **How the plaintext is processed**.
+    * A [block cipher](https://en.wikipedia.org/wiki/Block_cipher) processes the input one block of elements at a time, producing an output block for each input block.
+    * A [stream cipher](https://en.wikipedia.org/wiki/Stream_cipher) processes the input elements continuously, producing output one element at a time, as it goes along.
+
+#### Cryptanalysis and Brute-Force Attack
+
+The objective of attacking an encryption system is to recover the key in use rather than simply to recover the plaintext of a single ciphertext. There are two general approaches to attacking a conventional encryption scheme:
+
+* **Cryptanalysis** (cryptanalytic attacks): This attack relies on the nature of the algorithm plus some knowledge of the general characteristics of the plaintext or some sample plaintext–ciphertext pairs. It exploits the characteristics of the algorithm to attempt to deduce a specific plaintext or to deduce the key being used.
+* **Brute-force attack**: The attacker tries every possible key on a piece of ciphertext until an intelligible translation into plaintext is obtained. On average, half of all possible keys must be tried to achieve success.
+
+If either type of attack succeeds in deducing the key, then future and past messages encrypted with that key are compromised.
+
+##### **Cryptanalytic attacks** *
+
+The following table summarizes the various types of cryptanalytic attacks based on the amount of information known to the cryptanalyst.
+
+Type of Attack | Known to Cryptanalyst
+-------------- | ---------------------
+Ciphertext Only | <ul><li>Encryption algorithm</li><li>Ciphertext</li></ul>
+Known Plaintext | <ul><li>Encryption algorithm</li><li>Ciphertext</li><li>One or more plaintext–ciphertext pairs formed with the secret key</li></ul>
+Chosen Plaintext | <ul><li>Encryption algorithm</li><li>Ciphertext</li><li>Plaintext message chosen by cryptanalyst, together with its corresponding ciphertext generated with the secret key</li></ul>
+Chosen Ciphertext | <ul><li>Encryption algorithm</li><li>Ciphertext</li><li>Ciphertext chosen by cryptanalyst, together with its corresponding decrypted plaintext generated with the secret key</li></ul>
+Chosen Text | Combination of "Chosen Plaintext" and "Chosen Ciphertext"
+
+[p32]
+
+In general, we can assume that the opponent does know the algorithm used for encryption. If the key space is very large, the brute-force approach of trying all possible keys, which is one possible attack, becomes impractical. Thus, the opponent must anaylyze the ciphertext itself, applying various statistical tests to it. To use this approach, the opponent must have some general idea of the type of plaintext that is concealed.
+
+In many cases, the analyst has more information than ciphertext only. The analyst may be able to capture one or more plaintext messages as well as their encryptions, or may know that certain plaintext patterns will appear in a message. For example, a file that is encoded in the Postscript format always begins with the same pattern, or there may be a standardized header or banner to an electronic funds transfer message. All these are examples of *known plaintext*. With this knowledge, the analyst may be able to deduce the key on the basis of the way in which the known plaintext is transformed. This is known as the [known-plaintext attack](https://en.wikipedia.org/wiki/Known-plaintext_attack).
+
 
 
 <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
