@@ -1058,7 +1058,7 @@ Literal | Flavor
 `0` | untyped integer
 `0.0` | untyped floating-point
 `0i` | untyped complex
-`\u0000` | untyped rune
+`'\u0000'` | untyped rune
 
 Similarly, `true` and `false` are untyped booleans and string literals are untyped strings.
 
