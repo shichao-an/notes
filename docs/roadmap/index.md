@@ -93,8 +93,8 @@ I will read x86 assembly and x86 disassembly.
 
 ##### **x86 Assembly**
 
-* [x86 assembly](asm/index.md)
-* [x86 disassembly](disassembly/index.md)
+* [x86 assembly](../asm/index.md)
+* [x86 disassembly](../disassembly/index.md)
 
 ##### **C**
 
