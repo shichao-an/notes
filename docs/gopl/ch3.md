@@ -1071,6 +1071,70 @@ fmt.Println(5 / 9 * (f - 32))     // "0"; 5/9 is an untyped integer, 0
 fmt.Println(5.0 / 9.0 * (f - 32)) // "100"; 5.0/9.0 is an untyped float
 ```
 
+Only constants can be untyped. The constant is implicitly converted to the type of the variable if either of the following happens:
+
+* The untyped constant is assigned to a variable (first statement in the example below).
+* The untyped constant appears on the right-hand side of a variable declaration with an explicit type (the other three statements in the example below).
+
+For example:
+
+```go
+var f float64 = 3 + 0i // untyped complex -> float64
+f = 2                  // untyped integer -> float64
+f = 1e123              // untyped floating-point -> float64
+f = 'a'                // untyped rune -> float64
+```
+
+The statements above are equivalent to these:
+
+```go
+var f float64 = float64(3 + 0i)
+f = float64(2)
+f = float64(1e123)
+f = float64('a')
+```
+
+Whether implicit or explicit, converting a constant from one type to another requires that the target type can represent the original value. Rounding is allowed for real and complex floating-point numbers:
+
+```go
+const (
+	deadbeef = 0xdeadbeef // untyped int with value 3735928559
+	a = uint32(deadbeef)    // uint32 with value 3735928559
+	b = float32(deadbeef)   // float32 with value 3735928576 (rounded up)
+	c = float64(deadbeef)   // float64 with value 3735928559 (exact)
+	d = int32(deadbeef)     // compile error: constant overflows int32
+	e = float64(1e309)      // compile error: constant overflows float64
+	f = uint(-1)            // compile error: constant underflows uint
+)
+```
+
+In a variable declaration without an explicit type (including [short variable declarations](ch2.md#short-variable-declarations)), the flavor of the untyped constant implicitly determines the default type of the variable. For example:
+
+```go
+i := 0      // untyped integer;        implicit int(0)
+r := '\000' // untyped rune;           implicit rune('\000')
+f := 0.0    // untyped floating-point; implicit float64(0.0)
+c := 0i     // untyped complex;        implicit complex128(0i)
+```
+
+In the above example, the asymmetry should be noted: untyped integers are converted to <u>`int`, whose size is not guaranteed,</u> but untyped floating-point and complex numbers are converted to the explicitly sized types `float64` and `complex128`. <u>The language has no unsized `float` and `complex` types analogous to unsized `int`</u>, because it is very difficult to write correct numerical algorithms without knowing the size of one’s floating-point data types.
+
+To give the variable a different type, we must explicitly convert the untyped constant to the desired type or state the desired type in the variable declaration. For example:
+
+```go
+var i = int8(0)
+var i int8 = 0
+```
+
+These defaults are particularly important when converting an untyped constant to an interface value ([Chapter 7](ch7.md)) since they determine its dynamic type.
+
+```go
+fmt.Printf("%T\n", 0)      // "int"
+fmt.Printf("%T\n", 0.0)    // "float64"
+fmt.Printf("%T\n", 0i)     // "complex128"
+fmt.Printf("%T\n", '\000') // "int32" (rune)
+```
+
 
 ### Doubts and Solution
 
