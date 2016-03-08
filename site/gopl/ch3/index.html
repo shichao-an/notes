@@ -1528,6 +1528,63 @@ go command [arguments]
 </pre></div>
 
 
+<p>Only constants can be untyped. The constant is implicitly converted to the type of the variable if either of the following happens:</p>
+<ul>
+<li>The untyped constant is assigned to a variable (first statement in the example below).</li>
+<li>The untyped constant appears on the right-hand side of a variable declaration with an explicit type (the other three statements in the example below).</li>
+</ul>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">f</span> <span class="kt">float64</span> <span class="p">=</span> <span class="mi">3</span> <span class="o">+</span> <span class="m">0i</span> <span class="c1">// untyped complex -&gt; float64</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="mi">2</span>                  <span class="c1">// untyped integer -&gt; float64</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="mf">1e123</span>              <span class="c1">// untyped floating-point -&gt; float64</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="sc">&#39;a&#39;</span>                <span class="c1">// untyped rune -&gt; float64</span>
+</pre></div>
+
+
+<p>The statements above are equivalent to these:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">f</span> <span class="kt">float64</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="mi">3</span> <span class="o">+</span> <span class="m">0i</span><span class="p">)</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="mf">1e123</span><span class="p">)</span>
+<span class="nx">f</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="sc">&#39;a&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Whether implicit or explicit, converting a constant from one type to another requires that the target type can represent the original value. Rounding is allowed for real and complex floating-point numbers:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">deadbeef</span> <span class="p">=</span> <span class="mh">0xdeadbeef</span> <span class="c1">// untyped int with value 3735928559</span>
+    <span class="nx">a</span> <span class="p">=</span> <span class="nb">uint32</span><span class="p">(</span><span class="nx">deadbeef</span><span class="p">)</span>    <span class="c1">// uint32 with value 3735928559</span>
+    <span class="nx">b</span> <span class="p">=</span> <span class="nb">float32</span><span class="p">(</span><span class="nx">deadbeef</span><span class="p">)</span>   <span class="c1">// float32 with value 3735928576 (rounded up)</span>
+    <span class="nx">c</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="nx">deadbeef</span><span class="p">)</span>   <span class="c1">// float64 with value 3735928559 (exact)</span>
+    <span class="nx">d</span> <span class="p">=</span> <span class="nb">int32</span><span class="p">(</span><span class="nx">deadbeef</span><span class="p">)</span>     <span class="c1">// compile error: constant overflows int32</span>
+    <span class="nx">e</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="mf">1e309</span><span class="p">)</span>      <span class="c1">// compile error: constant overflows float64</span>
+    <span class="nx">f</span> <span class="p">=</span> <span class="nb">uint</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>            <span class="c1">// compile error: constant underflows uint</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>In a variable declaration without an explicit type (including <a href="../ch2/#short-variable-declarations">short variable declarations</a>), the flavor of the untyped constant implicitly determines the default type of the variable. For example:</p>
+<div class="codehilite"><pre><span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span>      <span class="c1">// untyped integer;        implicit int(0)</span>
+<span class="nx">r</span> <span class="o">:=</span> <span class="sc">&#39;\000&#39;</span> <span class="c1">// untyped rune;           implicit rune(&#39;\000&#39;)</span>
+<span class="nx">f</span> <span class="o">:=</span> <span class="mf">0.0</span>    <span class="c1">// untyped floating-point; implicit float64(0.0)</span>
+<span class="nx">c</span> <span class="o">:=</span> <span class="m">0i</span>     <span class="c1">// untyped complex;        implicit complex128(0i)</span>
+</pre></div>
+
+
+<p>In the above example, the asymmetry should be noted: untyped integers are converted to <u><code>int</code>, whose size is not guaranteed,</u> but untyped floating-point and complex numbers are converted to the explicitly sized types <code>float64</code> and <code>complex128</code>. <u>The language has no unsized <code>float</code> and <code>complex</code> types analogous to unsized <code>int</code></u>, because it is very difficult to write correct numerical algorithms without knowing the size of one’s floating-point data types.</p>
+<p>To give the variable a different type, we must explicitly convert the untyped constant to the desired type or state the desired type in the variable declaration. For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">i</span> <span class="p">=</span> <span class="nb">int8</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="kd">var</span> <span class="nx">i</span> <span class="kt">int8</span> <span class="p">=</span> <span class="mi">0</span>
+</pre></div>
+
+
+<p>These defaults are particularly important when converting an untyped constant to an interface value (<a href="../ch7/">Chapter 7</a>) since they determine its dynamic type.</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>      <span class="c1">// &quot;int&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>    <span class="c1">// &quot;float64&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="m">0i</span><span class="p">)</span>     <span class="c1">// &quot;complex128&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="sc">&#39;\000&#39;</span><span class="p">)</span> <span class="c1">// &quot;int32&quot; (rune)</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p53-on-bitwise-binary-operator"><strong>p53 on bitwise binary operator <code>&amp;^</code></strong></h5>
