@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 echo "index.py: building contents pages..."
 python index.py
