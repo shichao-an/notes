@@ -302,6 +302,18 @@ Function | Description
 
 When this option is set, [out-of-band data](https://en.wikipedia.org/wiki/Out-of-band_data) will be placed in the normal input queue (i.e., inline). When this occurs, the `MSG_OOB` flag to the receive functions cannot be used to read the out-of-band data. Out-of-band data is detailed in [Chapter 24](ch24.md).
 
+#### `SO_RCVBUF` and `SO_SNDBUF` Socket Options
+
+#### `SO_RCVLOWAT` and `SO_SNDLOWAT` Socket Options
+
+#### `SO_RCVTIMEO` and `SO_SNDTIMEO` Socket Options
+
+#### `SO_REUSEADDR` and `SO_REUSEPORT` Socket Options
+
+#### `SO_TYPE` Socket Option
+
+#### `SO_USELOOPBACK` Socket Option
+
 
 ### ICMPv6 Socket Option
 

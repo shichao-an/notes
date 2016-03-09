@@ -5,7 +5,7 @@
 This chapter focuses on the transport layer: TCP, UDP, and Stream Control Transmission Protocol (SCTP). UDP is a simple, unreliable datagram protocol, while TCP is a sophisticated, reliable byte-stream protocol. SCTP is similar to TCP as a reliable transport protocol, but it also provides message boundaries, transport-level support for multihoming, and a way to minimize head-of-line blocking.
 
 
-### The Big Picture 
+### The Big Picture
 
 Overview of TCP/IP protocols:
 
@@ -22,7 +22,7 @@ ARP | Address Resolution Protocol. ARP maps an IPv4 address into a hardware addr
 RARP | Reverse Address Resolution Protocol. RARP maps a hardware address into an IPv4 address. It is sometimes used when a diskless node is booting.
 ICMPv6 | Internet Control Message Protocol version 6. ICMPv6 combines the functionality of ICMPv4, IGMP, and ARP.
 BPF | [BSD packet filter](http://en.wikipedia.org/wiki/PF_(firewall)). This interface provides access to the datalink layer. It is normally found on Berkeley-derived kernels.
-DLPI | [Datalink provider interface](http://en.wikipedia.org/wiki/Data_Link_Provider_Interface). 
+DLPI | [Datalink provider interface](http://en.wikipedia.org/wiki/Data_Link_Provider_Interface).
 
 ### User Datagram Protocol (UDP)
 
@@ -65,7 +65,7 @@ The client's initial sequence number as *J* and the server's initial sequence nu
 
 #### TCP Options
 
-* MSS option. The TCP sending the SYN announces its **maximum segment size** (the maximum amount of data that it is willing to accept in each TCP segment)on this connection.
+* MSS option. The TCP sending the SYN announces its **maximum segment size** (the maximum amount of data that it is willing to accept in each TCP segment) on this connection.
 * Window scale option. [p38]
 * Timestamp option
 
@@ -92,7 +92,8 @@ There are 11 different states defined for a connection and the rules of TCP dict
 
 [![Figure 2.5. Packet exchange for TCP connection.](figure_2.5.png)](figure_2.5.png "Figure 2.5. Packet exchange for TCP connection.")
 
-The client in this example announces an MSS of 536 (**minimum reassembly buffer size**) and the server announces an MSS of 1,460 (typical for IPv4 on an Ethernet). It is okay for the MSS to be different in each direction. The acknowledgment of the client's request is sent with the server's reply. This is called **piggybacking** and will normally happen when the time it takes the server to process the request and generate the reply is less than around 200 ms. 
+The client in this example announces an MSS of 536 (**minimum reassembly buffer size**) and the server announces an MSS of 1,460 (typical for IPv4 on an Ethernet). It is okay for the MSS to be different in each direction. The acknowledgment of the client's request is sent with the server's reply. This is called **piggybacking** and will normally happen when the time it takes the server to process the request and generate the reply is less than around 200 ms.
+
 With TCP, there would be eight segments of overhead. If UDP was used, only two packets would be exchanged.
 
 * UDP removes all the reliability that TCP provides to the application.
@@ -159,13 +160,21 @@ Figures: [IPv4 Header](../tcpv1/ipv4_header.png), [IPv6 Header](../tcpv1/ipv6_he
 
 #### TCP Output
 
-Every TCP socket has a send buffer and we can change the size of this buffer with the `SO_SNDBUF` socket option. When an application calls `write`, the kernel copies all the data from the application buffer into the socket send buffer. If there is insufficient room in the socket buffer for all the application's data, the process is put to sleep. This assumes the normal default of a blocking socket. The kernel will not return from the write until the final byte in the application buffer has been copied into the socket send buffer. Therefore, <u>the successful return from a write to a TCP socket only tells us that we can reuse our application buffer. It does not tell us that either the peer TCP has received the data or that the peer application has received the data.</u>
+The following figure shows what happens when an application writes to a TCP socket:
+
+[![Figure 2.15. Steps and buffers involved when an application writes to a TCP socket.](figure_2.15.png)](figure_2.15.png "Figure 2.15. Steps and buffers involved when an application writes to a TCP socket.")
+
+Every TCP socket has a send buffer and we can change the size of this buffer with the [`SO_SNDBUF` socket option](ch7.md#so_rcvbuf-and-so_sndbuf-socket-options). When an application calls `write`, the kernel copies all the data from the application buffer into the socket send buffer. If there is insufficient room in the socket buffer for all the application's data, the process is put to sleep. This assumes the normal default of a blocking socket. The kernel will not return from the `write` until the final byte in the application buffer has been copied into the socket send buffer. Therefore, <u>the successful return from a write to a TCP socket only tells us that we can reuse our application buffer. It does not tell us that either the peer TCP has received the data or that the peer application has received the data.</u> This is discussed with [`SO_LINGER` socket option](ch7.md#so_linger-socket-option).
 
 <u>TCP takes the data in the socket send buffer and sends it to the peer TCP.</u> The peer TCP must acknowledge the data, and as the ACKs arrive from the peer, only then can our TCP discard the acknowledged data from the socket send buffer. TCP must keep a copy of our data until it is acknowledged by the peer.
 
 TCP sends the data to IP in MSS-sized or smaller chunks, prepending its TCP header to each segment, where the MSS is the value announced by the peer, or 536 if the peer did not send an MSS option. IP prepends its header, searches the routing table for the destination IP address, and passes the datagram to the appropriate datalink. IP might perform fragmentation before passing the datagram to the datalink, but one goal of the MSS option is to try to avoid fragmentation and newer implementations also use path MTU discovery. Each datalink has an output queue, and if this queue is full, the packet is discarded and an error is returned up the protocol stack [p58]
 
 #### UDP Output
+
+The following figure shows what happens when an application writes data to a UDP socket:
+
+[![Figure 2.16. Steps and buffers involved when an application writes to a UDP socket.](figure_2.16.png)](figure_2.16.png "Figure 2.16. Steps and buffers involved when an application writes to a UDP socket.")
 
 UDP socket doesn't have a socket send buffer, since it does not need to keep a copy of the application's data. It has a send buffer size (which we can change with the `SO_SNDBUF` socket option), but this is simply an upper limit on the maximum-sized UDP datagram that can be written to the socket. If an application writes a datagram larger than the socket send buffer size, `EMSGSIZE` is returned.
 
