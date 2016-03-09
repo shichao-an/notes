@@ -517,6 +517,12 @@
     
         <li class="main "><a href="#arrays">Arrays</a></li>
         
+            <li><a href="#array-literals">Array Literals *</a></li>
+        
+            <li><a href="#comparison-of-arrays">Comparison of Arrays *</a></li>
+        
+            <li><a href="#arrays-as-function-parameters">Arrays as Function Parameters *</a></li>
+        
     
     </ul>
 </div></div>
@@ -539,6 +545,105 @@
 </li>
 </ul>
 <h3 id="arrays">Arrays</h3>
+<p>An array is a fixed-length sequence of zero or more elements of a particular type.</p>
+<ul>
+<li>Arrays are rarely used directly in Go due to fixed length. Slices are commonly used due to versatililty.</li>
+<li>The built-in function <code>len</code> returns the number of elements in the array.</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">a</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span> <span class="c1">// array of 3 integers</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c1">// print the first element</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="c1">// print the last element, a[2]</span>
+
+<span class="c1">// Print the indices and elements.</span>
+<span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">a</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d %d\n&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// Print the elements only.</span>
+<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">a</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d\n&quot;</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>By default, the elements of an array are initially set to the <a href="https://golang.org/ref/spec#The_zero_value">zero value</a> for the element type.</p>
+<h4 id="array-literals">Array Literals *</h4>
+<p>An <strong>array literal</strong> can be used to initialize an array with a list of values:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">q</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span> <span class="p">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
+<span class="kd">var</span> <span class="nx">r</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span> <span class="p">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">r</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="c1">// &quot;0&quot;</span>
+</pre></div>
+
+
+<p>If an ellipsis "..." appears in place of the length, then the array length is determined by the number of initializers. The definition of <code>q</code> in the above example can be simplified to:</p>
+<div class="codehilite"><pre><span class="nx">q</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">q</span><span class="p">)</span> <span class="c1">// &quot;[3]int&quot;</span>
+</pre></div>
+
+
+<p>The size of an array is part of its type. For example, <code>[3]int</code> and <code>[4]int</code> are different types. The size must be a constant expression, whose value can be computed as the program is being compiled.</p>
+<div class="codehilite"><pre><span class="nx">q</span> <span class="o">:=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
+<span class="nx">q</span> <span class="p">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">}</span> <span class="c1">// compile error: cannot assign [4]int to [3]int</span>
+</pre></div>
+
+
+<p>The literal syntax is similar for arrays, slices, maps, and structs, as discussed later. Besides specifying a list of values in order, but it is also possible to specify a list of index and value pairs, for example:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Currency</span> <span class="kt">int</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">USD</span> <span class="nx">Currency</span> <span class="p">=</span> <span class="kc">iota</span>
+    <span class="nx">EUR</span>
+    <span class="nx">GBP</span>
+    <span class="nx">RMB</span>
+<span class="p">)</span>
+
+<span class="nx">symbol</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span><span class="nx">USD</span><span class="p">:</span> <span class="s">&quot;$&quot;</span><span class="p">,</span> <span class="nx">EUR</span><span class="p">:</span> <span class="s">&quot;€&quot;</span><span class="p">,</span> <span class="nx">GBP</span><span class="p">:</span> <span class="s">&quot;£&quot;</span><span class="p">,</span> <span class="nx">RMB</span><span class="p">:</span> <span class="s">&quot;¥&quot;</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">RMB</span><span class="p">,</span> <span class="nx">symbol</span><span class="p">[</span><span class="nx">RMB</span><span class="p">])</span> <span class="c1">// &quot;3 ¥&quot;</span>
+</pre></div>
+
+
+<p>Indices can appear in any order and some may be omitted. Unspecified values take on the zero value for the element type. For instance:</p>
+<div class="codehilite"><pre><span class="nx">r</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">99</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">}</span>
+</pre></div>
+
+
+<p>This defines an array <code>r</code> with 100 elements, all zero except for the last, which has value −1.</p>
+<h4 id="comparison-of-arrays">Comparison of Arrays *</h4>
+<p>If element type is comparable, then the array type is also comparable. We can directly compare two arrays of that type using the <code>==</code> operator, which reports whether all corresponding elements are equal. The <code>!=</code> operator is its negation.</p>
+<div class="codehilite"><pre><span class="nx">a</span> <span class="o">:=</span> <span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">b</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">c</span> <span class="o">:=</span> <span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span> <span class="o">==</span> <span class="nx">b</span><span class="p">,</span> <span class="nx">a</span> <span class="o">==</span> <span class="nx">c</span><span class="p">,</span> <span class="nx">b</span> <span class="o">==</span> <span class="nx">c</span><span class="p">)</span> <span class="c1">// &quot;true false false&quot;</span>
+<span class="nx">d</span> <span class="o">:=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span> <span class="o">==</span> <span class="nx">d</span><span class="p">)</span> <span class="c1">// compile error: cannot compare [2]int == [3]int</span>
+</pre></div>
+
+
+<p>[p83]</p>
+<h4 id="arrays-as-function-parameters">Arrays as Function Parameters *</h4>
+<p>When a function is called, a copy of each argument value is assigned to the corresponding parameter variable, so the function receives a copy, not the original. This also applies to arrays in Go. This behavior is different from languages that implicitly pass arrays by reference.</p>
+<p>Passing large arrays in this way can be inefficient, and any changes that the function makes to array elements affect only the copy, not the original. We can explicitly pass a pointer to an array. For example, the following function <code>zero</code> zeroes the contents of a <code>[32]byte</code> array:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">zero</span><span class="p">(</span><span class="nx">ptr</span> <span class="o">*</span><span class="p">[</span><span class="mi">32</span><span class="p">]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ptr</span> <span class="p">{</span>
+        <span class="nx">ptr</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="mi">0</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following function is a different version of <code>zero</code> that uses the array literal <code>[32]byte{}</code>, each element of which has the zero value (which is zero) for <code>byte</code>.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">zero</span><span class="p">(</span><span class="nx">ptr</span> <span class="o">*</span><span class="p">[</span><span class="mi">32</span><span class="p">]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">*</span><span class="nx">ptr</span> <span class="p">=</span> <span class="p">[</span><span class="mi">32</span><span class="p">]</span><span class="kt">byte</span><span class="p">{}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Passing a pointer to an array is efficient and allows the called function to mutate the caller’s variable. However, arrays are still inherently inflexible because of their fixed size. In the above example:</p>
+<ul>
+<li>The <code>zero</code> function will not accept a pointer to a <code>[16]byte</code> variable</li>
+<li>There is no way to add or remove array elements.</li>
+</ul>
+<p>For these reasons, other than special cases like <a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/sha256/main.go">SHA256’s fixed-size hash</a>, arrays are seldom used as function parameters and instead, slices are used.</p>
             </div>
         </div>
 
