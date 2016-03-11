@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/htae/ch5/">
+        <link rel="canonical" href="https://notes.shichao.io/unp/ch8/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>0x500 Shellcode - Shichao's Notes</title>
+	<title>Chapter 8. Elementary UDP Sockets - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -205,44 +205,44 @@
                       
                     </ul>
                 </li>
-            <li class="dropdown">
+            <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">UNP <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li>
-                            <a href="../../unp/">Contents</a>
+                            <a href="../">Contents</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch1/">Chapter 1. Introduction</a>
+                            <a href="../ch1/">Chapter 1. Introduction</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
+                            <a href="../ch2/">Chapter 2. The Transport Layer: TCP, UDP, and SCTP</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch3/">Chapter 3. Sockets Introduction</a>
+                            <a href="../ch3/">Chapter 3. Sockets Introduction</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch4/">Chapter 4. Elementary TCP Sockets</a>
+                            <a href="../ch4/">Chapter 4. Elementary TCP Sockets</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch5/">Chapter 5. TCP Client/Server Example</a>
+                            <a href="../ch5/">Chapter 5. TCP Client/Server Example</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
+                            <a href="../ch6/">Chapter 6. I/O Multiplexing: The select and poll Functions</a>
                         </li>
                       
                         <li>
-                            <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
+                            <a href="../ch7/">Chapter 7. Socket Options</a>
                         </li>
                       
-                        <li>
-                            <a href="../../unp/ch8/">Chapter 8. Elementary UDP Sockets</a>
+                        <li class="active">
+                            <a href="./">Chapter 8. Elementary UDP Sockets</a>
                         </li>
                       
                     </ul>
@@ -498,7 +498,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/htae/ch5.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/unp/ch8.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -516,7 +516,55 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#0x500-shellcode">0x500 Shellcode</a></li>
+        <li class="main active"><a href="#chapter-8-elementary-udp-sockets">Chapter 8. Elementary UDP Sockets</a></li>
+        
+    
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#recvfrom-and-sendto-functions">recvfrom and sendto Functions</a></li>
+        
+    
+        <li class="main "><a href="#udp-echo-server-main-function">UDP Echo Server: main Function</a></li>
+        
+    
+        <li class="main "><a href="#udp-echo-server-dg_echo-function">UDP Echo Server: dg_echo Function</a></li>
+        
+    
+        <li class="main "><a href="#udp-echo-client-main-function">UDP Echo Client: main Function</a></li>
+        
+    
+        <li class="main "><a href="#udp-echo-client-dg_cli-function">UDP Echo Client: dg_cli Function</a></li>
+        
+    
+        <li class="main "><a href="#lost-datagrams">Lost Datagrams</a></li>
+        
+    
+        <li class="main "><a href="#verifying-received-response">Verifying Received Response</a></li>
+        
+    
+        <li class="main "><a href="#server-not-running">Server Not Running</a></li>
+        
+    
+        <li class="main "><a href="#summary-of-udp-example">Summary of UDP Example</a></li>
+        
+    
+        <li class="main "><a href="#connect-function-with-udp">connect Function with UDP</a></li>
+        
+    
+        <li class="main "><a href="#dg_cli-function-revisited">dg_cli Function (Revisited)</a></li>
+        
+    
+        <li class="main "><a href="#lack-of-flow-control-with-udp">Lack of Flow Control with UDP</a></li>
+        
+    
+        <li class="main "><a href="#determining-outgoing-interface-with-udp">Determining Outgoing Interface with UDP</a></li>
+        
+    
+        <li class="main "><a href="#tcp-and-udp-echo-server-using-select">TCP and UDP Echo Server Using select</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
         
     
     </ul>
@@ -524,7 +572,23 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="0x500-shellcode"><strong>0x500 Shellcode</strong></h3>
+<h3 id="chapter-8-elementary-udp-sockets"><strong>Chapter 8. Elementary UDP Sockets</strong></h3>
+<h3 id="introduction">Introduction</h3>
+<h3 id="recvfrom-and-sendto-functions"><code>recvfrom</code> and <code>sendto</code> Functions</h3>
+<h3 id="udp-echo-server-main-function">UDP Echo Server: <code>main</code> Function</h3>
+<h3 id="udp-echo-server-dg_echo-function">UDP Echo Server: <code>dg_echo</code> Function</h3>
+<h3 id="udp-echo-client-main-function">UDP Echo Client: <code>main</code> Function</h3>
+<h3 id="udp-echo-client-dg_cli-function">UDP Echo Client: <code>dg_cli</code> Function</h3>
+<h3 id="lost-datagrams">Lost Datagrams</h3>
+<h3 id="verifying-received-response">Verifying Received Response</h3>
+<h3 id="server-not-running">Server Not Running</h3>
+<h3 id="summary-of-udp-example">Summary of UDP Example</h3>
+<h3 id="connect-function-with-udp"><code>connect</code> Function with UDP</h3>
+<h3 id="dg_cli-function-revisited"><code>dg_cli</code> Function (Revisited)</h3>
+<h3 id="lack-of-flow-control-with-udp">Lack of Flow Control with UDP</h3>
+<h3 id="determining-outgoing-interface-with-udp">Determining Outgoing Interface with UDP</h3>
+<h3 id="tcp-and-udp-echo-server-using-select">TCP and UDP Echo Server Using select</h3>
+<h3 id="summary">Summary</h3>
             </div>
         </div>
 

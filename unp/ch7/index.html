@@ -241,6 +241,10 @@
                             <a href="./">Chapter 7. Socket Options</a>
                         </li>
                       
+                        <li>
+                            <a href="../ch8/">Chapter 8. Elementary UDP Sockets</a>
+                        </li>
+                      
                     </ul>
                 </li>
             <li class="dropdown">
@@ -566,6 +570,10 @@
         
     
         <li class="main "><a href="#tcp-socket-options">TCP Socket Options</a></li>
+        
+            <li><a href="#tcp_maxseg-socket-option">TCP_MAXSEG Socket Option</a></li>
+        
+            <li><a href="#tcp_nodelay-socket-option">TCP_NODELAY Socket Option</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -1344,6 +1352,27 @@
 <h4 id="so_oobinline-socket-option"><code>SO_OOBINLINE</code> Socket Option</h4>
 <p>When this option is set, <a href="https://en.wikipedia.org/wiki/Out-of-band_data">out-of-band data</a> will be placed in the normal input queue (i.e., inline). When this occurs, the <code>MSG_OOB</code> flag to the receive functions cannot be used to read the out-of-band data. Out-of-band data is detailed in <a href="ch24.md">Chapter 24</a>.</p>
 <h4 id="so_rcvbuf-and-so_sndbuf-socket-options"><code>SO_RCVBUF</code> and <code>SO_SNDBUF</code> Socket Options</h4>
+<p>Every socket has a send buffer and a receive buffer. The <a href="../ch2/#tcp-output">operation of send buffers</a> are described in <a href="../figure_2.15.png">Figure 2.15</a> for TCP and <a href="../figure_2.16.png">Figure 2.16</a> for UDP.</p>
+<p>The receive buffers are used by TCP and UDP to hold received data until it is read by the application.</p>
+<ul>
+<li>With TCP, the available room in the socket receive buffer limits the window that TCP can advertise to the other end. The TCP socket receive buffer cannot overflow because the peer is not allowed to send data beyond the advertised window. This is TCP's <a href="https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Flow_control">flow control</a>, and if the peer ignores the advertised window and sends data beyond the window, the receiving TCP discards it.</li>
+<li>With UDP, when a datagram arrives that will not fit in the socket receive buffer, that datagram is discarded, because UDP has no flow control.<ul>
+<li>A fast sender can easily overwhelm a slower receiver, causing datagrams to be discarded by the receiver's UDP (<a href="../ch8/#lack-of-flow-control-with-udp">Section 8.13</a>).</li>
+<li>A fast sender can also overwhelm its own network interface, causing datagrams to be discarded by the sender itself.</li>
+</ul>
+</li>
+</ul>
+<p>The <code>SO_RCVBUF</code> and <code>SO_SNDBUF</code> socket options can change the default sizes. The default values differ widely between implementations:</p>
+<ul>
+<li>For TCP, older Berkeley-derived implementations would default the send and receive buffers to 4,096 bytes, but newer systems use larger values, anywhere from 8,192 to 61,440 bytes.</li>
+<li>The UDP send buffer size often defaults to a value around 9,000 bytes if the host supports NFS, and the UDP receive buffer size often defaults to a value around 40,000 bytes.</li>
+</ul>
+<p>When setting the size of the TCP socket receive buffer, the ordering of the function calls is important, because of TCP's window scale option (<a href="../ch2/#tcp-options">Section 2.6</a>), which is exchanged with the peer on the SYN segments when the connection is established:</p>
+<ul>
+<li>For a client, the <code>SO_RCVBUF</code> socket option must be set before calling <code>connect</code>.</li>
+<li>For a server, the <code>SO_RCVBUF</code> socket option must be set for the listening socket before calling <code>listen</code>.</li>
+</ul>
+<p>Setting <code>SO_RCVBUF</code> option for the connected socket will have no effect on the possible window scale option because <code>accept</code> does not return with the connected socket until TCP's three-way handshake is complete. That is why this option must be set for the listening socket. (The sizes of the socket buffers are always inherited from the listening socket by the newly created connected socket)</p>
 <h4 id="so_rcvlowat-and-so_sndlowat-socket-options"><code>SO_RCVLOWAT</code> and <code>SO_SNDLOWAT</code> Socket Options</h4>
 <h4 id="so_rcvtimeo-and-so_sndtimeo-socket-options"><code>SO_RCVTIMEO</code> and <code>SO_SNDTIMEO</code> Socket Options</h4>
 <h4 id="so_reuseaddr-and-so_reuseport-socket-options"><code>SO_REUSEADDR</code> and <code>SO_REUSEPORT</code> Socket Options</h4>
@@ -1352,6 +1381,8 @@
 <h3 id="icmpv6-socket-option">ICMPv6 Socket Option</h3>
 <h3 id="ipv6-socket-options">IPv6 Socket Options</h3>
 <h3 id="tcp-socket-options">TCP Socket Options</h3>
+<h4 id="tcp_maxseg-socket-option"><code>TCP_MAXSEG</code> Socket Option</h4>
+<h4 id="tcp_nodelay-socket-option"><code>TCP_NODELAY</code> Socket Option</h4>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <p>Section 7.5 on <code>SO_KEEPALIVE</code> Socket Option.</p>
