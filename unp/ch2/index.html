@@ -241,6 +241,10 @@
                             <a href="../ch7/">Chapter 7. Socket Options</a>
                         </li>
                       
+                        <li>
+                            <a href="../ch8/">Chapter 8. Elementary UDP Sockets</a>
+                        </li>
+                      
                     </ul>
                 </li>
             <li class="dropdown">
@@ -670,9 +674,12 @@
 <p>The client's initial sequence number as <em>J</em> and the server's initial sequence number as <em>K</em>. The acknowledgment number in an ACK is the next expected sequence number for the end sending the ACK. Since a SYN occupies one byte of the sequence number space, the acknowledgment number in the ACK of each SYN is the initial sequence number plus one.</p>
 <h4 id="tcp-options">TCP Options</h4>
 <ul>
-<li>MSS option. The TCP sending the SYN announces its <strong>maximum segment size</strong> (the maximum amount of data that it is willing to accept in each TCP segment) on this connection.</li>
-<li>Window scale option. [p38]</li>
-<li>Timestamp option</li>
+<li>MSS option. The TCP sending the SYN announces its <strong>maximum segment size</strong> (the maximum amount of data that it is willing to accept in each TCP segment) on this connection. The sending TCP uses the receiver's MSS value as the maximum size of a segment that it sends. <a href="../ch7/#tcp_maxseg-socket-option">Section 7.9</a> discusses how to fetch and set this TCP option with the <code>TCP_MAXSEG</code> socket option.</li>
+<li>Window scale option. The maximum window that the TCP can advertise to the other is 65,535, because the corresponding field in the TCP header occupies 16 bits. However, high-speed connections, common in today's Internet, or long delay paths (<a href="https://en.wikipedia.org/wiki/Satellite_link">satellite links</a>) require a larger window to obtain the maximum throughput possible. This newer option specifies that the advertised window in the TCP header must be scaled (left-shifted) by 0–14 bits, providing a maximum window of almost one gigabyte (65,535 x 2<sup>14</sup>). Both end-systems must support this option for the window scale to be used on a connection. <a href="../ch7/#so_rcvbuf-and-so_sndbuf-socket-options">Section 7.5</a> discusses how to affect this option with the <code>SO_RCVBUF</code> socket option.<ul>
+<li>To provide interoperability with older implementations that do not support this option, TCP can send the option with its SYN as part of an active open, but it can scale its windows only if the other end also sends the option with its SYN. Similarly, the server's TCP can send this option only if it receives the option with the client's SYN. Implementations ignore options that they do not understand.</li>
+</ul>
+</li>
+<li>Timestamp option. This option is needed for high-speed connections to prevent possible data corruption caused by old, delayed, or duplicated segments. Since it is a newer option, it is negotiated similarly to the window scale option.</li>
 </ul>
 <h4 id="tcp-connection-termination">TCP Connection Termination</h4>
 <p><a href="../figure_2.3.png" title="Figure 2.3. Packets exchanged when a TCP connection is closed."><img alt="Figure 2.3. Packets exchanged when a TCP connection is closed." src="../figure_2.3.png" /></a></p>

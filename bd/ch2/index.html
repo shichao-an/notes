@@ -241,6 +241,10 @@
                             <a href="../../unp/ch7/">Chapter 7. Socket Options</a>
                         </li>
                       
+                        <li>
+                            <a href="../../unp/ch8/">Chapter 8. Elementary UDP Sockets</a>
+                        </li>
+                      
                     </ul>
                 </li>
             <li class="dropdown">
@@ -531,6 +535,19 @@
             <li><a href="#benefits-of-the-fact-based-model">Benefits of the fact-based model</a></li>
         
     
+        <li class="main "><a href="#graph-schemas">Graph schemas</a></li>
+        
+            <li><a href="#elements-of-a-graph-schema">Elements of a graph schema</a></li>
+        
+            <li><a href="#the-need-for-an-enforceable-schema">The need for an enforceable schema</a></li>
+        
+    
+        <li class="main "><a href="#a-complete-data-model-for-superwebanalyticscom">A complete data model for SuperWebAnalytics.com</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -758,6 +775,54 @@ in the Lambda Architecture. Look at the batch and server layers in the figure be
 </li>
 </ul>
 <p>With all of these benefits, the fact-based model is an excellent choice for your master dataset.</p>
+<h3 id="graph-schemas">Graph schemas</h3>
+<p>The facts do not convey the structure behind data: there is no types of facts and no relationships between the facts. Graph schemas are graphs that capture the structure of a dataset stored using the fact-based model.</p>
+<h4 id="elements-of-a-graph-schema">Elements of a graph schema</h4>
+<p>The following figure depicts a graph schema representing the relationships between the FaceSpace facts. It provides a useful visualization of users, their individual information, and the friendships between them.</p>
+<p><a href="../figure_2.16.png" title="Figure 2.16 Visualizing the relationship between FaceSpace facts"><img alt="Figure 2.16 Visualizing the relationship between FaceSpace facts" src="../figure_2.16_600.png" /></a></p>
+<p>The three core components of a graph schema:</p>
+<ul>
+<li><strong>Nodes</strong> are the entities in the system. In this example, the nodes are the FaceSpace users, represented by a user ID</li>
+<li><strong>Edges</strong> are relationships between nodes.</li>
+<li><strong>Properties</strong> are information about entities.</li>
+</ul>
+<p>Edges are strictly between nodes. Even though properties and nodes are visually connected in the figure, these lines are not edges. They are present only to help illustrate the association between users and their personal information.</p>
+<h4 id="the-need-for-an-enforceable-schema">The need for an enforceable schema</h4>
+<p>We need to decide what format to store facts. A semistructured text format like JSON would provide simplicity and flexibility, allowing essentially anything to be written to the master dataset, but is too flexible for our needs. For example:</p>
+<div class="codehilite"><pre><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="nt">&quot;field&quot;</span><span class="p">:</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="mi">28</span><span class="p">,</span> <span class="nt">&quot;timestamp&quot;</span><span class="p">:</span> <span class="mi">1333589484</span><span class="p">}</span>
+</pre></div>
+
+
+<p>There are no issues with the representation of this single fact, but we cannot ensure that all subsequent facts will follow the same format. As a result of human error, the dataset could also possibly include facts like these:</p>
+<div class="codehilite"><pre><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;Alice&quot;</span><span class="p">,</span> <span class="nt">&quot;field&quot;</span><span class="p">:</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="mi">25</span><span class="p">,</span>
+<span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="s2">&quot;2012/03/29 08:12:24&quot;</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="nt">&quot;field&quot;</span><span class="p">:</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="mi">36</span><span class="p">}</span>
+</pre></div>
+
+
+<p>Both of these examples are valid JSON, but they have inconsistent formats or missing data (e.g. timestamp, which is important, as discussed in the last section). You must provide guarantees about the contents of your dataset.</p>
+<p>The solution is to use an enforceable schema that defines the structure of your facts. Enforceable schemas require a bit more work, but they guarantee all required fields are present and ensure all values are of the expected type. When a mistake is made creating a piece of data, an enforceable schema will give errors at that time, rather than when someone is trying to use the data later in a different system. The closer the error appears to the bug, the easier it is to catch and fix.</p>
+<p>The next chapter discusses how to implement an enforceable schema using a <em>serialization framework</em>, which provides a language-neutral way to define the nodes, edges, and properties of your schema. It then generates code (in different languages) that serializes and deserializes the objects in your schema so they can be stored in and retrieved from your master dataset.</p>
+<h3 id="a-complete-data-model-for-superwebanalyticscom">A complete data model for SuperWebAnalytics.com</h3>
+<p>This section uses the SuperWebAnalytics.com example. The following figure contains a graph schema suitable for our purpose.</p>
+<p><a href="../figure_2.17.png" title="Figure 2.17 The graph schema for SuperWebAnalytics.com. There are two node types: people and pages.  People nodes and their properties are slightly shaded to distinguish the two."><img alt="Figure 2.17 The graph schema for SuperWebAnalytics.com. There are two node types: people and pages.  People nodes and their properties are slightly shaded to distinguish the two." src="../figure_2.17_600.png" /></a></p>
+<p>There are two types of nodes: people and pages.</p>
+<ul>
+<li>Nodes: there are two distinct categories of people nodes to distinguish people with a known identity from people you can only identify using a web browser cookie.</li>
+<li>Edges are simple in this schema:<ul>
+<li>A <em>pageview</em> edge occurs between a person and a page for each distinct view</li>
+<li>An <em>equiv</em> edge occurs between two person nodes when they represent the same individual. This edge would occur when a person initially identified by only a cookie is fully identified at a later time.</li>
+</ul>
+</li>
+<li>Properties are self-explanatory.</li>
+</ul>
+<p>The fact-based model and graph schemas can evolve as different types of data become available.</p>
+<ul>
+<li>A graph schema provides a consistent interface to arbitrarily diverse data, so it's easy to incorporate new types of information.</li>
+<li>Schema additions are done by defining new node, edge, and property types. Due to the atomicity of facts, these additions do not affect previously existing fact types.</li>
+</ul>
+<h3 id="summary">Summary</h3>
+<p>The fact-based model provides a simple yet expressive representation of your data by naturally keeping a full history of each entity over time. Its append-only nature makes it easy to implement in a distributed system, and it can easily evolve as your data and your needs change.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p37-on-deleting-immutable-data"><strong>p37 on deleting immutable data</strong></h5>
