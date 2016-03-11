@@ -304,6 +304,27 @@ When this option is set, [out-of-band data](https://en.wikipedia.org/wiki/Out-of
 
 #### `SO_RCVBUF` and `SO_SNDBUF` Socket Options
 
+Every socket has a send buffer and a receive buffer. The [operation of send buffers](ch2.md#tcp-output) are described in [Figure 2.15](figure_2.15.png) for TCP and [Figure 2.16](figure_2.16.png) for UDP.
+
+The receive buffers are used by TCP and UDP to hold received data until it is read by the application.
+
+* With TCP, the available room in the socket receive buffer limits the window that TCP can advertise to the other end. The TCP socket receive buffer cannot overflow because the peer is not allowed to send data beyond the advertised window. This is TCP's [flow control](https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Flow_control), and if the peer ignores the advertised window and sends data beyond the window, the receiving TCP discards it.
+* With UDP, when a datagram arrives that will not fit in the socket receive buffer, that datagram is discarded, because UDP has no flow control.
+    * A fast sender can easily overwhelm a slower receiver, causing datagrams to be discarded by the receiver's UDP ([Section 8.13](ch8.md#lack-of-flow-control-with-udp)).
+    * A fast sender can also overwhelm its own network interface, causing datagrams to be discarded by the sender itself.
+
+The `SO_RCVBUF` and `SO_SNDBUF` socket options can change the default sizes. The default values differ widely between implementations:
+
+* For TCP, older Berkeley-derived implementations would default the send and receive buffers to 4,096 bytes, but newer systems use larger values, anywhere from 8,192 to 61,440 bytes.
+* The UDP send buffer size often defaults to a value around 9,000 bytes if the host supports NFS, and the UDP receive buffer size often defaults to a value around 40,000 bytes.
+
+When setting the size of the TCP socket receive buffer, the ordering of the function calls is important, because of TCP's window scale option ([Section 2.6](ch2.md#tcp-options)), which is exchanged with the peer on the SYN segments when the connection is established:
+
+* For a client, the `SO_RCVBUF` socket option must be set before calling `connect`.
+* For a server, the `SO_RCVBUF` socket option must be set for the listening socket before calling `listen`.
+
+Setting `SO_RCVBUF` option for the connected socket will have no effect on the possible window scale option because `accept` does not return with the connected socket until TCP's three-way handshake is complete. That is why this option must be set for the listening socket. (The sizes of the socket buffers are always inherited from the listening socket by the newly created connected socket)
+
 #### `SO_RCVLOWAT` and `SO_SNDLOWAT` Socket Options
 
 #### `SO_RCVTIMEO` and `SO_SNDTIMEO` Socket Options
@@ -320,6 +341,10 @@ When this option is set, [out-of-band data](https://en.wikipedia.org/wiki/Out-of
 ### IPv6 Socket Options
 
 ### TCP Socket Options
+
+#### `TCP_MAXSEG` Socket Option
+
+#### `TCP_NODELAY` Socket Option
 
 
 ### Doubts and Solutions
