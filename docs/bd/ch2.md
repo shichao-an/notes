@@ -288,6 +288,68 @@ The Lambda Architecture gives you the conceptual benefits of full normalization 
 
 With all of these benefits, the fact-based model is an excellent choice for your master dataset.
 
+### Graph schemas
+
+The facts do not convey the structure behind data: there is no types of facts and no relationships between the facts. Graph schemas are graphs that capture the structure of a dataset stored using the fact-based model.
+
+#### Elements of a graph schema
+
+The following figure depicts a graph schema representing the relationships between the FaceSpace facts. It provides a useful visualization of users, their individual information, and the friendships between them.
+
+[![Figure 2.16 Visualizing the relationship between FaceSpace facts](figure_2.16_600.png)](figure_2.16.png "Figure 2.16 Visualizing the relationship between FaceSpace facts")
+
+The three core components of a graph schema:
+
+* **Nodes** are the entities in the system. In this example, the nodes are the FaceSpace users, represented by a user ID
+* **Edges** are relationships between nodes.
+* **Properties** are information about entities.
+
+Edges are strictly between nodes. Even though properties and nodes are visually connected in the figure, these lines are not edges. They are present only to help illustrate the association between users and their personal information.
+
+#### The need for an enforceable schema
+
+We need to decide what format to store facts. A semistructured text format like JSON would provide simplicity and flexibility, allowing essentially anything to be written to the master dataset, but is too flexible for our needs. For example:
+
+```json
+{"id": 3, "field":"age", "value":28, "timestamp": 1333589484}
+```
+There are no issues with the representation of this single fact, but we cannot ensure that all subsequent facts will follow the same format. As a result of human error, the dataset could also possibly include facts like these:
+
+```json
+{"name":"Alice", "field":"age", "value":25,
+"timestamp":"2012/03/29 08:12:24"}
+{"id":2, "field":"age", "value":36}
+```
+
+Both of these examples are valid JSON, but they have inconsistent formats or missing data (e.g. timestamp, which is important, as discussed in the last section). You must provide guarantees about the contents of your dataset.
+
+The solution is to use an enforceable schema that defines the structure of your facts. Enforceable schemas require a bit more work, but they guarantee all required fields are present and ensure all values are of the expected type. When a mistake is made creating a piece of data, an enforceable schema will give errors at that time, rather than when someone is trying to use the data later in a different system. The closer the error appears to the bug, the easier it is to catch and fix.
+
+The next chapter discusses how to implement an enforceable schema using a *serialization framework*, which provides a language-neutral way to define the nodes, edges, and properties of your schema. It then generates code (in different languages) that serializes and deserializes the objects in your schema so they can be stored in and retrieved from your master dataset.
+
+### A complete data model for SuperWebAnalytics.com
+
+This section uses the SuperWebAnalytics.com example. The following figure contains a graph schema suitable for our purpose.
+
+[![Figure 2.17 The graph schema for SuperWebAnalytics.com. There are two node types: people and pages.  People nodes and their properties are slightly shaded to distinguish the two.](figure_2.17_600.png)](figure_2.17.png "Figure 2.17 The graph schema for SuperWebAnalytics.com. There are two node types: people and pages.  People nodes and their properties are slightly shaded to distinguish the two.")
+
+There are two types of nodes: people and pages.
+
+* Nodes: there are two distinct categories of people nodes to distinguish people with a known identity from people you can only identify using a web browser cookie.
+* Edges are simple in this schema:
+    * A *pageview* edge occurs between a person and a page for each distinct view
+    * An *equiv* edge occurs between two person nodes when they represent the same individual. This edge would occur when a person initially identified by only a cookie is fully identified at a later time.
+* Properties are self-explanatory.
+
+The fact-based model and graph schemas can evolve as different types of data become available.
+
+* A graph schema provides a consistent interface to arbitrarily diverse data, so it's easy to incorporate new types of information.
+* Schema additions are done by defining new node, edge, and property types. Due to the atomicity of facts, these additions do not affect previously existing fact types.
+
+### Summary
+
+The fact-based model provides a simple yet expressive representation of your data by naturally keeping a full history of each entity over time. Its append-only nature makes it easy to implement in a distributed system, and it can easily evolve as your data and your needs change.
+
 ### Doubts and Solutions
 
 #### Verbatim
