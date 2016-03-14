@@ -521,11 +521,20 @@
     
         <li class="main "><a href="#arrays">Arrays</a></li>
         
-            <li><a href="#array-literals">Array Literals *</a></li>
+            <li><a href="#array-literals">Array literals *</a></li>
         
-            <li><a href="#comparison-of-arrays">Comparison of Arrays *</a></li>
+            <li><a href="#comparison-of-arrays">Comparison of arrays *</a></li>
         
-            <li><a href="#arrays-as-function-parameters">Arrays as Function Parameters *</a></li>
+            <li><a href="#arrays-as-function-parameters">Arrays as function parameters *</a></li>
+        
+    
+        <li class="main "><a href="#slices">Slices</a></li>
+        
+            <li><a href="#components-of-a-slice">Components of a slice *</a></li>
+        
+            <li><a href="#substring-operation-and-slice-operator">Substring operation and slice operator *</a></li>
+        
+            <li><a href="#reversing-and-rotating-slices">Reversing and rotating slices *</a></li>
         
     
     </ul>
@@ -571,7 +580,7 @@
 
 
 <p>By default, the elements of an array are initially set to the <a href="https://golang.org/ref/spec#The_zero_value">zero value</a> for the element type.</p>
-<h4 id="array-literals">Array Literals *</h4>
+<h4 id="array-literals">Array literals *</h4>
 <p>An <strong>array literal</strong> can be used to initialize an array with a list of values:</p>
 <div class="codehilite"><pre><span class="kd">var</span> <span class="nx">q</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span> <span class="p">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
 <span class="kd">var</span> <span class="nx">r</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span> <span class="p">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
@@ -612,7 +621,7 @@
 
 
 <p>This defines an array <code>r</code> with 100 elements, all zero except for the last, which has value −1.</p>
-<h4 id="comparison-of-arrays">Comparison of Arrays *</h4>
+<h4 id="comparison-of-arrays">Comparison of arrays *</h4>
 <p>If element type is comparable, then the array type is also comparable. We can directly compare two arrays of that type using the <code>==</code> operator, which reports whether all corresponding elements are equal. The <code>!=</code> operator is its negation.</p>
 <div class="codehilite"><pre><span class="nx">a</span> <span class="o">:=</span> <span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
 <span class="nx">b</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
@@ -624,7 +633,7 @@
 
 
 <p>[p83]</p>
-<h4 id="arrays-as-function-parameters">Arrays as Function Parameters *</h4>
+<h4 id="arrays-as-function-parameters">Arrays as function parameters *</h4>
 <p>When a function is called, a copy of each argument value is assigned to the corresponding parameter variable, so the function receives a copy, not the original. This also applies to arrays in Go. This behavior is different from languages that implicitly pass arrays by reference.</p>
 <p>Passing large arrays in this way can be inefficient, and any changes that the function makes to array elements affect only the copy, not the original. We can explicitly pass a pointer to an array. For example, the following function <code>zero</code> zeroes the contents of a <code>[32]byte</code> array:</p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">zero</span><span class="p">(</span><span class="nx">ptr</span> <span class="o">*</span><span class="p">[</span><span class="mi">32</span><span class="p">]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">{</span>
@@ -648,6 +657,92 @@
 <li>There is no way to add or remove array elements.</li>
 </ul>
 <p>For these reasons, other than special cases like <a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/sha256/main.go">SHA256’s fixed-size hash</a>, arrays are seldom used as function parameters and instead, slices are used.</p>
+<h3 id="slices">Slices</h3>
+<p>Slices represent variable-length sequences whose elements all have the same type. A slice type is written <code>[]T</code>, where the elements have type <code>T</code>. It looks like an array type without a size.</p>
+<p>A slice is a lightweight data structure that gives access to a subsequence of its <a href="https://golang.org/ref/spec#Slice_types"><em>underlying array</em></a>.</p>
+<h4 id="components-of-a-slice">Components of a slice *</h4>
+<p>A slice has three components:</p>
+<ul>
+<li><strong>Pointer</strong>: the pointer points to the first element of the array that is reachable through the slice, which is not necessarily the array's first element.</li>
+<li><strong>Length</strong>: the length is the number of slice elements. It can't exceed the capacity.</li>
+<li><strong>Capacity</strong>: the capacity is usually the number of elements between the start of the slice and the end of the underlying array.</li>
+</ul>
+<p>The built-in functions <code>len</code> and <code>cap</code> the values of length and capacity respectively.</p>
+<p>Multiple slices can share the same underlying array and may refer to overlapping parts of that array.</p>
+<p>The following figure shows an array of strings for the months of the year, and two overlapping slices of it. The array is declared as:</p>
+<div class="codehilite"><pre><span class="nx">months</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s">&quot;January&quot;</span><span class="p">,</span> <span class="cm">/* ... */</span><span class="p">,</span> <span class="mi">12</span><span class="p">:</span> <span class="s">&quot;December&quot;</span><span class="p">}</span>
+</pre></div>
+
+
+<p><a href="../figure_4.1.png" title="Figure 4.1. Two overlapping slices of an array of months."><img alt="Figure 4.1. Two overlapping slices of an array of months." src="../figure_4.1_600.png" /></a></p>
+<p>The slice operator <code>s[i:j]</code>, where 0 ≤ <code>i</code> ≤ <code>j</code> ≤ <code>cap(s)</code>, creates a new slice that refers to elements <code>i</code> through <code>j-1</code> of the sequence <code>s</code>. This sequence <code>s</code> may be any of the following:</p>
+<ul>
+<li>An array variable</li>
+<li>A pointer to an array</li>
+<li>Another slice</li>
+</ul>
+<p>The resulting slice has <code>j-i</code> elements. If <code>i</code> is omitted, it's 0, and if <code>j</code> is omitted, it's <code>len(s)</code>. For example:</p>
+<ul>
+<li>The slice <code>months[1:13]</code> refers to the whole range of valid months, as does the slice <code>months[1:]</code>.</li>
+<li>The slice <code>months[:]</code> refers to the whole array.</li>
+</ul>
+<p>Overlapping slices in the figure are defined like this:</p>
+<div class="codehilite"><pre><span class="nx">Q2</span> <span class="o">:=</span> <span class="nx">months</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">7</span><span class="p">]</span>
+<span class="nx">summer</span> <span class="o">:=</span> <span class="nx">months</span><span class="p">[</span><span class="mi">6</span><span class="p">:</span><span class="mi">9</span><span class="p">]</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">Q2</span><span class="p">)</span>     <span class="c1">// [&quot;April&quot; &quot;May&quot; &quot;June&quot;]</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">summer</span><span class="p">)</span> <span class="c1">// [&quot;June&quot; &quot;July&quot; &quot;August&quot;]</span>
+</pre></div>
+
+
+<p>The following (inefficient) code is a test for common elements of the two slices, which outputs "June":</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">s</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">summer</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">q</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">Q2</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">s</span> <span class="o">==</span> <span class="nx">q</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s appears in both\n&quot;</span><span class="p">,</span> <span class="nx">s</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="substring-operation-and-slice-operator">Substring operation and slice operator *</h4>
+<p>The <a href="../ch3/#the-substring-operation">substring operation</a> on strings is similar to the slice operator on <code>[]byte</code> slices in that:</p>
+<ul>
+<li>Both are written <code>x[m:n]</code>.</li>
+<li>Both return a subsequence of the original bytes, sharing the underlying representation so that both operations take constant time.</li>
+</ul>
+<p>The expression <code>x[m:n]</code> yields a string if <code>x</code> is a string, or a <code>[]byte</code> if <code>x</code> is a <code>[]byte</code>.</p>
+<p>Since a slice contains a pointer to an element of an array, passing a slice to a function permits the function to modify the underlying array elements. In other words, copying a slice creates an <em>alias</em> (<a href="../ch2/#pointers">Section 2.3.2</a>) for the underlying array.</p>
+<h4 id="reversing-and-rotating-slices">Reversing and rotating slices *</h4>
+<p>The function <code>reverse</code> reverses the elements of an <code>[]int</code> slice in place, and it may be applied to slices of any length.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/rev/main.go">gopl.io/ch4/rev/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// reverse reverses a slice of ints in place.</span>
+<span class="kd">func</span> <span class="nx">reverse</span><span class="p">(</span><span class="nx">s</span> <span class="p">[]</span><span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">j</span><span class="p">;</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="p">=</span> <span class="nx">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nx">j</span><span class="o">-</span><span class="mi">1</span> <span class="p">{</span>
+        <span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="nx">s</span><span class="p">[</span><span class="nx">j</span><span class="p">]</span> <span class="p">=</span> <span class="nx">s</span><span class="p">[</span><span class="nx">j</span><span class="p">],</span> <span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To reverse the whole array <code>a</code>:</p>
+<div class="codehilite"><pre><span class="nx">a</span> <span class="o">:=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">}</span>
+<span class="nx">reverse</span><span class="p">(</span><span class="nx">a</span><span class="p">[:])</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span> <span class="c1">// &quot;[5 4 3 2 1 0]&quot;</span>
+</pre></div>
+
+
+<p>A simple way to <em>rotate</em> a slice left by <em>n</em> elements is to apply the <code>reverse</code> function three times: first to the leading n elements, then to the remaining elements, and finally to the whole slice.  (To rotate to the right, make the third call first.)</p>
+<div class="codehilite"><pre><span class="nx">s</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">}</span>
+<span class="c1">// Rotate s left by two positions.</span>
+<span class="nx">reverse</span><span class="p">(</span><span class="nx">s</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+<span class="nx">reverse</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span>
+<span class="nx">reverse</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="c1">// &quot;[2 3 4 5 0 1]&quot;</span>
+</pre></div>
+
+
+<p>In the above two examples, we can see that expression that initializes the slice <code>s</code> differs from that for the array <code>a</code>. A slice literal looks like an array literal, a sequence of values separated by commas and surrounded by braces, but the size is not given. <u>This implicitly creates an array variable of the right size and yields a slice that points to it.</u> As with <a href="#array-literals">array literals</a>, slice literals may specify the values in order, or give their indices explicitly, or use a mix of the two styles.</p>
             </div>
         </div>
 
