@@ -572,7 +572,7 @@
         
             <li><a href="#nested-functions">Nested Functions</a></li>
         
-            <li><a href="#types">Types</a></li>
+            <li><a href="#function-types">Function Types</a></li>
         
             <li><a href="#function-calls">Function Calls</a></li>
         
@@ -598,7 +598,13 @@
     
         <li class="main "><a href="#pointers">Pointers</a></li>
         
-            <li><a href="#void-pointers">void pointers</a></li>
+            <li><a href="#void-pointers">void Pointers</a></li>
+        
+            <li><a href="#initializing-pointers">Initializing Pointers</a></li>
+        
+            <li><a href="#pointer-operations">Pointer Operations</a></li>
+        
+            <li><a href="#qualifiers">Qualifiers</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -1455,7 +1461,7 @@ test2: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
 </pre></div>
 
 
-<h4 id="types">Types</h4>
+<h4 id="function-types">Function Types</h4>
 <p>Do not confuse "function type" and "function pointer type". The name of a function is a pointer to that function.</p>
 <div class="codehilite"><pre><span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="n">func_t</span><span class="p">)();</span>      <span class="c1">// function type</span>
 <span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="o">*</span><span class="n">func_ptr_t</span><span class="p">)();</span> <span class="c1">// function pointer type</span>
@@ -2020,7 +2026,7 @@ aaa; bbb; ccc;
 
 
 <h3 id="pointers">Pointers</h3>
-<h4 id="void-pointers"><code>void</code> pointers</h4>
+<h4 id="void-pointers"><code>void</code> Pointers</h4>
 <p><code>void*</code> (<code>void</code> pointer, or <a href="http://en.cppreference.com/w/c/language/pointer#Pointers_to_void">pointer to void</a>) is also called the "versatile pointer". It is able to store an address of any object, but does not have the type of this object. This means the pointer must be converted (to the correct type) before operating on the object. Pointer to object of any type can be implicitly converted to <code>void</code> pointer to void, and vice versa.</p>
 <p>The following code:</p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="nf">test</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
@@ -2049,6 +2055,94 @@ aaa; bbb; ccc;
 </pre></div>
 
 
+<h4 id="initializing-pointers">Initializing Pointers</h4>
+<p>A pointer can be initialized with an initializer:</p>
+<ul>
+<li>The null-pointer constant: <code>NULL</code>.</li>
+<li>A pointer of the same type, or a pointer of same type and with less qualifiers.</li>
+<li>A <code>void</code> pointer.</li>
+</ul>
+<p>A non-automatic or static pointer variable must be initialized using a compile-time constant expression, such as a function name.</p>
+<div class="codehilite"><pre><span class="kt">char</span> <span class="n">s</span><span class="p">[]</span> <span class="o">=</span> <span class="s">&quot;abc&quot;</span><span class="p">;</span>
+<span class="kt">char</span><span class="o">*</span> <span class="n">sp</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">xp</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+<span class="kt">void</span> <span class="nf">test</span><span class="p">()</span> <span class="p">{}</span>
+<span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="o">*</span><span class="n">test_t</span><span class="p">)();</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="k">static</span> <span class="kt">int</span><span class="o">*</span> <span class="n">sx</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+    <span class="k">static</span> <span class="n">test_t</span> <span class="n">t</span> <span class="o">=</span> <span class="n">test</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that in the above code, <code>typedef void(*test_t)()</code> declares a pointer type (as discussed in <a href="#function-types">a prior section</a>).</p>
+<h4 id="pointer-operations">Pointer Operations</h4>
+<h5 id="using-equality-operators"><strong>Using equality operators</strong> *</h5>
+<p>An <a href="http://en.cppreference.com/w/c/language/operator_comparison#Equality_operators">equality operator</a> can be used to determine two pointers point to the same object.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">*</span><span class="n">b</span><span class="p">;</span>
+<span class="n">a</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+<span class="n">b</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">a</span> <span class="o">==</span> <span class="n">b</span><span class="p">);</span>
+</pre></div>
+
+
+<h5 id="using-addition-operators"><strong>Using addition operators</strong> *</h5>
+<p>An addition operation on a pointer can get the pointer to the <em>n</em>-th element of the array. (See <a href="http://en.cppreference.com/w/c/language/operator_arithmetic#Pointer_arithmetic">pointer arithmetic</a>)</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d, %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">*</span><span class="p">(</span><span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">));</span>
+</pre></div>
+
+
+<h5 id="using-subtraction-operators"><strong>Using subtraction operators</strong> *</h5>
+<p>An subtraction operation on a pointer can get index number of the array element the pointer points to.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="n">p</span><span class="o">++</span><span class="p">;</span> <span class="n">p</span><span class="o">++</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">x</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">index</span><span class="p">]);</span>
+</pre></div>
+
+
+<h5 id="using-relational-operators"><strong>Using relational operators</strong> *</h5>
+<p>Using a <a href="http://en.cppreference.com/w/c/language/operator_comparison#Relational_operators">relation operator</a> to compare pointers is equivalent to comparing index numbers of array elements.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+
+<span class="kt">int</span><span class="o">*</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="n">p1</span><span class="o">++</span><span class="p">;</span> <span class="n">p2</span><span class="o">++</span><span class="p">;</span> <span class="n">p2</span><span class="o">++</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;p1 &lt; p2? %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">p1</span> <span class="o">&lt;</span> <span class="n">p2</span> <span class="o">?</span> <span class="s">&quot;Y&quot;</span> <span class="o">:</span> <span class="s">&quot;N&quot;</span><span class="p">);</span>
+</pre></div>
+
+
+<p>outputs:</p>
+<div class="codehilite"><pre>p1 &lt; p2? Y
+</pre></div>
+
+
+<h5 id="using-xi"><strong>Using <code>&amp;x[i]</code></strong></h5>
+<p><code>&amp;x[i]</code> can be used to get the pointer that points to the array element specified by index number <code>i</code>.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="o">*</span><span class="n">p</span> <span class="o">+=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</pre></div>
+
+
+<p>Note that <code>[]</code> takes precedence over <code>&amp;</code>, and <code>*</code> takes precedence over arithmetic operators.</p>
+<h4 id="qualifiers">Qualifiers</h4>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
