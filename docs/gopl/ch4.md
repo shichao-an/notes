@@ -35,7 +35,7 @@ for _, v := range a {
 
 By default, the elements of an array are initially set to the [zero value](https://golang.org/ref/spec#The_zero_value) for the element type.
 
-#### Array Literals *
+#### Array literals *
 
 An **array literal** can be used to initialize an array with a list of values:
 
@@ -83,7 +83,7 @@ r := [...]int{99: -1}
 
 This defines an array `r` with 100 elements, all zero except for the last, which has value −1.
 
-#### Comparison of Arrays *
+#### Comparison of arrays *
 
 If element type is comparable, then the array type is also comparable. We can directly compare two arrays of that type using the `==` operator, which reports whether all corresponding elements are equal. The `!=` operator is its negation.
 
@@ -98,7 +98,7 @@ fmt.Println(a == d) // compile error: cannot compare [2]int == [3]int
 
 [p83]
 
-#### Arrays as Function Parameters *
+#### Arrays as function parameters *
 
 When a function is called, a copy of each argument value is assigned to the corresponding parameter variable, so the function receives a copy, not the original. This also applies to arrays in Go. This behavior is different from languages that implicitly pass arrays by reference.
 
@@ -126,3 +126,108 @@ Passing a pointer to an array is efficient and allows the called function to mut
 * There is no way to add or remove array elements.
 
 For these reasons, other than special cases like [SHA256’s fixed-size hash](https://github.com/shichao-an/gopl.io/blob/master/ch4/sha256/main.go), arrays are seldom used as function parameters and instead, slices are used.
+
+### Slices
+
+Slices represent variable-length sequences whose elements all have the same type. A slice type is written `[]T`, where the elements have type `T`. It looks like an array type without a size.
+
+A slice is a lightweight data structure that gives access to a subsequence of its [*underlying array*](https://golang.org/ref/spec#Slice_types).
+
+#### Components of a slice *
+
+A slice has three components:
+
+* **Pointer**: the pointer points to the first element of the array that is reachable through the slice, which is not necessarily the array's first element.
+* **Length**: the length is the number of slice elements. It can't exceed the capacity.
+* **Capacity**: the capacity is usually the number of elements between the start of the slice and the end of the underlying array.
+
+The built-in functions `len` and `cap` the values of length and capacity respectively.
+
+Multiple slices can share the same underlying array and may refer to overlapping parts of that array.
+
+The following figure shows an array of strings for the months of the year, and two overlapping slices of it. The array is declared as:
+
+```go
+months := [...]string{1: "January", /* ... */, 12: "December"}
+```
+
+[![Figure 4.1. Two overlapping slices of an array of months.](figure_4.1_600.png)](figure_4.1.png "Figure 4.1. Two overlapping slices of an array of months.")
+
+The slice operator `s[i:j]`, where 0 ≤ `i` ≤ `j` ≤ `cap(s)`, creates a new slice that refers to elements `i` through `j-1` of the sequence `s`. This sequence `s` may be any of the following:
+
+* An array variable
+* A pointer to an array
+* Another slice
+
+The resulting slice has `j-i` elements. If `i` is omitted, it's 0, and if `j` is omitted, it's `len(s)`. For example:
+
+* The slice `months[1:13]` refers to the whole range of valid months, as does the slice `months[1:]`.
+* The slice `months[:]` refers to the whole array.
+
+Overlapping slices in the figure are defined like this:
+
+```go
+Q2 := months[4:7]
+summer := months[6:9]
+fmt.Println(Q2)     // ["April" "May" "June"]
+fmt.Println(summer) // ["June" "July" "August"]
+```
+
+The following (inefficient) code is a test for common elements of the two slices, which outputs "June":
+
+```go
+for _, s := range summer {
+	for _, q := range Q2 {
+		if s == q {
+			fmt.Printf("%s appears in both\n", s)
+		}
+	}
+}
+```
+
+#### Substring operation and slice operator *
+
+The [substring operation](ch3.md#the-substring-operation) on strings is similar to the slice operator on `[]byte` slices in that:
+
+* Both are written `x[m:n]`.
+* Both return a subsequence of the original bytes, sharing the underlying representation so that both operations take constant time.
+
+The expression `x[m:n]` yields a string if `x` is a string, or a `[]byte` if `x` is a `[]byte`.
+
+Since a slice contains a pointer to an element of an array, passing a slice to a function permits the function to modify the underlying array elements. In other words, copying a slice creates an *alias* ([Section 2.3.2](ch2.md#pointers)) for the underlying array.
+
+#### Reversing and rotating slices *
+
+The function `reverse` reverses the elements of an `[]int` slice in place, and it may be applied to slices of any length.
+
+<small>[gopl.io/ch4/rev/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/rev/main.go)</small>
+
+```go
+// reverse reverses a slice of ints in place.
+func reverse(s []int) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+```
+
+To reverse the whole array `a`:
+
+```go
+a := [...]int{0, 1, 2, 3, 4, 5}
+reverse(a[:])
+fmt.Println(a) // "[5 4 3 2 1 0]"
+```
+
+A simple way to *rotate* a slice left by *n* elements is to apply the `reverse` function three times: first to the leading n elements, then to the remaining elements, and finally to the whole slice.  (To rotate to the right, make the third call first.)
+
+```go
+s := []int{0, 1, 2, 3, 4, 5}
+// Rotate s left by two positions.
+reverse(s[:2])
+reverse(s[2:])
+reverse(s)
+fmt.Println(s) // "[2 3 4 5 0 1]"
+```
+
+In the above two examples, we can see that expression that initializes the slice `s` differs from that for the array `a`. A slice literal looks like an array literal, a sequence of values separated by commas and surrounded by braces, but the size is not given. <u>This implicitly creates an array variable of the right size and yields a slice that points to it.</u> As with [array literals](#array-literals), slice literals may specify the values in order, or give their indices explicitly, or use a mix of the two styles.

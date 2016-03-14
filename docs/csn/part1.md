@@ -848,7 +848,7 @@ func1: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
 test2: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
 ```
 
-#### Types
+#### Function Types
 
 Do not confuse "function type" and "function pointer type". The name of a function is a pointer to that function.
 
@@ -1458,7 +1458,7 @@ aaa; bbb; ccc;
 
 ### Pointers
 
-#### `void` pointers
+#### `void` Pointers
 
 `void*` (`void` pointer, or [pointer to void](http://en.cppreference.com/w/c/language/pointer#Pointers_to_void)) is also called the "versatile pointer". It is able to store an address of any object, but does not have the type of this object. This means the pointer must be converted (to the correct type) before operating on the object. Pointer to object of any type can be implicitly converted to `void` pointer to void, and vice versa.
 
@@ -1490,6 +1490,113 @@ will output:
 ```text
 33 22 11 00
 ```
+
+#### Initializing Pointers
+
+A pointer can be initialized with an initializer:
+
+* The null-pointer constant: `NULL`.
+* A pointer of the same type, or a pointer of same type and with less qualifiers.
+* A `void` pointer.
+
+A non-automatic or static pointer variable must be initialized using a compile-time constant expression, such as a function name.
+
+```c
+char s[] = "abc";
+char* sp = s;
+int x = 5;
+int* xp = &x;
+void test() {}
+typedef void(*test_t)();
+
+int main(int argc, char* argv[])
+{
+    static int* sx = &x;
+    static test_t t = test;
+    return EXIT_SUCCESS;
+}
+```
+
+Note that in the above code, `typedef void(*test_t)()` declares a pointer type (as discussed in [a prior section](#function-types)).
+
+#### Pointer Operations
+
+##### **Using equality operators** *
+
+An [equality operator](http://en.cppreference.com/w/c/language/operator_comparison#Equality_operators) can be used to determine two pointers point to the same object.
+
+```c
+int x = 1;
+
+int *a, *b;
+a = &x;
+b = &x;
+
+printf("%d\n", a == b);
+```
+
+##### **Using addition operators** *
+
+An addition operation on a pointer can get the pointer to the *n*-th element of the array. (See [pointer arithmetic](http://en.cppreference.com/w/c/language/operator_arithmetic#Pointer_arithmetic))
+
+```c
+int x[] = { 1, 2, 3 };
+int* p = x;
+
+printf("%d, %d\n", x[1], *(p + 1));
+```
+
+##### **Using subtraction operators** *
+
+An subtraction operation on a pointer can get index number of the array element the pointer points to.
+
+```c
+int x[] = { 1, 2, 3 };
+
+int* p = x;
+p++; p++;
+int index = p - x;
+
+printf("x[%d] = %d\n", index, x[index]);
+```
+
+##### **Using relational operators** *
+
+Using a [relation operator](http://en.cppreference.com/w/c/language/operator_comparison#Relational_operators) to compare pointers is equivalent to comparing index numbers of array elements.
+
+The following code:
+
+```c
+int x[] = { 1, 2, 3 };
+
+int* p1 = x;
+int* p2 = x;
+p1++; p2++; p2++;
+
+printf("p1 < p2? %s\n", p1 < p2 ? "Y" : "N");
+```
+
+outputs:
+
+```text
+p1 < p2? Y
+```
+
+##### **Using `&x[i]`**
+
+`&x[i]` can be used to get the pointer that points to the array element specified by index number `i`.
+
+```c
+int x[] = { 1, 2, 3 };
+int* p = &x[1];
+*p += 10;
+printf("%d\n", x[1]);
+```
+Note that `[]` takes precedence over `&`, and `*` takes precedence over arithmetic operators.
+
+#### Qualifiers
+
+
 
 
 ### Doubts and Solutions
