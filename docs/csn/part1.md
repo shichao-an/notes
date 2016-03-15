@@ -1596,7 +1596,31 @@ Note that `[]` takes precedence over `&`, and `*` takes precedence over arithmet
 
 #### Qualifiers
 
+The `const` qualifier can be used to declare:
 
+* A constant of pointer type.
+* A pointer that points to a constant.
+
+```c
+int x[] = { 1, 2, 3 };
+
+// constant of pointer type: the pointer itself is a constant, which cannot
+// be modified, but the object it points to can be modified
+int* const p1 = x;
+*(p1 + 1) = 22;
+printf("%d\n", x[1]);
+
+// pointer that points to a constant: the object it points to is a constant,
+// which cannot be modified, but the pointer can be modified
+int const *p2 = x;  // equivalent to: const int *p2 = x;
+p2++;
+printf("%d\n", *p2);
+```
+
+They differ in whether `const` qualifies `p` or `*p`.
+o
+
+A pointer with a [`restrict`](http://en.cppreference.com/w/c/language/restrict) qualifier is called a restrict-qualified pointer (or restrict pointer). It suggests to the compiler that during the `lifetime` of the pointer it is only allowed to modify the object through this pointer, but the complier can decide on its own whether to adopt this suggestion.
 
 
 ### Doubts and Solutions
