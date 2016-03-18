@@ -34,22 +34,22 @@ This chapter is about designing a data model for the master dataset and the prop
 
 ### The properties of data
 
-Suppose you’re designing the next big social network: FaceSpace.  When a new user, Tom, joins your site, he starts to invite his friends and family. What information should you store regarding Tom’s connections?  You have a number of choices, including the following:
+Suppose you're designing the next big social network: FaceSpace.  When a new user, Tom, joins your site, he starts to invite his friends and family. What information should you store regarding Tom's connections?  You have a number of choices, including the following:
 
-* The sequence of Tom’s friend and unfriend events
-* Tom’s current list of friends
-* Tom’s current number of friends
+* The sequence of Tom's friend and unfriend events
+* Tom's current list of friends
+* Tom's current number of friends
 
 The following figure exhibits these options and their relationships.
 
-[![Figure 2.2 Three possible options for storing friendship information for FaceSpace. Each option can be derived from the one to its left, but it’s a one-way process.](figure_2.2_600.png)](figure_2.2.png "Figure 2.2 Three possible options for storing friendship information for FaceSpace. Each option can be derived from the one to its left, but it’s a one-way process.")
+[![Figure 2.2 Three possible options for storing friendship information for FaceSpace. Each option can be derived from the one to its left, but it's a one-way process.](figure_2.2_600.png)](figure_2.2.png "Figure 2.2 Three possible options for storing friendship information for FaceSpace. Each option can be derived from the one to its left, but it's a one-way process.")
 
-This example illustrates information dependency. Each layer of information can be derived from the previous one (the one to its left), but it’s a one-way process. [p29]
+This example illustrates information dependency. Each layer of information can be derived from the previous one (the one to its left), but it's a one-way process. [p29]
 
 The notion of dependency shapes the definitions of the terms:
 
-* **Information** is the general collection of knowledge relevant to your Big Data system. It’s synonymous with the colloquial usage of the word *data*.
-* **Data** refers to the information that can’t be derived from anything else. Data serves as the axioms from which everything else derives.
+* **Information** is the general collection of knowledge relevant to your Big Data system. It's synonymous with the colloquial usage of the word *data*.
+* **Data** refers to the information that can't be derived from anything else. Data serves as the axioms from which everything else derives.
 * **Queries** are questions you ask of your data.
     * For example, you query your financial transaction history to determine your current bank account balance.
 * **Views** are information that has been derived from your base data. They are built to assist with answering specific types of queries.
@@ -58,9 +58,9 @@ The following figure illustrates the FaceSpace information dependency in terms o
 
 [![Figure 2.3 The relationships between data, views, and queries](figure_2.3_600.png)](figure_2.3.png "Figure 2.3 The relationships between data, views, and queries")
 
-<u>One person’s data can be another’s view.</u> Suppose an advertising firm creates a crawler that scrapes demographic information from user profiles on FaceSpace. FaceSpace has complete access to all the information Tom provided. For example, his complete birthdate is March 13, 1984, but he only makes his birthday (March 13) available on his public profile. His birthday is a view from FaceSpace’s perspective because it’s derived from his birthdate, but it’s data to the advertiser because they have limited information about Tom. This relationship is shown in the figure below:
+<u>One person's data can be another's view.</u> Suppose an advertising firm creates a crawler that scrapes demographic information from user profiles on FaceSpace. FaceSpace has complete access to all the information Tom provided. For example, his complete birthdate is March 13, 1984, but he only makes his birthday (March 13) available on his public profile. His birthday is a view from FaceSpace's perspective because it's derived from his birthdate, but it's data to the advertiser because they have limited information about Tom. This relationship is shown in the figure below:
 
-[![Figure 2.4 Classifying information as data or a view depends on your perspective. To FaceSpace, Tom’s birthday is a view because it’s derived from the user’s birthdate. But the birthday is considered data to a third-party advertiser.](figure_2.4_600.png)](figure_2.4.png "Figure 2.4 Classifying information as data or a view depends on your perspective. To FaceSpace, Tom’s birthday is a view because it’s derived from the user’s birthdate. But the birthday is considered data to a third-party advertiser.")
+[![Figure 2.4 Classifying information as data or a view depends on your perspective. To FaceSpace, Tom's birthday is a view because it's derived from the user's birthdate. But the birthday is considered data to a third-party advertiser.](figure_2.4_600.png)](figure_2.4.png "Figure 2.4 Classifying information as data or a view depends on your perspective. To FaceSpace, Tom's birthday is a view because it's derived from the user's birthdate. But the birthday is considered data to a third-party advertiser.")
 
 Having established a shared vocabulary, the key properties of data can be introduced:
 
@@ -74,9 +74,9 @@ These three key concepts is foundational to understanding Big Data systems.
 
 #### Data is raw
 
-A data system answers questions about information acquired in the past. You want to be able to answer as many questions as possible. You always want to store the rawest data you can get your hands on. The rawer your data, the more information you can deduce from it, and the more questions you can ask of it. In the previous FaceSpace example, FaceSpace data is more valuable than the advertiser’s.
+A data system answers questions about information acquired in the past. You want to be able to answer as many questions as possible. You always want to store the rawest data you can get your hands on. The rawer your data, the more information you can deduce from it, and the more questions you can ask of it. In the previous FaceSpace example, FaceSpace data is more valuable than the advertiser's.
 
-Stock market trading has millions of shares and billions of dollars changing a daily basis. Historically, stock prices are recorded daily as an opening price, high price, low price, and closing price. However, those bits of data often don’t provide the big picture and can potentially skew your perception of what happened.
+Stock market trading has millions of shares and billions of dollars changing a daily basis. Historically, stock prices are recorded daily as an opening price, high price, low price, and closing price. However, those bits of data often don't provide the big picture and can potentially skew your perception of what happened.
 
 In the following figure, for example, it records the price data for Google, Apple, and Amazon stocks on a day when Google announced new products targeted at their competitors.
 
@@ -84,12 +84,12 @@ In the following figure, for example, it records the price data for Google, Appl
 
 This data suggests that:
 
-* Amazon may not have been affected by Google’s announcement, as its stock price moved only slightly.
+* Amazon may not have been affected by Google's announcement, as its stock price moved only slightly.
 * The announcement had either no effect on Apple, or a positive effect.
 
 At a finer time granularity, you can get a clearer picture of the events and probe into potential cause and effect relationships. The following figure depicts the minute-by-minute relative changes in the stock prices, which suggests that both Amazon and Apple were indeed affected by the announcement, Amazon more so than Apple.
 
-[![Figure 2.6 Relative stock price changes of Google, Apple, and Amazon on June 27, 2012, compared to closing prices on June 26 (www.google.com/finance). Short-term analysis isn’t supported by daily records but can be performed by storing data at finer time resolutions.](figure_2.6_600.png)](figure_2.6.png "Figure 2.6 Relative stock price changes of Google, Apple, and Amazon on June 27, 2012, compared to closing prices on June 26 (www.google.com/finance). Short-term analysis isn’t supported by daily records but can be performed by storing data at finer time resolutions.")
+[![Figure 2.6 Relative stock price changes of Google, Apple, and Amazon on June 27, 2012, compared to closing prices on June 26 (www.google.com/finance). Short-term analysis isn't supported by daily records but can be performed by storing data at finer time resolutions.](figure_2.6_600.png)](figure_2.6.png "Figure 2.6 Relative stock price changes of Google, Apple, and Amazon on June 27, 2012, compared to closing prices on June 26 (www.google.com/finance). Short-term analysis isn't supported by daily records but can be performed by storing data at finer time resolutions.")
 
 [p32]
 
@@ -101,28 +101,28 @@ The following texts discuss what information you should store as your raw data.
 
 When deciding what raw data to store, a common hazy area is the line between *parsing* and *semantic normalization*. Semantic normalization is the process of reshaping free-form information into a structured form of data.
 
-For example, FaceSpace may request Tom’s location. He may input anything for that field, such as San Francisco, CA, SF, North Beach, etc. A semantic normalization algorithm would try to match the input with a known place, as show in the figure below:
+For example, FaceSpace may request Tom's location. He may input anything for that field, such as San Francisco, CA, SF, North Beach, etc. A semantic normalization algorithm would try to match the input with a known place, as show in the figure below:
 
-[![Figure 2.7 Semantic normalization of unstructured location responses to city, state, and country. A simple algorithm will normalize “North Beach” to NULL if it doesn’t recognize it as a San Francisco neighborhood.](figure_2.7_600.png)](figure_2.7.png "Figure 2.7 Semantic normalization of unstructured location responses to city, state, and country. A simple algorithm will normalize “North Beach” to NULL if it doesn’t recognize it as a San Francisco neighborhood.")
+[![Figure 2.7 Semantic normalization of unstructured location responses to city, state, and country. A simple algorithm will normalize “North Beach” to NULL if it doesn't recognize it as a San Francisco neighborhood.](figure_2.7_600.png)](figure_2.7.png "Figure 2.7 Semantic normalization of unstructured location responses to city, state, and country. A simple algorithm will normalize “North Beach” to NULL if it doesn't recognize it as a San Francisco neighborhood.")
 
-It’s better to store the unstructured string, because your semantic normalization algorithm may improve over time. If you store the unstructured string, you can renormalize that data at a later time when you have improved your algorithms. In the preceding example, you may later adapt the algorithm to recognize North Beach as a neighborhood in San Francisco, or you may want to use the neighborhood information for another purpose.
+It's better to store the unstructured string, because your semantic normalization algorithm may improve over time. If you store the unstructured string, you can renormalize that data at a later time when you have improved your algorithms. In the preceding example, you may later adapt the algorithm to recognize North Beach as a neighborhood in San Francisco, or you may want to use the neighborhood information for another purpose.
 
 As a rule of thumb:
 
 * If your algorithm for extracting the data is simple and accurate, like extracting an age from an HTML page, you should store the results of that algorithm.
 * If the algorithm is subject to change, due to improvements or broadening the requirements, store the unstructured form of the data.
 
-##### **More information doesn’t necessarily mean rawer data**
+##### **More information doesn't necessarily mean rawer data**
 
 Assume Tom is a blogger, and he wants to add his posts to his FaceSpace profile. What exactly should you store once Tom provides the URL of his blog?
 
-Storing the pure text of the blog entries is certainly a possibility. But any phrases in italics, boldface, or large font were deliberately emphasized by Tom and could prove useful in text analysis. For example, you could use this additional information for an index to make FaceSpace searchable. We’d thus argue that the annotated text entries are a rawer form of data than ASCII text strings.
+Storing the pure text of the blog entries is certainly a possibility. But any phrases in italics, boldface, or large font were deliberately emphasized by Tom and could prove useful in text analysis. For example, you could use this additional information for an index to make FaceSpace searchable. We'd thus argue that the annotated text entries are a rawer form of data than ASCII text strings.
 
-At the other end of the spectrum, you could also store the full HTML of Tom’s blog as your data. While it’s considerably more information in terms of total bytes, the color scheme, stylesheets, and JavaScript code of the site can’t be used to derive any additional information about Tom. They serve only as the container for the contents of the site and shouldn’t be part of your raw data.
+At the other end of the spectrum, you could also store the full HTML of Tom's blog as your data. While it's considerably more information in terms of total bytes, the color scheme, stylesheets, and JavaScript code of the site can't be used to derive any additional information about Tom. They serve only as the container for the contents of the site and shouldn't be part of your raw data.
 
 #### Data is immutable
 
-In relational database, update is one of the fundamental operations. However, for immutability in Big Data, you don’t update or delete data, you only add more.
+In relational database, update is one of the fundamental operations. However, for immutability in Big Data, you don't update or delete data, you only add more.
 
 ##### **Advantages of using immutable schema for Big Data systems** *
 
@@ -142,7 +142,7 @@ The following figure shows a mutable schema for FaceSpace user information. If T
 
 [![Figure 2.8 A mutable schema for FaceSpace user information. When details change—say, Tom moves to Los Angeles—previous values are overwritten and lost.](figure_2.8_600.png)](figure_2.8.png "Figure 2.8 A mutable schema for FaceSpace user information. When details change—say, Tom moves to Los Angeles—previous values are overwritten and lost.")
 
-With an immutable schema, rather than storing a current snapshot, you create a separate record every time a user’s information evolves. Accomplishing this requires two changes:
+With an immutable schema, rather than storing a current snapshot, you create a separate record every time a user's information evolves. Accomplishing this requires two changes:
 
 1. Track each field of user information in a separate table.
 2. Tie each unit of data to a moment in time when the information is known to be true.
@@ -153,7 +153,7 @@ The following figure shows a corresponding immutable schema for storing FaceSpac
 
 Instead of updating preexisting records, an immutable schema uses new records to represent changed information. An immutable schema thus can store multiple records for the same user.
 
-In the above figure, there are two location records for Tom (user ID #3), and because the data units are tied to particular times, they can both be true. <u>Tom’s current location involves a simple query on the data: look at all the locations, and pick the one with the most recent timestamp.</u> By keeping each field in a separate table, you only record the information that changed. This requires less space for storage and guarantees that each record is new information and is not simply carried over from the last record.
+In the above figure, there are two location records for Tom (user ID #3), and because the data units are tied to particular times, they can both be true. <u>Tom's current location involves a simple query on the data: look at all the locations, and pick the one with the most recent timestamp.</u> By keeping each field in a separate table, you only record the information that changed. This requires less space for storage and guarantees that each record is new information and is not simply carried over from the last record.
 
 A trade-off of the immutable approach is that it uses more storage than a mutable schema:
 
@@ -177,7 +177,7 @@ It is important to distinguish that the deleting we are referring to is a specia
 
 ### The fact-based model for representing data
 
-Data is the set of information that can’t be derived from anything else, but there are many ways to represent it within the master dataset, such as:
+Data is the set of information that can't be derived from anything else, but there are many ways to represent it within the master dataset, such as:
 
 * Traditional relational tables
 * Structured XML
@@ -192,7 +192,7 @@ The following figure depicts examples of facts about Tom from the FaceSpace data
 [![Figure 2.11 All of the raw data concerning Tom is deconstructed into timestamped, atomic units we call facts.](figure_2.11_600.png)](figure_2.11.png "Figure 2.11 All of the raw data concerning Tom is deconstructed into timestamped, atomic units we call facts.")
 
 * **Atomicity.** Facts are atomic and cannot be subdivided into smaller meaningful components.
-    * Collective data, such as Tom’s friend list in the figure, are represented as multiple, independent facts. As a consequence of being atomic, there’s no redundancy of information across distinct facts.
+    * Collective data, such as Tom's friend list in the figure, are represented as multiple, independent facts. As a consequence of being atomic, there's no redundancy of information across distinct facts.
 * **Timestamp.** Facts are timestamped to make them immutable and eternally true.
 
 ##### **Making Facts Identifiable**
@@ -209,7 +209,7 @@ struct PageView:
   String ip_address
 ```
 
-Facts using this structure don’t uniquely identify a particular pageview event. If multiple pageviews come in at the same time for the same URL from the same IP address, each pageview will have the exact same data record and there’s no way to tell whether they refer to distinct events or duplicate entries were accidentally introduced into your dataset.
+Facts using this structure don't uniquely identify a particular pageview event. If multiple pageviews come in at the same time for the same URL from the same IP address, each pageview will have the exact same data record and there's no way to tell whether they refer to distinct events or duplicate entries were accidentally introduced into your dataset.
 
 To distinguish different pageviews, you can add a *nonce* (a 64-bit number randomly generated for each pageview) to your schema :
 
@@ -225,11 +225,11 @@ The addition of the nonce makes it possible to distinguish pageview events from 
 
 Making facts identifiable means that you can write the same fact to the master dataset multiple times without changing the semantics of the master dataset. Your queries can filter out the duplicate facts when doing their computations. Having distinguishable facts makes implementing the rest of the Lambda Architecture much easier.
 
-##### **Duplicates aren’t as rare as you might think**
+##### **Duplicates aren't as rare as you might think**
 
-Once FaceSpace becomes a hit, it will require hundreds, then thousands, of web servers. Building the master dataset will require aggregating the data from each of these servers to a central system—no trivial task. There are data collection tools suitable for this situation: Facebook’s [Scribe](https://en.wikipedia.org/wiki/Scribe_(log_server)), [Apache Flume](https://en.wikipedia.org/wiki/Apache_Flume), [syslog-ng](https://en.wikipedia.org/wiki/Syslog-ng), etc., but any solution must be fault tolerant.
+Once FaceSpace becomes a hit, it will require hundreds, then thousands, of web servers. Building the master dataset will require aggregating the data from each of these servers to a central system—no trivial task. There are data collection tools suitable for this situation: Facebook's [Scribe](https://en.wikipedia.org/wiki/Scribe_(log_server)), [Apache Flume](https://en.wikipedia.org/wiki/Apache_Flume), [syslog-ng](https://en.wikipedia.org/wiki/Syslog-ng), etc., but any solution must be fault tolerant.
 
-A common "fault" these systems must anticipate is a network partition where the destination datastore becomes unavailable. Fault-tolerant systems commonly handle failed operations by retrying until they succeed. Because the sender will not know which data was last received, a standard approach is to resend all data yet to be acknowledged by the recipient. But if part of the original attempt did make it to the metastore, you’d end up with duplicates in your dataset. This approach is simpler and has less performance costs than the transactional approach. By embracing distinguishable facts, it removes the need for transactional appends to the master dataset and make it easier to reason about the correctness of the full system.
+A common "fault" these systems must anticipate is a network partition where the destination datastore becomes unavailable. Fault-tolerant systems commonly handle failed operations by retrying until they succeed. Because the sender will not know which data was last received, a standard approach is to resend all data yet to be acknowledged by the recipient. But if part of the original attempt did make it to the metastore, you'd end up with duplicates in your dataset. This approach is simpler and has less performance costs than the transactional approach. By embracing distinguishable facts, it removes the need for transactional appends to the master dataset and make it easier to reason about the correctness of the full system.
 
 #### Benefits of the fact-based model
 
@@ -262,7 +262,7 @@ Normalization is an overloaded term. Data normalization is completely unrelated 
 
 ##### **Normalization and denormalization** *
 
-Relational tables require you to choose between normalized and denormalized schemas based on what’s most important to you: query efficiency or data consistency. Suppose you wanted to store the employment information. The following figure offers a simple denormalized schema.
+Relational tables require you to choose between normalized and denormalized schemas based on what's most important to you: query efficiency or data consistency. Suppose you wanted to store the employment information. The following figure offers a simple denormalized schema.
 
 [![Figure 2.13 A simple denormalized schema for storing employment information](figure_2.13_600.png)](figure_2.13.png "Figure 2.13 A simple denormalized schema for storing employment information")
 
