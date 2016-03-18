@@ -519,12 +519,132 @@
         <li class="main active"><a href="#chapter-3-data-model-for-big-data-illustration">Chapter 3. Data model for Big Data: Illustration</a></li>
         
     
+        <li class="main "><a href="#why-a-serialization-framework">Why a serialization framework?</a></li>
+        
+            <li><a href="#data-corruption">Data corruption *</a></li>
+        
+            <li><a href="#enforcing-schema">Enforcing schema *</a></li>
+        
+    
+        <li class="main "><a href="#apache-thrift">Apache Thrift</a></li>
+        
+            <li><a href="#nodes">Nodes</a></li>
+        
+            <li><a href="#edges">Edges</a></li>
+        
+            <li><a href="#properties">Properties</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-3-data-model-for-big-data-illustration"><strong>Chapter 3. Data model for Big Data: Illustration</strong></h3>
+<p>The last chapter discusses the principles of forming a data model:</p>
+<ul>
+<li>The value of raw data</li>
+<li>Semantic normalization</li>
+<li>Importance of immutability</li>
+</ul>
+<p>This chapter is the first <em>illustration chapter</em>, which demonstrates the concepts of the previous chapter using real-world tools.</p>
+<h3 id="why-a-serialization-framework">Why a serialization framework?</h3>
+<p>Schemaless format, like JSON, is easy to get started. However, it quickly leads to problems due to bugs or misunderstandings between different developer and data corruption inevitably occurs. Data corruption errors are some of the most time-consuming to debug.</p>
+<h4 id="data-corruption">Data corruption *</h4>
+<p>Data corruption issues are hard to debug because there's very little context on how the corruption occurred. Typically the problem is noticed when there's an error downstream in the processing, long after the corrupt data was written.</p>
+<p>For example, you might get a null pointer exception due to a mandatory field being missing. You'll quickly realize that the problem is a missing field, but you'll have absolutely no information about how that data got there in the first place.</p>
+<h4 id="enforcing-schema">Enforcing schema *</h4>
+<p>Creating an enforceable schema is good because:</p>
+<ul>
+<li>You get errors at the time of writing the data, giving you full context as to how and why the data became invalid (like a <a href="https://en.wikipedia.org/wiki/Stack_trace">stack trace</a>).</li>
+<li>The error prevents the program from corrupting the master dataset by writing that data.</li>
+</ul>
+<p>Serialization frameworks are an easy approach to making an enforceable schema. They generate code for any languages for reading, writing, and validating objects that match your schema.</p>
+<h3 id="apache-thrift">Apache Thrift</h3>
+<p><a href="https://en.wikipedia.org/wiki/Apache_Thrift">Apache Thrift</a> (<a href="http://thrift.apache.org/">http://thrift.apache.org/</a>) is a tool that can be used to define statically typed, enforceable schemas. It provides an interface definition language to describe the schema in terms of generic data types, and this description can later be used to automatically generate the actual implementation in multiple programming languages.</p>
+<p>Other tools similar to Apache Thrift include <a href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protocol Buffers</a> and <a href="https://en.wikipedia.org/wiki/Apache_Avro">Avro</a>.</p>
+<p>The primary elements of Thrif are <em>struct</em> and <em>union</em> <a href="https://thrift.apache.org/docs/idl#definition">type definitions</a>. They're composed
+of other fields, such as:</p>
+<ul>
+<li>Primitive data types (strings, integers, longs, and doubles)</li>
+<li>Collections of other types (lists, maps, and sets)</li>
+<li>Other structs and unions</li>
+</ul>
+<p>The general usage is:</p>
+<ul>
+<li>Nodes: unions are useful for representing nodes.</li>
+<li>Edges: structs are natural representations of edges.</li>
+<li>Properties: combination of both.</li>
+</ul>
+<h4 id="nodes">Nodes</h4>
+<p>In the SuperWebAnalytics.com example, an individual is identified either by a user ID or a browser cookie, but not both. This pattern is common for nodes matches with a union data type: a single value that may have any of several representations.  In Thrift, unions are defined by listing all possible representations. For example:</p>
+<div class="codehilite"><pre><span class="kd">union</span><span class="w"> </span><span class="nc">PersonID</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">cookie</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="n">user_id</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">union</span><span class="w"> </span><span class="nc">PageID</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">url</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+
+
+<p>Unions can also be used for nodes with a single representation, which allows the schema to evolve as the data evolves.</p>
+<h4 id="edges">Edges</h4>
+<p><u>Each edge can be represented as a struct containing two nodes.</u> The name of an edge struct indicates the relationship it represents, and the fields in the edge struct contain the entities involved in the relationship. For example:</p>
+<div class="codehilite"><pre><span class="kd">struct</span><span class="w"> </span><span class="nc">EquivEdge</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PersonID</span><span class="w"> </span><span class="n">id1</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PersonID</span><span class="w"> </span><span class="n">id2</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">PageViewEdge</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PersonID</span><span class="w"> </span><span class="n">person</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PageID</span><span class="w"> </span><span class="n">page</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="n">nonce</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+
+
+<p>The fields of a Thrift struct can be denoted as <code>required</code> or <code>optional</code>. If a field is defined as required, then a value for that field must be provided, or else Thrift will give an error upon serialization or deserialization. Because each edge in a graph schema must have two nodes, they are required fields in this example.</p>
+<h4 id="properties">Properties</h4>
+<p>A property contains a node and a value for the property. The value can be one of many types, so it's best represented using a union structure. For example:</p>
+<div class="codehilite"><pre><span class="kd">union</span><span class="w"> </span><span class="nc">PagePropertyValue</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="n">page_views</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">PageProperty</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PageID</span><span class="w"> </span><span class="n">id</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PagePropertyValue</span><span class="w"> </span><span class="n">property</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+
+
+<p>The following example defines the properties for people. The location property is more complex and requires another struct (location) to be defined:</p>
+<div class="codehilite"><pre><span class="kd">struct</span><span class="w"> </span><span class="nc">Location</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">optional</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">city</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">optional</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">state</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="k">optional</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">country</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">enum</span><span class="w"> </span><span class="nc">GenderType</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="n">MALE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="n">FEMALE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">union</span><span class="w"> </span><span class="nc">PersonPropertyValue</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">full_name</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="n">GenderType</span><span class="w"> </span><span class="n">gender</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="n">Location</span><span class="w"> </span><span class="n">location</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">PersonProperty</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PersonID</span><span class="w"> </span><span class="n">id</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PersonPropertyValue</span><span class="w"> </span><span class="n">property</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+
+
+<p>In the location struct, the city, state, and country fields could have been stored as separate pieces of data. In this case, they're so closely related it makes sense to put them all into one struct as optional fields.</p>
             </div>
         </div>
 
