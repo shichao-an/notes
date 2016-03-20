@@ -529,10 +529,10 @@ char *sock_ntop(const struct sockaddr *sockaddr, socklen_t addrlen);
 
 #### Presentation format of `sock_ntop`
 
-* IPv4: dotted-decimal form, followed by a terminator (colon), followed by the decimal port number, followed by a null character
+* IPv4: dotted-decimal form, followed by a terminator (colon), followed by the decimal port number, followed by a null character.
     * The buffer size must be at least `INET_ADDRSTRLEN` plus 6 bytes for IPv4 (16 + 6 = 22)
 * IPv6: hex string form of an IPv6 address surrounded by brackets, followed by a terminator (colon), followed by the decimal port number, followed by a
-null character. Hence, the buffer size must be at least INET_ADDRSTRLEN plus 6 bytes
+null character.
     * The buffer size must be at least `INET6_ADDRSTRLEN` plus 8 bytes for IPv6 (46 + 8 = 54)
 
 #### `sock_ntop` definition
