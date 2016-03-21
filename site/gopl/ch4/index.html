@@ -536,6 +536,12 @@
         
             <li><a href="#reversing-and-rotating-slices">Reversing and rotating slices *</a></li>
         
+            <li><a href="#comparison-of-slices">Comparison of slices *</a></li>
+        
+            <li><a href="#the-zero-value-of-slices">The zero value of slices *</a></li>
+        
+            <li><a href="#the-append-function">The append Function</a></li>
+        
     
     </ul>
 </div></div>
@@ -743,6 +749,65 @@
 
 
 <p>In the above two examples, we can see that expression that initializes the slice <code>s</code> differs from that for the array <code>a</code>. A slice literal looks like an array literal, a sequence of values separated by commas and surrounded by braces, but the size is not given. <u>This implicitly creates an array variable of the right size and yields a slice that points to it.</u> As with <a href="#array-literals">array literals</a>, slice literals may specify the values in order, or give their indices explicitly, or use a mix of the two styles.</p>
+<h4 id="comparison-of-slices">Comparison of slices *</h4>
+<p>Unlike arrays, slices are not comparable, so we cannot use <code>==</code> to test whether two slices contain the same elements. The standard library provides the highly optimized <code>bytes.Equal</code> function for comparing two slices of bytes (<code>[]byte</code>).</p>
+<p>To compare other types of slice, we must do the comparison ourselves. For example:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">false</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">x</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="nx">x</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">!=</span> <span class="nx">y</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">false</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Although this "deep" equality test is natural and no more costly at run time than the <code>==</code> operator for arrays of strings, slice comparisons do not work this way. There are two reasons why deep equivalence is problematic:</p>
+<ol>
+<li>Unlike array elements, the elements of a slice are indirect, making it possible for a slice to contain itself. There is no simple, efficient and obvious way to deal with such cases.</li>
+<li>Because slice elements are indirect, a fixed slice value may contain different elements at different times as the contents of the underlying array are modified.<ul>
+<li><strong>Deep equivalence would make slices unsuitable for use as map keys.</strong> Because Go's map type (hash table) makes only shallow copies of its keys, it requires that equality for each key remain the same throughout the lifetime of the map.</li>
+<li><strong>Shallow equality test is useful but confusing.</strong> For reference types like pointers and channels, the <code>==</code> operator tests reference identity, that is, whether the two entities refer to the same thing. An analogous "shallow" equality test for slices could be useful, and it would solve the problem with maps, but the inconsistent treatment of slices and arrays by the <code>==</code> operator would be confusing. <u>The safest choice is to disallow slice comparisons altogether.</u></li>
+</ul>
+</li>
+</ol>
+<p>The only legal slice comparison is against <code>nil</code>:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">summer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<h4 id="the-zero-value-of-slices">The zero value of slices *</h4>
+<p>The zero value of a slice type is <code>nil</code>.</p>
+<ul>
+<li>A nil slice has no underlying array.</li>
+<li>A nil slice has length and capacity zero.</li>
+</ul>
+<p>There are also non-nil slices of length and capacity zero, such as <code>[]int{}</code> or <code>make([]int, 3)[3:]</code>.</p>
+<p>As with any type that can have nil values, the nil value of a particular slice type can be written using a conversion expression such as <code>[]int(nil)</code>.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">s</span> <span class="p">[]</span><span class="kt">int</span>    <span class="c1">// len(s) == 0, s == nil</span>
+<span class="nx">s</span> <span class="p">=</span> <span class="kc">nil</span>        <span class="c1">// len(s) == 0, s == nil</span>
+<span class="nx">s</span> <span class="p">=</span> <span class="p">[]</span><span class="nb">int</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span> <span class="c1">// len(s) == 0, s == nil</span>
+<span class="nx">s</span> <span class="p">=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{}</span>    <span class="c1">// len(s) == 0, s != nil</span>
+</pre></div>
+
+
+<p>To test whether a slice is empty, use <code>len(s) == 0</code>, not <code>s == nil</code>. Other than comparing equal to <code>nil</code>, a nil slice behaves like any other zero-length slice (for example, <code>reverse(nil)</code> is perfectly safe). <u>Unless clearly documented to the contrary, Go functions should treat all zero-length slices the same way, whether nil or non-nil.</u></p>
+<p>The built-in function <code>make</code> creates a slice of a specified element type, length, and capacity. The capacity argument may be omitted, in which case the capacity equals the length.</p>
+<div class="codehilite"><pre><span class="nb">make</span><span class="p">([]</span><span class="nx">T</span><span class="p">,</span> <span class="nx">len</span><span class="p">)</span>
+<span class="nb">make</span><span class="p">([]</span><span class="nx">T</span><span class="p">,</span> <span class="nx">len</span><span class="p">,</span> <span class="nx">cap</span><span class="p">)</span> <span class="c1">// same as make([]T, cap)[:len]</span>
+</pre></div>
+
+
+<ul>
+<li>In the first form, the slice is a view of the entire array.</li>
+<li>In the second, the slice is a view of only the array's first <code>len</code> elements, but its capacity includes the entire array. The additional elements are set aside for future growth.</li>
+</ul>
+<p>Behind the scene, <code>make</code> creates an unnamed array variable and returns a slice of it; the array is accessible only through the returned slice.</p>
+<h4 id="the-append-function">The <code>append</code> Function</h4>
             </div>
         </div>
 
