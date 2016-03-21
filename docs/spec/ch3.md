@@ -97,6 +97,34 @@ When a function ends the execution and returns, it calls a "return" CPU instruct
 
 Stack inspection is an invaluable tool for debugging and performance analysis. Stacks show the call path to current execution, which often answers *why* something is executing.
 
+##### **How to Read a Stack**
+
+The following example kernel stack (from Linux) shows the path taken for TCP transmission, as printed by a debugging tool:
+
+```text
+kernel`tcp_sendmsg+0x1
+kernel`inet_sendmsg+0x64
+kernel`sock_aio_write+0x13a
+kernel`do_sync_write+0xd2
+kernel`security_file_permission+0x2c
+kernel`rw_verify_area+0x61
+kernel`vfs_write+0x16d
+kernel`sys_write+0x4a
+kernel`sys_rt_sigprocmask+0x84
+kernel`system_call_fastpath+0x16
+```
+
+The top of the stack is shown as the first line. In this example, `tcp_sendmsg` is the name of the function currently executing. To the left and right of the function name are details typically included by debuggers:
+
+* The kernel module location (`kernel`).
+* The instruction offset (`0x1`, which refers to the address of the instruction within the function).
+
+The function that called `tcp_sendmsg()`, its parent, is `inet_sendmsg`.
+
+* By reading down the stack, the full ancestry can be seen: function, parent, grandparent, and so on.
+* By reading bottom-up, you can follow the path of execution to the current function: how we got here.
+
+[p90]
 
 ### Doubts and Solutions
 
