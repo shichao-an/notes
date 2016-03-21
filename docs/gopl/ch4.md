@@ -231,3 +231,72 @@ fmt.Println(s) // "[2 3 4 5 0 1]"
 ```
 
 In the above two examples, we can see that expression that initializes the slice `s` differs from that for the array `a`. A slice literal looks like an array literal, a sequence of values separated by commas and surrounded by braces, but the size is not given. <u>This implicitly creates an array variable of the right size and yields a slice that points to it.</u> As with [array literals](#array-literals), slice literals may specify the values in order, or give their indices explicitly, or use a mix of the two styles.
+
+#### Comparison of slices *
+
+Unlike arrays, slices are not comparable, so we cannot use `==` to test whether two slices contain the same elements. The standard library provides the highly optimized `bytes.Equal` function for comparing two slices of bytes (`[]byte`).
+
+To compare other types of slice, we must do the comparison ourselves. For example:
+
+```go
+func equal(x, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	for i := range x {
+	  if x[i] != y[i] {
+	  	return false
+		}
+	}
+	return true
+}
+```
+
+Although this "deep" equality test is natural and no more costly at run time than the `==` operator for arrays of strings, slice comparisons do not work this way. There are two reasons why deep equivalence is problematic:
+
+1. Unlike array elements, the elements of a slice are indirect, making it possible for a slice to contain itself. There is no simple, efficient and obvious way to deal with such cases.
+2. Because slice elements are indirect, a fixed slice value may contain different elements at different times as the contents of the underlying array are modified.
+    * **Deep equivalence would make slices unsuitable for use as map keys.** Because Go's map type (hash table) makes only shallow copies of its keys, it requires that equality for each key remain the same throughout the lifetime of the map.
+    * **Shallow equality test is useful but confusing.** For reference types like pointers and channels, the `==` operator tests reference identity, that is, whether the two entities refer to the same thing. An analogous "shallow" equality test for slices could be useful, and it would solve the problem with maps, but the inconsistent treatment of slices and arrays by the `==` operator would be confusing. <u>The safest choice is to disallow slice comparisons altogether.</u>
+
+The only legal slice comparison is against `nil`:
+
+```go
+if summer == nil { /* ... */ }
+```
+
+#### The zero value of slices *
+
+The zero value of a slice type is `nil`.
+
+* A nil slice has no underlying array.
+* A nil slice has length and capacity zero.
+
+There are also non-nil slices of length and capacity zero, such as `[]int{}` or `make([]int, 3)[3:]`.
+
+As with any type that can have nil values, the nil value of a particular slice type can be written using a conversion expression such as `[]int(nil)`.
+
+```go
+var s []int    // len(s) == 0, s == nil
+s = nil        // len(s) == 0, s == nil
+s = []int(nil) // len(s) == 0, s == nil
+s = []int{}    // len(s) == 0, s != nil
+```
+
+To test whether a slice is empty, use `len(s) == 0`, not `s == nil`. Other than comparing equal to `nil`, a nil slice behaves like any other zero-length slice (for example, `reverse(nil)` is perfectly safe). <u>Unless clearly documented to the contrary, Go functions should treat all zero-length slices the same way, whether nil or non-nil.</u>
+
+The built-in function `make` creates a slice of a specified element type, length, and capacity. The capacity argument may be omitted, in which case the capacity equals the length.
+
+```go
+make([]T, len)
+make([]T, len, cap) // same as make([]T, cap)[:len]
+```
+
+* In the first form, the slice is a view of the entire array.
+* In the second, the slice is a view of only the array's first `len` elements, but its capacity includes the entire array. The additional elements are set aside for future growth.
+
+Behind the scene, `make` creates an unnamed array variable and returns a slice of it; the array is accessible only through the returned slice.
+
+
+
+#### The `append` Function
