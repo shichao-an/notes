@@ -808,6 +808,113 @@
 </ul>
 <p>Behind the scene, <code>make</code> creates an unnamed array variable and returns a slice of it; the array is accessible only through the returned slice.</p>
 <h4 id="the-append-function">The <code>append</code> Function</h4>
+<p>The built-in <code>append</code> function appends items to slices:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">runes</span> <span class="p">[]</span><span class="kt">rune</span>
+<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">r</span> <span class="o">:=</span> <span class="k">range</span> <span class="s">&quot;Hello, 世界&quot;</span> <span class="p">{</span>
+    <span class="nx">runes</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">runes</span><span class="p">,</span> <span class="nx">r</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%q\n&quot;</span><span class="p">,</span> <span class="nx">runes</span><span class="p">)</span> <span class="c1">// &quot;[&#39;H&#39; &#39;e&#39; &#39;l&#39; &#39;l&#39; &#39;o&#39; &#39;,&#39; &#39;&#39; &#39;世&#39; &#39;界&#39;]&quot;</span>
+</pre></div>
+
+
+<p>The loop uses <code>append</code> to build the slice of nine runes encoded by the string literal. It is equivalent to using the built-in conversion: <code>[]rune("Hello, 世界")</code>.</p>
+<p>The following examples discusses how the <code>append</code> works, which is crucial to understanding how slices work.</p>
+<p>In the code below, <code>appendInt</code> is a function specialized for <code>[]int</code> slices:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/append/main.go">gopl.io/ch4/append/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">appendInt</span><span class="p">(</span><span class="nx">x</span> <span class="p">[]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">z</span> <span class="p">[]</span><span class="kt">int</span>
+    <span class="nx">zlen</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="nx">zlen</span> <span class="o">&lt;=</span> <span class="nb">cap</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// There is room to grow.  Extend the slice.</span>
+        <span class="nx">z</span> <span class="p">=</span> <span class="nx">x</span><span class="p">[:</span><span class="nx">zlen</span><span class="p">]</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// There is insufficient space.  Allocate a new array.</span>
+        <span class="c1">// Grow by doubling, for amortized linear complexity.</span>
+        <span class="nx">zcap</span> <span class="o">:=</span> <span class="nx">zlen</span>
+        <span class="k">if</span> <span class="nx">zcap</span> <span class="p">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">zcap</span> <span class="p">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="nx">z</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">zlen</span><span class="p">,</span> <span class="nx">zcap</span><span class="p">)</span>
+        <span class="nb">copy</span><span class="p">(</span><span class="nx">z</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="c1">// a built-in function; see text</span>
+    <span class="p">}</span>
+    <span class="nx">z</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)]</span> <span class="p">=</span> <span class="nx">y</span>
+    <span class="k">return</span> <span class="nx">z</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each call to <code>appendInt</code> checks whether the slice has sufficient capacity to hold the new elements in the existing array:</p>
+<ul>
+<li>If there is sufficient capacity, <code>appendInt</code> extends the slice by defining a larger slice (still within the original array), copies the element <code>y</code> into the new space, and returns the slice. The input <code>x</code> and the result <code>z</code> share the same underlying array.</li>
+<li>If there is insufficient space for growth, <code>appendInt</code> allocates a new array big enough to hold the result, copy the values from <code>x</code> into it, then append the new element <code>y</code>. The result <code>z</code> now refers to a different underlying array from <code>x</code>.</li>
+</ul>
+<h5 id="the-copy-function"><strong>The <code>copy</code> function</strong> *</h5>
+<p>The built-in function <code>copy</code> copies elements from one slice to another of the same type. Its first argument is the destination and its second is the source, resembling the order of operands in an assignment like <code>dst = src</code>. The slices may refer to the same underlying array, or they may even overlap.</p>
+<p><u><code>copy</code> actually copies <code>k</code> elements, where <code>k</code> is smaller of the two slice lengths, and returns <code>k</code>. There is no danger of running off the end or overwriting something out of range.</u> [p89]</p>
+<p>For efficiency, expanding the array by doubling its size at each expansion avoids an excessive number of allocations and ensures that appending a single element takes constant time on average. The following program demonstrates the effect:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">[]</span><span class="kt">int</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">y</span> <span class="p">=</span> <span class="nx">appendInt</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d cap=%d\t%v\n&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="p">,</span> <span class="nb">cap</span><span class="p">(</span><span class="nx">y</span><span class="p">),</span> <span class="nx">y</span><span class="p">)</span>
+        <span class="nx">x</span> <span class="p">=</span> <span class="nx">y</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each change in capacity indicates an allocation and a copy:</p>
+<div class="codehilite"><pre>0 cap=1   [0]
+1 cap=2   [0 1]
+2 cap=4   [0 1 2]
+3 cap=4   [0 1 2 3]
+4 cap=8   [0 1 2 3 4]
+5 cap=8   [0 1 2 3 4 5]
+6 cap=8   [0 1 2 3 4 5 6]
+7 cap=8   [0 1 2 3 4 5 6 7]
+8 cap=16  [0 1 2 3 4 5 6 7 8]
+9 cap=16  [0 1 2 3 4 5 6 7 8 9]
+</pre></div>
+
+
+<p>The following two figures show what happen at <code>i=3</code> iteration: appending with room to grow. [p89-90]</p>
+<p><a href="../figure_4.2.png" title="Figure 4.2. Appending with room to grow."><img alt="Figure 4.2. Appending with room to grow." src="../figure_4.2_600.png" /></a></p>
+<p>The following two figures show what happen at <code>i=4</code> iteration: appending without room to grow.  [p90]</p>
+<p><a href="../figure_4.3.png" title="Figure 4.3. Appending without room to grow."><img alt="Figure 4.3. Appending without room to grow." src="../figure_4.3_600.png" /></a></p>
+<h5 id="updating-the-slice-variable-when-calling-append"><strong>Updating the slice variable when calling <code>append</code></strong> *</h5>
+<p>The built-in <code>append</code> function uses a more sophisticated growth strategy than <code>appendInt</code>. Usually we don't know whether a given call to <code>append</code> will cause a reallocation, so we can't assume that the original slice refers to the same array as the resulting slice or not. This means we must not assume that operations on elements of the old slice will (or will not) be reflected in the new slice. As a result, <u>it's usual to assign the result of a call to <code>append</code> to the same slice variable whose value we passed to <code>append</code>:</u></p>
+<div class="codehilite"><pre><span class="nx">runes</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">runes</span><span class="p">,</span> <span class="nx">r</span><span class="p">)</span>
+</pre></div>
+
+
+<p><u>Updating the slice variable is required not just when calling <code>append</code>, but for any function that may change the length or capacity of a slice or make it refer to a different underlying array.</u> To use slices correctly, remember that although the elements of the underlying array are indirect, the slice's pointer, length, and capacity are not. To update them requires an assignment like the one above. Slices are not "pure" reference types but resemble an aggregate type such as this struct:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">IntSlice</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">ptr</span> <span class="o">*</span><span class="kt">int</span>
+    <span class="nx">len</span><span class="p">,</span> <span class="nx">cap</span> <span class="kt">int</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h5 id="variadic-functions"><strong>Variadic functions</strong> *</h5>
+<p>The <code>appendInt</code> function adds a single element to a slice, but the built-in <code>append</code> is able to add more than one new element, or a whole slice of them.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="p">[]</span><span class="kt">int</span>
+<span class="nx">x</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="nx">x</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="nx">x</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+<span class="nx">x</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">x</span><span class="o">...</span><span class="p">)</span> <span class="c1">// append the slice x</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>      <span class="c1">// &quot;[1 2 3 4 5 6 1 2 3 4 5 6]&quot;</span>
+</pre></div>
+
+
+<p>The following modification of <code>append</code> matches the behavior of the built-in <code>append</code>. The ellipsis "..." in the declaration of <code>appendInt</code> makes the function <strong>variadic:</strong> it accepts any number of final arguments. The corresponding ellipsis in the call above to <code>append</code> shows how to supply a list of arguments from a slice. Variadic functions are detailed in <a href="../ch5/#variadic-functions">Section 5.7</a>.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">appendInt</span><span class="p">(</span><span class="nx">x</span> <span class="p">[]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">y</span> <span class="o">...</span><span class="kt">int</span><span class="p">)</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">z</span> <span class="p">[]</span><span class="kt">int</span>
+    <span class="nx">zlen</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span>
+    <span class="c1">// ...expand z to at least zlen...</span>
+    <span class="nb">copy</span><span class="p">(</span><span class="nx">z</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">):],</span> <span class="nx">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">z</span>
+<span class="p">}</span>
+</pre></div>
             </div>
         </div>
 

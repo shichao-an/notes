@@ -297,6 +297,136 @@ make([]T, len, cap) // same as make([]T, cap)[:len]
 
 Behind the scene, `make` creates an unnamed array variable and returns a slice of it; the array is accessible only through the returned slice.
 
-
-
 #### The `append` Function
+
+The built-in `append` function appends items to slices:
+
+```go
+var runes []rune
+for _, r := range "Hello, 世界" {
+	runes = append(runes, r)
+}
+fmt.Printf("%q\n", runes) // "['H' 'e' 'l' 'l' 'o' ',' '' '世' '界']"
+```
+
+The loop uses `append` to build the slice of nine runes encoded by the string literal. It is equivalent to using the built-in conversion: `[]rune("Hello, 世界")`.
+
+The following examples discusses how the `append` works, which is crucial to understanding how slices work.
+
+In the code below, `appendInt` is a function specialized for `[]int` slices:
+
+<small>[gopl.io/ch4/append/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/append/main.go)</small>
+
+```go
+func appendInt(x []int, y int) []int {
+	var z []int
+	zlen := len(x) + 1
+	if zlen <= cap(x) {
+		// There is room to grow.  Extend the slice.
+		z = x[:zlen]
+	} else {
+		// There is insufficient space.  Allocate a new array.
+		// Grow by doubling, for amortized linear complexity.
+		zcap := zlen
+		if zcap < 2*len(x) {
+			zcap = 2 * len(x)
+		}
+		z = make([]int, zlen, zcap)
+		copy(z, x) // a built-in function; see text
+	}
+	z[len(x)] = y
+	return z
+}
+```
+
+Each call to `appendInt` checks whether the slice has sufficient capacity to hold the new elements in the existing array:
+
+* If there is sufficient capacity, `appendInt` extends the slice by defining a larger slice (still within the original array), copies the element `y` into the new space, and returns the slice. The input `x` and the result `z` share the same underlying array.
+* If there is insufficient space for growth, `appendInt` allocates a new array big enough to hold the result, copy the values from `x` into it, then append the new element `y`. The result `z` now refers to a different underlying array from `x`.
+
+##### **The `copy` function** *
+
+The built-in function `copy` copies elements from one slice to another of the same type. Its first argument is the destination and its second is the source, resembling the order of operands in an assignment like `dst = src`. The slices may refer to the same underlying array, or they may even overlap.
+
+<u>`copy` actually copies `k` elements, where `k` is smaller of the two slice lengths, and returns `k`. There is no danger of running off the end or overwriting something out of range.</u> [p89]
+
+For efficiency, expanding the array by doubling its size at each expansion avoids an excessive number of allocations and ensures that appending a single element takes constant time on average. The following program demonstrates the effect:
+
+```go
+func main() {
+	var x, y []int
+	for i := 0; i < 10; i++ {
+		y = appendInt(x, i)
+		fmt.Printf("%d cap=%d\t%v\n", i, cap(y), y)
+		x = y
+	}
+}
+```
+
+Each change in capacity indicates an allocation and a copy:
+
+```text
+0 cap=1   [0]
+1 cap=2   [0 1]
+2 cap=4   [0 1 2]
+3 cap=4   [0 1 2 3]
+4 cap=8   [0 1 2 3 4]
+5 cap=8   [0 1 2 3 4 5]
+6 cap=8   [0 1 2 3 4 5 6]
+7 cap=8   [0 1 2 3 4 5 6 7]
+8 cap=16  [0 1 2 3 4 5 6 7 8]
+9 cap=16  [0 1 2 3 4 5 6 7 8 9]
+```
+
+The following two figures show what happen at `i=3` iteration: appending with room to grow. [p89-90]
+
+[![Figure 4.2. Appending with room to grow.](figure_4.2_600.png)](figure_4.2.png "Figure 4.2. Appending with room to grow.")
+
+The following two figures show what happen at `i=4` iteration: appending without room to grow.  [p90]
+
+[![Figure 4.3. Appending without room to grow.](figure_4.3_600.png)](figure_4.3.png "Figure 4.3. Appending without room to grow.")
+
+##### **Updating the slice variable when calling `append`** *
+
+The built-in `append` function uses a more sophisticated growth strategy than `appendInt`. Usually we don't know whether a given call to `append` will cause a reallocation, so we can't assume that the original slice refers to the same array as the resulting slice or not. This means we must not assume that operations on elements of the old slice will (or will not) be reflected in the new slice. As a result, <u>it's usual to assign the result of a call to `append` to the same slice variable whose value we passed to `append`:</u>
+
+```go
+runes = append(runes, r)
+```
+
+<u>Updating the slice variable is required not just when calling `append`, but for any function that may change the length or capacity of a slice or make it refer to a different underlying array.</u> To use slices correctly, remember that although the elements of the underlying array are indirect, the slice's pointer, length, and capacity are not. To update them requires an assignment like the one above. Slices are not "pure" reference types but resemble an aggregate type such as this struct:
+
+```go
+type IntSlice struct {
+	ptr *int
+	len, cap int
+}
+```
+
+##### **Variadic functions** *
+
+The `appendInt` function adds a single element to a slice, but the built-in `append` is able to add more than one new element, or a whole slice of them.
+
+```go
+var x []int
+x = append(x, 1)
+x = append(x, 2, 3)
+x = append(x, 4, 5, 6)
+x = append(x, x...) // append the slice x
+fmt.Println(x)      // "[1 2 3 4 5 6 1 2 3 4 5 6]"
+```
+
+The following modification of `append` matches the behavior of the built-in `append`. The ellipsis "..." in the declaration of `appendInt` makes the function **variadic:** it accepts any number of final arguments. The corresponding ellipsis in the call above to `append` shows how to supply a list of arguments from a slice. Variadic functions are detailed in [Section 5.7](ch5.md#variadic-functions).
+
+```go
+func appendInt(x []int, y ...int) []int {
+	var z []int
+	zlen := len(x) + len(y)
+	// ...expand z to at least zlen...
+	copy(z[len(x):], y)
+	return z
+}
+```
+
+
+
