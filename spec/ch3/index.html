@@ -528,6 +528,8 @@
         
             <li><a href="#stacks">Stacks</a></li>
         
+            <li><a href="#interrupts-and-interrupt-threads">Interrupts and Interrupt Threads</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -645,6 +647,23 @@ kernel`system_call_fastpath+0x16
 <li>By reading bottom-up, you can follow the path of execution to the current function: how we got here.</li>
 </ul>
 <p>[p90]</p>
+<h5 id="user-and-kernel-stacks"><strong>User and Kernel Stacks</strong></h5>
+<p>While executing a system call, a process thread has two stacks: a user-level stack and a kernel-level stack. This is shown in the figure below:</p>
+<p><a href="../figure_3.3.png" title="Figure 3.3 User and kernel stacks"><img alt="Figure 3.3 User and kernel stacks" src="../figure_3.3.png" /></a></p>
+<p>The user-level stack of the blocked thread does not change for the duration of a system call, as the thread is using a separate kernel-level stack while executing in kernel context. An exception is signal handlers, which may borrow a user-level stack depending on their configuration.</p>
+<h4 id="interrupts-and-interrupt-threads">Interrupts and Interrupt Threads</h4>
+<p>Besides responding to system calls, the kernel also responds to service requests from devices, called <strong>interrupts</strong>, which is shown in the figure below:</p>
+<p><a href="../figure_3.4.png" title="Figure 3.4 Interrupt processing"><img alt="Figure 3.4 Interrupt processing" src="../figure_3.4.png" /></a></p>
+<p>An <a href="https://en.wikipedia.org/wiki/Interrupt_handler"><strong>interrupt service routine</strong></a> (or <strong>interrupt handler</strong>) is registered to process the device interrupt. It is designed to operate as quickly as possible, to reduce the effects of interrupting active threads. If an interrupt needs to perform work, especially if it may block on locks, it can be processed by an interrupt thread that can be scheduled by the kernel.</p>
+<ul>
+<li>On Linux, device drivers are modeled as two halves, with the top half handling the interrupt quickly, and scheduling work to a bottom half to be processed later.<ul>
+<li>The top half runs in <em>interrupt-disabled</em> mode to postpone the delivery of new interrupts, which can cause latency problems for other threads if it runs for too long.</li>
+<li>The bottom half can be either <em>tasklets</em> or <em>work queues</em>; the latter are threads that can be scheduled by the kernel and can sleep when necessary.</li>
+</ul>
+</li>
+<li>Solaris-based systems promote interrupts to interrupt threads if more work needs to be performed</li>
+</ul>
+<p>The <em>interrupt latency</em> is the time from an interrupt arrival to when it is serviced. This is a subject of study for real-time or low-latency systems.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p88-on-kernel-clock-routine"><strong>p88 on kernel <code>clock()</code> routine</strong></h5>
