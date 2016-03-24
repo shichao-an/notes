@@ -126,6 +126,29 @@ The function that called `tcp_sendmsg()`, its parent, is `inet_sendmsg`.
 
 [p90]
 
+##### **User and Kernel Stacks**
+
+While executing a system call, a process thread has two stacks: a user-level stack and a kernel-level stack. This is shown in the figure below:
+
+[![Figure 3.3 User and kernel stacks](figure_3.3.png)](figure_3.3.png "Figure 3.3 User and kernel stacks")
+
+The user-level stack of the blocked thread does not change for the duration of a system call, as the thread is using a separate kernel-level stack while executing in kernel context. An exception is signal handlers, which may borrow a user-level stack depending on their configuration.
+
+#### Interrupts and Interrupt Threads
+
+Besides responding to system calls, the kernel also responds to service requests from devices, called **interrupts**, which is shown in the figure below:
+
+[![Figure 3.4 Interrupt processing](figure_3.4.png)](figure_3.4.png "Figure 3.4 Interrupt processing")
+
+An [**interrupt service routine**](https://en.wikipedia.org/wiki/Interrupt_handler) (or **interrupt handler**) is registered to process the device interrupt. It is designed to operate as quickly as possible, to reduce the effects of interrupting active threads. If an interrupt needs to perform work, especially if it may block on locks, it can be processed by an interrupt thread that can be scheduled by the kernel.
+
+* On Linux, device drivers are modeled as two halves, with the top half handling the interrupt quickly, and scheduling work to a bottom half to be processed later.
+    * The top half runs in *interrupt-disabled* mode to postpone the delivery of new interrupts, which can cause latency problems for other threads if it runs for too long.
+    * The bottom half can be either *tasklets* or *work queues*; the latter are threads that can be scheduled by the kernel and can sleep when necessary.
+* Solaris-based systems promote interrupts to interrupt threads if more work needs to be performed
+
+The *interrupt latency* is the time from an interrupt arrival to when it is serviced. This is a subject of study for real-time or low-latency systems.
+
 ### Doubts and Solutions
 
 #### Verbatim
