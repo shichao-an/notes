@@ -149,6 +149,17 @@ An [**interrupt service routine**](https://en.wikipedia.org/wiki/Interrupt_handl
 
 The *interrupt latency* is the time from an interrupt arrival to when it is serviced. This is a subject of study for real-time or low-latency systems.
 
+#### Interrupt Priority Level
+
+The [interrupt priority level](https://en.wikipedia.org/wiki/Interrupt_priority_level) (IPL) represents the priority of the currently active interrupt service routine. It is read from the processor during the delivery of an interrupt signal, and the interrupt succeeds only if its level exceeds the currently executing interrupt (if any); otherwise the interrupt is queued for later delivery.  This prevents higher-priority work from being interrupted by lower-priority work.
+
+An example IPL range is shown in the figure below:
+
+[![Figure 3.5 Example interrupt priority level range](figure_3.5.png)](figure_3.5.png "Figure 3.5 Example interrupt priority level range")
+
+Serial I/O has a high interrupt because its hardware buffer is usually small and needs quick servicing to avoid overflows.
+
+
 ### Doubts and Solutions
 
 #### Verbatim
