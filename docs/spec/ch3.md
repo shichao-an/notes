@@ -157,7 +157,7 @@ An example IPL range is shown in the figure below:
 
 [![Figure 3.5 Example interrupt priority level range](figure_3.5.png)](figure_3.5.png "Figure 3.5 Example interrupt priority level range")
 
-Serial I/O has a high interrupt because its hardware buffer is usually small and needs quick servicing to avoid overflows.
+[Serial I/O](https://en.wikipedia.org/wiki/Serial_communication) has a high interrupt because its hardware buffer is usually small and needs quick servicing to avoid overflows.
 
 
 ### Doubts and Solutions
