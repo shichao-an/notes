@@ -416,7 +416,7 @@ x = append(x, x...) // append the slice x
 fmt.Println(x)      // "[1 2 3 4 5 6 1 2 3 4 5 6]"
 ```
 
-The following modification of `append` matches the behavior of the built-in `append`. The ellipsis "..." in the declaration of `appendInt` makes the function **variadic:** it accepts any number of final arguments. The corresponding ellipsis in the call above to `append` shows how to supply a list of arguments from a slice. Variadic functions are detailed in [Section 5.7](ch5.md#variadic-functions).
+The following modification of `append` matches the behavior of the built-in `append`. The ellipsis "..." in the declaration of `appendInt` makes the function [**variadic**](https://gobyexample.com/variadic-functions): it accepts any number of final arguments. The corresponding ellipsis in the call above to `append` shows how to supply a list of arguments from a slice. Variadic functions are detailed in [Section 5.7](ch5.md#variadic-functions).
 
 ```go
 func appendInt(x []int, y ...int) []int {
@@ -428,5 +428,106 @@ func appendInt(x []int, y ...int) []int {
 }
 ```
 
+#### In-Place Slice Techniques
 
+This section discusses examples of functions that modify the elements of a slice in place, like `rotate` and `reverse`.
 
+Given a list of strings, the `nonempty` function returns the non-empty ones:
+
+<small>[gopl.io/ch4/nonempty/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/nonempty/main.go)</small>
+
+```go
+// Nonempty is an example of an in-place slice algorithm.
+package main
+
+import "fmt"
+
+// nonempty returns a slice holding only the non-empty strings.
+// The underlying array is modified during the call.
+func nonempty(strings []string) []string {
+	i := 0
+	for _, s := range strings {
+		if s != "" {
+			strings[i] = s
+			i++
+		}
+	}
+	return strings[:i]
+}
+```
+
+The subtle part is that the input slice and the output slice share the same underlying array.  This avoids the need to allocate another array, though the contents of data are partly overwritten, as shown in the second `Printf` statement below:
+
+```go
+data := []string{"one", "", "three"}
+fmt.Printf("%q\n", nonempty(data)) // `["one" "three"]`
+fmt.Printf("%q\n", data)           // `["one" "three" "three"]`
+```
+
+The `nonempty` function can also be written using `append`:
+
+```go
+func nonempty2(strings []string) []string {
+	out := strings[:0] // zero-length slice of original
+	for _, s := range strings {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+```
+
+The above two variants, which reuse an array, requires that at most one output value is produced for each input value, which is true of many algorithms that filter out elements of a sequence or combine adjacent ones. Such usage is the exception, not the rule, but it can be clear, efficient, and useful on occasion.
+
+#### Implementing a stack using a slice *
+
+A slice can be used to implement a stack. Given an initially empty slice `stack`, we can push a new value onto the end of the slice with `append`:
+
+```go
+stack = append(stack, v) // push v
+```
+
+The top of the stack is the last element:
+
+```go
+top := stack[len(stack)-1] // top of stack
+```
+
+Shrink the stack by popping that element:
+
+```go
+stack = stack[:len(stack)-1] // pop
+```
+
+#### Removing an element from a slice *
+
+To remove an element from the middle of a slice, preserving the order of the remaining elements, use `copy` to slide the higher-numbered elements down by one to fill the gap:
+
+```go
+func remove(slice []int, i int) []int {
+  copy(slice[i:], slice[i+1:])
+	return slice[:len(slice)-1]
+}
+
+func main() {
+	s := []int{5, 6, 7, 8, 9}
+	fmt.Println(remove(s, 2)) // "[5 6 8 9]"
+}
+```
+
+If we don't need to preserve the order, just move the last element into the gap:
+
+```go
+func remove(slice []int, i int) []int {
+	slice[i] = slice[len(slice)-1]
+	return slice[:len(slice)-1]
+}
+
+func main() {
+	s := []int{5, 6, 7, 8, 9}
+	fmt.Println(remove(s, 2)) // "[5 6 9 8]
+}
+```
+
+### Maps
