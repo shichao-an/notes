@@ -542,6 +542,15 @@
         
             <li><a href="#the-append-function">The append Function</a></li>
         
+            <li><a href="#in-place-slice-techniques">In-Place Slice Techniques</a></li>
+        
+            <li><a href="#implementing-a-stack-using-a-slice">Implementing a stack using a slice *</a></li>
+        
+            <li><a href="#removing-an-element-from-a-slice">Removing an element from a slice *</a></li>
+        
+    
+        <li class="main "><a href="#maps">Maps</a></li>
+        
     
     </ul>
 </div></div>
@@ -906,7 +915,7 @@
 </pre></div>
 
 
-<p>The following modification of <code>append</code> matches the behavior of the built-in <code>append</code>. The ellipsis "..." in the declaration of <code>appendInt</code> makes the function <strong>variadic:</strong> it accepts any number of final arguments. The corresponding ellipsis in the call above to <code>append</code> shows how to supply a list of arguments from a slice. Variadic functions are detailed in <a href="../ch5/#variadic-functions">Section 5.7</a>.</p>
+<p>The following modification of <code>append</code> matches the behavior of the built-in <code>append</code>. The ellipsis "..." in the declaration of <code>appendInt</code> makes the function <a href="https://gobyexample.com/variadic-functions"><strong>variadic</strong></a>: it accepts any number of final arguments. The corresponding ellipsis in the call above to <code>append</code> shows how to supply a list of arguments from a slice. Variadic functions are detailed in <a href="../ch5/#variadic-functions">Section 5.7</a>.</p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">appendInt</span><span class="p">(</span><span class="nx">x</span> <span class="p">[]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">y</span> <span class="o">...</span><span class="kt">int</span><span class="p">)</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">{</span>
     <span class="kd">var</span> <span class="nx">z</span> <span class="p">[]</span><span class="kt">int</span>
     <span class="nx">zlen</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span>
@@ -915,6 +924,97 @@
     <span class="k">return</span> <span class="nx">z</span>
 <span class="p">}</span>
 </pre></div>
+
+
+<h4 id="in-place-slice-techniques">In-Place Slice Techniques</h4>
+<p>This section discusses examples of functions that modify the elements of a slice in place, like <code>rotate</code> and <code>reverse</code>.</p>
+<p>Given a list of strings, the <code>nonempty</code> function returns the non-empty ones:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/nonempty/main.go">gopl.io/ch4/nonempty/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Nonempty is an example of an in-place slice algorithm.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="s">&quot;fmt&quot;</span>
+
+<span class="c1">// nonempty returns a slice holding only the non-empty strings.</span>
+<span class="c1">// The underlying array is modified during the call.</span>
+<span class="kd">func</span> <span class="nx">nonempty</span><span class="p">(</span><span class="nx">strings</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">s</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">strings</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">s</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
+            <span class="nx">strings</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">s</span>
+            <span class="nx">i</span><span class="o">++</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">strings</span><span class="p">[:</span><span class="nx">i</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The subtle part is that the input slice and the output slice share the same underlying array.  This avoids the need to allocate another array, though the contents of data are partly overwritten, as shown in the second <code>Printf</code> statement below:</p>
+<div class="codehilite"><pre><span class="nx">data</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;one&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;three&quot;</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%q\n&quot;</span><span class="p">,</span> <span class="nx">nonempty</span><span class="p">(</span><span class="nx">data</span><span class="p">))</span> <span class="c1">// `[&quot;one&quot; &quot;three&quot;]`</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%q\n&quot;</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span>           <span class="c1">// `[&quot;one&quot; &quot;three&quot; &quot;three&quot;]`</span>
+</pre></div>
+
+
+<p>The <code>nonempty</code> function can also be written using <code>append</code>:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">nonempty2</span><span class="p">(</span><span class="nx">strings</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">out</span> <span class="o">:=</span> <span class="nx">strings</span><span class="p">[:</span><span class="mi">0</span><span class="p">]</span> <span class="c1">// zero-length slice of original</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">s</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">strings</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">s</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
+            <span class="nx">out</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="nx">s</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">out</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The above two variants, which reuse an array, requires that at most one output value is produced for each input value, which is true of many algorithms that filter out elements of a sequence or combine adjacent ones. Such usage is the exception, not the rule, but it can be clear, efficient, and useful on occasion.</p>
+<h4 id="implementing-a-stack-using-a-slice">Implementing a stack using a slice *</h4>
+<p>A slice can be used to implement a stack. Given an initially empty slice <code>stack</code>, we can push a new value onto the end of the slice with <code>append</code>:</p>
+<div class="codehilite"><pre><span class="nx">stack</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">stack</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span> <span class="c1">// push v</span>
+</pre></div>
+
+
+<p>The top of the stack is the last element:</p>
+<div class="codehilite"><pre><span class="nx">top</span> <span class="o">:=</span> <span class="nx">stack</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">stack</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1">// top of stack</span>
+</pre></div>
+
+
+<p>Shrink the stack by popping that element:</p>
+<div class="codehilite"><pre><span class="nx">stack</span> <span class="p">=</span> <span class="nx">stack</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="nx">stack</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1">// pop</span>
+</pre></div>
+
+
+<h4 id="removing-an-element-from-a-slice">Removing an element from a slice *</h4>
+<p>To remove an element from the middle of a slice, preserving the order of the remaining elements, use <code>copy</code> to slide the higher-numbered elements down by one to fill the gap:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">remove</span><span class="p">(</span><span class="nx">slice</span> <span class="p">[]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">i</span> <span class="kt">int</span><span class="p">)</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">{</span>
+  <span class="nb">copy</span><span class="p">(</span><span class="nx">slice</span><span class="p">[</span><span class="nx">i</span><span class="p">:],</span> <span class="nx">slice</span><span class="p">[</span><span class="nx">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="k">return</span> <span class="nx">slice</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="nx">slice</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">s</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">remove</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="c1">// &quot;[5 6 8 9]&quot;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If we don't need to preserve the order, just move the last element into the gap:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">remove</span><span class="p">(</span><span class="nx">slice</span> <span class="p">[]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">i</span> <span class="kt">int</span><span class="p">)</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">slice</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">slice</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">slice</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nx">slice</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="nx">slice</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">s</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">remove</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="c1">// &quot;[5 6 9 8]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="maps">Maps</h3>
             </div>
         </div>
 
