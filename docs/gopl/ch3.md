@@ -304,6 +304,8 @@ x = 6 e**x =  403.429
 x = 7 e**x = 1096.633
 ```
 
+#### Special values: +Inf, -Inf, and NaN *
+
 In addition to mathematical functions, the `math` package has functions for creating and detecting the special values defined by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point):
 
 * Positive and negative infinities, which represent numbers of excessive magnitude and the result of division by zero;
