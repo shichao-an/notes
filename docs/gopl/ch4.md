@@ -531,3 +531,131 @@ func main() {
 ```
 
 ### Maps
+
+The hash table is  an unordered collection of key/value pairs in which all the keys are distinct, and the value associated with a given key can be retrieved, updated, or removed using a constant number of key comparisons on the average, no matter how large the hash table.
+
+In Go, a map is a reference to a hash table. See [Go maps in action](https://blog.golang.org/go-maps-in-action) for reference.
+
+* A map type is written `map[K]V`.
+    * `K` is the type of its keys.
+    * `V` is the type of its values.
+* All of the keys in a given map are of the same type, and all of the values are of the same type.
+    * The keys need not be of the same type as the values.
+* The key type `K` must be comparable using `==`, so that the map can test whether a given key is equal to one already within it.
+    * Though floating-point numbers are comparable, it's a bad idea to compare floats for equality and bad if NaN is a possible value, as mentioned in [Chapter 3](ch3.md#special-values-inf-inf-and-nan).
+* There are no restrictions on the value type V.
+
+#### Initialization of maps *
+
+The built-in function `make` can be used to create a map:
+
+```go
+ages := make(map[string]int) // mapping from strings to ints
+```
+
+A *map literal* can also be used to create a new map populated with some initial key/value pairs:
+
+```go
+ages := map[string]int{
+	"alice": 31,
+	"charlie": 34,
+}
+```
+
+This is equivalent to:
+
+```go
+ages := make(map[string]int)
+ages["alice"] = 31
+ages["charlie"] = 34
+```
+
+An alternative expression for a new empty map is `map[string]int{}`.
+
+#### Accessing and deleting map elements *
+
+Map elements are accessed through the usual subscript notation:
+
+```go
+ages["alice"] = 32
+fmt.Println(ages["alice"]) // "32"
+```
+
+Map elements are removed with the built-in function [`delete`](https://golang.org/pkg/builtin/#delete):
+
+```go
+delete(ages, "alice") // remove element ages["alice"]
+```
+
+These operations are safe even if the element isn't in the map:
+
+* Deleting an element using a key that isn't present in the map is a no-op.
+* A map lookup using a key that isn't present returns the zero value for its type
+    * For instance, if `"bob"` is not yet a key in the map, value of `ages["bob"]` will be 0, so the following example works.
+
+```go
+ages["bob"] = ages["bob"] + 1 // happy birthday!
+```
+
+The shorthand assignment forms also work for map elements:
+
+```go
+ages["bob"] += 1
+ages["bob"]++  // equivalent to above
+```
+
+A map element is not a variable and we cannot take its address:
+
+```go
+_ = &ages["bob"] // compile error: cannot take address of map element
+```
+
+One reason that we can't take the address of a map element is that growing a map might cause rehashing of existing elements into new storage locations, thus potentially invalidating the address.
+
+#### Map iteration *
+
+A `range`-based `for` loop can be used to enumerate all the key/value pairs in the map, which is similar to slices. Continuing the previous example, successive iterations of the loop cause the `name` and `age` variables to be set to the next key/value pair:
+
+```go
+for name, age := range ages {
+	fmt.Printf("%s\t%d\n", name, age)
+}
+```
+
+The order of map iteration is unspecified. Different implementations might have a different ordering due to a different hash function used. In practice, the order is random (varying from one execution to the next), which is an intentional behavior: <u>making the sequence vary helps force programs to be robust across implementations.</u>
+
+To enumerate the key/value pairs in order, we must sort the keys explicitly. The following example is a common pattern which uses the `Strings` function from the `sort` package:
+
+```go
+import "sort"
+var names []string
+for name := range ages {  // omit the second loop variable
+	names = append(names, name)
+}
+sort.Strings(names)
+for _, name := range names {  // use the blank identifier _ to ignore the first variable
+	fmt.Printf("%s\t%d\n", name, ages[name])
+}
+```
+
+It is more efficient to allocate an array of the required size. The statement below creates a slice that is initially empty but has sufficient capacity to hold all the keys of the `ages` map:
+
+```go
+names := make([]string, 0, len(ages))
+```
+
+The zero value for a map type is `nil`, which means a reference to no hash table at all.
+
+```go
+var ages map[string]int
+fmt.Println(ages == nil)     // "true"
+fmt.Println(len(ages) == 0)  // "true"
+```
+
+Most operations on maps, including lookup, `delete`, `len`, and `range` loops, are safe to perform on a `nil` map reference, since it behaves like an empty map. But storing to a `nil` map causes a panic:
+
+```go
+ages["carol"] = 21 // panic: assignment to entry in nil map
+```
+
+You must allocate the map before you can store into it.
