@@ -557,6 +557,10 @@
         
             <li><a href="#map-iteration">Map iteration *</a></li>
         
+            <li><a href="#test-the-presence-of-elements">Test the presence of elements *</a></li>
+        
+            <li><a href="#comparison-of-maps">Comparison of maps *</a></li>
+        
     
     </ul>
 </div></div>
@@ -1137,6 +1141,41 @@
 
 
 <p>You must allocate the map before you can store into it.</p>
+<h4 id="test-the-presence-of-elements">Test the presence of elements *</h4>
+<p>Accessing a map element by subscripting always yields a value:</p>
+<ul>
+<li>If the key is present in the map, you get the corresponding value.</li>
+<li>If the key is not present, you get the zero value for the element type.</li>
+</ul>
+<p>To know whether the element was present or not, use a test like this:</p>
+<div class="codehilite"><pre><span class="nx">age</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">ages</span><span class="p">[</span><span class="s">&quot;bob&quot;</span><span class="p">]</span>
+<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span> <span class="cm">/* &quot;bob&quot; is not a key in this map; age == 0. */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>These two statements can be combined and written like this:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">age</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">ages</span><span class="p">[</span><span class="s">&quot;bob&quot;</span><span class="p">];</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Subscripting a map in this context yields two values; the second is a boolean that reports whether the element was present. The boolean variable is often called <code>ok</code>, especially if it is immediately used in an <code>if</code> condition.</p>
+<h4 id="comparison-of-maps">Comparison of maps *</h4>
+<p>As with slices, maps cannot be compared to each other; the only legal comparison is with <code>nil</code>.  To test whether two maps contain the same keys and the same associated values, we must write a loop:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">false</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">k</span><span class="p">,</span> <span class="nx">xv</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">x</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">yv</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">y</span><span class="p">[</span><span class="nx">k</span><span class="p">];</span> <span class="p">!</span><span class="nx">ok</span> <span class="o">||</span> <span class="nx">yv</span> <span class="o">!=</span> <span class="nx">xv</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">false</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example, <code>!ok</code> (in the second <code>if</code> condition) is used to distinguish the "missing" and "present but zero" cases.</p>
             </div>
         </div>
 

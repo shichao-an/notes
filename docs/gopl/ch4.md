@@ -659,3 +659,47 @@ ages["carol"] = 21 // panic: assignment to entry in nil map
 ```
 
 You must allocate the map before you can store into it.
+
+#### Test the presence of elements *
+
+Accessing a map element by subscripting always yields a value:
+
+* If the key is present in the map, you get the corresponding value.
+* If the key is not present, you get the zero value for the element type.
+
+To know whether the element was present or not, use a test like this:
+
+```go
+age, ok := ages["bob"]
+if !ok { /* "bob" is not a key in this map; age == 0. */ }
+```
+
+These two statements can be combined and written like this:
+
+```go
+if age, ok := ages["bob"]; !ok { /* ... */ }
+```
+
+Subscripting a map in this context yields two values; the second is a boolean that reports whether the element was present. The boolean variable is often called `ok`, especially if it is immediately used in an `if` condition.
+
+#### Comparison of maps *
+
+As with slices, maps cannot be compared to each other; the only legal comparison is with `nil`.  To test whether two maps contain the same keys and the same associated values, we must write a loop:
+
+```go
+func equal(x, y map[string]int) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	for k, xv := range x {
+		if yv, ok := y[k]; !ok || yv != xv {
+		return false
+		}
+	}
+	return true
+}
+```
+
+In this example, `!ok` (in the second `if` condition) is used to distinguish the "missing" and "present but zero" cases.
+
+
