@@ -562,6 +562,9 @@
             <li><a href="#comparison-of-maps">Comparison of maps *</a></li>
         
     
+        <li class="main "><a href="#structs">Structs</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1175,7 +1178,71 @@
 </pre></div>
 
 
-<p>In this example, <code>!ok</code> (in the second <code>if</code> condition) is used to distinguish the "missing" and "present but zero" cases.</p>
+<p>In this example, <code>!ok</code> (in the second <code>if</code> condition) is used to distinguish the "missing" and "present but zero" cases. [p96]</p>
+<p>Since the keys of a map are distinct, a map can be used to create a "<code>set</code>" type, which is not available in Go. The following program <code>dedup</code> reads a sequence of lines and prints only the first occurrence of each distinct line. (It's a variant of the <code>dup</code> program showed in <a href="../ch1/#finding-duplicate-lines">Section 1.3</a>.)</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/dedup/main.go">gopl.io/ch4/dedup/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span> <span class="c1">// a set of strings</span>
+    <span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Scan</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">line</span> <span class="o">:=</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">line</span><span class="p">]</span> <span class="p">{</span>
+            <span class="nx">seen</span><span class="p">[</span><span class="nx">line</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">line</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Err</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;dedup: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If we need a map or set whose keys are slices, this cannot be expressed directly, because a map's keys must be comparable. However, it can be done by using a helper function <code>k</code> that maps each key (slice) to a string (if <code>x</code> is equivalent to <code>y</code>, then <code>k(x) == k(y)</code>), creating a map whose keys are strings and applying the helper function to each key before we access the map.</p>
+<p>The example below uses a map to record the number of times <code>Add</code> has been called with a given list of strings. It uses <code>fmt.Sprintf</code> to convert a slice of strings into a single string that is a suitable map key, quoting each slice element with <code>%q</code> to record string boundaries:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">m</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nx">k</span><span class="p">(</span><span class="nx">list</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%q&quot;</span><span class="p">,</span> <span class="nx">list</span><span class="p">)</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">Add</span><span class="p">(</span><span class="nx">list</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span> <span class="nx">m</span><span class="p">[</span><span class="nx">k</span><span class="p">(</span><span class="nx">list</span><span class="p">)]</span><span class="o">++</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">Count</span><span class="p">(</span><span class="nx">list</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">m</span><span class="p">[</span><span class="nx">k</span><span class="p">(</span><span class="nx">list</span><span class="p">)]</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The same approach can be used for the following:</p>
+<ul>
+<li>Any non-comparable key type.</li>
+<li>Comparable key types with other definitions of equality than <code>==</code>, such as case-insensitive comparisons for strings.</li>
+</ul>
+<p>Besides, the type of <code>k(x)</code> needn't be a string. It can be any comparable type with the desired equivalence property, such as integers, arrays, or structs.</p>
+<p>The following program is another example of maps that counts the occurrences of each distinct Unicode code point in its input.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/charcount/main.go">gopl.io/ch4/charcount/main.go</a></small></p>
+<p>[p97-99]</p>
+<p>The <a href="https://golang.org/pkg/bufio/#Reader.ReadRune"><code>ReadRune</code></a> method (from <a href="https://golang.org/pkg/bufio/"><code>bufio</code></a>) performs UTF-8 decoding and returns three values: the decoded rune, the length in bytes of its UTF-8 encoding, and an error value. The only error we expect is end-of-file. If the input was not a legal UTF-8 encoding of a rune, the returned rune is <a href="https://golang.org/pkg/unicode/#pkg-constants"><code>unicode.ReplacementChar</code></a> and the length is 1.</p>
+<p>The value type of a map can be a composite type, such as a map or slice. In the following code, the key type of graph is <code>string</code> and the value type is <code>map[string]bool</code>, representing a set of strings. This graph maps a string to a set of related strings, its successors in a directed graph.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/graph/main.go">gopl.io/ch4/graph/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">graph</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">addEdge</span><span class="p">(</span><span class="nx">from</span><span class="p">,</span> <span class="nx">to</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">edges</span> <span class="o">:=</span> <span class="nx">graph</span><span class="p">[</span><span class="nx">from</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nx">edges</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">edges</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+        <span class="nx">graph</span><span class="p">[</span><span class="nx">from</span><span class="p">]</span> <span class="p">=</span> <span class="nx">edges</span>
+    <span class="p">}</span>
+    <span class="nx">edges</span><span class="p">[</span><span class="nx">to</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">hasEdge</span><span class="p">(</span><span class="nx">from</span><span class="p">,</span> <span class="nx">to</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">graph</span><span class="p">[</span><span class="nx">from</span><span class="p">][</span><span class="nx">to</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>addEdge</code> function populates a map lazily, that is, to initialize each value as its key appears for the first time.</li>
+<li>The <code>hasEdge</code> function shows how the zero value of a missing map entry works: even if neither <code>from</code> nor <code>to</code> is present, <code>graph[from][to]</code> will always give a meaningful result.</li>
+</ul>
+<h3 id="structs">Structs</h3>
             </div>
         </div>
 

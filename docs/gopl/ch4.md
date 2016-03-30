@@ -700,6 +700,79 @@ func equal(x, y map[string]int) bool {
 }
 ```
 
-In this example, `!ok` (in the second `if` condition) is used to distinguish the "missing" and "present but zero" cases.
+In this example, `!ok` (in the second `if` condition) is used to distinguish the "missing" and "present but zero" cases. [p96]
 
+Since the keys of a map are distinct, a map can be used to create a "`set`" type, which is not available in Go. The following program `dedup` reads a sequence of lines and prints only the first occurrence of each distinct line. (It's a variant of the `dup` program showed in [Section 1.3](ch1.md#finding-duplicate-lines).)
 
+<small>[gopl.io/ch4/dedup/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/dedup/main.go)</small>
+
+```go
+func main() {
+	seen := make(map[string]bool) // a set of strings
+	input := bufio.NewScanner(os.Stdin)
+	for input.Scan() {
+		line := input.Text()
+		if !seen[line] {
+			seen[line] = true
+			fmt.Println(line)
+		}
+	}
+
+	if err := input.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "dedup: %v\n", err)
+		os.Exit(1)
+	}
+}
+```
+
+If we need a map or set whose keys are slices, this cannot be expressed directly, because a map's keys must be comparable. However, it can be done by using a helper function `k` that maps each key (slice) to a string (if `x` is equivalent to `y`, then `k(x) == k(y)`), creating a map whose keys are strings and applying the helper function to each key before we access the map.
+
+The example below uses a map to record the number of times `Add` has been called with a given list of strings. It uses `fmt.Sprintf` to convert a slice of strings into a single string that is a suitable map key, quoting each slice element with `%q` to record string boundaries:
+
+```go
+var m = make(map[string]int)
+func k(list []string) string { return fmt.Sprintf("%q", list) }
+func Add(list []string) { m[k(list)]++ }
+func Count(list []string) int { return m[k(list)] }
+```
+
+The same approach can be used for the following:
+
+* Any non-comparable key type.
+* Comparable key types with other definitions of equality than `==`, such as case-insensitive comparisons for strings.
+
+Besides, the type of `k(x)` needn't be a string. It can be any comparable type with the desired equivalence property, such as integers, arrays, or structs.
+
+The following program is another example of maps that counts the occurrences of each distinct Unicode code point in its input.
+
+<small>[gopl.io/ch4/charcount/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/charcount/main.go)</small>
+
+[p97-99]
+
+The [`ReadRune`](https://golang.org/pkg/bufio/#Reader.ReadRune) method (from [`bufio`](https://golang.org/pkg/bufio/)) performs UTF-8 decoding and returns three values: the decoded rune, the length in bytes of its UTF-8 encoding, and an error value. The only error we expect is end-of-file. If the input was not a legal UTF-8 encoding of a rune, the returned rune is [`unicode.ReplacementChar`](https://golang.org/pkg/unicode/#pkg-constants) and the length is 1.
+
+The value type of a map can be a composite type, such as a map or slice. In the following code, the key type of graph is `string` and the value type is `map[string]bool`, representing a set of strings. This graph maps a string to a set of related strings, its successors in a directed graph.
+
+<small>[gopl.io/ch4/graph/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/graph/main.go)</small>
+
+```go
+var graph = make(map[string]map[string]bool)
+
+func addEdge(from, to string) {
+	edges := graph[from]
+	if edges == nil {
+		edges = make(map[string]bool)
+		graph[from] = edges
+	}
+	edges[to] = true
+}
+
+func hasEdge(from, to string) bool {
+	return graph[from][to]
+}
+```
+
+* The `addEdge` function populates a map lazily, that is, to initialize each value as its key appears for the first time.
+* The `hasEdge` function shows how the zero value of a missing map entry works: even if neither `from` nor `to` is present, `graph[from][to]` will always give a meaningful result.
+
+### Structs
