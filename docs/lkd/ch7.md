@@ -2,7 +2,7 @@
 
 Processors can be orders of magnitudes faster than the hardware they talk to; it is not ideal for the kernel to issue a request and wait for a response from slower hardware. Instead, the kernel must be free to go and handle other work, dealing with the hardware only after that hardware has actually completed its work. [p113]
 
-How can the processor work with hardware without impacting the machine’s overall performance? As one solution, **polling** incurs overhead, because it must occur repeatedly regardless of whether the hardware is active or ready. A better solution is to provide a mechanism for the hardware to signal to the kernel when attention is needed. This mechanism is called an **interrupt**. This chapter dicusses interrupts and how the kernel responds to them, with special functions called **interrupt handlers**.
+How can the processor work with hardware without impacting the machine's overall performance? As one solution, **polling** incurs overhead, because it must occur repeatedly regardless of whether the hardware is active or ready. A better solution is to provide a mechanism for the hardware to signal to the kernel when attention is needed. This mechanism is called an **interrupt**. This chapter dicusses interrupts and how the kernel responds to them, with special functions called **interrupt handlers**.
 
 ### Interrupts
 
@@ -22,7 +22,7 @@ These interrupt values are often called [**interrupt request**](https://en.wikip
 
 * Each IRQ line is assigned a numeric value. For example, on the classic PC, IRQ zero is the timer interrupt and IRQ one is the keyboard interrupt.
 * Some interrupts are dynamically assigned, such as interrupts associated with devices on the PCI bus. Other non-PC architectures have similar dynamic assignments for interrupt values.
-* The kernel knows that a specific interrupt is associated with a specific device, and the kernel knows this. The hardware then issues interrupts to get the kernel’s attention.
+* The kernel knows that a specific interrupt is associated with a specific device. The hardware then issues interrupts to get the kernel's attention.
 
 #### Exceptions and Interrupts *
 
@@ -40,7 +40,7 @@ System calls (one type of exception) on the x86 architecture are implemented by 
 An [**interrupt handler**](https://en.wikipedia.org/wiki/Interrupt_handler) or **interrupt service routine** (ISR) is the function that the kernel runs in response to a specific interrupt:
 
 * **Each device that generates interrupts has an associated interrupt handler.**
-* **The interrupt handler for a device is part of the device’s [**driver**](https://en.wikipedia.org/wiki/Device_driver)** (the kernel code that manages the device).
+* **The interrupt handler for a device is part of the device's [**driver**](https://en.wikipedia.org/wiki/Device_driver)** (the kernel code that manages the device).
 
 In Linux, interrupt handlers are normal C functions, which match a specific prototype and thus enables the kernel to pass the handler information in a standard way. What differentiates interrupt handlers from other kernel functions is that the kernel invokes them in response to interrupts and that they run in a special context called **interrupt context**. This special context is occasionally called **atomic context** because code executing in this context is unable to block.
 
@@ -49,7 +49,7 @@ Because an interrupt can occur at any time, an interrupt handler can be executed
 * To the hardware: the operating system services the interrupt without delay.
 * To the rest of the system: the interrupt handler executes in as short a period as possible.
 
-At the very least, an interrupt handler’s job is to acknowledge the interrupt’s receipt to the hardware. However, interrupt handlers can oftern have a large amount of work to perform.
+At the very least, an interrupt handler's job is to acknowledge the interrupt's receipt to the hardware. However, interrupt handlers can oftern have a large amount of work to perform.
 
 ### Top Halves Versus Bottom Halves
 
@@ -68,17 +68,17 @@ Linux provides various mechanisms for implementing bottom halves (discussed in [
 For example using the network card:
 
 1. When network cards receive packets from the network, the network cards immediately issue an interrupt. This optimizes network throughput and latency and avoids timeouts. [p115]
-2. The kernel responds by executing the network card’s registered interrupt.
+2. The kernel responds by executing the network card's registered interrupt.
 3. The interrupt runs, acknowledges the hardware, copies the new networking packets into main memory, and readies the network card for more packets. These jobs are the important, time-critical, and hardware-specific work.
-    * The kernel generally needs to quickly copy the networking packet into main memory because the network data buffer on the networking card is fixed and miniscule in size, particularly compared to main memory. Delays in copying the packets can result in a buffer overrun, with incoming packets overwhelming the networking card’s buffer and thus packets being dropped.
-    * After the networking data is safely in the main memory, the interrupt’s job is done, and it can return control of the system to whatever code was interrupted when the interrupt was generated.
+    * The kernel generally needs to quickly copy the networking packet into main memory because the network data buffer on the networking card is fixed and miniscule in size, particularly compared to main memory. Delays in copying the packets can result in a buffer overrun, with incoming packets overwhelming the networking card's buffer and thus packets being dropped.
+    * After the networking data is safely in the main memory, the interrupt's job is done, and it can return control of the system to whatever code was interrupted when the interrupt was generated.
 4. The rest of the processing and handling of the packets occurs later, in the bottom half.
 
 This chapter discusses the top half. The next chapter covers the bottom.
 
 ### Registering an Interrupt Handler
 
-Each device has one associated driver. If that device uses interrupts (and most do),that driver must register one interrupt handler.
+Each device has one associated driver. If that device uses interrupts (and most do), that driver must register one interrupt handler.
 
 Drivers can register an interrupt handler and enable a given interrupt line for handling with the function `request_irq()`, which is declared in `<linux/interrupt.h>`:
 
@@ -123,7 +123,7 @@ The third parameter, `flags`, can be either zero or a bit mask of one or more of
 
 The fourth parameter, `name`, is name of the device associated with the interrupt. For example, this value for the keyboard interrupt on a PC is "keyboard". These text names are used by `/proc/irq` and `/proc/interrupts`.
 
-The fifth parameter, `dev`, is used for shared interrupt lines. When an interrupt handler is freed, `dev` provides a unique cookie to enable the removal of only the desired interrupt handler from the interrupt line. Without this parameter, it would be impossible for the kernel to know which handler to remove on a given interrupt line. You can pass `NULL` here if the line is not shared, but you must pass a unique cookie if your interrupt line is shared. This pointer is also passed into the interrupt handler on each invocation. A common practice is to pass the driver’s device structure:This pointer is unique and might be useful to have within the handlers.
+The fifth parameter, `dev`, is used for shared interrupt lines. When an interrupt handler is freed ([discussed later](#freeing-an-interrupt-handler)), `dev` provides a unique cookie to enable the removal of only the desired interrupt handler from the interrupt line. Without this parameter, it would be impossible for the kernel to know which handler to remove on a given interrupt line. You can pass `NULL` here if the line is not shared, but you must pass a unique cookie if your interrupt line is shared. This pointer is also passed into the interrupt handler on each invocation. A common practice is to pass the driver's device structure. This pointer is unique and might be useful to have within the handlers.
 
 `request_irq()` returns zero on success and nonzero value indicates an error, in which case the specified interrupt handler was not registered. A common error is `-EBUSY`, which denotes that the given interrupt line is already in use (and either the current user or you did not specify `IRQF_SHARED`).
 
@@ -173,3 +173,50 @@ Function | Description
 `free_irq()` | Unregister a given interrupt handler; if no handlers remain on the line, the given interrupt line is disabled.
 
 ### Writing an Interrupt Handler
+
+The following is a declaration of an interrupt handler, which matches the prototype of the `handler` argument given to `request_irq()`:
+
+```c
+static irqreturn_t intr_handler(int irq, void *dev)
+```
+
+* The first parameter, `irq`, is the numeric value of the interrupt line the handler is servicing. This value is not used very often, except in printing log messages.
+    * `irq` was useful before version 2.0 of the Linux kernel, when there was not a `dev` parameter and `irq` was used to differentiate between multiple devices using the same driver and therefore the same interrupt handler, e.g. a computer with multiple hard drive controllers of the same type. [p118-119]
+* The second parameter, `dev`, is a generic pointer to the same `dev` given to `request_irq()` when the interrupt handler was registered. [p119]
+    * It can be a unique value (which is required to support sharing) to act as a cookie to differentiate between multiple devices potentially using the same interrupt handler.
+    * It might also point to a structure of use to the interrupt handler. This structure is typically the `device` structure, which is both unique to each device and potentially useful to have within the handler.
+
+The return value of an interrupt handler is the special type `irqreturn_t`, which has two special values:
+
+* `IRQ_NONE`, returned when the interrupt handler detects an interrupt for which its device was not the originator.
+* `IRQ_HANDLED`, returned if the interrupt handler was correctly invoked, and its device caused the interrupt.
+
+Alternatively, `IRQ_RETVAL(val)` may be used. If `val` is nonzero, this macro returns `IRQ_HANDLED`. Otherwise, the macro returns `IRQ_NONE`.
+
+These special values are used to let the kernel know whether devices are issuing spurious (unrequested) interrupts. If all the interrupt handlers on a given interrupt line return `IRQ_NONE`, then the kernel can detect the problem.
+
+The return type `irqreturn_t` which is simply an `int`. This value provides backward compatibility with earlier kernels, which did not have this feature. Before 2.6, interrupt handlers returned void. <u>Drivers may simply typedef `irqreturn_t` to `void`</u> and define the different return values to no-ops and then work in 2.4 without further modification.
+
+The interrupt handler is normally `static` because it is never called directly from another file.
+
+The role of the interrupt handler depends entirely on the device and its reasons for issuing the interrupt.
+
+* At a minimum, most interrupt handlers need to provide acknowledgment to the device that they received the interrupt.
+* More complex devices need to additionally send and receive data and perform extended work in the interrupt handler. The extended work is pushed as much as possible into the bottom half handler.
+
+#### Reentrancy and Interrupt Handlers *
+
+Interrupt handlers in Linux need not be reentrant. <u>When a given interrupt handler is executing, the corresponding interrupt line is masked out on all processors, preventing another interrupt on the same line from being received.</u> Normally all other interrupts are enabled, so other interrupts are serviced, but the current line is always disabled. Consequently, the same interrupt handler is never invoked concurrently to service a nested interrupt. This greatly simplifies writing your interrupt handler.
+
+
+
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p119 on interrupt handlers**
+
+> The interrupt handler is normally `static` because it is never called directly from another file.
+
+<span class="text-danger">Question</span>: What does it mean?
