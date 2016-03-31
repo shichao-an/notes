@@ -208,6 +208,110 @@ The role of the interrupt handler depends entirely on the device and its reasons
 
 Interrupt handlers in Linux need not be reentrant. <u>When a given interrupt handler is executing, the corresponding interrupt line is masked out on all processors, preventing another interrupt on the same line from being received.</u> Normally all other interrupts are enabled, so other interrupts are serviced, but the current line is always disabled. Consequently, the same interrupt handler is never invoked concurrently to service a nested interrupt. This greatly simplifies writing your interrupt handler.
 
+#### Shared Handlers
+
+A shared handler is similar to a nonshared handler, but has three main differences:
+
+* The `IRQF_SHARED` flag must be set in the flags argument to `request_irq()`.
+* The `dev` argument must be unique to each registered handler.
+    * A pointer to any per-device structure is sufficient: a common choice is the `device` structure as it is both unique and potentially useful to the handler.
+    * It cannot be `NULL` for a shared handler.
+* The interrupt handler must be capable of distinguishing whether its device actually generated an interrupt, which requires both hardware support and associated logic in the interrupt handler; otherwise the interrupt handler would not know whether its associated device or some other device sharing the line caused the interrupt.
+
+All drivers sharing the interrupt line must meet the previous requirements. If any one device does not share fairly, none can share the line. The call to `request_irq()` with `IRQF_SHARED` specified can succeed only if:
+
+* The interrupt line is currently not registered, or,
+* All registered handlers on the line also specified `IRQF_SHARED`.
+
+Shared handlers, however, can mix usage of `IRQF_DISABLED`.
+
+<u>When the kernel receives an interrupt, it invokes sequentially each registered handler on the line.</u> Therefore, it is important that the handler be capable of distinguishing whether it generated a given interrupt. The handler must quickly exit if its associated device did not generate the interrupt. This requires the hardware device to have a status register (or similar mechanism) that the handler can check. Most hardware has such a feature.
+
+#### A Real-Life Interrupt Handler
+
+The [real-time clock](https://en.wikipedia.org/wiki/Real-time_clock) (RTC) driver is a real interrupt handler, which can be found in [`drivers/char/rtc.c`](https://github.com/shichao-an/linux/blob/v2.6.34/drivers/char/rtc.c).
+
+It is a device (separate from the system timer) which can do the following:
+
+* Sets the system clock.
+* Provides an alarm.
+* Supplies a periodic timer.
+
+On most architectures, the system clock is set by writing the desired time into a specific register or [I/O range](https://en.wikipedia.org/wiki/Input/output_base_address). An alarm or periodic timer functionality is normally implemented via interrupt. The interrupt is equivalent to a real-world clock alarm and the receipt of the interrupt is analogous to a buzzing alarm.
+
+When the RTC driver loads, the function [`rtc_init()`](https://github.com/shichao-an/linux/blob/v2.6.34/drivers/char/rtc.c#L953) is invoked to initialize the driver, which includes registering the interrupt handler:
+
+```c
+/* register rtc_interrupt on rtc_irq */
+if (request_irq(rtc_irq, rtc_interrupt, IRQF_SHARED, "rtc", (void *)&rtc_port)) {
+        printk(KERN_ERR "rtc: cannot register IRQ %d\n", rtc_irq);
+        return -EIO;
+}
+```
+
+In this example:
+
+* The interrupt line is stored in `rtc_irq`. This variable is set to the RTC interrupt for a given architecture. On a PC, the RTC is located at IRQ 8.
+* The second parameter `rtc_interrupt` is the interrupt handler, which shares the interrupt line with other handlers with `IRQF_SHARED` flag.
+* The fourth parameter indicates that the driver name is `rtc`.
+* Because this device shares the interrupt line, it passes a unique per-device value for `dev`.
+
+The handler code is:
+
+<small>[drivers/char/rtc.c#L239](https://github.com/shichao-an/linux/blob/v2.6.34/drivers/char/rtc.c#L239)</small>
+
+```c
+static irqreturn_t rtc_interrupt(int irq, void *dev_id)
+{
+	/*
+	 *	Can be an alarm interrupt, update complete interrupt,
+	 *	or a periodic interrupt. We store the status in the
+	 *	low byte and the number of interrupts received since
+	 *	the last read in the remainder of rtc_irq_data.
+	 */
+
+	spin_lock(&rtc_lock);
+	rtc_irq_data += 0x100;
+	rtc_irq_data &= ~0xff;
+	if (is_hpet_enabled()) {
+		/*
+		 * In this case it is HPET RTC interrupt handler
+		 * calling us, with the interrupt information
+		 * passed as arg1, instead of irq.
+		 */
+		rtc_irq_data |= (unsigned long)irq & 0xF0;
+	} else {
+		rtc_irq_data |= (CMOS_READ(RTC_INTR_FLAGS) & 0xF0);
+	}
+
+	if (rtc_status & RTC_TIMER_ON)
+		mod_timer(&rtc_irq_timer, jiffies + HZ/rtc_freq + 2*HZ/100);
+
+	spin_unlock(&rtc_lock);
+
+	/* Now do the rest of the actions */
+	spin_lock(&rtc_task_lock);
+	if (rtc_callback)
+		rtc_callback->func(rtc_callback->private_data);
+	spin_unlock(&rtc_task_lock);
+	wake_up_interruptible(&rtc_wait);
+
+	kill_fasync(&rtc_async_queue, SIGIO, POLL_IN);
+
+	return IRQ_HANDLED;
+}
+```
+
+This function is invoked whenever the machine receives the RTC interrupt.
+
+1. Note the spin lock calls:
+    * The first set ensures that `rtc_irq_data` is not accessed concurrently by another processor on an SMP machine. The `rtc_irq_data` variable is an `unsigned long` that stores information about the RTC and is updated on each interrupt to reflect the status of the interrupt.
+    * The second set protects `rtc_callback`, similarly to the first one. Locks are discussed in [Chapter 10 Kernel Synchronization Methods](ch10.md)
+2. If an RTC periodic timer is set, it is updated via `mod_timer()`. Timers are discussed in [Chapter 11 Timers and Time Management](ch11.md).
+3. The code under the comment "now do the rest of the actions" executes a possible preset callback function.The RTC driver enables a callback function to be registered and executed on each RTC interrupt.
+4. This function returns `IRQ_HANDLED` to signify that it properly handled this device. <u>Because the interrupt handler does not support sharing, and there is no mechanism for the RTC to detect a spurious interrupt, this handler always returns `IRQ_HANDLED`.</u>
+
+### Interrupt Context
 
 
 
@@ -218,5 +322,11 @@ Interrupt handlers in Linux need not be reentrant. <u>When a given interrupt han
 ##### **p119 on interrupt handlers**
 
 > The interrupt handler is normally `static` because it is never called directly from another file.
+
+<span class="text-danger">Question</span>: What does it mean?
+
+##### **p120 on shared handlers**
+
+> Shared handlers, however, can mix usage of `IRQF_DISABLED`.
 
 <span class="text-danger">Question</span>: What does it mean?

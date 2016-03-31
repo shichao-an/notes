@@ -159,6 +159,27 @@ An example IPL range is shown in the figure below:
 
 [Serial I/O](https://en.wikipedia.org/wiki/Serial_communication) has a high interrupt because its hardware buffer is usually small and needs quick servicing to avoid overflows.
 
+#### Processes
+
+A process is an environment for executing a user-level program. It consists of:
+
+* Memory address space
+* File descriptors
+* Thread stacks
+* Registers
+
+A process is like a "virtual early computer", where only one program is executing, with its own registers and stacks.
+
+Processes are multitasked by the kernel, which typically supports the execution of thousands of processes on a single system. They are individually identified by their **process ID** (PID), which is a unique numeric identifier.
+
+A process contains one or more **threads**:
+
+* Threads operate in the process address space and share the same file descriptors.
+* A thread is an executable context consisting of a stack, registers, and program counter.
+* Multiple threads allow a single process to execute in parallel across multiple CPUs.
+
+
+
 
 ### Doubts and Solutions
 
