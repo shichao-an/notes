@@ -543,6 +543,13 @@
         
             <li><a href="#reentrancy-and-interrupt-handlers">Reentrancy and Interrupt Handlers *</a></li>
         
+            <li><a href="#shared-handlers">Shared Handlers</a></li>
+        
+            <li><a href="#a-real-life-interrupt-handler">A Real-Life Interrupt Handler</a></li>
+        
+    
+        <li class="main "><a href="#interrupt-context">Interrupt Context</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -754,11 +761,115 @@
 </ul>
 <h4 id="reentrancy-and-interrupt-handlers">Reentrancy and Interrupt Handlers *</h4>
 <p>Interrupt handlers in Linux need not be reentrant. <u>When a given interrupt handler is executing, the corresponding interrupt line is masked out on all processors, preventing another interrupt on the same line from being received.</u> Normally all other interrupts are enabled, so other interrupts are serviced, but the current line is always disabled. Consequently, the same interrupt handler is never invoked concurrently to service a nested interrupt. This greatly simplifies writing your interrupt handler.</p>
+<h4 id="shared-handlers">Shared Handlers</h4>
+<p>A shared handler is similar to a nonshared handler, but has three main differences:</p>
+<ul>
+<li>The <code>IRQF_SHARED</code> flag must be set in the flags argument to <code>request_irq()</code>.</li>
+<li>The <code>dev</code> argument must be unique to each registered handler.<ul>
+<li>A pointer to any per-device structure is sufficient: a common choice is the <code>device</code> structure as it is both unique and potentially useful to the handler.</li>
+<li>It cannot be <code>NULL</code> for a shared handler.</li>
+</ul>
+</li>
+<li>The interrupt handler must be capable of distinguishing whether its device actually generated an interrupt, which requires both hardware support and associated logic in the interrupt handler; otherwise the interrupt handler would not know whether its associated device or some other device sharing the line caused the interrupt.</li>
+</ul>
+<p>All drivers sharing the interrupt line must meet the previous requirements. If any one device does not share fairly, none can share the line. The call to <code>request_irq()</code> with <code>IRQF_SHARED</code> specified can succeed only if:</p>
+<ul>
+<li>The interrupt line is currently not registered, or,</li>
+<li>All registered handlers on the line also specified <code>IRQF_SHARED</code>.</li>
+</ul>
+<p>Shared handlers, however, can mix usage of <code>IRQF_DISABLED</code>.</p>
+<p><u>When the kernel receives an interrupt, it invokes sequentially each registered handler on the line.</u> Therefore, it is important that the handler be capable of distinguishing whether it generated a given interrupt. The handler must quickly exit if its associated device did not generate the interrupt. This requires the hardware device to have a status register (or similar mechanism) that the handler can check. Most hardware has such a feature.</p>
+<h4 id="a-real-life-interrupt-handler">A Real-Life Interrupt Handler</h4>
+<p>The <a href="https://en.wikipedia.org/wiki/Real-time_clock">real-time clock</a> (RTC) driver is a real interrupt handler, which can be found in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/drivers/char/rtc.c"><code>drivers/char/rtc.c</code></a>.</p>
+<p>It is a device (separate from the system timer) which can do the following:</p>
+<ul>
+<li>Sets the system clock.</li>
+<li>Provides an alarm.</li>
+<li>Supplies a periodic timer.</li>
+</ul>
+<p>On most architectures, the system clock is set by writing the desired time into a specific register or <a href="https://en.wikipedia.org/wiki/Input/output_base_address">I/O range</a>. An alarm or periodic timer functionality is normally implemented via interrupt. The interrupt is equivalent to a real-world clock alarm and the receipt of the interrupt is analogous to a buzzing alarm.</p>
+<p>When the RTC driver loads, the function <a href="https://github.com/shichao-an/linux/blob/v2.6.34/drivers/char/rtc.c#L953"><code>rtc_init()</code></a> is invoked to initialize the driver, which includes registering the interrupt handler:</p>
+<div class="codehilite"><pre><span class="cm">/* register rtc_interrupt on rtc_irq */</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">request_irq</span><span class="p">(</span><span class="n">rtc_irq</span><span class="p">,</span> <span class="n">rtc_interrupt</span><span class="p">,</span> <span class="n">IRQF_SHARED</span><span class="p">,</span> <span class="s">&quot;rtc&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">rtc_port</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">printk</span><span class="p">(</span><span class="n">KERN_ERR</span> <span class="s">&quot;rtc: cannot register IRQ %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">rtc_irq</span><span class="p">);</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">EIO</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this example:</p>
+<ul>
+<li>The interrupt line is stored in <code>rtc_irq</code>. This variable is set to the RTC interrupt for a given architecture. On a PC, the RTC is located at IRQ 8.</li>
+<li>The second parameter <code>rtc_interrupt</code> is the interrupt handler, which shares the interrupt line with other handlers with <code>IRQF_SHARED</code> flag.</li>
+<li>The fourth parameter indicates that the driver name is <code>rtc</code>.</li>
+<li>Because this device shares the interrupt line, it passes a unique per-device value for <code>dev</code>.</li>
+</ul>
+<p>The handler code is:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/drivers/char/rtc.c#L239">drivers/char/rtc.c#L239</a></small></p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="n">irqreturn_t</span> <span class="nf">rtc_interrupt</span><span class="p">(</span><span class="kt">int</span> <span class="n">irq</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">dev_id</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/*</span>
+<span class="cm">     *  Can be an alarm interrupt, update complete interrupt,</span>
+<span class="cm">     *  or a periodic interrupt. We store the status in the</span>
+<span class="cm">     *  low byte and the number of interrupts received since</span>
+<span class="cm">     *  the last read in the remainder of rtc_irq_data.</span>
+<span class="cm">     */</span>
+
+    <span class="n">spin_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_lock</span><span class="p">);</span>
+    <span class="n">rtc_irq_data</span> <span class="o">+=</span> <span class="mh">0x100</span><span class="p">;</span>
+    <span class="n">rtc_irq_data</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="mh">0xff</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">is_hpet_enabled</span><span class="p">())</span> <span class="p">{</span>
+        <span class="cm">/*</span>
+<span class="cm">         * In this case it is HPET RTC interrupt handler</span>
+<span class="cm">         * calling us, with the interrupt information</span>
+<span class="cm">         * passed as arg1, instead of irq.</span>
+<span class="cm">         */</span>
+        <span class="n">rtc_irq_data</span> <span class="o">|=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">irq</span> <span class="o">&amp;</span> <span class="mh">0xF0</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">rtc_irq_data</span> <span class="o">|=</span> <span class="p">(</span><span class="n">CMOS_READ</span><span class="p">(</span><span class="n">RTC_INTR_FLAGS</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xF0</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">rtc_status</span> <span class="o">&amp;</span> <span class="n">RTC_TIMER_ON</span><span class="p">)</span>
+        <span class="n">mod_timer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_irq_timer</span><span class="p">,</span> <span class="n">jiffies</span> <span class="o">+</span> <span class="n">HZ</span><span class="o">/</span><span class="n">rtc_freq</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">HZ</span><span class="o">/</span><span class="mi">100</span><span class="p">);</span>
+
+    <span class="n">spin_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_lock</span><span class="p">);</span>
+
+    <span class="cm">/* Now do the rest of the actions */</span>
+    <span class="n">spin_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_task_lock</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">rtc_callback</span><span class="p">)</span>
+        <span class="n">rtc_callback</span><span class="o">-&gt;</span><span class="n">func</span><span class="p">(</span><span class="n">rtc_callback</span><span class="o">-&gt;</span><span class="n">private_data</span><span class="p">);</span>
+    <span class="n">spin_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_task_lock</span><span class="p">);</span>
+    <span class="n">wake_up_interruptible</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_wait</span><span class="p">);</span>
+
+    <span class="n">kill_fasync</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtc_async_queue</span><span class="p">,</span> <span class="n">SIGIO</span><span class="p">,</span> <span class="n">POLL_IN</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">IRQ_HANDLED</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function is invoked whenever the machine receives the RTC interrupt.</p>
+<ol>
+<li>Note the spin lock calls:<ul>
+<li>The first set ensures that <code>rtc_irq_data</code> is not accessed concurrently by another processor on an SMP machine. The <code>rtc_irq_data</code> variable is an <code>unsigned long</code> that stores information about the RTC and is updated on each interrupt to reflect the status of the interrupt.</li>
+<li>The second set protects <code>rtc_callback</code>, similarly to the first one. Locks are discussed in <a href="../ch10/">Chapter 10 Kernel Synchronization Methods</a></li>
+</ul>
+</li>
+<li>If an RTC periodic timer is set, it is updated via <code>mod_timer()</code>. Timers are discussed in <a href="../ch11/">Chapter 11 Timers and Time Management</a>.</li>
+<li>The code under the comment "now do the rest of the actions" executes a possible preset callback function.The RTC driver enables a callback function to be registered and executed on each RTC interrupt.</li>
+<li>This function returns <code>IRQ_HANDLED</code> to signify that it properly handled this device. <u>Because the interrupt handler does not support sharing, and there is no mechanism for the RTC to detect a spurious interrupt, this handler always returns <code>IRQ_HANDLED</code>.</u></li>
+</ol>
+<h3 id="interrupt-context">Interrupt Context</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p119-on-interrupt-handlers"><strong>p119 on interrupt handlers</strong></h5>
 <blockquote>
 <p>The interrupt handler is normally <code>static</code> because it is never called directly from another file.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean?</p>
+<h5 id="p120-on-shared-handlers"><strong>p120 on shared handlers</strong></h5>
+<blockquote>
+<p>Shared handlers, however, can mix usage of <code>IRQF_DISABLED</code>.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: What does it mean?</p>
             </div>
