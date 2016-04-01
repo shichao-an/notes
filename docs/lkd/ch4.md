@@ -29,7 +29,7 @@ when a process is to cease running and a new process is to begin running.
 * **Timeslice** of a process: the time the process runs before it is preempted is usually predetermined.
     * Managing the timeslice enables the scheduler to make global scheduling decisions for the system and prevents any one process from monopolizing the processor.
     * On many modern operating systems, the timeslice is dynamically calculated as a function of process behavior and configurable system policy.
-    * Linux’s unique "fair" scheduler does not employ timeslices *per se*, to interesting effect.
+    * Linux's unique "fair" scheduler does not employ timeslices *per se*, to interesting effect.
 
 #### Cooperative multitasking
 
@@ -43,15 +43,15 @@ The shortcomings of this approach are manifest:
 
 [p42]
 
-### Linux’s Process Scheduler
+### Linux's Process Scheduler
 
-From Linux’s first version in 1991 through the 2.4 kernel series, the Linux scheduler was simple in design. It was easy to understand, but scaled poorly in light of many runnable processes or many processors.
+From Linux's first version in 1991 through the 2.4 kernel series, the Linux scheduler was simple in design. It was easy to understand, but scaled poorly in light of many runnable processes or many processors.
 
 During the 2.5 kernel development series, the **O(1) scheduler** solved the shortcomings of the previous Linux scheduler and introduced powerful new features and performance characteristics. By introducing a constant-time algorithm for timeslice calculation and per-processor runqueues, it rectified the design limitations of the earlier scheduler.
 
-However, the O(1) scheduler had several pathological failures related to scheduling latency-sensitive applications (interactive processes). Thus, although the O(1) scheduler was ideal for large server workloads, which lack interactive processes, it performed below par on desktop systems, where interactive applications are the *raison d’être*.
+However, the O(1) scheduler had several pathological failures related to scheduling latency-sensitive applications (interactive processes). Thus, although the O(1) scheduler was ideal for large server workloads, which lack interactive processes, it performed below par on desktop systems, where interactive applications are the *raison d'être*.
 
-Beginning in the 2.6 kernel series, developers introduced new process schedulers aimed at improving the interactive performance of the O(1) scheduler. The most notable of these was the **Rotating Staircase Deadline** scheduler, which introduced the concept of **fair scheduling**, borrowed from queuing theory, to Linux’s process scheduler. This concept was the inspiration for the O(1) scheduler’s eventual replacement in kernel version 2.6.23, the **Completely Fair Scheduler** (CFS).
+Beginning in the 2.6 kernel series, developers introduced new process schedulers aimed at improving the interactive performance of the O(1) scheduler. The most notable of these was the **Rotating Staircase Deadline** scheduler, which introduced the concept of **fair scheduling**, borrowed from queuing theory, to Linux's process scheduler. This concept was the inspiration for the O(1) scheduler's eventual replacement in kernel version 2.6.23, the **Completely Fair Scheduler** (CFS).
 
 This chapter discusses the fundamentals of scheduler design and how they apply to the Completely Fair Scheduler and its goals, design, implementation, algorithms, and related system calls. We also discuss the O(1) scheduler because its implementation is a more "classic" Unix process scheduler model.
 
@@ -87,14 +87,14 @@ Schedulers often employ complex algorithms to determine the most worthwhile proc
 
 #### Process Priority
 
-The **priority-based** scheduling is a common type of scheduling algorithm, which isn’t exactly implemented on Linux. It means that processes with a higher priority run before those with a lower priority, whereas processes with the same priority are scheduled *round-robin* (one after the next, repeating). On some systems, processes with a higher priority also receive a longer timeslice. The runnable process with timeslice remaining and the highest priority always runs. [p44]
+The **priority-based** scheduling is a common type of scheduling algorithm, which isn't exactly implemented on Linux. It means that processes with a higher priority run before those with a lower priority, whereas processes with the same priority are scheduled *round-robin* (one after the next, repeating). On some systems, processes with a higher priority also receive a longer timeslice. The runnable process with timeslice remaining and the highest priority always runs. [p44]
 
 ##### **nice value and real-time priority**
 
 The Linux kernel implements two separate priority ranges:
 
 * **nice value** (a number from –20 to +19 with a default of 0) is the standard priority range used in all Unix systems:
-    * Processes with a lower nice value (higher priority) receive a larger proportion of the system’s processor, and vice versa.
+    * Processes with a lower nice value (higher priority) receive a larger proportion of the system's processor, and vice versa.
     * In Linux, the nice value is a control over the *proportion* of timeslice. In other Unix-based systems, such as Mac OS X, the nice value is a control over the *absolute* timeslice allotted to a process;
     * The `ps -el` command lists processes with their nice values.
 * **Real-time priority** (configurable values that by default range from 0 to 99)
@@ -117,7 +117,7 @@ The conflicting goals of I/O bound versus processor-bound processes:
 
 ##### **Timeslice on Linux**
 
-Linux’s CFS scheduler does not directly assign timeslices to processes, but assigns processes a *proportion* of the processor. The amount of processor time that a process receives is a function of the load of the system. This assigned proportion is further affected by each process’s nice value. The nice value acts as a weight, changing the proportion of the processor time each process receives. Processes with higher nice values (a lower priority) receive a deflationary weight, yielding them a smaller proportion of the processor, and vice versa.
+Linux's CFS scheduler does not directly assign timeslices to processes, but assigns processes a *proportion* of the processor. The amount of processor time that a process receives is a function of the load of the system. This assigned proportion is further affected by each process's nice value. The nice value acts as a weight, changing the proportion of the processor time each process receives. Processes with higher nice values (a lower priority) receive a deflationary weight, yielding them a smaller proportion of the processor, and vice versa.
 
 With the CFS scheduler, whether the process runs immediately (preempting the currently running process) is a function of how much of a proportion of the processor the newly runnable processor has consumed. If it has consumed a smaller proportion of the processor than the currently executing process, it runs immediately
 
@@ -132,7 +132,7 @@ Ideally, the scheduler gives the text editor a larger proportion of the availabl
 
 **How the above two goals achieved**
 
-1. Instead of assigning the text editor a specific priority and timeslice, the Linux guarantees the text editor a specific proportion of the processor. If the two are the only processes with same nice values, each would be guaranteed half of the processor’s time (the proportion is 50%). Because the text editor spends most of its time blocked, waiting for user key presses, it does not use anywhere near 50% of the processor. Conversely, the video encoder is free to use more than its allotted 50%, enabling it to finish the encoding quickly.
+1. Instead of assigning the text editor a specific priority and timeslice, the Linux guarantees the text editor a specific proportion of the processor. If the two are the only processes with same nice values, each would be guaranteed half of the processor's time (the proportion is 50%). Because the text editor spends most of its time blocked, waiting for user key presses, it does not use anywhere near 50% of the processor. Conversely, the video encoder is free to use more than its allotted 50%, enabling it to finish the encoding quickly.
 2. When the editor wakes up, CFS notes that it is allotted 50% of the processor but has used considerably less, and thus determines that the text editor has run for *less time* than the video encoder. Attempting to give all processes a fair share of the processor, it then preempts the video encoder and enables the text editor to run. [p46]
 
 
@@ -159,7 +159,7 @@ The approach taken by CFS is a radical (for process schedulers) rethinking of ti
 
 #### Fair Scheduling
 
-CFS is based on a simple concept: Model process scheduling as if the system had an ideal, perfectly multitasking processor. In such a system, each process would receive 1/*n* of the processor’s time, where *n* is the number of runnable processes, and we’d schedule them for infinitely small durations, so that in any measurable period we’d have run all *n* processes for the same amount of time. [p48]
+CFS is based on a simple concept: Model process scheduling as if the system had an ideal, perfectly multitasking processor. In such a system, each process would receive 1/*n* of the processor's time, where *n* is the number of runnable processes, and we'd schedule them for infinitely small durations, so that in any measurable period we'd have run all *n* processes for the same amount of time. [p48]
 
 It is not efficient to run processes for infinitely small durations; there is a switching cost to preempting one process for another: the overhead of swapping one process for another and the effects on caches. CFS will run each process for some amount of time, round-robin, selecting next the process that has run the least. Rather than assign each process a timeslice, CFS calculates how long a process should run as a function of the total number of runnable processes. Instead of using the nice value to calculate a timeslice, CFS uses the nice value to weight the proportion of processor a process is to receive. [p49]
 
@@ -170,7 +170,7 @@ For the nice value on weighting the proportion, consider the case of two runnabl
 
 ### The Linux Scheduling Implementation
 
-CFS’s actual implementation lives in [kernel/sched_fair.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c). Specifically,
+CFS's actual implementation lives in [kernel/sched_fair.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c). Specifically,
 this sections discusses four components of CFS:
 
 * Time Accounting
@@ -229,7 +229,7 @@ static const int prio_to_weight[40] = {
 
 ##### **The Virtual Runtime**
 
-The `vruntime` variable stores the **virtual runtime** of a process, which is the actual runtime (the amount of time spent running) normalized (or weighted) by the number of runnable processes. The virtual runtime’s units are nanoseconds and therefore `vruntime` is decoupled from the timer tick. Because processors are not capable of perfect multitasking and we must run each process in succession, CFS uses vruntime to account for how long a process has run and thus how much longer it ought to run.
+The `vruntime` variable stores the **virtual runtime** of a process, which is the actual runtime (the amount of time spent running) normalized (or weighted) by the number of runnable processes. The virtual runtime's units are nanoseconds and therefore `vruntime` is decoupled from the timer tick. Because processors are not capable of perfect multitasking and we must run each process in succession, CFS uses `vruntime` to account for how long a process has run and thus how much longer it ought to run.
 
 The function `update_curr()`, defined in `kernel/sched_fair.c` ([kernel/sched_fair.c#L518](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L518)), manages this accounting:
 
@@ -265,7 +265,7 @@ static void update_curr(struct cfs_rq *cfs_rq)
 }
 ```
 
-`update_curr()` calculates the execution time of the current process and stores that value in `delta_exec`. It then passes that runtime to `__update_curr()`, which weights the time by the number of runnable processes. The current process’s vruntime is then incremented by the weighted value:
+`update_curr()` calculates the execution time of the current process and stores that value in `delta_exec`. It then passes that runtime to `__update_curr()`, which weights the time by the number of runnable processes. The current process's `vruntime` is then incremented by the weighted value:
 
 ```c
 /*
@@ -289,7 +289,7 @@ __update_curr(struct cfs_rq *cfs_rq, struct sched_entity *curr,
 }
 ```
 
-`update_curr()` is invoked periodically by the system timer and also whenever a process becomes runnable or blocks, becoming unrunnable. In this manner, vruntime is an accurate measure of the runtime of a given process and an indicator of what process should run next.
+`update_curr()` is invoked periodically by the system timer and also whenever a process becomes runnable or blocks, becoming unrunnable. In this manner, `vruntime` is an accurate measure of the runtime of a given process and an indicator of what process should run next.
 
 ##### **The `calc_delta_fair()` function**
 
@@ -354,13 +354,13 @@ For division details, see [Explanation of the calc_delta_mine function](http://s
 
 #### Process Selection
 
-CFS attempts to balance a process’s virtual runtime with a simple rule: <u>when deciding what process to run next, it picks the process with the smallest `vruntime`.</u>
+CFS attempts to balance a process's virtual runtime with a simple rule: <u>when deciding what process to run next, it picks the process with the smallest `vruntime`.</u>
 
 CFS uses a [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree) to manage the list of runnable processes and efficiently find the process with the smallest `vruntime`. A red-black tree, called an *rbtree* in Linux ([include/linux/rbtree.h](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/rbtree.h), [lib/rbtree.c](https://github.com/shichao-an/linux/blob/v2.6.34/lib/rbtree.c)), is a type of [self-balancing binary search tree](https://en.wikipedia.org/wiki/Self-balancing_binary_search_tree). It is a data structure that store nodes of arbitrary data, identified by a specific key, and that they enable efficient search for a given key. Specifically, obtaining a node identified by a given key is logarithmic in time as a function of total nodes in the tree.
 
 ##### **Picking the Next Task**
 
-The process that CFS wants to run next, which is the process with the smallest `vruntime`, is the leftmost node in the tree. If you follow the tree from the root down through the left child, and continue moving to the left until you reach a leaf node, you find the process with the smallest `vruntime`. CFS’s process selection algorithm is thus summed up as "run the process represented by the leftmost node in the rbtree." [p53]
+The process that CFS wants to run next, which is the process with the smallest `vruntime`, is the leftmost node in the tree. If you follow the tree from the root down through the left child, and continue moving to the left until you reach a leaf node, you find the process with the smallest `vruntime`. CFS's process selection algorithm is thus summed up as "run the process represented by the leftmost node in the rbtree." [p53]
 
 The function that performs this selection is `__pick_next_entity()`, defined in `kernel/sched_fair.c`([kernel/sched_fair.c#L377](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched_fair.c#L377)):
 
@@ -461,7 +461,7 @@ static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 }
 ```
 
-This function traverses the tree in the `while()` loop to search for a matching key (inserted process’s `vruntime`). It moves to the left child if the key is smaller than the current node’s key and to the right child if the key is larger.  If it ever moves to the right, even once, it knows the inserted process cannot be the new leftmost node, and it sets leftmost to zero. If it moves only to the left, `leftmost` remains one, and we have a new leftmost node and can update the cache by setting `rb_leftmost` to the inserted process. When out of the loop, the function calls `rb_link_node()` on the parent node, making the inserted process the new child. The function `rb_insert_color()` updates the self-balancing properties of the tree.
+This function traverses the tree in the `while()` loop to search for a matching key (inserted process's `vruntime`). It moves to the left child if the key is smaller than the current node's key and to the right child if the key is larger.  If it ever moves to the right, even once, it knows the inserted process cannot be the new leftmost node, and it sets leftmost to zero. If it moves only to the left, `leftmost` remains one, and we have a new leftmost node and can update the cache by setting `rb_leftmost` to the inserted process. When out of the loop, the function calls `rb_link_node()` on the parent node, making the inserted process the new child. The function `rb_insert_color()` updates the self-balancing properties of the tree.
 
 ##### **Removing Processes from the Tree**
 
@@ -556,7 +556,7 @@ pick_next_task(struct rq *rq)
 
 Note the optimization at the beginning of the function. CFS is the scheduler class for normal processes, and most systems run mostly normal processes, there is a small hack to quickly select the next CFS-provided process if the number of runnable processes is equal to the number of CFS runnable processes (which suggests that all runnable processes are provided by CFS).
 
-The core of the function is the `for()` loop, which iterates over each class in priority order, starting with the highest priority class. Each class implements the `pick_next_task()` function, which returns a pointer to its next runnable process or, if there is not one, `NULL`.The first class to return a non-`NULL` value has selected the next runnable process. CFS’s implementation of `pick_next_task()` calls `pick_next_entity()`, which in turn calls the `__pick_next_entity()` function (see [Picking the Next Task](#picking-the-next-task) in the previous section).
+The core of the function is the `for()` loop, which iterates over each class in priority order, starting with the highest priority class. Each class implements the `pick_next_task()` function, which returns a pointer to its next runnable process or, if there is not one, `NULL`.The first class to return a non-`NULL` value has selected the next runnable process. CFS's implementation of `pick_next_task()` calls `pick_next_entity()`, which in turn calls the `__pick_next_entity()` function (see [Picking the Next Task](#picking-the-next-task) in the previous section).
 
 ##### **`fair_sched_class` scheduler class** *
 
@@ -686,9 +686,9 @@ Some notes of the function above:
 
 `wake_up()` wakes up all the tasks waiting on the given wait queue. It does the following:
 
-* Calls `try_to_wake_up()`, which sets the task’s state to `TASK_RUNNING`
+* Calls `try_to_wake_up()`, which sets the task's state to `TASK_RUNNING`
 * Calls `enqueue_task()` to add the task to the red-black tree
-* Sets `need_resched` if the awakened task’s priority is higher than the priority of the current task. <u>The code that causes the event to occur typically calls `wake_up()` itself</u>.
+* Sets `need_resched` if the awakened task's priority is higher than the priority of the current task. <u>The code that causes the event to occur typically calls `wake_up()` itself</u>.
     * For example, when data arrives from the hard disk, the VFS calls `wake_up()` on the wait queue that holds the processes waiting for the data.
 
 Since there are spurious wake-ups, just because a task is awakened does not mean that the event for which the task is waiting has occurred. Sleeping should always be handled in a loop that ensures that the condition for which the task is waiting has indeed occurred.
@@ -700,8 +700,8 @@ The figure below depicts the relationship between each scheduler state.
 
 Context switching, the switching from one runnable task to another, is handled by the `context_switch()` function defined in [kernel/sched.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/sched.c#L2905). It is called by `schedule()` when a new process has been selected to run. It does two basic jobs:
 
-* Calls `switch_mm()`, declared in [`<asm/mmu_context.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/mmu_context.h), to switch the virtual memory mapping from the previous process’s to that of the new process.
-* Calls `switch_to()`, declared in [`<asm/system.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/system.h), to switch the processor state from the previous process’s to the current’s. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.
+* Calls `switch_mm()`, declared in [`<asm/mmu_context.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/mmu_context.h), to switch the virtual memory mapping from the previous process's to that of the new process.
+* Calls `switch_to()`, declared in [`<asm/system.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/system.h), to switch the processor state from the previous process's to the current's. This involves saving and restoring stack information and the processor registers and any other architecture-specific state that must be managed and restored on a per-process basis.
 
 #### The `need_resched` flag *
 
@@ -748,7 +748,7 @@ The kernel can preempt a task running in the kernel so long as it does not hold 
 
 ##### **The preemption counter `preempt_count`** *
 
-To support kernel preemption, preemption counter, `preempt_count` ([arch/x86/include/asm/thread_info.h#L32](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26)), was added to each process’s `thread_info`. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released.When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of `need_resched` and `preempt_count`:
+To support kernel preemption, preemption counter, `preempt_count` ([arch/x86/include/asm/thread_info.h#L32](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26)), was added to each process's `thread_info`. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released.When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of `need_resched` and `preempt_count`:
 
 * If `need_resched` is set and `preempt_count` is zero, then a more important task is runnable, and it is safe to preempt. Thus, the scheduler is invoked.
 * If `preempt_count` is nonzero, a lock is held, and it is unsafe to reschedule. In that case, the interrupt returns as usual to the currently executing task.
@@ -822,40 +822,40 @@ The table below lists the system calls with brief descriptions. Their implementa
 
 System Call | Description
 ----------- | -----------
-`nice()` | Sets a process’s nice value
-`sched_setscheduler()` | Sets a process’s scheduling policy
-`sched_getscheduler()` | Gets a process’s scheduling policy
-`sched_setparam()` | Sets a process’s real-time priority
-`sched_getparam()` | Gets a process’s real-time priority
+`nice()` | Sets a process's nice value
+`sched_setscheduler()` | Sets a process's scheduling policy
+`sched_getscheduler()` | Gets a process's scheduling policy
+`sched_setparam()` | Sets a process's real-time priority
+`sched_getparam()` | Gets a process's real-time priority
 `sched_get_priority_max()` | Gets the maximum real-time priority
 `sched_get_priority_min()` | Gets the minimum real-time priority
-`sched_rr_get_interval()` | Gets a process’s timeslice value
-`sched_setaffinity()` | Sets a process’s processor affinity
-`sched_getaffinity()` | Gets a process’s processor affinity
+`sched_rr_get_interval()` | Gets a process's timeslice value
+`sched_setaffinity()` | Sets a process's processor affinity
+`sched_getaffinity()` | Gets a process's processor affinity
 `sched_yield()` | Temporarily yields the processor
 
 #### Scheduling Policy and Priority-Related System Calls
 
-* The `sched_setscheduler()` and `sched_getscheduler()` system calls set and get a given process’s scheduling policy and real-time priority. The major work  of these functions is merely to read or write the `policy` and `rt_priority` values in the process’s `task_struct`. [p66]
-* The `sched_setparam()` and `sched_getparam()` system calls set and get a process’s real-time priority. These calls merely encode `rt_priority` in a special `sched_param` structure ([include/linux/sched.h#L46](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L46)).
+* The `sched_setscheduler()` and `sched_getscheduler()` system calls set and get a given process's scheduling policy and real-time priority. The major work  of these functions is merely to read or write the `policy` and `rt_priority` values in the process's `task_struct`. [p66]
+* The `sched_setparam()` and `sched_getparam()` system calls set and get a process's real-time priority. These calls merely encode `rt_priority` in a special `sched_param` structure ([include/linux/sched.h#L46](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L46)).
 * The calls `sched_get_priority_max()` and `sched_get_priority_min()` return the maximum and minimum priorities, respectively, for a given scheduling policy. The maximum priority for the real-time policies is `MAX_USER_RT_PRIO` minus one; the minimum is one.
-* For normal tasks, the `nice()` function increments the given process’s static priority by the given amount.
+* For normal tasks, the `nice()` function increments the given process's static priority by the given amount.
     * Only root can provide a negative value, which lowers the nice value and increase the priority.
-    * The `nice()` function calls the kernel’s `set_user_nice()` function, which sets the `static_prio` and prio values in the task’s `task_struct`.
+    * The `nice()` function calls the kernel's `set_user_nice()` function, which sets the `static_prio` and prio values in the task's `task_struct`.
 
 #### Processor Affinity System Calls
 
 The Linux scheduler enforces hard processor affinity, which means that, aside from providing soft or natural affinity by attempting to keep processes on the same processor, the scheduler enables a user to enforce "a task must remain on this subset of the available processors no matter what".
 
-TThe hard affinity is stored as a bitmask in the task’s `task_struct` as `cpus_allowed` ([include/linux/sched.h#L1210](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1210)). The bitmask contains one bit per possible processor on the system. By default, all bits are set and, therefore, a process is potentially runnable on any processor. The following system calls set and get the bitmask:
+TThe hard affinity is stored as a bitmask in the task's `task_struct` as `cpus_allowed` ([include/linux/sched.h#L1210](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/sched.h#L1210)). The bitmask contains one bit per possible processor on the system. By default, all bits are set and, therefore, a process is potentially runnable on any processor. The following system calls set and get the bitmask:
 
 * `sched_setaffinity()` sets a different bitmask of any combination of one or more bits.
 * `sched_getaffinity()` returns the current `cpus_allowed` bitmask.
 
 The kernel enforces hard affinity in a simple manner:
 
-1. When a process is initially created, it inherits its parent’s affinity mask. Because the parent is running on an allowed processor, the child thus runs on an allowed processor.
-2. When a processor’s affinity is changed, the kernel uses the **migration threads** to push the task onto a legal processor. (See [Doubts and Solutions](#doubts-and-solutions))
+1. When a process is initially created, it inherits its parent's affinity mask. Because the parent is running on an allowed processor, the child thus runs on an allowed processor.
+2. When a processor's affinity is changed, the kernel uses the **migration threads** to push the task onto a legal processor. (See [Doubts and Solutions](#doubts-and-solutions))
 3. The load balancer pulls tasks to only an allowed processor
 
 Therefore, a process only ever runs on a processor whose bit is set in the `cpus_allowed` field of its process descriptor.
@@ -869,11 +869,11 @@ Linux provides the `sched_yield()` system call as a mechanism for a process to e
 
 Applications and even kernel code should be certain they truly want to give up the processor before calling `sched_yield()`.
 
-Kernel code, as a convenience, can call `yield()`, which ensures that the task’s state is `TASK_RUNNING` and then call `sched_yield()`. User-space applications use the `sched_yield()` system call.
+Kernel code, as a convenience, can call `yield()`, which ensures that the task's state is `TASK_RUNNING` and then call `sched_yield()`. User-space applications use the `sched_yield()` system call.
 
 ### Conclusion
 
-Meeting the demands of process scheduling is nontrivial. A large number of runnable processes, scalability concerns, trade-offs between latency and throughput, and the demands of various workloads make a one-size-fits-all algorithm hard to achieve. Linux kernel’s new CFS process scheduler, comes close to appeasing all parties and providing an optimal solution for most use cases with good scalability. [p67]
+Meeting the demands of process scheduling is nontrivial. A large number of runnable processes, scalability concerns, trade-offs between latency and throughput, and the demands of various workloads make a one-size-fits-all algorithm hard to achieve. Linux kernel's new CFS process scheduler, comes close to appeasing all parties and providing an optimal solution for most use cases with good scalability. [p67]
 
 
 ### Doubts and Solutions

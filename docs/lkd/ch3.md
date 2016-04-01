@@ -167,7 +167,7 @@ The program code is read in from an **executable file** and executed within the 
 
 * **User-space**: Normal program execution occurs in user-space.
 * **Kernel-space**: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in **process context**. When in process context, the `current` macro is valid.
-    * Other than process context there is **interrupt context** (discussed in [Chapter 7](ch7.md). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
+    * Other than process context there is [**interrupt context**](ch7.md#interrupt-context) (discussed in [Chapter 7](ch7.md). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
 
 Upon exiting the kernel, the process resumes execution in user-space, unless a higher-priority process has become runnable in the interim, in which case the scheduler is invoked to select the higher priority process.
 
