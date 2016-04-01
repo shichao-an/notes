@@ -313,6 +313,42 @@ This function is invoked whenever the machine receives the RTC interrupt.
 
 ### Interrupt Context
 
+When executing an interrupt handler, the kernel is in **interrupt context**.
+
+#### Difference from the process context *
+
+As discussed in [Chapter 3](ch3.md), the [process context](ch3.md#process-context) is the mode of operation the kernel is in while it is executing on behalf of a process, such as executing a system call or running a kernel thread.
+
+* In process context, the `current` macro points to the associated task.
+* Since a process is coupled to the kernel in process context, process context can sleep or otherwise invoke the scheduler.
+
+Interrupt context is not associated with a process.
+
+* <u>The `current` macro is not relevant, though it points to the interrupted process.</u>
+* Without a backing process, interrupt context cannot sleep and cannot reschedule. Therefore, you cannot call certain functions from interrupt context. If a function sleeps, you cannot use it from your interrupt handler: this limits the functions that can be called from an interrupt handler.
+
+Interrupt context is time-critical, because the interrupt handler interrupts other code.
+
+* It should be kept in mind that the interrupt handler has interrupted other code (possibly even another interrupt handler on a different line). Due to asynchronous nature, it is imperative that all interrupt handlers be as quick and as simple as possible.
+* As much as possible, work should be pushed out from the interrupt handler and performed in a bottom half, which runs at a more convenient time.
+
+#### Stacks of an interrupt handler *
+
+The setup of an interrupt handler's stacks is a configuration option.
+
+* Historically, interrupt handlers did not receive their own stacks. Instead, they would share the stack of the process that they interrupted.
+    * Note that <u>a process is always running. When nothing else is schedulable, the idle task runs.</u>
+    * The kernel stack is two pages in size:
+        * 8KB on 32-bit architectures.
+        * 16KB on 64-bit architectures.
+    * Because of sharing the stack, interrupt handlers must be exceptionally frugal with what data they allocate there. [p122]
+* Early in the 2.6 kernel process, an option was added to reduce the stack size from two pages to one, providing only a 4KB stack on 32-bit system, and interrupt handlers were given their own stack, one stack per processor, one page in size. This stack is referred to as the **interrupt stack**.
+    * Although the total size of the interrupt stack is half that of the original shared stack, the average stack space available is greater because interrupt handlers get the full page of memory to themselves, because previously every process on the system needed two pages of contiguous, nonswappable kernel memory.
+
+Your interrupt handler should not care what stack setup is in use or what the size of the kernel stack is. Always use an absolute minimum amount of stack space.
+
+### Implementing Interrupt Handlers
+
 
 
 ### Doubts and Solution

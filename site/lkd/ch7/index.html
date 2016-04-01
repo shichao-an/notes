@@ -550,6 +550,13 @@
     
         <li class="main "><a href="#interrupt-context">Interrupt Context</a></li>
         
+            <li><a href="#difference-from-the-process-context">Difference from the process context *</a></li>
+        
+            <li><a href="#stacks-of-an-interrupt-handler">Stacks of an interrupt handler *</a></li>
+        
+    
+        <li class="main "><a href="#implementing-interrupt-handlers">Implementing Interrupt Handlers</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -860,6 +867,43 @@
 <li>This function returns <code>IRQ_HANDLED</code> to signify that it properly handled this device. <u>Because the interrupt handler does not support sharing, and there is no mechanism for the RTC to detect a spurious interrupt, this handler always returns <code>IRQ_HANDLED</code>.</u></li>
 </ol>
 <h3 id="interrupt-context">Interrupt Context</h3>
+<p>When executing an interrupt handler, the kernel is in <strong>interrupt context</strong>.</p>
+<h4 id="difference-from-the-process-context">Difference from the process context *</h4>
+<p>As discussed in <a href="../ch3/">Chapter 3</a>, the <a href="../ch3/#process-context">process context</a> is the mode of operation the kernel is in while it is executing on behalf of a process, such as executing a system call or running a kernel thread.</p>
+<ul>
+<li>In process context, the <code>current</code> macro points to the associated task.</li>
+<li>Since a process is coupled to the kernel in process context, process context can sleep or otherwise invoke the scheduler.</li>
+</ul>
+<p>Interrupt context is not associated with a process.</p>
+<ul>
+<li><u>The <code>current</code> macro is not relevant, though it points to the interrupted process.</u></li>
+<li>Without a backing process, interrupt context cannot sleep and cannot reschedule. Therefore, you cannot call certain functions from interrupt context. If a function sleeps, you cannot use it from your interrupt handler: this limits the functions that can be called from an interrupt handler.</li>
+</ul>
+<p>Interrupt context is time-critical, because the interrupt handler interrupts other code.</p>
+<ul>
+<li>It should be kept in mind that the interrupt handler has interrupted other code (possibly even another interrupt handler on a different line). Due to asynchronous nature, it is imperative that all interrupt handlers be as quick and as simple as possible.</li>
+<li>As much as possible, work should be pushed out from the interrupt handler and performed in a bottom half, which runs at a more convenient time.</li>
+</ul>
+<h4 id="stacks-of-an-interrupt-handler">Stacks of an interrupt handler *</h4>
+<p>The setup of an interrupt handler's stacks is a configuration option.</p>
+<ul>
+<li>Historically, interrupt handlers did not receive their own stacks. Instead, they would share the stack of the process that they interrupted.<ul>
+<li>Note that <u>a process is always running. When nothing else is schedulable, the idle task runs.</u></li>
+<li>The kernel stack is two pages in size:<ul>
+<li>8KB on 32-bit architectures.</li>
+<li>16KB on 64-bit architectures.</li>
+</ul>
+</li>
+<li>Because of sharing the stack, interrupt handlers must be exceptionally frugal with what data they allocate there. [p122]</li>
+</ul>
+</li>
+<li>Early in the 2.6 kernel process, an option was added to reduce the stack size from two pages to one, providing only a 4KB stack on 32-bit system, and interrupt handlers were given their own stack, one stack per processor, one page in size. This stack is referred to as the <strong>interrupt stack</strong>.<ul>
+<li>Although the total size of the interrupt stack is half that of the original shared stack, the average stack space available is greater because interrupt handlers get the full page of memory to themselves, because previously every process on the system needed two pages of contiguous, nonswappable kernel memory.</li>
+</ul>
+</li>
+</ul>
+<p>Your interrupt handler should not care what stack setup is in use or what the size of the kernel stack is. Always use an absolute minimum amount of stack space.</p>
+<h3 id="implementing-interrupt-handlers">Implementing Interrupt Handlers</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p119-on-interrupt-handlers"><strong>p119 on interrupt handlers</strong></h5>
