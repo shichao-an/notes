@@ -72,7 +72,8 @@ I will read x86 assembly and x86 disassembly.
 #### Methods of Notes
 
 1. **Systematic**: on a regular basis, read the major chapters (possibly unordered) of the entire books.
-2. **Ad hoc:** read a specific chapter, section, or topic.
+2. **Ad hoc**: read a specific chapter, section, or topic.
+3. **Timer**: set a timer when reading and note-taking to ensure efficiency.
 
 #### Pros and Cons of Notes
 

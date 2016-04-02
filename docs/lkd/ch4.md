@@ -748,7 +748,7 @@ The kernel can preempt a task running in the kernel so long as it does not hold 
 
 ##### **The preemption counter `preempt_count`** *
 
-To support kernel preemption, preemption counter, `preempt_count` ([arch/x86/include/asm/thread_info.h#L32](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26)), was added to each process's `thread_info`. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released.When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of `need_resched` and `preempt_count`:
+To support kernel preemption, preemption counter, `preempt_count` ([arch/x86/include/asm/thread_info.h#L32](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/thread_info.h#L26)), was added to each process's `thread_info`. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released. When the counter is zero, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of `need_resched` and `preempt_count`:
 
 * If `need_resched` is set and `preempt_count` is zero, then a more important task is runnable, and it is safe to preempt. Thus, the scheduler is invoked.
 * If `preempt_count` is nonzero, a lock is held, and it is unsafe to reschedule. In that case, the interrupt returns as usual to the currently executing task.

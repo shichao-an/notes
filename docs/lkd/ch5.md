@@ -460,16 +460,19 @@ Adding new syscall is not encouraged, and you should otherwise exercise caution 
 
 The followings are pros and cons of implementing a new interface as a syscall:
 
-* Pros:
-    * System calls are simple to implement and easy to use.
-    * System call performance on Linux is fast.
-* Cons:
-    * You need a syscall number, which needs to be officially assigned to you.
-    * After the system call is in a stable series kernel, it is written in stone. The interface cannot change without breaking user-space applications.
-    * Each architecture needs to separately register the system call and support it.
-    * System calls are not easily used from scripts and cannot be accessed directly from the filesystem.
-    * Because you need an assigned syscall number, it is hard to maintain and use a system call outside of the master kernel tree.
-    * For simple exchanges of information, a system call is overkill.
+Pros:
+
+* System calls are simple to implement and easy to use.
+* System call performance on Linux is fast.
+
+Cons:
+
+* You need a syscall number, which needs to be officially assigned to you.
+* After the system call is in a stable series kernel, it is written in stone. The interface cannot change without breaking user-space applications.
+* Each architecture needs to separately register the system call and support it.
+* System calls are not easily used from scripts and cannot be accessed directly from the filesystem.
+* Because you need an assigned syscall number, it is hard to maintain and use a system call outside of the master kernel tree.
+* For simple exchanges of information, a system call is overkill.
 
 The alternatives to implementing a syscall:
 
