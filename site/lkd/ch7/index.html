@@ -557,6 +557,10 @@
     
         <li class="main "><a href="#implementing-interrupt-handlers">Implementing Interrupt Handlers</a></li>
         
+            <li><a href="#interrupt-from-a-device-to-the-processor">Interrupt from a device to the processor *</a></li>
+        
+            <li><a href="#interrupt-in-the-kernel">Interrupt in the kernel *</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -904,6 +908,131 @@
 </ul>
 <p>Your interrupt handler should not care what stack setup is in use or what the size of the kernel stack is. Always use an absolute minimum amount of stack space.</p>
 <h3 id="implementing-interrupt-handlers">Implementing Interrupt Handlers</h3>
+<p>The implementation of the interrupt handling system in Linux is architecture-dependent. The implementation depends on the processor, the type of interrupt controller used, and the design of the architecture and machine.</p>
+<p>The following figure is a diagram of the path an interrupt takes through hardware and the kernel.</p>
+<p><a href="../figure_7.1.png" title="Figure 7.1 The path that an interrupt takes from hardware and on through the kernel."><img alt="Figure 7.1 The path that an interrupt takes from hardware and on through the kernel." src="../figure_7.1_600.png" /></a></p>
+<h4 id="interrupt-from-a-device-to-the-processor">Interrupt from a device to the processor *</h4>
+<ol>
+<li>A device issues an interrupt by sending an electric signal over its bus to the <a href="https://en.wikipedia.org/wiki/Programmable_Interrupt_Controller">interrupt controller</a>.</li>
+<li>If the interrupt line is enabled (they can be masked out), the interrupt controller sends the interrupt to the processor.<ul>
+<li>In most architectures, this is accomplished by an electrical signal sent over a special pin to the processor.</li>
+</ul>
+</li>
+<li>If interrupts are not disabled in the processor, the processor immediately stops what it is doing, disables the interrupt system, and jumps to a predefined location in memory and executes the code located there. This predefined point is set up by the kernel and is the entry point for interrupt handlers.</li>
+</ol>
+<h4 id="interrupt-in-the-kernel">Interrupt in the kernel *</h4>
+<p>The interrupt in the kernel begins at this predefined entry point (which is similar to system calls that enter the kernel through a predefined exception handler):</p>
+<ol>
+<li>For each interrupt line, the processor jumps to a unique location in memory and executes the code located there. In this manner, the kernel knows the IRQ number (the interrupt value) of the incoming interrupt.</li>
+<li>The initial entry point (assembly entry routine) saves the interrupt value and stores the current register values of the interrupted task on the stack.</li>
+<li>Then, the kernel calls <code>do_IRQ()</code>.</li>
+</ol>
+<p>From this point, most of the interrupt handling code is written in C, but is still architecture-dependent.</p>
+<p>The <code>do_IRQ()</code> function is declared as (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/irq/handle.c#L449">kernel/irq/handle.c#L449</a>):</p>
+<div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">do_IRQ</span><span class="p">(</span><span class="k">struct</span> <span class="n">pt_regs</span> <span class="n">regs</span><span class="p">)</span>
+</pre></div>
+
+
+<ol>
+<li>Because the <a href="https://en.wikipedia.org/wiki/X86_calling_conventions#cdecl">C calling convention</a> places function arguments at the top of the stack, the <code>pt_regs</code> structure contains the initial register values and the interrupt value, which were previously saved on the stack in the assembly entry routine. <code>do_IRQ()</code> can extract the interrupt value.</li>
+<li>After the interrupt line is calculated, <code>do_IRQ()</code> acknowledges the receipt of the interrupt and disables interrupt delivery on the line.</li>
+</ol>
+<p>On normal PC machines, these operations are handled by <code>mask_and_ack_8259A()</code> (<a href="https://github.com/shichao-an/linux/blob/master/arch/x86/kernel/i8259.c#L147">arch/x86/kernel/i8259.c#L147</a>).</p>
+<p>Next, <code>do_IRQ()</code> ensures that a valid handler is registered on the line and that it is enabled and not currently executing. If so, it calls <code>handle_IRQ_event()</code>, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/irq/handle.c#L368">kernel/irq/handle.c</a>, to run the installed interrupt handlers for the line.</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/irq/handle.c#L368">kernel/irq/handle.c#L368</a></small></p>
+<div class="codehilite"><pre><span class="cm">/**</span>
+<span class="cm"> * handle_IRQ_event - irq action chain handler</span>
+<span class="cm"> * @irq:    the interrupt number</span>
+<span class="cm"> * @action: the interrupt action chain for this irq</span>
+<span class="cm"> *</span>
+<span class="cm"> * Handles the action chain of an irq event</span>
+<span class="cm"> */</span>
+<span class="n">irqreturn_t</span> <span class="nf">handle_IRQ_event</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">irqaction</span> <span class="o">*</span><span class="n">action</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">irqreturn_t</span> <span class="n">ret</span><span class="p">,</span> <span class="n">retval</span> <span class="o">=</span> <span class="n">IRQ_NONE</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">status</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">action</span><span class="o">-&gt;</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">IRQF_DISABLED</span><span class="p">))</span>
+        <span class="n">local_irq_enable_in_hardirq</span><span class="p">();</span>
+
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="n">trace_irq_handler_entry</span><span class="p">(</span><span class="n">irq</span><span class="p">,</span> <span class="n">action</span><span class="p">);</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">action</span><span class="o">-&gt;</span><span class="n">handler</span><span class="p">(</span><span class="n">irq</span><span class="p">,</span> <span class="n">action</span><span class="o">-&gt;</span><span class="n">dev_id</span><span class="p">);</span>
+        <span class="n">trace_irq_handler_exit</span><span class="p">(</span><span class="n">irq</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+
+        <span class="k">switch</span> <span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="nl">IRQ_WAKE_THREAD</span><span class="p">:</span>
+            <span class="cm">/*</span>
+<span class="cm">             * Set result to handled so the spurious check</span>
+<span class="cm">             * does not trigger.</span>
+<span class="cm">             */</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">IRQ_HANDLED</span><span class="p">;</span>
+
+            <span class="cm">/*</span>
+<span class="cm">             * Catch drivers which return WAKE_THREAD but</span>
+<span class="cm">             * did not set up a thread function</span>
+<span class="cm">             */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="o">!</span><span class="n">action</span><span class="o">-&gt;</span><span class="n">thread_fn</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">warn_no_thread</span><span class="p">(</span><span class="n">irq</span><span class="p">,</span> <span class="n">action</span><span class="p">);</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+
+            <span class="cm">/*</span>
+<span class="cm">             * Wake up the handler thread for this</span>
+<span class="cm">             * action. In case the thread crashed and was</span>
+<span class="cm">             * killed we just pretend that we handled the</span>
+<span class="cm">             * interrupt. The hardirq handler above has</span>
+<span class="cm">             * disabled the device interrupt, so no irq</span>
+<span class="cm">             * storm is lurking.</span>
+<span class="cm">             */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="o">!</span><span class="n">test_bit</span><span class="p">(</span><span class="n">IRQTF_DIED</span><span class="p">,</span>
+                         <span class="o">&amp;</span><span class="n">action</span><span class="o">-&gt;</span><span class="n">thread_flags</span><span class="p">)))</span> <span class="p">{</span>
+                <span class="n">set_bit</span><span class="p">(</span><span class="n">IRQTF_RUNTHREAD</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">action</span><span class="o">-&gt;</span><span class="n">thread_flags</span><span class="p">);</span>
+                <span class="n">wake_up_process</span><span class="p">(</span><span class="n">action</span><span class="o">-&gt;</span><span class="kr">thread</span><span class="p">);</span>
+            <span class="p">}</span>
+
+            <span class="cm">/* Fall through to add to randomness */</span>
+        <span class="k">case</span> <span class="nl">IRQ_HANDLED</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">|=</span> <span class="n">action</span><span class="o">-&gt;</span><span class="n">flags</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">default</span><span class="o">:</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">retval</span> <span class="o">|=</span> <span class="n">ret</span><span class="p">;</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">action</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">&amp;</span> <span class="n">IRQF_SAMPLE_RANDOM</span><span class="p">)</span>
+        <span class="n">add_interrupt_randomness</span><span class="p">(</span><span class="n">irq</span><span class="p">);</span>
+    <span class="n">local_irq_disable</span><span class="p">();</span>
+
+    <span class="k">return</span> <span class="n">retval</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ol>
+<li>Since the processor disabled interrupts, they are turned back on if <code>IRQF_DISABLED</code> was not specified during the handler's registration.<ul>
+<li>IRQF_DISABLED specifies that the handler must be run with interrupts disabled.</li>
+</ul>
+</li>
+<li>Each potential handler is executed in a loop. If this line is not shared, the loop terminates after the first iteration. Otherwise, all handlers are executed.</li>
+<li><code>add_interrupt_randomness()</code> is called if <code>IRQF_SAMPLE_RANDOM</code> was specified during registration. This function uses the timing of the interrupt to generate entropy for the <a href="https://en.wikipedia.org/wiki/Random_number_generation">random number generator</a>.</li>
+<li>Interrupts are again disabled (<code>do_IRQ()</code> expects them still to be disabled) and the function returns.</li>
+</ol>
+<p>Back in <code>do_IRQ()</code>, the function cleans up and returns to the initial entry point, which then jumps to <code>ret_from_intr</code>().</p>
+<p>The routine <code>ret_from_intr()</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S#L820">arch/x86/kernel/entry_64.S#L820</a>) is written in assembly, as with the initial entry code. This routine checks whether a reschedule is pending (this implies that <code>need_resched</code> is set, as discussed in <a href="../ch4/">Chapter 4</a>):</p>
+<ul>
+<li>If a reschedule is pending:<ul>
+<li>If the kernel is returning to user-space (that is, the interrupt interrupted a user process), <code>schedule()</code> is called.</li>
+<li>If the kernel is returning to kernel-space (that is, the interrupt interrupted the kernel itself), <code>schedule()</code> is called only if the <code>preempt_count</code> is zero (see <a href="../ch4/#kernel-preemption">kernel preemption</a>). Otherwise it is not safe to preempt the kernel.</li>
+</ul>
+</li>
+<li>After <code>schedule()</code> returns, or if there is no work pending, the initial registers are restored and the kernel resumes whatever was interrupted.</li>
+</ul>
+<p>On x86, the initial assembly routines are located in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S">arch/x86/kernel/entry_64.S</a> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_32.S">entry_32.S</a> for 32-bit x86) and the C methods are located in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/irq.c">arch/x86/kernel/irq.c</a>. Other supported architectures are similar.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p119-on-interrupt-handlers"><strong>p119 on interrupt handlers</strong></h5>

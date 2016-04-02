@@ -349,6 +349,133 @@ Your interrupt handler should not care what stack setup is in use or what the si
 
 ### Implementing Interrupt Handlers
 
+The implementation of the interrupt handling system in Linux is architecture-dependent. The implementation depends on the processor, the type of interrupt controller used, and the design of the architecture and machine.
+
+The following figure is a diagram of the path an interrupt takes through hardware and the kernel.
+
+[![Figure 7.1 The path that an interrupt takes from hardware and on through the kernel.](figure_7.1_600.png)](figure_7.1.png "Figure 7.1 The path that an interrupt takes from hardware and on through the kernel.")
+
+#### Interrupt from a device to the processor *
+
+1. A device issues an interrupt by sending an electric signal over its bus to the [interrupt controller](https://en.wikipedia.org/wiki/Programmable_Interrupt_Controller).
+2. If the interrupt line is enabled (they can be masked out), the interrupt controller sends the interrupt to the processor.
+    * In most architectures, this is accomplished by an electrical signal sent over a special pin to the processor.
+3. If interrupts are not disabled in the processor, the processor immediately stops what it is doing, disables the interrupt system, and jumps to a predefined location in memory and executes the code located there. This predefined point is set up by the kernel and is the entry point for interrupt handlers.
+
+#### Interrupt in the kernel *
+
+The interrupt in the kernel begins at this predefined entry point (which is similar to system calls that enter the kernel through a predefined exception handler):
+
+1. For each interrupt line, the processor jumps to a unique location in memory and executes the code located there. In this manner, the kernel knows the IRQ number (the interrupt value) of the incoming interrupt.
+2. The initial entry point (assembly entry routine) saves the interrupt value and stores the current register values of the interrupted task on the stack.
+3. Then, the kernel calls `do_IRQ()`.
+
+From this point, most of the interrupt handling code is written in C, but is still architecture-dependent.
+
+The `do_IRQ()` function is declared as ([kernel/irq/handle.c#L449](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/irq/handle.c#L449)):
+
+```c
+unsigned int do_IRQ(struct pt_regs regs)
+```
+
+1. Because the [C calling convention](https://en.wikipedia.org/wiki/X86_calling_conventions#cdecl) places function arguments at the top of the stack, the `pt_regs` structure contains the initial register values and the interrupt value, which were previously saved on the stack in the assembly entry routine. `do_IRQ()` can extract the interrupt value.
+2. After the interrupt line is calculated, `do_IRQ()` acknowledges the receipt of the interrupt and disables interrupt delivery on the line.
+
+On normal PC machines, these operations are handled by `mask_and_ack_8259A()` ([arch/x86/kernel/i8259.c#L147](https://github.com/shichao-an/linux/blob/master/arch/x86/kernel/i8259.c#L147)).
+
+Next, `do_IRQ()` ensures that a valid handler is registered on the line and that it is enabled and not currently executing. If so, it calls `handle_IRQ_event()`, defined in [kernel/irq/handle.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/irq/handle.c#L368), to run the installed interrupt handlers for the line.
+
+<small>[kernel/irq/handle.c#L368](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/irq/handle.c#L368)</small>
+
+```c
+/**
+ * handle_IRQ_event - irq action chain handler
+ * @irq:	the interrupt number
+ * @action:	the interrupt action chain for this irq
+ *
+ * Handles the action chain of an irq event
+ */
+irqreturn_t handle_IRQ_event(unsigned int irq, struct irqaction *action)
+{
+	irqreturn_t ret, retval = IRQ_NONE;
+	unsigned int status = 0;
+
+	if (!(action->flags & IRQF_DISABLED))
+		local_irq_enable_in_hardirq();
+
+	do {
+		trace_irq_handler_entry(irq, action);
+		ret = action->handler(irq, action->dev_id);
+		trace_irq_handler_exit(irq, action, ret);
+
+		switch (ret) {
+		case IRQ_WAKE_THREAD:
+			/*
+			 * Set result to handled so the spurious check
+			 * does not trigger.
+			 */
+			ret = IRQ_HANDLED;
+
+			/*
+			 * Catch drivers which return WAKE_THREAD but
+			 * did not set up a thread function
+			 */
+			if (unlikely(!action->thread_fn)) {
+				warn_no_thread(irq, action);
+				break;
+			}
+
+			/*
+			 * Wake up the handler thread for this
+			 * action. In case the thread crashed and was
+			 * killed we just pretend that we handled the
+			 * interrupt. The hardirq handler above has
+			 * disabled the device interrupt, so no irq
+			 * storm is lurking.
+			 */
+			if (likely(!test_bit(IRQTF_DIED,
+					     &action->thread_flags))) {
+				set_bit(IRQTF_RUNTHREAD, &action->thread_flags);
+				wake_up_process(action->thread);
+			}
+
+			/* Fall through to add to randomness */
+		case IRQ_HANDLED:
+			status |= action->flags;
+			break;
+
+		default:
+			break;
+		}
+
+		retval |= ret;
+		action = action->next;
+	} while (action);
+
+	if (status & IRQF_SAMPLE_RANDOM)
+		add_interrupt_randomness(irq);
+	local_irq_disable();
+
+	return retval;
+}
+```
+
+1. Since the processor disabled interrupts, they are turned back on if `IRQF_DISABLED` was not specified during the handler's registration.
+    * IRQF_DISABLED specifies that the handler must be run with interrupts disabled.
+2. Each potential handler is executed in a loop. If this line is not shared, the loop terminates after the first iteration. Otherwise, all handlers are executed.
+3. `add_interrupt_randomness()` is called if `IRQF_SAMPLE_RANDOM` was specified during registration. This function uses the timing of the interrupt to generate entropy for the [random number generator](https://en.wikipedia.org/wiki/Random_number_generation).
+4. Interrupts are again disabled (`do_IRQ()` expects them still to be disabled) and the function returns.
+
+Back in `do_IRQ()`, the function cleans up and returns to the initial entry point, which then jumps to `ret_from_intr`().
+
+The routine `ret_from_intr()` ([arch/x86/kernel/entry_64.S#L820](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S#L820)) is written in assembly, as with the initial entry code. This routine checks whether a reschedule is pending (this implies that `need_resched` is set, as discussed in [Chapter 4](ch4.md)):
+
+* If a reschedule is pending:
+    * If the kernel is returning to user-space (that is, the interrupt interrupted a user process), `schedule()` is called.
+    * If the kernel is returning to kernel-space (that is, the interrupt interrupted the kernel itself), `schedule()` is called only if the `preempt_count` is zero (see [kernel preemption](ch4.md#kernel-preemption)). Otherwise it is not safe to preempt the kernel.
+* After `schedule()` returns, or if there is no work pending, the initial registers are restored and the kernel resumes whatever was interrupted.
+
+On x86, the initial assembly routines are located in [arch/x86/kernel/entry_64.S](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S) ([entry_32.S](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_32.S) for 32-bit x86) and the C methods are located in [arch/x86/kernel/irq.c](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/irq.c). Other supported architectures are similar.
 
 
 ### Doubts and Solution
