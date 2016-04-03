@@ -93,10 +93,12 @@ int request_irq(unsigned int irq,
                 void *dev)
 ```
 
-* The first parameter, `irq`, specifies the interrupt number to allocate
-    * For some devices (e.g. legacy PC devices such as the system timer or keyboard), this value is typically hard-coded.
-    * For most other devices, it is probed or otherwise determined programmatically and dynamically.
-* The second parameter, `handler`, is a function pointer to the actual interrupt handler that services this interrupt. This function is invoked whenever the operating system receives the interrupt.
+The first parameter, `irq`, specifies the interrupt number to allocate
+
+* For some devices (e.g. legacy PC devices such as the system timer or keyboard), this value is typically hard-coded.
+* For most other devices, it is probed or otherwise determined programmatically and dynamically.
+
+The second parameter, `handler`, is a function pointer to the actual interrupt handler that services this interrupt. This function is invoked whenever the operating system receives the interrupt.
 
 <small>[include/linux/interrupt.h#L80](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L80)</small>
 ```c
@@ -477,6 +479,98 @@ The routine `ret_from_intr()` ([arch/x86/kernel/entry_64.S#L820](https://github.
 
 On x86, the initial assembly routines are located in [arch/x86/kernel/entry_64.S](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_64.S) ([entry_32.S](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/entry_32.S) for 32-bit x86) and the C methods are located in [arch/x86/kernel/irq.c](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/kernel/irq.c). Other supported architectures are similar.
 
+### `/proc/interrupts`
+
+[Procfs](https://en.wikipedia.org/wiki/Procfs) is a virtual filesystem that exists only in kernel memory and is typically mounted at `/proc`. Reading or writing files in procfs invokes kernel functions that simulate reading or writing from a real file. The `/proc/interrupts` file is populated with statistics related to interrupts on the system.
+
+```text
+      CPU0
+0:    3602371  XT-PIC  timer
+1:    3048     XT-PIC  i8042
+2:    0        XT-PIC  cascade
+4:    2689466  XT-PIC  uhci-hcd,  eth0
+5:    0        XT-PIC  EMU10K1
+12:   85077    XT-PIC  uhci-hcd
+15:   24571    XT-PIC  aic7xxx
+NMI:  0
+LOC:  3602236
+ERR:  0
+```
+
+* The first column is the interrupt line.
+    * Interrupts numbered 0–2, 4, 5, 12, and 15 are present this system.
+    * Handlers not installed on lines are not displayed.
+* The second column is a counter of the number of interrupts received. A column is present for each processor on the system (this system has one processor: CPU0). On this system:
+    * The timer interrupt has received 3,602,371 interrupts
+    * The sound card (EMU10K1) has received none (which is an indication that it has not been used since the machine booted).
+* The third column is the interrupt controller handling this interrupt.
+    * `XT-PIC` corresponds to the standard PC [programmable interrupt controller](https://en.wikipedia.org/wiki/Programmable_Interrupt_Controller).
+    * On systems with an [I/O APIC](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller), most interrupts would list `IO-APIC-level` or `IO-APIC-edge` as their interrupt controller.
+* The last column is the device associated with this interrupt.
+    * This name is supplied by the `name` parameter to `request_irq()`, [as discussed previously](#registering-an-interrupt-handler).
+    * If the interrupt is shared, as is the case with interrupt number 4 in this example, all the devices registered on the interrupt line are listed.
+
+procfs code is located primarily in [fs/proc](https://github.com/shichao-an/linux/tree/v2.6.34/fs/proc). The function that provides `/proc/interrupts` architecture-dependent and named `show_interrupts()` ([include/linux/interrupt.h#L607](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L607)).
+
+### Interrupt Control
+
+The Linux kernel implements a family of interfaces for manipulating the state of interrupts . These interfaces enable you to disable the interrupt system for the current processor or mask out an interrupt line for the entire machine. These routines are all architecture-dependent and can be found in [`<asm/system.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/system.h) and [`<asm/irq.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/irq.h).
+
+Controlling the interrupt system provides synchronization.
+
+* Disabling interrupts guarantees that an interrupt handler will not preempt the current code.
+* Disabling interrupts also disables kernel preemption.
+
+However, neither disabling interrupt delivery nor disabling kernel preemption provides any protection from concurrent access from another processor. Because Linux supports multiple processors, kernel code generally needs to obtain some sort of lock to prevent another processor from accessing shared data simultaneously. These locks are often obtained in conjunction with disabling local interrupts.
+
+* The lock provides protection against concurrent access from another processor.
+* Disabling interrupts provides protection against concurrent access from a possible interrupt handler.
+
+[Chapters 9](ch9.md) and [Chapter 10])(ch10.md) discuss the various problems of synchronization and their solutions.
+
+#### Disabling and Enabling Interrupts
+
+To disable interrupts locally for the current processor (only the current processor) and then later reenable them, do the following:
+
+```c
+local_irq_disable();
+/* interrupts are disabled .. */
+local_irq_enable();
+```
+
+* The `local_irq_disable()` routine is dangerous if interrupts were already disabled prior to its invocation.
+* The call to `local_irq_enable()` unconditionally enables interrupts, despite the fact that they were off to begin with.
+
+These functions are usually implemented as a single assembly operation, which depends on the architecture. On x86, `local_irq_disable()` is a simple `cli` and `local_irq_enable()` is a simple `sti` instruction. `cli` and `sti` are the assembly calls to clear and set the [interrupt flag](https://en.wikipedia.org/wiki/Interrupt_flag), respectively. In other words, they disable and enable interrupt delivery on the issuing processor.
+
+However, a common concern is a to restore interrupts to a previous state. It is much safer to save the state of the interrupt system before disabling it. Then, when you are ready to reenable interrupts, you simply restore them to their original state [p128]:
+
+```c
+unsigned long flags;
+local_irq_save(flags); /* interrupts are now disabled */
+/* ... */
+local_irq_restore(flags); /* interrupts are restored to their previous state */
+```
+
+Note that these methods are implemented at least in part as macros, so the `flags` parameter (which must be defined as an `unsigned long`) is seemingly passed by value. This parameter contains architecture-specific data containing the state of the interrupt systems. Because at least one supported architecture, such as SPARC, incorporates stack information into the value, flags cannot be passed to another function (specifically, it must remain on the same stack frame). For this reason, <u>the call to save and the call to restore interrupts must occur in the same function.</u>
+
+All the previous functions can be called from both interrupt and process context.
+
+#### No More Global `cli()` *
+
+The kernel formerly provided a function, `cli()` to disable interrupts on all processors in the system. If another processor called this method, it would have to wait until interrupts were enabled before continuing. The corresponding enable call was named `sti()`.
+
+These interfaces were deprecated during 2.5, and consequently all interrupt synchronization must now use a combination of local interrupt control and spin locks (discussed in [Chapter 9](ch9.md)). This means that code that previously only had to disable interrupts globally to ensure mutual-exclusive access to shared data now needs to do a bit more work.
+
+Previously, driver writers could assume a `cli()` used in their interrupt handlers and anywhere else the shared data was accessed would provide mutual exclusion.
+
+* The `cli()` call would ensure that no other interrupt handlers (and thus their specific handler) would run.
+* If another processor entered a `cli()` protected region, it would not continue until the original processor exited its `cli()` protected region with a call to `sti()`.
+
+The advantages of removing the global `cli()` are:
+
+* It forces driver writers to implement real locking. A fine-grained lock with a specific purpose is faster than a global lock, which is effectively what `cli()` is.
+* It streamlined a lot of code in the interrupt system and. The result is simpler and easier to comprehend.
 
 ### Doubts and Solution
 
@@ -493,3 +587,9 @@ On x86, the initial assembly routines are located in [arch/x86/kernel/entry_64.S
 > Shared handlers, however, can mix usage of `IRQF_DISABLED`.
 
 <span class="text-danger">Question</span>: What does it mean?
+
+##### **p128 on disabling and enabling interrupts**
+
+> The `local_irq_disable()` routine is dangerous if interrupts were already disabled prior to its invocation?
+
+<span class="text-danger">Question</span>: Why is it dangerous?

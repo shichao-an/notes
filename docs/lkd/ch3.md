@@ -61,13 +61,13 @@ The `exit()` system call terminates the process and frees all its resources. A p
 
 ### Process Descriptor and the Task Structure
 
-Another name for a process is a **task**. The Linux kernel internally refers to processes as tasks. In this book, the terms are used interchangeably, though <u>"task" generally refers to a process from the kernel’s point of view.</u>
+Another name for a process is a **task**. The Linux kernel internally refers to processes as tasks. In this book, the terms are used interchangeably, though <u>"task" generally refers to a process from the kernel's point of view.</u>
 
 The kernel stores the list of processes in a circular doubly linked list called the **task list**.
 
 A **process descriptor** of the type `struct task_struct` (defined in `<linux/sched.h>`) is an element in the task list. It contains all the information about a specific process.
 
-The `task_struct` is a relatively large data structure, at around 1.7 kilobytes on a 32-bit machine. The process descriptor contains the data that describes the executing program: open files, the process’s address space, pending signals, the process’s state, etc. See the figure below.
+The `task_struct` is a relatively large data structure, at around 1.7 kilobytes on a 32-bit machine. The process descriptor contains the data that describes the executing program: open files, the process's address space, pending signals, the process's state, etc. See the figure below.
 
 [![Figure 3.1 The process descriptor and task list.](figure_3.1.png)](figure_3.1.png "Figure 3.1 The process descriptor and task list.")
 
@@ -79,7 +79,7 @@ The `task_struct` structure is allocated via the **slab allocator** to provide o
 
 [Errata](http://www.crashcourse.ca/wiki/index.php/Updates_to_LKD3#Figure_3.2_.28p._26.29): "struct thread_struct" should read "struct thread_info"
 
-The `thread_info` structure is defined on x86 in `<asm/thread_info.h>` (see below code). Each task’s `thread_info` structure is allocated at the end of its stack.The task element of the structure is a pointer to the task’s actual `task_struct`:
+The `thread_info` structure is defined on x86 in `<asm/thread_info.h>` (see below code). Each task's `thread_info` structure is allocated at the end of its stack.The task element of the structure is a pointer to the task's actual `task_struct`:
 
 * [arch/x86/include/asm/thread_info.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L26)
 
@@ -145,7 +145,7 @@ Each process on the system is in exactly one of five different states. This valu
 
 #### Manipulating the Current Process State
 
-Kernel code often needs to change a process’s state. The preferred mechanism is using:
+Kernel code often needs to change a process's state. The preferred mechanism is using:
 
 ```c
 set_task_state(task, state); /* set task ‘task’ to state ‘state’ */
@@ -163,11 +163,11 @@ The method `set_current_state(state)` is synonymous to `set_task_state(current, 
 
 #### Process Context
 
-The program code is read in from an **executable file** and executed within the program’s address space.
+The program code is read in from an **executable file** and executed within the program's address space.
 
 * **User-space**: Normal program execution occurs in user-space.
 * **Kernel-space**: When a program executes a system call or triggers an exception, it enters kernel-space. At this point, the kernel is said to be "executing on behalf of the process" and is in **process context**. When in process context, the `current` macro is valid.
-    * Other than process context there is [**interrupt context**](ch7.md#interrupt-context) (discussed in [Chapter 7](ch7.md). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
+    * Other than process context there is [**interrupt context**](ch7.md#interrupt-context) (discussed in [Chapter 7](ch7.md)). In interrupt context, the system is not running on behalf of a process but is executing an interrupt handler. No process is tied to interrupt handlers.
 
 Upon exiting the kernel, the process resumes execution in user-space, unless a higher-priority process has become runnable in the interim, in which case the scheduler is invoked to select the higher priority process.
 
@@ -208,7 +208,7 @@ To obtain the process descriptor of a given process's parent:
 struct task_struct *my_parent = current->parent;
 ```
 
-To iterate over a process’s children:
+To iterate over a process's children:
 
 ```c
 struct task_struct *task;
@@ -216,13 +216,13 @@ struct list_head *list;
 
 list_for_each(list, &current->children) {
     task = list_entry(list, struct task_struct, sibling);
-    /* task now points to one of current’s children */
+    /* task now points to one of current's children */
 }
 ```
 
 * `list_for_each`: [include/linux/list.h#L367](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L367)
 
-The `init` task’s process descriptor is statically allocated as `init_task`. The following code will always succeed:
+The `init` task's process descriptor is statically allocated as `init_task`. The following code will always succeed:
 
 ```c
 struct task_struct *task;
@@ -269,7 +269,7 @@ It is expensive to iterate over every task in a system with many processes; code
 
 Most operating systems implement a **spawn** mechanism to create a new process in a new address space, read in an executable, and begin executing it. Unix separates these steps into two distinct functions: `fork()` and `exec()`.
 
-* `fork()`: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent’s PID), and certain resources and statistics (e.g. pending signals) which are not inherited.
+* `fork()`: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent's PID), and certain resources and statistics (e.g. pending signals) which are not inherited.
 * `exec()`: loads a new executable into the address space and begins executing it.
 
 #### Copy-on-Write
@@ -283,7 +283,7 @@ In Linux, `fork()` is implemented through the use of copy-on-write pages.
 * If the data is written to, it is marked and a duplicate is made and each process receives a unique copy. The duplication of resources occurs only when they are written; until then, they are shared read-only.
 * In the case that the pages are never written (if `exec()` is called immediately after `fork()`), they never need to be copied.
 
-The only overhead incurred by `fork()` is the duplication of the parent’s page tables and the creation of a unique process descriptor for the child. In the common case that a process executes a new executable image immediately after forking, this optimization prevents the wasted copying of large amounts of data (with the address space, easily tens of megabytes). This is an important optimization because the Unix philosophy encourages quick process execution.
+The only overhead incurred by `fork()` is the duplication of the parent's page tables and the creation of a unique process descriptor for the child. In the common case that a process executes a new executable image immediately after forking, this optimization prevents the wasted copying of large amounts of data (with the address space, easily tens of megabytes). This is an important optimization because the Unix philosophy encourages quick process execution.
 
 #### Forking
 
@@ -308,7 +308,7 @@ The interesting work is done by `copy_process()`:
 3. Various members of the process descriptor are cleared or set to initial values, <u>to differentiate the child from its parent.</u>
     * Members of the process descriptor not inherited are primarily statistically information.
     * The bulk of the values in `task_struct` remain unchanged.
-4. The child’s state is set to `TASK_UNINTERRUPTIBLE` to ensure that it does not yet run.
+4. The child's state is set to `TASK_UNINTERRUPTIBLE` to ensure that it does not yet run.
 5. It calls `copy_flags()` to update the flags member of the `task_struct` (per process flags: [include/linux/sched.h#L1693](https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L1693)).
     * The `PF_SUPERPRIV` flag, which denotes whether a task used superuser privileges, is cleared
     * The `PF_FORKNOEXEC` flag, which denotes a process that has not called `exec()`, is set.
@@ -329,7 +329,7 @@ Back in `do_fork()`, if `copy_process()` returns successfully, the new child is 
 
 #### `vfork()`
 
-The `vfork()` system call has the same effect as `fork()`, except that the page table entries of the parent process are not copied. The child executes as the sole thread in the parent’s address space, and the parent is blocked until the child either calls `exec()` or exits. The child is not allowed to write to the address space. [p33]
+The `vfork()` system call has the same effect as `fork()`, except that the page table entries of the parent process are not copied. The child executes as the sole thread in the parent's address space, and the parent is blocked until the child either calls `exec()` or exits. The child is not allowed to write to the address space. [p33]
 
 Today, with copy-on-write and child-runs-first semantics, the only benefit to `vfork()` is not copying the parent page tables entries. [p33]
 
@@ -470,7 +470,7 @@ int kthread_stop(struct task_struct *k)
 
 ### Process Termination
 
-When a process terminates, the kernel releases the resources owned by the process and notifies the child’s parent of its demise.
+When a process terminates, the kernel releases the resources owned by the process and notifies the child's parent of its demise.
 
 Self-induced process termination occurs when the process calls the `exit()` system call, which is either:
 
@@ -487,11 +487,11 @@ Regardless of how a process terminates, the bulk of the work is handled by `do_e
 4. It calls `exit_mm()` to release the `mm_struct` held by this process. If no other process is using this address space (if the address space is not shared) the kernel then destroys it.
 5. It calls `exit_sem()`. If the process is queued waiting for an IPC semaphore, it is dequeued here.
 6. It then calls `exit_files()` and `exit_fs()` to decrement the usage count of objects related to file descriptors and filesystem data, respectively.
-7. It sets the task’s exit code (stored in the `exit_code` member of the `task_struct`) to that provided by `exit()` or whatever kernel mechanism forced the termination. <u>The exit code is stored here for optional retrieval by the parent.</u>
+7. It sets the task's exit code (stored in the `exit_code` member of the `task_struct`) to that provided by `exit()` or whatever kernel mechanism forced the termination. <u>The exit code is stored here for optional retrieval by the parent.</u>
 8. It send signals and reparents children:
-    * Calls `exit_notify()` to send signals to the task’s parent
-    * Reparents any of the task’s children to another thread in their thread group or the init process
-    * Sets the task’s exit state (stored in `exit_state` in the `task_struct` structure) to `EXIT_ZOMBIE`.
+    * Calls `exit_notify()` to send signals to the task's parent
+    * Reparents any of the task's children to another thread in their thread group or the init process
+    * Sets the task's exit state (stored in `exit_state` in the `task_struct` structure) to `EXIT_ZOMBIE`.
 9. It calls `schedule()` to switch to a new process.
     *  Because the process is now not schedulable, this is the last code the task will ever execute. `do_exit()` never returns.
 
@@ -509,7 +509,7 @@ After `do_exit()` completes, the process descriptor for the terminated process s
 
 Cleaning up after a process and removing its process descriptor are separate steps. This enables the system to obtain information about a child process after it has terminated.
 
-The terminated child’s `task_struct` is deallocated after any of the following:
+The terminated child's `task_struct` is deallocated after any of the following:
 
 * The parent has obtained information on its terminated child.
 * The parent has signified to the kernel that it does not care (about the terminated child).
@@ -522,8 +522,8 @@ The standard behavior is to suspend execution of the calling task until one of i
 
 1. It calls `__exit_signal()`, which calls `__unhash_process()`, which in turns calls detach_pid() to remove the process from the pidhash and remove the process from the task list.
 2. `__exit_signal()` releases any remaining resources used by the now dead process and finalizes statistics and bookkeeping.
-3. If the task was the last member of a thread group, and the leader is a zombie, then `release_task()` notifies the zombie leader’s parent.
-4. `release_task()` calls `put_task_struct()` to free the pages containing the process’s kernel stack and `thread_info` structure and deallocate the slab cache containing the `task_struct`.
+3. If the task was the last member of a thread group, and the leader is a zombie, then `release_task()` notifies the zombie leader's parent.
+4. `release_task()` calls `put_task_struct()` to free the pages containing the process's kernel stack and `thread_info` structure and deallocate the slab cache containing the `task_struct`.
 
 At this point, the process descriptor and all resources belonging solely to the process have been freed.
 
@@ -531,7 +531,7 @@ At this point, the process descriptor and all resources belonging solely to the 
 
 <u>If a parent exits before its children, any of its child tasks must be reparented to a new process, otherwise parentless terminated processes would forever remain zombies, wasting system memory.</u>
 
-The solution is to reparent a task’s children on exit to another process in the current thread group, or (if that fails) the init process.
+The solution is to reparent a task's children on exit to another process in the current thread group, or (if that fails) the init process.
 
 `do_exit()` calls `exit_notify()`, which calls `forget_original_parent()`, which calls `find_new_reaper()` to perform the reparenting:
 
@@ -570,7 +570,7 @@ static struct task_struct *find_new_reaper(struct task_struct *father)
 }
 ```
 
-The above code attempts to find and return another task in the process’s thread group. If another task is not in the thread group, it finds and returns the `init` process.
+The above code attempts to find and return another task in the process's thread group. If another task is not in the thread group, it finds and returns the `init` process.
 
 After a suitable new parent for the children is found, each child needs to be located and reparented to `reaper`:
 
@@ -611,7 +611,7 @@ void exit_ptrace(struct task_struct *tracer)
 
 ```
 
-When a task is *ptraced*, it is temporarily reparented to the debugging process. When the task’s parent exits, however, it must be reparented along with its other siblings. In previous kernels, this resulted in a loop over every process in the system looking for children. The solution is simply to keep a separate list of a process’s children being ptraced, reducing the search for one’s children from every process to just two relatively small lists
+When a task is *ptraced*, it is temporarily reparented to the debugging process. When the task's parent exits, however, it must be reparented along with its other siblings. In previous kernels, this resulted in a loop over every process in the system looking for children. The solution is simply to keep a separate list of a process's children being ptraced, reducing the search for one's children from every process to just two relatively small lists
 
 After the process are successfully reparented, there is no risk of stray zombie processes. The `init` process routinely calls `wait()` on its children, cleaning up any zombies assigned to it.
 
