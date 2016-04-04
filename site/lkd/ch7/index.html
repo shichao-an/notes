@@ -572,6 +572,14 @@
             <li><a href="#no-more-global-cli">No More Global cli() *</a></li>
         
     
+        <li class="main "><a href="#disabling-a-specific-interrupt-line">Disabling a Specific Interrupt Line</a></li>
+        
+            <li><a href="#status-of-the-interrupt-system">Status of the Interrupt System</a></li>
+        
+    
+        <li class="main "><a href="#conclusion">Conclusion</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1129,6 +1137,121 @@ ERR:  0
 <li>It forces driver writers to implement real locking. A fine-grained lock with a specific purpose is faster than a global lock, which is effectively what <code>cli()</code> is.</li>
 <li>It streamlined a lot of code in the interrupt system and. The result is simpler and easier to comprehend.</li>
 </ul>
+<h3 id="disabling-a-specific-interrupt-line">Disabling a Specific Interrupt Line</h3>
+<p>The previous section covers functions that disable all interrupt delivery for an entire processor. In some cases, it is useful to disable only a specific interrupt line for the entire system. This is called <em>masking out</em> an interrupt line.</p>
+<p>To disable delivery of a devices' interrupts before manipulating its state, Linux provides four interfaces for this task:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">disable_irq</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">disable_irq_nosync</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">enable_irq</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">synchronize_irq</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">irq</span><span class="p">);</span>
+</pre></div>
+
+
+<ul>
+<li>The first two functions disable a given interrupt line for all processors in the interrupt controller.<ul>
+<li>The <code>disable_irq()</code> function does not return until any currently executing handler completes. Thus, callers are assured not only that new interrupts will not be delivered on the given line, but also that any already executing handlers have exited.</li>
+<li>The function <code>disable_irq_nosync()</code> does not wait for current handlers to complete.</li>
+</ul>
+</li>
+<li>The function <code>synchronize_irq()</code> waits for a specific interrupt handler to exit, if it is executing, before returning.</li>
+</ul>
+<p>Calls to these functions nest. For each call to <code>disable_irq()</code> or <code>disable_irq_nosync()</code> on a given interrupt line, a corresponding call to <code>enable_irq()</code> is required. Only on the last call to <code>enable_irq()</code> is the interrupt line actually enabled. <u>For example, if <code>disable_irq()</code> is called twice, the interrupt line is not actually reenabled until the second call to <code>enable_irq()</code>.</u></p>
+<p>All three of these functions can be called from interrupt or process context and do not sleep. If calling from interrupt context, be careful, for example, not to enable an interrupt line while you are handling it. Recall that the interrupt line of a handler is <a href="#reentrancy-and-interrupt-handlers">masked out</a> while it is serviced.</p>
+<p>It is rude to disable an interrupt line shared among multiple interrupt handlers, because disabling the line disables interrupt delivery for all devices on the line. Therefore, drivers for newer devices tend not to use these interfaces:</p>
+<ul>
+<li>Many older devices, particularly <a href="https://en.wikipedia.org/wiki/Industry_Standard_Architecture">ISA</a> devices, do not provide a method of obtaining whether they generated an interrupt. Therefore, often interrupt lines for ISA devices cannot be shared.</li>
+<li>Because the PCI specification mandates the sharing of interrupts, modern PCI-based devices support interrupt sharing. In contemporary computers, nearly all interrupt lines can be shared. Since PCI devices have to support interrupt line sharing by specification, they should not use these interfaces at all.</li>
+<li><code>disable_irq()</code> and friends are found more often in drivers for older legacy devices, such as the PC <a href="https://en.wikipedia.org/wiki/Parallel_port">parallel port</a>.</li>
+</ul>
+<h4 id="status-of-the-interrupt-system">Status of the Interrupt System</h4>
+<p>It is often useful to know:</p>
+<ul>
+<li>The state of the interrupt system.<ul>
+<li>For example, whether interrupts are enabled or disabled.</li>
+</ul>
+</li>
+<li>Whether you are currently executing in interrupt context.</li>
+</ul>
+<p>The macro <code>irqs_disabled()</code>, defined in <code>&lt;asm/system.h&gt;</code>, returns nonzero if the interrupt system on the local processor is disabled. Otherwise, it returns zero.</p>
+<p>Two macros, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/hardirq.h"><code>&lt;linux/hardirq.h&gt;</code></a>, provide an interface to check the kernel's current context:</p>
+<div class="codehilite"><pre><span class="n">in_interrupt</span><span class="p">()</span>
+<span class="n">in_irq</span><span class="p">()</span>
+</pre></div>
+
+
+<ul>
+<li>The first function <code>in_interrupt()</code> is the most useful. It returns nonzero if the kernel is performing any type of interrupt handling, including either executing an interrupt handler or a bottom half handler.</li>
+<li>The macro <code>in_irq()</code> returns nonzero only if the kernel is specifically executing an interrupt handler.</li>
+</ul>
+<p>If <code>in_interrupt()</code> returns zero, the kernel is in process context. This is useful if you want to check whether you are in process context, that is, you want to ensure you are not in interrupt context, which is often the case because code wants to do something that can only be done from process context, such as sleep.</p>
+<p>The following table is a summary of the interrupt control methods and their description.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>local_irq_disable()</code></td>
+<td>Disables local interrupt delivery</td>
+</tr>
+<tr>
+<td><code>local_irq_enable()</code></td>
+<td>Enables local interrupt delivery</td>
+</tr>
+<tr>
+<td><code>local_irq_save()</code></td>
+<td>Saves the current state of local interrupt delivery and then disables it</td>
+</tr>
+<tr>
+<td><code>local_irq_restore()</code></td>
+<td>Restores local interrupt delivery to the given state</td>
+</tr>
+<tr>
+<td><code>disable_irq()</code></td>
+<td>Disables the given interrupt line and ensures no handler on the line is executing before returning</td>
+</tr>
+<tr>
+<td><code>disable_irq_nosync()</code></td>
+<td>Disables the given interrupt line</td>
+</tr>
+<tr>
+<td><code>enable_irq()</code></td>
+<td>Enables the given interrupt line</td>
+</tr>
+<tr>
+<td><code>irqs_disabled()</code></td>
+<td>Returns nonzero if local interrupt delivery is disabled; otherwise returns zero</td>
+</tr>
+<tr>
+<td><code>in_interrupt()</code></td>
+<td>Returns nonzero if in interrupt context and zero if in process context</td>
+</tr>
+<tr>
+<td><code>in_irq()</code></td>
+<td>Returns nonzero if currently executing an interrupt handler and zero otherwise</td>
+</tr>
+</tbody>
+</table>
+<h3 id="conclusion">Conclusion</h3>
+<p>This chapter discussed at interrupts, a hardware resource used by devices to asynchronously signal the processor. Interrupts are used by hardware to interrupt the operating system.</p>
+<p>Most modern hardware uses interrupts to communicate with operating systems.The device driver, which manages a given piece of hardware, registers an interrupt handler to respond to and process interrupts issued from their associated hardware. Work performed in interrupts includes:</p>
+<ul>
+<li>Acknowledging and resetting hardware</li>
+<li>Copying data from the device to main memory and vice versa</li>
+<li>Processing hardware requests</li>
+<li>Sending out new hardware requests</li>
+</ul>
+<p>The kernel provides interfaces for:</p>
+<ul>
+<li>Registering and unregistering interrupt handlers</li>
+<li>Disabling interrupts</li>
+<li>Masking out interrupt lines</li>
+<li>Checking the status of the interrupt system</li>
+</ul>
+<p>Because interrupts interrupt other executing code (processes, the kernel itself, and even other interrupt handlers), they must execute quickly. Often there is a lot of work to do and to balance the large amount of work with the need for quick execution, the kernel divides the work of processing interrupts into two halves. The interrupt handler, the top half, was discussed in this chapter. The <a href="../ch8/">next chapter</a> looks at the bottom half.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p119-on-interrupt-handlers"><strong>p119 on interrupt handlers</strong></h5>
@@ -1146,6 +1269,7 @@ ERR:  0
 <p>The <code>local_irq_disable()</code> routine is dangerous if interrupts were already disabled prior to its invocation?</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: Why is it dangerous?</p>
+<p><span class="text-info">Solution</span>: <code>local_irq_disable()</code> may have similar calling mechanisms as <code>disable_irq()</code> functions discussed in p129: calls to these functions nest. If <code>disable_irq()</code> is called twice, the interrupt line is not actually reenabled until the second call to <code>enable_irq()</code>.</p>
             </div>
         </div>
 
