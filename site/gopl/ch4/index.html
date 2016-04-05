@@ -564,6 +564,15 @@
     
         <li class="main "><a href="#structs">Structs</a></li>
         
+            <li><a href="#the-zero-value-of-a-struct">The zero value of a struct *</a></li>
+        
+            <li><a href="#struct-literals">Struct Literals</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -1243,6 +1252,209 @@
 <li>The <code>hasEdge</code> function shows how the zero value of a missing map entry works: even if neither <code>from</code> nor <code>to</code> is present, <code>graph[from][to]</code> will always give a meaningful result.</li>
 </ul>
 <h3 id="structs">Structs</h3>
+<p>A <strong>struct</strong> is an aggregate data type that groups together zero or more named values of arbitrary types as a single entity. Each value is called a <em>field</em>. All of the fields are collected into a single entity that can be copied as a unit, passed to functions and returned by them, stored in arrays, etc.</p>
+<p>These two statements declare a struct type called <code>Employee</code> and a variable called <code>dilbert</code> that is an instance of an <code>Employee</code>:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Employee</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">ID</span>         <span class="kt">int</span>
+    <span class="nx">Name</span>       <span class="kt">string</span>
+    <span class="nx">Address</span>    <span class="kt">string</span>
+    <span class="nx">DoB</span>        <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span>
+    <span class="nx">Position</span>   <span class="kt">string</span>
+    <span class="nx">Salary</span>     <span class="kt">int</span>
+    <span class="nx">ManagerID</span>  <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">dilbert</span> <span class="nx">Employee</span>
+</pre></div>
+
+
+<p>The individual fields of <code>dilbert</code> are accessed using dot notation like <code>dilbert.Name</code> and <code>dilbert.DoB</code>.</p>
+<p>Because <code>dilbert</code> is a variable, its fields are also variables. A field may be assigned to like this:</p>
+<div class="codehilite"><pre><span class="nx">dilbert</span><span class="p">.</span><span class="nx">Salary</span> <span class="o">-=</span> <span class="mi">5000</span>
+</pre></div>
+
+
+<p>The address of the filed can be taken and accessed through a pointer:</p>
+<div class="codehilite"><pre><span class="nx">position</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">dilbert</span><span class="p">.</span><span class="nx">Position</span>
+<span class="o">*</span><span class="nx">position</span> <span class="p">=</span> <span class="s">&quot;Senior &quot;</span> <span class="o">+</span> <span class="o">*</span><span class="nx">position</span>
+</pre></div>
+
+
+<p>The dot notation also works with a pointer to a struct:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">employeeOfTheMonth</span> <span class="o">*</span><span class="nx">Employee</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">dilbert</span>
+<span class="nx">employeeOfTheMonth</span><span class="p">.</span><span class="nx">Position</span> <span class="o">+=</span> <span class="s">&quot; (proactive team player)&quot;</span>
+</pre></div>
+
+
+<p>The last statement is equivalent to:</p>
+<div class="codehilite"><pre><span class="p">(</span><span class="o">*</span><span class="nx">employeeOfTheMonth</span><span class="p">).</span><span class="nx">Position</span> <span class="o">+=</span> <span class="s">&quot; (proactive team player)&quot;</span>
+</pre></div>
+
+
+<p>The function <code>EmployeeByID</code> takes as input an employee's ID and returns a pointer to an <code>Employee</code> struct. We can use the dot notation to access its fields:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">EmployeeByID</span><span class="p">(</span><span class="nx">id</span> <span class="kt">int</span><span class="p">)</span> <span class="o">*</span><span class="nx">Employee</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">EmployeeByID</span><span class="p">(</span><span class="nx">dilbert</span><span class="p">.</span><span class="nx">ManagerID</span><span class="p">).</span><span class="nx">Position</span><span class="p">)</span>
+<span class="nx">id</span> <span class="o">:=</span> <span class="nx">dilbert</span><span class="p">.</span><span class="nx">ID</span>
+<span class="nx">EmployeeByID</span><span class="p">(</span><span class="nx">id</span><span class="p">).</span><span class="nx">Salary</span> <span class="p">=</span> <span class="mi">0</span>
+</pre></div>
+
+
+<p>The last statement updates the <code>Employee</code> struct that is pointed to by the result of the call to <code>EmployeeByID</code>. <u>If the result type of <code>EmployeeByID</code> were changed to <code>Employee</code> instead of <code>*Employee</code>, the assignment statement would not compile since its left-hand side would not identify a variable.</u></p>
+<p>Fields are usually written one per line, with the field's name preceding its type. However, consecutive fields of the same type may be combined, as with <code>Name</code> and <code>Address</code> here:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Employee</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">ID</span>            <span class="kt">int</span>
+    <span class="nx">Name</span><span class="p">,</span> <span class="nx">Address</span> <span class="kt">string</span>
+    <span class="nx">DoB</span>           <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span>
+    <span class="nx">Position</span>      <span class="kt">string</span>
+    <span class="nx">Salary</span>        <span class="kt">int</span>
+    <span class="nx">ManagerID</span>     <span class="kt">int</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Field order is significant to type identity:</p>
+<ul>
+<li>If we combined the declaration of the <code>Position</code> field (also a string), or interchanged <code>Name</code> and <code>Address</code>, we would be defining a different struct type.</li>
+<li>Typically we only combine the declarations of related fields.</li>
+</ul>
+<p>The name of a struct field is exported if it begins with a capital letter. This is <a href="../ch2/#local-and-exported-names">Go's main access control mechanism</a>. A struct type may contain a mixture of exported and unexported fields.</p>
+<p>Struct types tend to be verbose because they often involve a line for each field. Although we could write out the whole type each time it is needed, the repetition is unnecessary. Instead, struct types usually appear within the declaration of a named type like <code>Employee</code>.</p>
+<p>A named struct type <code>S</code> can't declare a field of the same type <code>S</code>, because an aggregate value cannot contain itself. The analogous restriction also applies to arrays. But <code>S</code> may declare a field of the pointer type <code>*S</code>, which allows creating recursive data structures like linked lists and trees. The following example uses a binary tree to implement an insertion sort:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/treesort/sort.go">gopl.io/ch4/treesort/sort.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">tree</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">value</span>       <span class="kt">int</span>
+    <span class="nx">left</span><span class="p">,</span> <span class="nx">right</span> <span class="o">*</span><span class="nx">tree</span>
+<span class="p">}</span>
+
+<span class="c1">// Sort sorts values in place.</span>
+<span class="kd">func</span> <span class="nx">Sort</span><span class="p">(</span><span class="nx">values</span> <span class="p">[]</span><span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">root</span> <span class="o">*</span><span class="nx">tree</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">values</span> <span class="p">{</span>
+        <span class="nx">root</span> <span class="p">=</span> <span class="nx">add</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">appendValues</span><span class="p">(</span><span class="nx">values</span><span class="p">[:</span><span class="mi">0</span><span class="p">],</span> <span class="nx">root</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// appendValues appends the elements of t to values in order</span>
+<span class="c1">// and returns the resulting slice.</span>
+<span class="kd">func</span> <span class="nx">appendValues</span><span class="p">(</span><span class="nx">values</span> <span class="p">[]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">t</span> <span class="o">*</span><span class="nx">tree</span><span class="p">)</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">t</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">values</span> <span class="p">=</span> <span class="nx">appendValues</span><span class="p">(</span><span class="nx">values</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">left</span><span class="p">)</span>
+        <span class="nx">values</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">values</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">value</span><span class="p">)</span>
+        <span class="nx">values</span> <span class="p">=</span> <span class="nx">appendValues</span><span class="p">(</span><span class="nx">values</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">right</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">values</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">add</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">tree</span><span class="p">,</span> <span class="nx">value</span> <span class="kt">int</span><span class="p">)</span> <span class="o">*</span><span class="nx">tree</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">t</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="c1">// Equivalent to return &amp;tree{value: value}.</span>
+        <span class="nx">t</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">tree</span><span class="p">)</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">value</span> <span class="p">=</span> <span class="nx">value</span>
+        <span class="k">return</span> <span class="nx">t</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">value</span> <span class="p">&lt;</span> <span class="nx">t</span><span class="p">.</span><span class="nx">value</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">left</span> <span class="p">=</span> <span class="nx">add</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">left</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">right</span> <span class="p">=</span> <span class="nx">add</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">right</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">t</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="the-zero-value-of-a-struct">The zero value of a struct *</h4>
+<p><u>The zero value for a struct is composed of the zero values of each of its fields.</u> It is usually desirable that the zero value be a natural or sensible default, but sometimes the type designer has to work at it.</p>
+<p>For example:</p>
+<ul>
+<li>The initial value of the <code>bytes.Buffer</code> struct is a ready-to-use empty buffer.</li>
+<li>The zero value of <a href="https://golang.org/pkg/sync/#Mutex"><code>sync.Mutex</code></a> is a ready-to-use unlocked mutex (discussed <a href="ch9.md">Chapter 9</a>)</li>
+</ul>
+<p>The struct type with no fields is called the <em>empty struct</em>, written as <code>struct{}</code>. It has size zero and carries no information. Some Go programmers use it instead of <code>bool</code> as the value type of a map that represents a set, to emphasize that only the keys are significant, but the space saving is marginal and the syntax more cumbersome, so we generally avoid it.</p>
+<div class="codehilite"><pre><span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kd">struct</span><span class="p">{})</span> <span class="c1">// set of strings</span>
+<span class="c1">// ...</span>
+<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">seen</span><span class="p">[</span><span class="nx">s</span><span class="p">];</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+    <span class="nx">seen</span><span class="p">[</span><span class="nx">s</span><span class="p">]</span> <span class="p">=</span> <span class="kd">struct</span><span class="p">{}{}</span>
+    <span class="c1">// ...first time seeing s...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="struct-literals">Struct Literals</h4>
+<p>A value of a struct type can be written using a <strong>struct literal</strong> that specifies values for its fields.</p>
+<p>There are two forms of struct literal.</p>
+<p>The first form, as shown below, requires that a value be specified for every field, in the right order. The writer and reader have to remember exactly what the fields are, and it makes the code fragile if the set of fields later grow or are reordered.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Point</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span> <span class="kt">int</span> <span class="p">}</span>
+<span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+</pre></div>
+
+
+<p>Accordingly, this form tends to be used only within the package that defines the struct type, or with smaller struct types for which there is an obvious field ordering convention, like <code>image.Point{x, y}</code> or <code>color.RGBA{red, green, blue, alpha}</code>.</p>
+<p>The second form is more often used, in which a struct value is initialized by listing some or all of the field names and their corresponding values, as in this statement from the Lissajous program of <a href="../ch1/#animated-gifs">Section 1.4</a>:</p>
+<div class="codehilite"><pre><span class="nx">anim</span> <span class="o">:=</span> <span class="nx">gif</span><span class="p">.</span><span class="nx">GIF</span><span class="p">{</span><span class="nx">LoopCount</span><span class="p">:</span> <span class="nx">nframes</span><span class="p">}</span>
+</pre></div>
+
+
+<p><u>If a field is omitted in this form of literal, it is set to the zero value for its type.</u> Because names are provided, the order of fields doesn't matter.</p>
+<p>The two forms cannot be mixed in the same literal. Also, you cannot use the (order-based) first form of literal to sneak around the rule that unexported identifiers may not be referred to from another package.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">p</span>
+<span class="kd">type</span> <span class="nx">T</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">a</span><span class="p">,</span> <span class="nx">b</span> <span class="kt">int</span> <span class="p">}</span> <span class="c1">// a and b are not exported</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span class="n">package</span> <span class="n">q</span>
+<span class="kn">import</span> <span class="s2">&quot;p&quot;</span>
+<span class="n">var</span> <span class="n">_</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">T</span><span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span> <span class="o">//</span> <span class="nb">compile</span> <span class="n">error</span><span class="p">:</span> <span class="n">can</span><span class="s1">&#39;t reference a, b</span>
+<span class="n">var</span> <span class="n">_</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">T</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>       <span class="o">//</span> <span class="nb">compile</span> <span class="n">error</span><span class="p">:</span> <span class="n">can</span><span class="s1">&#39;t reference a, b</span>
+</pre></div>
+
+
+<p>Struct values can be passed as arguments to functions and returned from them. For instance, the following function scales a <code>Point</code> by a specified factor:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Scale</span><span class="p">(</span><span class="nx">p</span> <span class="nx">Point</span><span class="p">,</span> <span class="nx">factor</span> <span class="kt">int</span><span class="p">)</span> <span class="nx">Point</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">Point</span><span class="p">{</span><span class="nx">p</span><span class="p">.</span><span class="nx">X</span> <span class="o">*</span> <span class="nx">factor</span><span class="p">,</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Y</span> <span class="o">*</span> <span class="nx">factor</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">Scale</span><span class="p">(</span><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">},</span> <span class="mi">5</span><span class="p">))</span> <span class="c1">// &quot;{5 10}&quot;</span>
+</pre></div>
+
+
+<p>For efficiency, larger struct types are usually passed to or returned from functions indirectly using a pointer, like:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Bonus</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">Employee</span><span class="p">,</span> <span class="nx">percent</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Salary</span> <span class="o">*</span> <span class="nx">percent</span> <span class="o">/</span> <span class="mi">100</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This is required if the function must modify its argument, since in a <a href="https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_value">call-by-value</a> language like Go, the called function receives only a copy of an argument, not a reference to the original argument.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">AwardAnnualRaise</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">Employee</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">e</span><span class="p">.</span><span class="nx">Salary</span> <span class="p">=</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Salary</span> <span class="o">*</span> <span class="mi">105</span> <span class="o">/</span> <span class="mi">100</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Because structs are so commonly dealt with through pointers, it's possible to use this shorthand notation to create and initialize a struct variable and obtain its address:</p>
+<div class="codehilite"><pre><span class="nx">pp</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+</pre></div>
+
+
+<p>It is exactly equivalent to</p>
+<div class="codehilite"><pre><span class="nx">pp</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">Point</span><span class="p">)</span>
+<span class="o">*</span><span class="nx">pp</span> <span class="p">=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+</pre></div>
+
+
+<p><code>&amp;Point{1, 2}</code> can be used directly within an expression, such as a function call.</p>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p100-on-structs"><strong>p100 on structs</strong></h5>
+<div class="codehilite"><pre><span class="o">...</span>
+<span class="nx">EmployeeByID</span><span class="p">(</span><span class="nx">id</span><span class="p">).</span><span class="nx">Salary</span> <span class="p">=</span> <span class="mi">0</span>
+</pre></div>
+
+
+<blockquote>
+<p>If the result type of <code>EmployeeByID</code> were changed to <code>Employee</code> instead of <code>*Employee</code>, the assignment statement would not compile since its left-hand side would not identify a variable.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: Why is that?</p>
             </div>
         </div>
 
