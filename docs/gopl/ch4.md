@@ -776,3 +776,245 @@ func hasEdge(from, to string) bool {
 * The `hasEdge` function shows how the zero value of a missing map entry works: even if neither `from` nor `to` is present, `graph[from][to]` will always give a meaningful result.
 
 ### Structs
+
+A **struct** is an aggregate data type that groups together zero or more named values of arbitrary types as a single entity. Each value is called a *field*. All of the fields are collected into a single entity that can be copied as a unit, passed to functions and returned by them, stored in arrays, etc.
+
+These two statements declare a struct type called `Employee` and a variable called `dilbert` that is an instance of an `Employee`:
+
+```go
+type Employee struct {
+	ID         int
+	Name       string
+	Address    string
+	DoB        time.Time
+	Position   string
+	Salary     int
+	ManagerID  int
+}
+
+var dilbert Employee
+```
+
+The individual fields of `dilbert` are accessed using dot notation like `dilbert.Name` and `dilbert.DoB`.
+
+Because `dilbert` is a variable, its fields are also variables. A field may be assigned to like this:
+
+```go
+dilbert.Salary -= 5000
+```
+
+The address of the filed can be taken and accessed through a pointer:
+
+```go
+position := &dilbert.Position
+*position = "Senior " + *position
+```
+
+The dot notation also works with a pointer to a struct:
+
+```go
+var employeeOfTheMonth *Employee = &dilbert
+employeeOfTheMonth.Position += " (proactive team player)"
+```
+
+The last statement is equivalent to:
+
+```go
+(*employeeOfTheMonth).Position += " (proactive team player)"
+```
+
+The function `EmployeeByID` takes as input an employee's ID and returns a pointer to an `Employee` struct. We can use the dot notation to access its fields:
+
+```go
+func EmployeeByID(id int) *Employee { /* ... */ }
+fmt.Println(EmployeeByID(dilbert.ManagerID).Position)
+id := dilbert.ID
+EmployeeByID(id).Salary = 0
+```
+
+The last statement updates the `Employee` struct that is pointed to by the result of the call to `EmployeeByID`. <u>If the result type of `EmployeeByID` were changed to `Employee` instead of `*Employee`, the assignment statement would not compile since its left-hand side would not identify a variable.</u>
+
+Fields are usually written one per line, with the field's name preceding its type. However, consecutive fields of the same type may be combined, as with `Name` and `Address` here:
+
+```go
+type Employee struct {
+	ID            int
+	Name, Address string
+	DoB           time.Time
+	Position      string
+	Salary        int
+	ManagerID     int
+}
+```
+
+Field order is significant to type identity:
+
+* If we combined the declaration of the `Position` field (also a string), or interchanged `Name` and `Address`, we would be defining a different struct type.
+* Typically we only combine the declarations of related fields.
+
+The name of a struct field is exported if it begins with a capital letter. This is [Go's main access control mechanism](ch2.md#local-and-exported-names). A struct type may contain a mixture of exported and unexported fields.
+
+Struct types tend to be verbose because they often involve a line for each field. Although we could write out the whole type each time it is needed, the repetition is unnecessary. Instead, struct types usually appear within the declaration of a named type like `Employee`.
+
+A named struct type `S` can't declare a field of the same type `S`, because an aggregate value cannot contain itself. The analogous restriction also applies to arrays. But `S` may declare a field of the pointer type `*S`, which allows creating recursive data structures like linked lists and trees. The following example uses a binary tree to implement an insertion sort:
+
+<small>[gopl.io/ch4/treesort/sort.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/treesort/sort.go)</small>
+
+```go
+type tree struct {
+	value       int
+	left, right *tree
+}
+
+// Sort sorts values in place.
+func Sort(values []int) {
+	var root *tree
+	for _, v := range values {
+		root = add(root, v)
+	}
+	appendValues(values[:0], root)
+}
+
+// appendValues appends the elements of t to values in order
+// and returns the resulting slice.
+func appendValues(values []int, t *tree) []int {
+	if t != nil {
+		values = appendValues(values, t.left)
+		values = append(values, t.value)
+		values = appendValues(values, t.right)
+	}
+	return values
+}
+
+func add(t *tree, value int) *tree {
+	if t == nil {
+		// Equivalent to return &tree{value: value}.
+		t = new(tree)
+		t.value = value
+		return t
+	}
+	if value < t.value {
+		t.left = add(t.left, value)
+	} else {
+		t.right = add(t.right, value)
+	}
+	return t
+}
+```
+
+#### The zero value of a struct *
+
+<u>The zero value for a struct is composed of the zero values of each of its fields.</u> It is usually desirable that the zero value be a natural or sensible default, but sometimes the type designer has to work at it.
+
+For example:
+
+* The initial value of the `bytes.Buffer` struct is a ready-to-use empty buffer.
+* The zero value of [`sync.Mutex`](https://golang.org/pkg/sync/#Mutex) is a ready-to-use unlocked mutex (discussed [Chapter 9](ch9.md))
+
+The struct type with no fields is called the *empty struct*, written as `struct{}`. It has size zero and carries no information. Some Go programmers use it instead of `bool` as the value type of a map that represents a set, to emphasize that only the keys are significant, but the space saving is marginal and the syntax more cumbersome, so we generally avoid it.
+
+```go
+seen := make(map[string]struct{}) // set of strings
+// ...
+if _, ok := seen[s]; !ok {
+	seen[s] = struct{}{}
+	// ...first time seeing s...
+}
+```
+
+#### Struct Literals
+
+A value of a struct type can be written using a **struct literal** that specifies values for its fields.
+
+There are two forms of struct literal.
+
+The first form, as shown below, requires that a value be specified for every field, in the right order. The writer and reader have to remember exactly what the fields are, and it makes the code fragile if the set of fields later grow or are reordered.
+
+
+```go
+type Point struct{ X, Y int }
+p := Point{1, 2}
+```
+
+Accordingly, this form tends to be used only within the package that defines the struct type, or with smaller struct types for which there is an obvious field ordering convention, like `image.Point{x, y}` or `color.RGBA{red, green, blue, alpha}`.
+
+The second form is more often used, in which a struct value is initialized by listing some or all of the field names and their corresponding values, as in this statement from the Lissajous program of [Section 1.4](ch1.md#animated-gifs):
+
+```go
+anim := gif.GIF{LoopCount: nframes}
+```
+
+<u>If a field is omitted in this form of literal, it is set to the zero value for its type.</u> Because names are provided, the order of fields doesn't matter.
+
+The two forms cannot be mixed in the same literal. Also, you cannot use the (order-based) first form of literal to sneak around the rule that unexported identifiers may not be referred to from another package.
+
+```go
+package p
+type T struct{ a, b int } // a and b are not exported
+```
+
+```
+package q
+import "p"
+var _ = p.T{a: 1, b: 2} // compile error: can't reference a, b
+var _ = p.T{1, 2}       // compile error: can't reference a, b
+```
+
+Struct values can be passed as arguments to functions and returned from them. For instance, the following function scales a `Point` by a specified factor:
+
+```go
+func Scale(p Point, factor int) Point {
+	return Point{p.X * factor, p.Y * factor}
+}
+fmt.Println(Scale(Point{1, 2}, 5)) // "{5 10}"
+```
+
+For efficiency, larger struct types are usually passed to or returned from functions indirectly using a pointer, like:
+
+```go
+func Bonus(e *Employee, percent int) int {
+	return e.Salary * percent / 100
+}
+```
+
+This is required if the function must modify its argument, since in a [call-by-value](https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_value) language like Go, the called function receives only a copy of an argument, not a reference to the original argument.
+
+```go
+func AwardAnnualRaise(e *Employee) {
+	e.Salary = e.Salary * 105 / 100
+}
+```
+
+Because structs are so commonly dealt with through pointers, it's possible to use this shorthand notation to create and initialize a struct variable and obtain its address:
+
+```go
+pp := &Point{1, 2}
+```
+
+It is exactly equivalent to
+
+```go
+pp := new(Point)
+*pp = Point{1, 2}
+```
+
+`&Point{1, 2}` can be used directly within an expression, such as a function call.
+
+
+
+
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p100 on structs**
+
+```go
+...
+EmployeeByID(id).Salary = 0
+```
+
+> If the result type of `EmployeeByID` were changed to `Employee` instead of `*Employee`, the assignment statement would not compile since its left-hand side would not identify a variable.
+
+<span class="text-danger">Question</span>: Why is that?
