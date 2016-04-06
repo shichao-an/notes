@@ -1114,9 +1114,9 @@ w = Wheel{8, 8, 5, 20}                       // compile error: unknown fields
 w = Wheel{X: 8, Y: 8, Radius: 5, Spokes: 20} // compile error: unknown fields
 ```
 
-<small>[gopl.io/ch4/embed/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/embed/main.go)</small>
-
 The struct literal must follow the shape of the type declaration, so we must use one of the two forms below, which are equivalent to each other:
+
+<small>[gopl.io/ch4/embed/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/embed/main.go)</small>
 
 ```go
 w = Wheel{Circle{Point{8, 8}, 5}, 20}
