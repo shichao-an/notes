@@ -568,6 +568,10 @@
         
             <li><a href="#struct-literals">Struct Literals</a></li>
         
+            <li><a href="#comparing-structs">Comparing Structs</a></li>
+        
+            <li><a href="#struct-embedding-and-anonymous-fields">Struct Embedding and Anonymous Fields</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -1443,6 +1447,138 @@
 
 
 <p><code>&amp;Point{1, 2}</code> can be used directly within an expression, such as a function call.</p>
+<h4 id="comparing-structs">Comparing Structs</h4>
+<p>If all the fields of a struct are comparable, the struct itself is comparable. The two expressions of the same type may be compared using <code>==</code> or <code>!=</code>. The <code>==</code> operation compares the corresponding fields of the two structs in order. In the following example, the two printed expressions are equivalent:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Point</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span> <span class="kt">int</span> <span class="p">}</span>
+<span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">q</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">X</span> <span class="o">==</span> <span class="nx">q</span><span class="p">.</span><span class="nx">X</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Y</span> <span class="o">==</span> <span class="nx">q</span><span class="p">.</span><span class="nx">Y</span><span class="p">)</span> <span class="c1">// &quot;false&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span> <span class="o">==</span> <span class="nx">q</span><span class="p">)</span>                   <span class="c1">// &quot;false&quot;</span>
+</pre></div>
+
+
+<p>Comparable struct types, like other comparable types, may be used as the key type of a map.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">address</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">hostname</span> <span class="kt">string</span>
+    <span class="nx">port</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="nx">hits</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">address</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span>
+<span class="nx">hits</span><span class="p">[</span><span class="nx">address</span><span class="p">{</span><span class="s">&quot;golang.org&quot;</span><span class="p">,</span> <span class="mi">443</span><span class="p">}]</span><span class="o">++</span>
+</pre></div>
+
+
+<h4 id="struct-embedding-and-anonymous-fields">Struct Embedding and Anonymous Fields</h4>
+<p>This section discusses Go's <a href="https://golang.org/doc/effective_go.html#embedding"><em>struct embedding</em></a> mechanism, which enables us to use one named struct type as an <em>anonymous field</em> of another struct type. This provides a convenient syntactic shortcut so that a simple dot expression like <code>x.f</code> can stand for a chain of fields like <code>x.d.e.f</code>.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Circle</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span><span class="p">,</span> <span class="nx">Radius</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Wheel</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span><span class="p">,</span> <span class="nx">Radius</span><span class="p">,</span> <span class="nx">Spokes</span> <span class="kt">int</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A <code>Circle</code> has fields for the <code>X</code> and <code>Y</code> coordinates of its center, and a <code>Radius</code>. A <code>Wheel</code> has all the features of a <code>Circle</code>, plus <code>Spokes</code> (number of radial spokes).</p>
+<p>The following code creates a wheel:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">Wheel</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">X</span> <span class="p">=</span> <span class="mi">8</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Y</span> <span class="p">=</span> <span class="mi">8</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Radius</span> <span class="p">=</span> <span class="mi">5</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Spokes</span> <span class="p">=</span> <span class="mi">20</span>
+</pre></div>
+
+
+<p>It is convenient to factor out their common parts:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Point</span> <span class="kd">struct</span> <span class="p">{</span>
+  <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Circle</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Center</span> <span class="nx">Point</span>
+    <span class="nx">Radius</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Wheel</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Circle</span> <span class="nx">Circle</span>
+    <span class="nx">Spokes</span> <span class="kt">int</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This seems clearer, but accessing the fields of a <code>Wheel</code> is more verbose:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">Wheel</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Circle</span><span class="p">.</span><span class="nx">Center</span><span class="p">.</span><span class="nx">X</span> <span class="p">=</span> <span class="mi">8</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Circle</span><span class="p">.</span><span class="nx">Center</span><span class="p">.</span><span class="nx">Y</span> <span class="p">=</span> <span class="mi">8</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Circle</span><span class="p">.</span><span class="nx">Radius</span> <span class="p">=</span> <span class="mi">5</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Spokes</span> <span class="p">=</span> <span class="mi">20</span>
+</pre></div>
+
+
+<p>In Go, we can declare a field with a type but no name, called an <em>anonymous field</em>. The type of the field must be a named type or a pointer to a named type.</p>
+<p>For example, in the code below, <code>Circle</code> and <code>Wheel</code> have one anonymous field each: <code>Point</code> is embedded within <code>Circle</code>, and a <code>Circle</code> is embedded within <code>Wheel</code>.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Circle</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Point</span>
+    <span class="nx">Radius</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Wheel</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Circle</span>
+    <span class="nx">Spokes</span> <span class="kt">int</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We can refer to the names at the leaves of the implicit tree without giving the intervening names:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">Wheel</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">X</span> <span class="p">=</span> <span class="mi">8</span>        <span class="c1">// equivalent to w.Circle.Point.X = 8</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Y</span> <span class="p">=</span> <span class="mi">8</span>        <span class="c1">// equivalent to w.Circle.Point.Y = 8</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Radius</span> <span class="p">=</span> <span class="mi">5</span>   <span class="c1">// equivalent to w.Circle.Radius = 5</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Spokes</span> <span class="p">=</span> <span class="mi">20</span>
+</pre></div>
+
+
+<p>The explicit forms shown in the comments above show that "anonymous field" is something of a misnomer. The fields <code>Circle</code> and <code>Point</code> do have names (that of the named type), but those names are optional in dot expressions. We may omit any or all of the anonymous fields when selecting their subfields.  However, there's no shorthand for this form of struct literal syntax, so neither of these will compile:</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="nx">Wheel</span><span class="p">{</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">20</span><span class="p">}</span>                       <span class="c1">// compile error: unknown fields</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">Wheel</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="nx">Y</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="nx">Radius</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="nx">Spokes</span><span class="p">:</span> <span class="mi">20</span><span class="p">}</span> <span class="c1">// compile error: unknown fields</span>
+</pre></div>
+
+
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/embed/main.go">gopl.io/ch4/embed/main.go</a></small></p>
+<p>The struct literal must follow the shape of the type declaration, so we must use one of the two forms below, which are equivalent to each other:</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="nx">Wheel</span><span class="p">{</span><span class="nx">Circle</span><span class="p">{</span><span class="nx">Point</span><span class="p">{</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">},</span> <span class="mi">5</span><span class="p">},</span> <span class="mi">20</span><span class="p">}</span>
+
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">Wheel</span><span class="p">{</span>
+    <span class="nx">Circle</span><span class="p">:</span> <span class="nx">Circle</span><span class="p">{</span>
+        <span class="nx">Point</span><span class="p">:</span>  <span class="nx">Point</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="nx">Y</span><span class="p">:</span> <span class="mi">8</span><span class="p">},</span>
+        <span class="nx">Radius</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="nx">Spokes</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="c1">// NOTE: trailing comma necessary here (and at Radius)</span>
+<span class="p">}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%#v\n&quot;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// Wheel{Circle:Circle{Point:Point{X:8, Y:8}, Radius:5}, Spokes:20}</span>
+
+<span class="nx">w</span><span class="p">.</span><span class="nx">X</span> <span class="p">=</span> <span class="mi">42</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%#v\n&quot;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// Wheel{Circle:Circle{Point:Point{X:42, Y:8}, Radius:5}, Spokes:20}</span>
+</pre></div>
+
+
+<p>Notice how the <code>#</code> adverb causes <code>Printf</code>'s <code>%v</code> verb to display values in a form similar to Go syntax, which includes the name of each field.</p>
+<p>Because "anonymous" fields have implicit names, we can't have two anonymous fields of the same type since their names would conflict.</p>
+<p>The visibility of the field is analogous to the name of the field, which is implicitly determined by its type, In the examples above, the <code>Point</code> and <code>Circle</code> anonymous fields are exported. If they are unexported (<code>point</code> and <code>circle</code>), we could still use the shorthand form</p>
+<div class="codehilite"><pre><span class="nx">w</span><span class="p">.</span><span class="nx">X</span> <span class="p">=</span> <span class="mi">8</span> <span class="c1">// equivalent to w.circle.point.X = 8</span>
+</pre></div>
+
+
+<p>But the explicit long form shown in the comment would be forbidden outside the declaring package because <code>circle</code> and <code>point</code> would be inaccessible.</p>
+<p>Anonymous fields need not be struct types (discussed later): any named type or pointer to a named type will do. The reason of embedding a type that has no subfields has to do with methods. The shorthand notation used for selecting the fields of an embedded type also works for selecting its methods. In effect, the outer struct type gains not only the fields of the embedded type but also its methods. This mechanism is the main way that complex object behaviors are composed from simpler ones. Composition is central to object-oriented programming in Go, detailed in <a href="../ch6/#composing-types-by-struct-embedding">Section 6.3</a>.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p100-on-structs"><strong>p100 on structs</strong></h5>
