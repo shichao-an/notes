@@ -1000,6 +1000,160 @@ pp := new(Point)
 
 `&Point{1, 2}` can be used directly within an expression, such as a function call.
 
+#### Comparing Structs
+
+If all the fields of a struct are comparable, the struct itself is comparable. The two expressions of the same type may be compared using `==` or `!=`. The `==` operation compares the corresponding fields of the two structs in order. In the following example, the two printed expressions are equivalent:
+
+```go
+type Point struct{ X, Y int }
+p := Point{1, 2}
+q := Point{2, 1}
+fmt.Println(p.X == q.X && p.Y == q.Y) // "false"
+fmt.Println(p == q)                   // "false"
+```
+
+Comparable struct types, like other comparable types, may be used as the key type of a map.
+
+```go
+type address struct {
+	hostname string
+	port int
+}
+
+hits := make(map[address]int)
+hits[address{"golang.org", 443}]++
+```
+
+#### Struct Embedding and Anonymous Fields
+
+This section discusses Go's [*struct embedding*](https://golang.org/doc/effective_go.html#embedding) mechanism, which enables us to use one named struct type as an *anonymous field* of another struct type. This provides a convenient syntactic shortcut so that a simple dot expression like `x.f` can stand for a chain of fields like `x.d.e.f`.
+
+For example:
+
+```go
+type Circle struct {
+	X, Y, Radius int
+}
+
+type Wheel struct {
+	X, Y, Radius, Spokes int
+}
+```
+
+A `Circle` has fields for the `X` and `Y` coordinates of its center, and a `Radius`. A `Wheel` has all the features of a `Circle`, plus `Spokes` (number of radial spokes).
+
+The following code creates a wheel:
+
+```go
+var w Wheel
+w.X = 8
+w.Y = 8
+w.Radius = 5
+w.Spokes = 20
+```
+
+It is convenient to factor out their common parts:
+
+```go
+type Point struct {
+  X, Y int
+}
+
+type Circle struct {
+	Center Point
+	Radius int
+}
+
+type Wheel struct {
+	Circle Circle
+	Spokes int
+}
+```
+
+This seems clearer, but accessing the fields of a `Wheel` is more verbose:
+
+```go
+var w Wheel
+w.Circle.Center.X = 8
+w.Circle.Center.Y = 8
+w.Circle.Radius = 5
+w.Spokes = 20
+```
+
+In Go, we can declare a field with a type but no name, called an *anonymous field*. The type of the field must be a named type or a pointer to a named type.
+
+For example, in the code below, `Circle` and `Wheel` have one anonymous field each: `Point` is embedded within `Circle`, and a `Circle` is embedded within `Wheel`.
+
+
+```go
+type Circle struct {
+	Point
+	Radius int
+}
+
+type Wheel struct {
+	Circle
+	Spokes int
+}
+```
+
+We can refer to the names at the leaves of the implicit tree without giving the intervening names:
+
+```go
+var w Wheel
+w.X = 8        // equivalent to w.Circle.Point.X = 8
+w.Y = 8        // equivalent to w.Circle.Point.Y = 8
+w.Radius = 5   // equivalent to w.Circle.Radius = 5
+w.Spokes = 20
+```
+
+The explicit forms shown in the comments above show that "anonymous field" is something of a misnomer. The fields `Circle` and `Point` do have names (that of the named type), but those names are optional in dot expressions. We may omit any or all of the anonymous fields when selecting their subfields.  However, there's no shorthand for this form of struct literal syntax, so neither of these will compile:
+
+```go
+w = Wheel{8, 8, 5, 20}                       // compile error: unknown fields
+w = Wheel{X: 8, Y: 8, Radius: 5, Spokes: 20} // compile error: unknown fields
+```
+
+<small>[gopl.io/ch4/embed/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/embed/main.go)</small>
+
+The struct literal must follow the shape of the type declaration, so we must use one of the two forms below, which are equivalent to each other:
+
+```go
+w = Wheel{Circle{Point{8, 8}, 5}, 20}
+
+w = Wheel{
+	Circle: Circle{
+		Point:  Point{X: 8, Y: 8},
+		Radius: 5,
+	},
+	Spokes: 20, // NOTE: trailing comma necessary here (and at Radius)
+}
+
+fmt.Printf("%#v\n", w)
+// Output:
+// Wheel{Circle:Circle{Point:Point{X:8, Y:8}, Radius:5}, Spokes:20}
+
+w.X = 42
+
+fmt.Printf("%#v\n", w)
+// Output:
+// Wheel{Circle:Circle{Point:Point{X:42, Y:8}, Radius:5}, Spokes:20}
+```
+
+Notice how the `#` adverb causes `Printf`'s `%v` verb to display values in a form similar to Go syntax, which includes the name of each field.
+
+Because "anonymous" fields have implicit names, we can't have two anonymous fields of the same type since their names would conflict.
+
+The visibility of the field is analogous to the name of the field, which is implicitly determined by its type, In the examples above, the `Point` and `Circle` anonymous fields are exported. If they are unexported (`point` and `circle`), we could still use the shorthand form
+
+```go
+w.X = 8 // equivalent to w.circle.point.X = 8
+```
+
+But the explicit long form shown in the comment would be forbidden outside the declaring package because `circle` and `point` would be inaccessible.
+
+Anonymous fields need not be struct types (discussed later): any named type or pointer to a named type will do. The reason of embedding a type that has no subfields has to do with methods. The shorthand notation used for selecting the fields of an embedded type also works for selecting its methods. In effect, the outer struct type gains not only the fields of the embedded type but also its methods. This mechanism is the main way that complex object behaviors are composed from simpler ones. Composition is central to object-oriented programming in Go, detailed in [Section 6.3](ch6.md#composing-types-by-struct-embedding).
+
 
 
 
