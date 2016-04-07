@@ -689,6 +689,34 @@ kernel`system_call_fastpath+0x16
 <li>A thread is an executable context consisting of a stack, registers, and program counter.</li>
 <li>Multiple threads allow a single process to execute in parallel across multiple CPUs.</li>
 </ul>
+<h5 id="process-creation"><strong>Process Creation</strong></h5>
+<p>Processes are normally created using the <code>fork()</code> system call. This creates a duplicate of the process, with its own process ID. The <code>exec()</code> system call can then be called to begin execution of a different program.</p>
+<p>The following figure shows an example process creation for the shell (<code>sh</code>) executing the ls command:</p>
+<p><a href="../figure_3.6.png" title="Figure 3.6 Process creation"><img alt="Figure 3.6 Process creation" src="../figure_3.6.png" /></a></p>
+<p>The <code>fork()</code> syscall may use a <a href="https://en.wikipedia.org/wiki/Copy-on-write">copy-on-write</a> (COW) strategy to improve performance, which adds references to the previous address space rather than copying all of the contents. Once either process modifies the multiply-referenced memory, a separate copy is then made for the modifications. This strategy either defers or eliminates the need to copy memory, reducing memory and CPU usage.</p>
+<h5 id="process-life-cycle"><strong>Process Life Cycle</strong></h5>
+<p>The life cycle of a process is shown in a simplified diagram below:</p>
+<p><a href="../figure_3.7.png" title="Figure 3.7 Process life cycle"><img alt="Figure 3.7 Process life cycle" src="../figure_3.7.png" /></a></p>
+<p>On modern multithreaded operating systems, it is the threads that are scheduled and run. There are also some additional implementation details regarding how these map to process states.</p>
+<ul>
+<li>The <strong>on-proc state</strong> is for running on a processor (CPU).</li>
+<li>The <strong>ready-to-run</strong> state is when the process is runnable but is waiting on a CPU run queue for its turn on a CPU.</li>
+<li>I/O will block, putting the process in the <strong>sleep state</strong> until the I/O completes and the process is woken up.</li>
+<li>The <strong>zombie state</strong> occurs during process termination, when the process waits until its process status has been read by the parent process, or until it is removed by the kernel.</li>
+</ul>
+<h5 id="process-environment"><strong>Process Environment</strong></h5>
+<p>The process environment is shown in the figure below. It consists of data in the address space of the process and metadata (context) in the kernel.</p>
+<p><a href="../figure_3.8.png" title="Figure 3.8 Process environment"><img alt="Figure 3.8 Process environment" src="../figure_3.8.png" /></a></p>
+<p>The kernel context consists of various process properties and statistics (commonly examined via the <code>ps(1)</code> command):</p>
+<ul>
+<li>Process ID (PID)</li>
+<li>Owner's user ID (UID)</li>
+<li>Various times</li>
+<li>A set of file descriptors, which refer to open files and which are (usually) shared between threads.</li>
+</ul>
+<p>The above figure pictures two threads, each containing some metadata, including a priority in kernel context and its stack in the user address space.</p>
+<p>Note the diagram in this figure is not drawn to scale; the kernel context is very small compared to the process address space.</p>
+<p>The user address space contains memory segments of the process: executable, libraries, and heap, which are detailed in <a href="../ch7/">Chapter 7 Memory</a>.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p88-on-kernel-clock-routine"><strong>p88 on kernel <code>clock()</code> routine</strong></h5>
