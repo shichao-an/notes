@@ -178,7 +178,47 @@ A process contains one or more **threads**:
 * A thread is an executable context consisting of a stack, registers, and program counter.
 * Multiple threads allow a single process to execute in parallel across multiple CPUs.
 
+##### **Process Creation**
 
+Processes are normally created using the `fork()` system call. This creates a duplicate of the process, with its own process ID. The `exec()` system call can then be called to begin execution of a different program.
+
+The following figure shows an example process creation for the shell (`sh`) executing the ls command:
+
+[![Figure 3.6 Process creation](figure_3.6.png)](figure_3.6.png "Figure 3.6 Process creation")
+
+The `fork()` syscall may use a [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write) (COW) strategy to improve performance, which adds references to the previous address space rather than copying all of the contents. Once either process modifies the multiply-referenced memory, a separate copy is then made for the modifications. This strategy either defers or eliminates the need to copy memory, reducing memory and CPU usage.
+
+##### **Process Life Cycle**
+
+The life cycle of a process is shown in a simplified diagram below:
+
+[![Figure 3.7 Process life cycle](figure_3.7.png)](figure_3.7.png "Figure 3.7 Process life cycle")
+
+On modern multithreaded operating systems, it is the threads that are scheduled and run. There are also some additional implementation details regarding how these map to process states.
+
+* The **on-proc state** is for running on a processor (CPU).
+* The **ready-to-run** state is when the process is runnable but is waiting on a CPU run queue for its turn on a CPU.
+* I/O will block, putting the process in the **sleep state** until the I/O completes and the process is woken up.
+* The **zombie state** occurs during process termination, when the process waits until its process status has been read by the parent process, or until it is removed by the kernel.
+
+##### **Process Environment**
+
+The process environment is shown in the figure below. It consists of data in the address space of the process and metadata (context) in the kernel.
+
+[![Figure 3.8 Process environment](figure_3.8.png)](figure_3.8.png "Figure 3.8 Process environment")
+
+The kernel context consists of various process properties and statistics (commonly examined via the `ps(1)` command):
+
+* Process ID (PID)
+* Owner's user ID (UID)
+* Various times
+* A set of file descriptors, which refer to open files and which are (usually) shared between threads.
+
+The above figure pictures two threads, each containing some metadata, including a priority in kernel context and its stack in the user address space.
+
+Note the diagram in this figure is not drawn to scale; the kernel context is very small compared to the process address space.
+
+The user address space contains memory segments of the process: executable, libraries, and heap, which are detailed in [Chapter 7 Memory](ch7.md).
 
 
 ### Doubts and Solutions

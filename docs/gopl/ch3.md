@@ -516,6 +516,8 @@ Arbitrary bytes can also be included in literal strings using hexadecimal or oct
 
 Both denote a single byte with the specified value.
 
+##### **Raw string literal** *
+
 A **raw string literal** is written `` `...` ``, using [backquotes](https://en.wikipedia.org/wiki/Grave_accent#Use_in_programming) instead of double quotes. Within a raw string literal, no escape sequences are processed; the contents are taken literally, including backslashes and newlines, so a raw string literal may spread over several lines in the program source. <u>The only processing is that [carriage returns](https://en.wikipedia.org/wiki/Carriage_return) are deleted so that the value of the string is the same on all platforms,</u> including those that conventionally put carriage returns in text files.
 
 Raw string literals are a convenient way to write regular expressions, which tend to have lots of backslashes. They are also useful for HTML templates, JSON literals, and command usage messages, which often extend over multiple lines.
