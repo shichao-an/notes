@@ -573,6 +573,9 @@
             <li><a href="#struct-embedding-and-anonymous-fields">Struct Embedding and Anonymous Fields</a></li>
         
     
+        <li class="main "><a href="#json">JSON</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1556,6 +1559,7 @@
         <span class="nx">Radius</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
     <span class="p">},</span>
     <span class="nx">Spokes</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="c1">// NOTE: trailing comma necessary here (and at Radius)</span>
+              <span class="c1">// if the enclosing brace is in the next line</span>
 <span class="p">}</span>
 
 <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%#v\n&quot;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span>
@@ -1579,6 +1583,108 @@
 
 <p>But the explicit long form shown in the comment would be forbidden outside the declaring package because <code>circle</code> and <code>point</code> would be inaccessible.</p>
 <p>Anonymous fields need not be struct types (discussed later): any named type or pointer to a named type will do. The reason of embedding a type that has no subfields has to do with methods. The shorthand notation used for selecting the fields of an embedded type also works for selecting its methods. In effect, the outer struct type gains not only the fields of the embedded type but also its methods. This mechanism is the main way that complex object behaviors are composed from simpler ones. Composition is central to object-oriented programming in Go, detailed in <a href="../ch6/#composing-types-by-struct-embedding">Section 6.3</a>.</p>
+<h3 id="json">JSON</h3>
+<p><a href="https://en.wikipedia.org/wiki/JSON">JavaScript Object Notation</a> (JSON) is a standard notation for sending and receiving structured information. Other notations include:</p>
+<ul>
+<li>XML</li>
+<li><a href="https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One">ASN.1</a></li>
+<li>Google's <a href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protocol Buffers</a></li>
+</ul>
+<p>JSON is the most widely used because of its simplicity, readability, and universal support.</p>
+<p>Go supports encoding and decoding these formats, provided by the standard library packages <a href="https://golang.org/pkg/encoding/json/"><code>encoding/json</code></a> (discussed in this section), <a href="https://golang.org/pkg/encoding/xml/"><code>encoding/xml</code></a> and <a href="https://golang.org/pkg/encoding/asn1/"><code>encoding/asn1</code></a>. These packages all have similar APIs. See also <a href="http://blog.golang.org/json-and-go">JSON and Go</a> for reference.</p>
+<p>JSON is an encoding of JavaScript values (strings, numbers, booleans, arrays, and objects) as Unicode text, which is an efficient, readable representation for the basic data types of <a href="../ch3/">Chapter 3</a> and the composite types of this chapter (arrays, slices, structs, and maps).</p>
+<p>The basic JSON types are:</p>
+<ul>
+<li>Numbers (in decimal or scientific notation)</li>
+<li>Booleans (<code>true</code> or <code>false</code>)</li>
+<li>Strings, which are sequences of Unicode code points enclosed in double quotes, with backslash escapes using a similar notation to Go, though JSON's <code>\U</code><em>hhhh</em> numeric escapes denote <a href="https://en.wikipedia.org/wiki/UTF-16">UTF-16</a> codes, not runes.</li>
+</ul>
+<p>These basic types may be combined recursively using JSON arrays and objects:</p>
+<ul>
+<li>A JSON array is an ordered sequence of values, written as a comma-separated list enclosed in square brackets<ul>
+<li>JSON arrays are used to encode Go arrays and slices.</li>
+</ul>
+</li>
+<li>A JSON object is a mapping from strings to values, written as a sequence of <code>name:value</code> pairs separated by commas and surrounded by braces<ul>
+<li>JSON objects are used to encode Go maps (with string keys) and structs.</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre>boolean     true
+number      -273.15
+string      &quot;She said \&quot;Hello, BF\&quot;&quot;
+array       [&quot;gold&quot;, &quot;silver&quot;, &quot;bronze&quot;]
+object      {&quot;year&quot;: 1980,
+             &quot;event&quot;: &quot;archery&quot;,
+             &quot;medals&quot;: [&quot;gold&quot;, &quot;silver&quot;, &quot;bronze&quot;]}
+</pre></div>
+
+
+<p>The following example declares a <code>Movie</code> data type and a typical list of values. The string literals after the <code>Year</code> and <code>Color</code> field declarations are <code>field tags</code>, which will be explained later.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Movie</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Title</span>  <span class="kt">string</span>
+    <span class="nx">Year</span>   <span class="kt">int</span>  <span class="s">`json:&quot;released&quot;`</span>
+    <span class="nx">Color</span>  <span class="kt">bool</span> <span class="s">`json:&quot;color,omitempty&quot;`</span>
+    <span class="nx">Actors</span> <span class="p">[]</span><span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">movies</span> <span class="p">=</span> <span class="p">[]</span><span class="nx">Movie</span><span class="p">{</span>
+    <span class="p">{</span><span class="nx">Title</span><span class="p">:</span> <span class="s">&quot;Casablanca&quot;</span><span class="p">,</span> <span class="nx">Year</span><span class="p">:</span> <span class="mi">1942</span><span class="p">,</span> <span class="nx">Color</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+        <span class="nx">Actors</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;Humphrey Bogart&quot;</span><span class="p">,</span> <span class="s">&quot;Ingrid Bergman&quot;</span><span class="p">}},</span>
+    <span class="p">{</span><span class="nx">Title</span><span class="p">:</span> <span class="s">&quot;Cool Hand Luke&quot;</span><span class="p">,</span> <span class="nx">Year</span><span class="p">:</span> <span class="mi">1967</span><span class="p">,</span> <span class="nx">Color</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+        <span class="nx">Actors</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;Paul Newman&quot;</span><span class="p">}},</span>
+    <span class="p">{</span><span class="nx">Title</span><span class="p">:</span> <span class="s">&quot;Bullitt&quot;</span><span class="p">,</span> <span class="nx">Year</span><span class="p">:</span> <span class="mi">1968</span><span class="p">,</span> <span class="nx">Color</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+        <span class="nx">Actors</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;Steve McQueen&quot;</span><span class="p">,</span> <span class="s">&quot;Jacqueline Bisset&quot;</span><span class="p">}},</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>It's easy to convert such data structures to and from JSON. Converting a Go data structure to JSON is called <a href="https://en.wikipedia.org/wiki/Marshalling_(computer_science)"><em>marshaling</em></a>, which is done by <a href="https://golang.org/pkg/encoding/json/#Marshal"><code>json.Marshal</code></a>:</p>
+<div class="codehilite"><pre><span class="nx">data</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nx">Marshal</span><span class="p">(</span><span class="nx">movies</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;JSON marshaling failed: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s\n&quot;</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span>
+</pre></div>
+
+
+<p><code>Marshal</code> produces a byte slice containing a long string with no extraneous white space:</p>
+<div class="codehilite"><pre>[{&quot;Title&quot;:&quot;Casablanca&quot;,&quot;released&quot;:1942,&quot;Actors&quot;:[&quot;Humphrey Bogart&quot;,&quot;Ingrid Bergman&quot;]},{&quot;Title&quot;:&quot;Cool Hand Luke&quot;,&quot;released&quot;:1967,&quot;color&quot;:true,&quot;Actors&quot;:[&quot;Paul Newman&quot;]},{&quot;Title&quot;:&quot;Bullitt&quot;,&quot;released&quot;:1968,&quot;color&quot;:true,&quot;Actors&quot;:[&quot;Steve McQueen&quot;,&quot;Jacqueline Bisset&quot;]}]
+</pre></div>
+
+
+<p>To make it human-readable, a variant called <a href="https://golang.org/pkg/encoding/json/#MarshalIndent"><code>json.MarshalIndent</code></a> can be used to produces neatly indented output. Two additional arguments are:</p>
+<ul>
+<li>A prefix for each line of output.</li>
+<li>A string for each level of indentation.</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">data</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nx">MarshalIndent</span><span class="p">(</span><span class="nx">movies</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;    &quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;JSON marshaling failed: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s\n&quot;</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span>
+</pre></div>
+
+
+<p>(output skipped) [p109]</p>
+<p>Marshaling uses the Go struct field names as the field names for the JSON objects (through <a href="http://blog.golang.org/laws-of-reflection"><em>reflection</em></a>, discussed in Section 12.6). <u>Only exported fields are marshaled, which is why we chose capitalized names for all the Go field names.</u></p>
+<p>Note that in the output, the name of the <code>Year</code> field changed to <code>released</code> and <code>Color</code> changed to <code>color</code>, because of the field tags. A field tag is a string of metadata associated at compile time with the field of a struct:</p>
+<div class="codehilite"><pre><span class="nx">Year</span> <span class="kt">int</span> <span class="s">`json:&quot;released&quot;`</span>
+<span class="nx">Color</span> <span class="kt">bool</span> <span class="s">`json:&quot;color,omitempty&quot;`</span>
+</pre></div>
+
+
+<p>A field tag may be any literal string, but it is conventionally interpreted as a space-separated list of <code>key:"value"</code> pairs. Since they contain double quotation marks, field tags are usually written with <a href="../ch3/#raw-string-literal">raw string literals</a>.</p>
+<ul>
+<li>The <code>json</code> key controls the behavior of the <code>encoding/json</code>
+package, and other <code>encoding/...</code> packages follow this convention.</li>
+<li>The first part of the <code>json</code> field tag specifies an alternative JSON name for the Go field.<ul>
+<li>Field tags are often used to specify an idiomatic JSON name like <code>total_count</code> for a Go field named <code>TotalCount</code>.</li>
+</ul>
+</li>
+<li><code>omitempty</code> (which is an additional option in the tag for <code>Color</code>) indicates that no JSON output should be produced if the field has the zero value for its type (<code>false</code>, here); otherwise, it is the empty value.</li>
+</ul>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p100-on-structs"><strong>p100 on structs</strong></h5>
@@ -1591,6 +1697,11 @@
 <p>If the result type of <code>EmployeeByID</code> were changed to <code>Employee</code> instead of <code>*Employee</code>, the assignment statement would not compile since its left-hand side would not identify a variable.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: Why is that?</p>
+<h5 id="p107-on-json"><strong>p107 on JSON</strong></h5>
+<blockquote>
+<p>JSON's <code>\U</code><em>hhhh</em> numeric escapes denote <a href="https://en.wikipedia.org/wiki/UTF-16">UTF-16</a> codes, not runes.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: I didn't find any online references for this.</p>
             </div>
         </div>
 
