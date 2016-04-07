@@ -1127,6 +1127,7 @@ w = Wheel{
 		Radius: 5,
 	},
 	Spokes: 20, // NOTE: trailing comma necessary here (and at Radius)
+              // if the enclosing brace is in the next line
 }
 
 fmt.Printf("%#v\n", w)
@@ -1154,6 +1155,112 @@ But the explicit long form shown in the comment would be forbidden outside the d
 
 Anonymous fields need not be struct types (discussed later): any named type or pointer to a named type will do. The reason of embedding a type that has no subfields has to do with methods. The shorthand notation used for selecting the fields of an embedded type also works for selecting its methods. In effect, the outer struct type gains not only the fields of the embedded type but also its methods. This mechanism is the main way that complex object behaviors are composed from simpler ones. Composition is central to object-oriented programming in Go, detailed in [Section 6.3](ch6.md#composing-types-by-struct-embedding).
 
+### JSON
+
+[JavaScript Object Notation](https://en.wikipedia.org/wiki/JSON) (JSON) is a standard notation for sending and receiving structured information. Other notations include:
+
+* XML
+* [ASN.1](https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One)
+* Google's [Protocol Buffers](https://en.wikipedia.org/wiki/Protocol_Buffers)
+
+JSON is the most widely used because of its simplicity, readability, and universal support.
+
+Go supports encoding and decoding these formats, provided by the standard library packages [`encoding/json`](https://golang.org/pkg/encoding/json/) (discussed in this section), [`encoding/xml`](https://golang.org/pkg/encoding/xml/) and [`encoding/asn1`](https://golang.org/pkg/encoding/asn1/). These packages all have similar APIs. See also [JSON and Go](http://blog.golang.org/json-and-go) for reference.
+
+JSON is an encoding of JavaScript values (strings, numbers, booleans, arrays, and objects) as Unicode text, which is an efficient, readable representation for the basic data types of [Chapter 3](ch3.md) and the composite types of this chapter (arrays, slices, structs, and maps).
+
+The basic JSON types are:
+
+* Numbers (in decimal or scientific notation)
+* Booleans (`true` or `false`)
+* Strings, which are sequences of Unicode code points enclosed in double quotes, with backslash escapes using a similar notation to Go, though JSON's `\U`*hhhh* numeric escapes denote [UTF-16](https://en.wikipedia.org/wiki/UTF-16) codes, not runes.
+
+These basic types may be combined recursively using JSON arrays and objects:
+
+* A JSON array is an ordered sequence of values, written as a comma-separated list enclosed in square brackets
+    * JSON arrays are used to encode Go arrays and slices.
+* A JSON object is a mapping from strings to values, written as a sequence of `name:value` pairs separated by commas and surrounded by braces
+    * JSON objects are used to encode Go maps (with string keys) and structs.
+
+
+```text
+boolean     true
+number      -273.15
+string      "She said \"Hello, BF\""
+array       ["gold", "silver", "bronze"]
+object      {"year": 1980,
+             "event": "archery",
+             "medals": ["gold", "silver", "bronze"]}
+```
+
+The following example declares a `Movie` data type and a typical list of values. The string literals after the `Year` and `Color` field declarations are `field tags`, which will be explained later.
+
+```go
+type Movie struct {
+	Title  string
+	Year   int  `json:"released"`
+	Color  bool `json:"color,omitempty"`
+	Actors []string
+}
+
+var movies = []Movie{
+	{Title: "Casablanca", Year: 1942, Color: false,
+		Actors: []string{"Humphrey Bogart", "Ingrid Bergman"}},
+	{Title: "Cool Hand Luke", Year: 1967, Color: true,
+		Actors: []string{"Paul Newman"}},
+	{Title: "Bullitt", Year: 1968, Color: true,
+		Actors: []string{"Steve McQueen", "Jacqueline Bisset"}},
+	// ...
+}
+```
+
+It's easy to convert such data structures to and from JSON. Converting a Go data structure to JSON is called [*marshaling*](https://en.wikipedia.org/wiki/Marshalling_(computer_science)), which is done by [`json.Marshal`](https://golang.org/pkg/encoding/json/#Marshal):
+
+```go
+data, err := json.Marshal(movies)
+if err != nil {
+	log.Fatalf("JSON marshaling failed: %s", err)
+}
+fmt.Printf("%s\n", data)
+```
+
+`Marshal` produces a byte slice containing a long string with no extraneous white space:
+
+```text
+[{"Title":"Casablanca","released":1942,"Actors":["Humphrey Bogart","Ingrid Bergman"]},{"Title":"Cool Hand Luke","released":1967,"color":true,"Actors":["Paul Newman"]},{"Title":"Bullitt","released":1968,"color":true,"Actors":["Steve McQueen","Jacqueline Bisset"]}]
+```
+
+To make it human-readable, a variant called [`json.MarshalIndent`](https://golang.org/pkg/encoding/json/#MarshalIndent) can be used to produces neatly indented output. Two additional arguments are:
+
+* A prefix for each line of output.
+* A string for each level of indentation.
+
+```go
+data, err := json.MarshalIndent(movies, "", "    ")
+if err != nil {
+	log.Fatalf("JSON marshaling failed: %s", err)
+}
+fmt.Printf("%s\n", data)
+```
+
+(output skipped) [p109]
+
+Marshaling uses the Go struct field names as the field names for the JSON objects (through [*reflection*](http://blog.golang.org/laws-of-reflection), discussed in Section 12.6). <u>Only exported fields are marshaled, which is why we chose capitalized names for all the Go field names.</u>
+
+Note that in the output, the name of the `Year` field changed to `released` and `Color` changed to `color`, because of the field tags. A field tag is a string of metadata associated at compile time with the field of a struct:
+
+```go
+Year int `json:"released"`
+Color bool `json:"color,omitempty"`
+```
+
+A field tag may be any literal string, but it is conventionally interpreted as a space-separated list of `key:"value"` pairs. Since they contain double quotation marks, field tags are usually written with [raw string literals](ch3.md#raw-string-literal).
+
+* The `json` key controls the behavior of the `encoding/json`
+package, and other `encoding/...` packages follow this convention.
+* The first part of the `json` field tag specifies an alternative JSON name for the Go field.
+    * Field tags are often used to specify an idiomatic JSON name like `total_count` for a Go field named `TotalCount`.
+* `omitempty` (which is an additional option in the tag for `Color`) indicates that no JSON output should be produced if the field has the zero value for its type (`false`, here); otherwise, it is the empty value.
 
 
 
@@ -1172,3 +1279,11 @@ EmployeeByID(id).Salary = 0
 > If the result type of `EmployeeByID` were changed to `Employee` instead of `*Employee`, the assignment statement would not compile since its left-hand side would not identify a variable.
 
 <span class="text-danger">Question</span>: Why is that?
+
+
+##### **p107 on JSON**
+
+> JSON's `\U`*hhhh* numeric escapes denote [UTF-16](https://en.wikipedia.org/wiki/UTF-16) codes, not runes.
+
+
+<span class="text-danger">Question</span>: I didn't find any online references for this.
