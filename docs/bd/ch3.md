@@ -125,4 +125,4 @@ struct PersonProperty {
 }
 ```
 
-In the location struct, the city, state, and country fields could have been stored as separate pieces of data. In this case, they're so closely related it makes sense to put them all into one struct as optional fields.
+In the location struct, the city, state, and country fields could have been stored as separate pieces of data. In this case, they're closely related so it makes sense to put them all into one struct as optional fields.
