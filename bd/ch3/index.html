@@ -534,6 +534,21 @@
         
             <li><a href="#properties">Properties</a></li>
         
+            <li><a href="#tying-everything-together-into-data-objects">Tying everything together into data objects</a></li>
+        
+            <li><a href="#evolving-your-schema">Evolving your schema</a></li>
+        
+    
+        <li class="main "><a href="#limitations-of-serialization-frameworks">Limitations of serialization frameworks</a></li>
+        
+    
+        <li class="main "><a href="#summary">Summary</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -645,6 +660,101 @@ of other fields, such as:</p>
 
 
 <p>In the location struct, the city, state, and country fields could have been stored as separate pieces of data. In this case, they're closely related so it makes sense to put them all into one struct as optional fields.</p>
+<h4 id="tying-everything-together-into-data-objects">Tying everything together into data objects</h4>
+<p>At this point, the edges and properties are defined as separate types. However, it is ideal to store all of the data together because:</p>
+<ol>
+<li>It provides a single interface to access your information.</li>
+<li>It makes your data easier to manage if it's stored in a single dataset.</li>
+</ol>
+<p>This is accomplished by wrapping every property and edge type into a <code>DataUnit</code> union:</p>
+<div class="codehilite"><pre><span class="kd">union</span><span class="w"> </span><span class="nc">DataUnit</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="n">PersonProperty</span><span class="w"> </span><span class="n">person_property</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="n">PageProperty</span><span class="w"> </span><span class="n">page_property</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="n">EquivEdge</span><span class="w"> </span><span class="n">equiv</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">4</span><span class="p">:</span><span class="w"> </span><span class="n">PageViewEdge</span><span class="w"> </span><span class="n">page_view</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">Pedigree</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="n">true_as_of_secs</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">Data</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">Pedigree</span><span class="w"> </span><span class="n">pedigree</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">DataUnit</span><span class="w"> </span><span class="n">dataunit</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+
+
+<ul>
+<li>Each <code>DataUnit</code> is paired with its metadata kept in a <code>Pedigree</code> struct.</li>
+<li>The pedigree contains the timestamp for the information, but could also potentially contain debugging information or the source of the data.</li>
+<li>The final <code>Data</code> struct corresponds to a fact from the fact-based model.</li>
+</ul>
+<h4 id="evolving-your-schema">Evolving your schema</h4>
+<p>Thrift is designed so that schemas can evolve over time. The key to evolving Thrift schemas is the numeric identifiers associated with each field. Those IDs are used to identify fields in their serialized form. When you want to change the schema but still be backward compatible with existing data, you must obey the following rules:</p>
+<ul>
+<li><strong>Fields may be renamed</strong>, because the serialized form of an object uses the field IDs, not the names, to identify fields.</li>
+<li><strong>A field may be removed, but you must never reuse that field ID</strong>.<ul>
+<li>When deserializing existing data, Thrift will ignore all fields with field IDs not included in the schema.</li>
+<li>If you were to reuse a previously removed field ID, Thrift would try to deserialize that old data into the new field, which will lead to either invalid or incorrect data.</li>
+</ul>
+</li>
+<li><strong>Only optional fields can be added to existing structs</strong>.<ul>
+<li>You can't add required fields because existing data won't have those fields and thus won't be deserializable.</li>
+<li>This doesn't apply to unions, because unions have no notion of required and optional fields.</li>
+</ul>
+</li>
+</ul>
+<p>The following example shows changes to the SuperWebAnalytics.com schema to store a person's age and the links between web page (changes in bold font).</p>
+<pre>
+union PersonPropertyValue {
+  1: string full_name;
+  2: GenderType gender;
+  3: Location location;
+  <b>4: i16 age;</b>
+}
+
+<b>struct LinkedEdge {
+  1: required PageID source;
+  2: required PageID target;
+}</b>
+
+union DataUnit {
+  1: PersonProperty person_property;
+  2: PageProperty page_property;
+  3: EquivEdge equiv;
+  4: PageViewEdge page_view;
+  <b>5: LinkedEdge page_link;</b>
+}
+</pre>
+
+<p>Adding a new age property is done by adding it to the corresponding union structure, and a new edge is incorporated by adding it into the <code>DataUnit</code> union.</p>
+<h3 id="limitations-of-serialization-frameworks">Limitations of serialization frameworks</h3>
+<p>Serialization frameworks only check that all required fields are present and are of the expected type, but are unable to check richer properties like "Ages should be nonnegative" or "true-as-of timestamps should not be in the future". Data not matching these properties would indicate a problem in your system, and you wouldn't want them written to your master dataset.</p>
+<p>[p52-53]</p>
+<p>There are two approaches you can take to work around these limitations with a serialization framework like Apache Thrift:</p>
+<ul>
+<li><strong>Wrap your generated code in additional code that checks the additional properties you care about</strong>, e.g. ages being non-negative.<ul>
+<li>This approach works well as long as you’re only reading/writing data from/to a single language. If you use multiple languages, you have to duplicate the logic in many languages.</li>
+</ul>
+</li>
+<li><strong>Check the extra properties at the very beginning of your batch-processing workflow</strong>. This step would split your dataset into "valid data" and "invalid data" and send a notification if any invalid data was found.<ul>
+<li>This approach makes it easier to implement the rest of your workflow, because anything getting past the validity check can be assumed to have the stricter properties you care about.</li>
+<li>However, this approach doesn't prevent the invalid data from being written to the master dataset and doesn't help with determining the context in which the corruption happened.</li>
+</ul>
+</li>
+</ul>
+<p>Neither approach is ideal, and you have to decide whether you'd rather maintain the same logic in multiple languages or lose the context in which corruption was introduced. [p53]</p>
+<h3 id="summary">Summary</h3>
+<p>Implementing the enforceable graph schema for SuperWebAnalytics.com was mostly straightforward. The friction appears when using a serialization framework for this purpose: the inability to enforce every property you care about. The tooling will rarely work perfectly, but <u>it's important to know what would be possible with ideal tools, so you're cognizant of the trade-offs you're making and can keep an eye out for better tools (or make your own).</u></p>
+<p>The next chapter discusses how to physically store a master dataset in the batch layer so that it can be processed easily and efficiently.</p>
+<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p54-on-limitations-of-serialization-frameworks"><strong>p54 on limitations of serialization frameworks </strong></h5>
+<blockquote>
+<p>This approach doesn't prevent the invalid data from being written to the master dataset and doesn't help with determining the context in which the corruption happened.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What is "the context in which the corruption happened"?</p>
             </div>
         </div>
 
