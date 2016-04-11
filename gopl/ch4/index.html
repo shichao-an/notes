@@ -575,6 +575,17 @@
     
         <li class="main "><a href="#json">JSON</a></li>
         
+            <li><a href="#marshaling-data-structures-to-json">Marshaling data structures to JSON *</a></li>
+        
+            <li><a href="#unmarshaling-and-decoding-from-json">Unmarshaling and decoding from JSON *</a></li>
+        
+    
+        <li class="main "><a href="#text-and-html-templates">Text and HTML Templates</a></li>
+        
+            <li><a href="#producing-output-with-a-template">Producing output with a template *</a></li>
+        
+            <li><a href="#the-htmltemplate-package">The html/template package *</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -1620,6 +1631,7 @@ object      {&quot;year&quot;: 1980,
 </pre></div>
 
 
+<h4 id="marshaling-data-structures-to-json">Marshaling data structures to JSON *</h4>
 <p>The following example declares a <code>Movie</code> data type and a typical list of values. The string literals after the <code>Year</code> and <code>Color</code> field declarations are <code>field tags</code>, which will be explained later.</p>
 <div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Movie</span> <span class="kd">struct</span> <span class="p">{</span>
     <span class="nx">Title</span>  <span class="kt">string</span>
@@ -1685,6 +1697,264 @@ package, and other <code>encoding/...</code> packages follow this convention.</l
 </li>
 <li><code>omitempty</code> (which is an additional option in the tag for <code>Color</code>) indicates that no JSON output should be produced if the field has the zero value for its type (<code>false</code>, here); otherwise, it is the empty value.</li>
 </ul>
+<h4 id="unmarshaling-and-decoding-from-json">Unmarshaling and decoding from JSON *</h4>
+<p>The inverse operation to marshaling is called <code>unmarshaling</code>. This is done by <a href="https://golang.org/pkg/encoding/json/#Unmarshal"><code>json.Unmarshal</code></a>, which decodes JSON and populates a Go data structure. By defining suitable Go data structures, we can select which parts of the JSON input to decode and which to discard. The code below unmarshals the JSON movie data into a slice of structs whose only field is <code>Title</code>. When <code>Unmarshal</code> returns, it has filled in the slice with the <code>Title</code> information; other names in the JSON are ignored.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">titles</span> <span class="p">[]</span><span class="kd">struct</span><span class="p">{</span> <span class="nx">Title</span> <span class="kt">string</span> <span class="p">}</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nx">Unmarshal</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">titles</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;JSON unmarshaling failed: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">titles</span><span class="p">)</span> <span class="c1">// &quot;[{Casablanca} {Cool Hand Luke} {Bullitt}]&quot;</span>
+</pre></div>
+
+
+<p>The following example queries the GitHub issue tracker using its <a href="https://api.github.com/search/issues">web-service interface</a> (see also <a href="https://developer.github.com/v3/">https://developer.github.com/v3/</a>). First, it defines the necessary types and constants:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/github/github.go">gopl.io/ch4/github/github.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package github provides a Go API for the GitHub issue tracker.</span>
+<span class="c1">// See https://developer.github.com/v3/search/#search-issues.</span>
+<span class="kn">package</span> <span class="nx">github</span>
+
+<span class="kn">import</span> <span class="s">&quot;time&quot;</span>
+
+<span class="kd">const</span> <span class="nx">IssuesURL</span> <span class="p">=</span> <span class="s">&quot;https://api.github.com/search/issues&quot;</span>
+
+<span class="kd">type</span> <span class="nx">IssuesSearchResult</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">TotalCount</span> <span class="kt">int</span> <span class="s">`json:&quot;total_count&quot;`</span>
+    <span class="nx">Items</span>      <span class="p">[]</span><span class="o">*</span><span class="nx">Issue</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Issue</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Number</span>    <span class="kt">int</span>
+    <span class="nx">HTMLURL</span>   <span class="kt">string</span> <span class="s">`json:&quot;html_url&quot;`</span>
+    <span class="nx">Title</span>     <span class="kt">string</span>
+    <span class="nx">State</span>     <span class="kt">string</span>
+    <span class="nx">User</span>      <span class="o">*</span><span class="nx">User</span>
+    <span class="nx">CreatedAt</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span> <span class="s">`json:&quot;created_at&quot;`</span>
+    <span class="nx">Body</span>      <span class="kt">string</span>    <span class="c1">// in Markdown format</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">User</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Login</span>   <span class="kt">string</span>
+    <span class="nx">HTMLURL</span> <span class="kt">string</span> <span class="s">`json:&quot;html_url&quot;`</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>The names of all the struct fields must be capitalized even if their JSON names are not.</li>
+<li>The matching process that associates JSON names with Go struct names during unmarshaling is case-insensitive, so it's only necessary to use a field tag when there's an underscore in the JSON name but not in the Go name.</li>
+<li>In this example, we are being selective about which fields to decode. The GitHub search response contains considerably more information than shown here.</li>
+</ul>
+<p>The <code>SearchIssues</code> function makes an HTTP request and decodes the result as JSON. Since the query terms presented by a user could contain characters like <code>?</code> and <code>&amp;</code> that have special meaning in a URL, we use <code>url.QueryEscape</code> to ensure that they are taken literally.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/github/search.go">gopl.io/ch4/github/search.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">github</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;encoding/json&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;net/http&quot;</span>
+    <span class="s">&quot;net/url&quot;</span>
+    <span class="s">&quot;strings&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">// SearchIssues queries the GitHub issue tracker.</span>
+<span class="kd">func</span> <span class="nx">SearchIssues</span><span class="p">(</span><span class="nx">terms</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">IssuesSearchResult</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">q</span> <span class="o">:=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">QueryEscape</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">terms</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">))</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">IssuesURL</span> <span class="o">+</span> <span class="s">&quot;?q=&quot;</span> <span class="o">+</span> <span class="nx">q</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+
+    <span class="c1">// We must close resp.Body on all execution paths.</span>
+    <span class="c1">// (Chapter 5 presents &#39;defer&#39;, which makes this simpler.)</span>
+    <span class="k">if</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">StatusCode</span> <span class="o">!=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span> <span class="p">{</span>
+        <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;search query failed: %s&quot;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="kd">var</span> <span class="nx">result</span> <span class="nx">IssuesSearchResult</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nx">NewDecoder</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">).</span><span class="nx">Decode</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">result</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">result</span><span class="p">,</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The earlier examples used <code>json.Unmarshal</code> to decode the entire contents of a byte slice as a single JSON entity. For variety, this example uses the <em>streaming</em> decoder, <a href="https://golang.org/pkg/encoding/json/#Decoder"><code>json.Decoder</code></a>, which allows several JSON entities to be decoded in sequence from the same stream, although we don't need that feature here. There is a corresponding streaming encoder called <a href="https://golang.org/pkg/encoding/json/#Encoder"><code>json.Encoder</code></a>. The call to <code>Decode</code> populates the variable <code>result</code>. [p111]</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/issues/main.go">gopl.io/ch4/issues/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Issues prints a table of GitHub issues matching the search terms.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;log&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+
+    <span class="s">&quot;gopl.io/ch4/github&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">result</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">github</span><span class="p">.</span><span class="nx">SearchIssues</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d issues:\n&quot;</span><span class="p">,</span> <span class="nx">result</span><span class="p">.</span><span class="nx">TotalCount</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">item</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">result</span><span class="p">.</span><span class="nx">Items</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;#%-5d %9.9s %.55s\n&quot;</span><span class="p">,</span>
+            <span class="nx">item</span><span class="p">.</span><span class="nx">Number</span><span class="p">,</span> <span class="nx">item</span><span class="p">.</span><span class="nx">User</span><span class="p">.</span><span class="nx">Login</span><span class="p">,</span> <span class="nx">item</span><span class="p">.</span><span class="nx">Title</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The command-line arguments specify the search terms. The command below queries the Go project's issue tracker for the list of open bugs related to JSON decoding:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch4/issues
+$ ./issues repo:golang/go is:open json decoder
+13 issues:
+#5680    eaigner encoding/json: set key converter on en/decoder
+#6050  gopherbot encoding/json: provide tokenizer
+#8658  gopherbot encoding/json: use bufio
+...
+</pre></div>
+
+
+<h3 id="text-and-html-templates">Text and HTML Templates</h3>
+<p>The formatting for the previous example can be done with the <a href="https://golang.org/pkg/text/template/"><code>text/template</code></a> and <a href="https://golang.org/pkg/html/template/"><code>html/template</code></a> packages, which provide a mechanism for substituting the values of variables into a text or HTML template.</p>
+<p>A template is a string or file containing one or more portions enclosed in double braces, <code>{{...}}</code>, called <em>actions</em>. While most of the string is printed literally, the actions trigger other behaviors. Each action contains an expression in the template language, a notation for doing the following:</p>
+<ul>
+<li>Printing values</li>
+<li>Selecting struct fields</li>
+<li>Calling functions and methods</li>
+<li>Expressing control flow, such as <code>if</code>-<code>else</code> statements and <code>range</code> loops</li>
+<li>Instantiating other templates</li>
+</ul>
+<p>A simple template string is shown below:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/issuesreport/main.go">gopl.io/ch4/issuesreport/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">templ</span> <span class="p">=</span> <span class="s">`{{.TotalCount}} issues:</span>
+<span class="s">{{range .Items}}----------------------------------------</span>
+<span class="s">Number: {{.Number}}</span>
+<span class="s">User:   {{.User.Login}}</span>
+<span class="s">Title:  {{.Title | printf &quot;%.64s&quot;}}</span>
+<span class="s">Age:    {{.CreatedAt | daysAgo}} days</span>
+<span class="s">{{end}}`</span>
+</pre></div>
+
+
+<p>Within an action, there is a notion of the current value, referred to as "dot" and written as "<code>.</code>", a period.</p>
+<ul>
+<li>The dot initially refers to the template's parameter, which is <code>github.IssuesSearchResult</code> in this example.</li>
+<li>The <code>{{.TotalCount}}</code> action expands to the value of the <code>TotalCount</code> field.</li>
+<li>The <code>{{range .Items}}</code> and <code>{{end}}</code> actions create a loop, so the text between them is expanded multiple times, with dot bound to successive elements of Items.</li>
+</ul>
+<p>Within an action, the <code>|</code> notation makes the result of one operation the argument of another, analogous to a Unix shell pipeline.</p>
+<ul>
+<li>For <code>Title</code>, the second operation is the <code>printf</code> function, which is a built-in synonym for <code>fmt.Sprintf</code> in all templates.</li>
+<li>For <code>Age</code>, the second operation is the following function, <code>daysAgo</code>, which converts the <code>CreatedAt</code> field into an elapsed time, using <a href="https://golang.org/pkg/time/#Since"><code>time.Since</code></a>:</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">daysAgo</span><span class="p">(</span><span class="nx">t</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Since</span><span class="p">(</span><span class="nx">t</span><span class="p">).</span><span class="nx">Hours</span><span class="p">()</span> <span class="o">/</span> <span class="mi">24</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that the type of <code>CreatedAt</code> is <code>time.Time</code>, not <code>string</code>. In the same way that a type may control its string formatting (<a href="../ch2/#type-declarations">Section 2.5</a>) by defining certain methods, a type may also define methods to control its JSON marshaling and unmarshaling behavior. The JSON-marshaled value of a <code>time.Time</code> is a string in a standard format.</p>
+<h4 id="producing-output-with-a-template">Producing output with a template *</h4>
+<p>Producing output with a template is a two-step process:</p>
+<ol>
+<li>Parse the template into a suitable internal representation (parsing need be done only once).</li>
+<li>Execute it on specific inputs.</li>
+</ol>
+<p>The code below creates and parses the template <code>templ</code> defined above.</p>
+<div class="codehilite"><pre><span class="nx">report</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;report&quot;</span><span class="p">).</span>
+    <span class="nx">Funcs</span><span class="p">(</span><span class="nx">template</span><span class="p">.</span><span class="nx">FuncMap</span><span class="p">{</span><span class="s">&quot;daysAgo&quot;</span><span class="p">:</span> <span class="nx">daysAgo</span><span class="p">}).</span>
+    <span class="nx">Parse</span><span class="p">(</span><span class="nx">templ</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note the chaining of method calls:</p>
+<ol>
+<li><code>template.New</code> creates and returns a template.</li>
+<li><code>Funcs</code> adds <code>daysAgo</code> to the set of functions (<a href="https://golang.org/pkg/text/template/#FuncMap"><code>FuncMap</code></a>) accessible within this template, then returns that template.</li>
+<li><code>Parse</code> is called on the result.</li>
+</ol>
+<p>Because templates are usually fixed at compile time, failure to parse a template indicates a fatal bug in the program. The <a href="https://golang.org/pkg/text/template/#Must"><code>template.Must</code></a> helper function makes error handling more convenient: it accepts a template and an error, checks that the error is nil (and panics otherwise), and then returns the template. This idea will be discussed in <a href="../ch5/#panic">Section 5.9</a>.</p>
+<p>In the code below, the template is created, augmented with <code>daysAgo</code>, parsed, and checked (using <code>template.Must</code>), and then executed it using a <code>github.IssuesSearchResult</code> as the data source and <code>os.Stdout</code> as the destination:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">report</span> <span class="p">=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">Must</span><span class="p">(</span><span class="nx">template</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;issuelist&quot;</span><span class="p">).</span>
+    <span class="nx">Funcs</span><span class="p">(</span><span class="nx">template</span><span class="p">.</span><span class="nx">FuncMap</span><span class="p">{</span><span class="s">&quot;daysAgo&quot;</span><span class="p">:</span> <span class="nx">daysAgo</span><span class="p">}).</span>
+    <span class="nx">Parse</span><span class="p">(</span><span class="nx">templ</span><span class="p">))</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">result</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">github</span><span class="p">.</span><span class="nx">SearchIssues</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">report</span><span class="p">.</span><span class="nx">Execute</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="nx">result</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The program prints a plain text report like this:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch4/issuesreport
+$ ./issuesreport repo:golang/go is:open json decoder
+13 issues:
+----------------------------------------
+Number: 5680
+User:   eaigner
+Title:  encoding/json: set key converter on en/decoder
+Age:    750 days
+----------------------------------------
+Number: 6050
+User:   gopherbot
+Title:  encoding/json: provide tokenizer
+Age:    695 days
+----------------------------------------
+...
+</pre></div>
+
+
+<h4 id="the-htmltemplate-package">The <code>html/template</code> package *</h4>
+<p>The <code>html/template</code> package uses the same API and expression language as <code>text/template</code> but adds features for automatic and context-appropriate escaping of strings appearing within HTML, JavaScript, CSS, or URLs. These features can help avoid a perennial security problem of HTML generation, an <a href="https://en.wikipedia.org/wiki/Code_injection">injection attack</a>.</p>
+<p>The template below prints the list of issues as an HTML table:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/issueshtml/main.go">gopl.io/ch4/issueshtml/main.go</a></small></p>
+<p>The command below executes the new template on the results of a slightly different query:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch4/issueshtml
+<span class="gp">$</span> ./issueshtml repo:golang/go commenter:gopherbot json encoder &gt;issues.html
+</pre></div>
+
+
+<p>If there are issues whose titles contain HTML metacharacters like <code>&amp;</code> and <code>&lt;</code>, they are automatically HTML-escaped the titles so that they appear literally. If the <code>text/template</code> package is used by mistake, the four-character string <code>"&amp;lt;"</code> would have been rendered as a less-than character <code>'&lt;'</code>, and the string <code>"&lt;link&gt;"</code> would have become a link element, changing the structure of the HTML document and perhaps compromising its security.</p>
+<p>To suppress this auto-escaping behavior for fields that contain trusted HTML data, use the named string type <code>template.HTML</code> instead of <code>string</code>. Similar named types exist for trusted JavaScript, CSS, and URLs. The program below demonstrates the principle by using two fields with the same value but different types: <code>A</code> is a <code>string</code> and <code>B</code> is a <code>template.HTML</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/autoescape/main.go">gopl.io/ch4/autoescape/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">templ</span> <span class="p">=</span> <span class="s">`&lt;p&gt;A: {{.A}}&lt;/p&gt;&lt;p&gt;B: {{.B}}&lt;/p&gt;`</span>
+    <span class="nx">t</span> <span class="o">:=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">Must</span><span class="p">(</span><span class="nx">template</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;escape&quot;</span><span class="p">).</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">templ</span><span class="p">))</span>
+    <span class="kd">var</span> <span class="nx">data</span> <span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">A</span> <span class="kt">string</span>        <span class="c1">// untrusted plain text</span>
+        <span class="nx">B</span> <span class="nx">template</span><span class="p">.</span><span class="nx">HTML</span> <span class="c1">// trusted HTML</span>
+    <span class="p">}</span>
+    <span class="nx">data</span><span class="p">.</span><span class="nx">A</span> <span class="p">=</span> <span class="s">&quot;&lt;b&gt;Hello!&lt;/b&gt;&quot;</span>
+    <span class="nx">data</span><span class="p">.</span><span class="nx">B</span> <span class="p">=</span> <span class="s">&quot;&lt;b&gt;Hello!&lt;/b&gt;&quot;</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Execute</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="nx">data</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>[p117]</p>
+<p>This section shows only the most basic features of the template system. For more information, consult the package documentation:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go doc text/template
+<span class="gp">$</span> go doc html/template
+</pre></div>
+
+
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p100-on-structs"><strong>p100 on structs</strong></h5>
@@ -1702,6 +1972,11 @@ package, and other <code>encoding/...</code> packages follow this convention.</l
 <p>JSON's <code>\U</code><em>hhhh</em> numeric escapes denote <a href="https://en.wikipedia.org/wiki/UTF-16">UTF-16</a> codes, not runes.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: I didn't find any online references for this.</p>
+<h5 id="p114-on-text-templates"><strong>p114 on text templates</strong></h5>
+<blockquote>
+<p>In the same way that a type may control its string formatting (<a href="../ch2/#type-declarations">Section 2.5</a>) by defining certain methods, a type may also define methods to control its JSON marshaling and unmarshaling behavior. The JSON-marshaled value of a <code>time.Time</code> is a string in a standard format.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: How to define methods to control its JSON marshaling and unmarshaling behavior?</p>
             </div>
         </div>
 
