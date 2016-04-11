@@ -1193,6 +1193,8 @@ object      {"year": 1980,
              "medals": ["gold", "silver", "bronze"]}
 ```
 
+#### Marshaling data structures to JSON *
+
 The following example declares a `Movie` data type and a typical list of values. The string literals after the `Year` and `Color` field declarations are `field tags`, which will be explained later.
 
 ```go
@@ -1262,8 +1264,291 @@ package, and other `encoding/...` packages follow this convention.
     * Field tags are often used to specify an idiomatic JSON name like `total_count` for a Go field named `TotalCount`.
 * `omitempty` (which is an additional option in the tag for `Color`) indicates that no JSON output should be produced if the field has the zero value for its type (`false`, here); otherwise, it is the empty value.
 
+#### Unmarshaling and decoding from JSON *
 
+The inverse operation to marshaling is called `unmarshaling`. This is done by [`json.Unmarshal`](https://golang.org/pkg/encoding/json/#Unmarshal), which decodes JSON and populates a Go data structure. By defining suitable Go data structures, we can select which parts of the JSON input to decode and which to discard. The code below unmarshals the JSON movie data into a slice of structs whose only field is `Title`. When `Unmarshal` returns, it has filled in the slice with the `Title` information; other names in the JSON are ignored.
 
+```go
+var titles []struct{ Title string }
+if err := json.Unmarshal(data, &titles); err != nil {
+	log.Fatalf("JSON unmarshaling failed: %s", err)
+}
+fmt.Println(titles) // "[{Casablanca} {Cool Hand Luke} {Bullitt}]"
+```
+
+The following example queries the GitHub issue tracker using its [web-service interface](https://api.github.com/search/issues) (see also [https://developer.github.com/v3/](https://developer.github.com/v3/)). First, it defines the necessary types and constants:
+
+<small>[gopl.io/ch4/github/github.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/github/github.go)</small>
+
+```go
+// Package github provides a Go API for the GitHub issue tracker.
+// See https://developer.github.com/v3/search/#search-issues.
+package github
+
+import "time"
+
+const IssuesURL = "https://api.github.com/search/issues"
+
+type IssuesSearchResult struct {
+	TotalCount int `json:"total_count"`
+	Items      []*Issue
+}
+
+type Issue struct {
+	Number    int
+	HTMLURL   string `json:"html_url"`
+	Title     string
+	State     string
+	User      *User
+	CreatedAt time.Time `json:"created_at"`
+	Body      string    // in Markdown format
+}
+
+type User struct {
+	Login   string
+	HTMLURL string `json:"html_url"`
+}
+```
+
+* The names of all the struct fields must be capitalized even if their JSON names are not.
+* The matching process that associates JSON names with Go struct names during unmarshaling is case-insensitive, so it's only necessary to use a field tag when there's an underscore in the JSON name but not in the Go name.
+* In this example, we are being selective about which fields to decode. The GitHub search response contains considerably more information than shown here.
+
+The `SearchIssues` function makes an HTTP request and decodes the result as JSON. Since the query terms presented by a user could contain characters like `?` and `&` that have special meaning in a URL, we use `url.QueryEscape` to ensure that they are taken literally.
+
+<small>[gopl.io/ch4/github/search.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/github/search.go)</small>
+
+```go
+package github
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+)
+
+// SearchIssues queries the GitHub issue tracker.
+func SearchIssues(terms []string) (*IssuesSearchResult, error) {
+	q := url.QueryEscape(strings.Join(terms, " "))
+	resp, err := http.Get(IssuesURL + "?q=" + q)
+	if err != nil {
+		return nil, err
+	}
+
+	// We must close resp.Body on all execution paths.
+	// (Chapter 5 presents 'defer', which makes this simpler.)
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("search query failed: %s", resp.Status)
+	}
+
+	var result IssuesSearchResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		resp.Body.Close()
+		return nil, err
+	}
+	resp.Body.Close()
+	return &result, nil
+}
+```
+
+The earlier examples used `json.Unmarshal` to decode the entire contents of a byte slice as a single JSON entity. For variety, this example uses the *streaming* decoder, [`json.Decoder`](https://golang.org/pkg/encoding/json/#Decoder), which allows several JSON entities to be decoded in sequence from the same stream, although we don't need that feature here. There is a corresponding streaming encoder called [`json.Encoder`](https://golang.org/pkg/encoding/json/#Encoder). The call to `Decode` populates the variable `result`. [p111]
+
+<small>[gopl.io/ch4/issues/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/issues/main.go)</small>
+
+```go
+// Issues prints a table of GitHub issues matching the search terms.
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"gopl.io/ch4/github"
+)
+
+func main() {
+	result, err := github.SearchIssues(os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%d issues:\n", result.TotalCount)
+	for _, item := range result.Items {
+		fmt.Printf("#%-5d %9.9s %.55s\n",
+			item.Number, item.User.Login, item.Title)
+	}
+}
+```
+
+The command-line arguments specify the search terms. The command below queries the Go project's issue tracker for the list of open bugs related to JSON decoding:
+
+```text
+$ go build gopl.io/ch4/issues
+$ ./issues repo:golang/go is:open json decoder
+13 issues:
+#5680    eaigner encoding/json: set key converter on en/decoder
+#6050  gopherbot encoding/json: provide tokenizer
+#8658  gopherbot encoding/json: use bufio
+...
+```
+
+### Text and HTML Templates
+
+The formatting for the previous example can be done with the [`text/template`](https://golang.org/pkg/text/template/) and [`html/template`](https://golang.org/pkg/html/template/) packages, which provide a mechanism for substituting the values of variables into a text or HTML template.
+
+A template is a string or file containing one or more portions enclosed in double braces, `{{...}}`, called *actions*. While most of the string is printed literally, the actions trigger other behaviors. Each action contains an expression in the template language, a notation for doing the following:
+
+* Printing values
+* Selecting struct fields
+* Calling functions and methods
+* Expressing control flow, such as `if`-`else` statements and `range` loops
+* Instantiating other templates
+
+A simple template string is shown below:
+
+<small>[gopl.io/ch4/issuesreport/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/issuesreport/main.go)</small>
+
+```go
+const templ = `{{.TotalCount}} issues:
+{{range .Items}}----------------------------------------
+Number: {{.Number}}
+User:   {{.User.Login}}
+Title:  {{.Title | printf "%.64s"}}
+Age:    {{.CreatedAt | daysAgo}} days
+{{end}}`
+```
+
+Within an action, there is a notion of the current value, referred to as "dot" and written as "`.`", a period.
+
+* The dot initially refers to the template's parameter, which is `github.IssuesSearchResult` in this example.
+* The `{{.TotalCount}}` action expands to the value of the `TotalCount` field.
+* The `{{range .Items}}` and `{{end}}` actions create a loop, so the text between them is expanded multiple times, with dot bound to successive elements of Items.
+
+Within an action, the `|` notation makes the result of one operation the argument of another, analogous to a Unix shell pipeline.
+
+* For `Title`, the second operation is the `printf` function, which is a built-in synonym for `fmt.Sprintf` in all templates.
+* For `Age`, the second operation is the following function, `daysAgo`, which converts the `CreatedAt` field into an elapsed time, using [`time.Since`](https://golang.org/pkg/time/#Since):
+
+```go
+func daysAgo(t time.Time) int {
+	return int(time.Since(t).Hours() / 24)
+}
+```
+
+Note that the type of `CreatedAt` is `time.Time`, not `string`. In the same way that a type may control its string formatting ([Section 2.5](ch2.md#type-declarations)) by defining certain methods, a type may also define methods to control its JSON marshaling and unmarshaling behavior. The JSON-marshaled value of a `time.Time` is a string in a standard format.
+
+#### Producing output with a template *
+
+Producing output with a template is a two-step process:
+
+1. Parse the template into a suitable internal representation (parsing need be done only once).
+2. Execute it on specific inputs.
+
+The code below creates and parses the template `templ` defined above.
+
+```go
+report, err := template.New("report").
+	Funcs(template.FuncMap{"daysAgo": daysAgo}).
+	Parse(templ)
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+Note the chaining of method calls:
+
+1. `template.New` creates and returns a template.
+2. `Funcs` adds `daysAgo` to the set of functions ([`FuncMap`](https://golang.org/pkg/text/template/#FuncMap)) accessible within this template, then returns that template.
+3. `Parse` is called on the result.
+
+Because templates are usually fixed at compile time, failure to parse a template indicates a fatal bug in the program. The [`template.Must`](https://golang.org/pkg/text/template/#Must) helper function makes error handling more convenient: it accepts a template and an error, checks that the error is nil (and panics otherwise), and then returns the template. This idea will be discussed in [Section 5.9](ch5.md#panic).
+
+In the code below, the template is created, augmented with `daysAgo`, parsed, and checked (using `template.Must`), and then executed it using a `github.IssuesSearchResult` as the data source and `os.Stdout` as the destination:
+
+```go
+var report = template.Must(template.New("issuelist").
+	Funcs(template.FuncMap{"daysAgo": daysAgo}).
+	Parse(templ))
+
+func main() {
+	result, err := github.SearchIssues(os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := report.Execute(os.Stdout, result); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+The program prints a plain text report like this:
+
+```text
+$ go build gopl.io/ch4/issuesreport
+$ ./issuesreport repo:golang/go is:open json decoder
+13 issues:
+----------------------------------------
+Number: 5680
+User:   eaigner
+Title:  encoding/json: set key converter on en/decoder
+Age:    750 days
+----------------------------------------
+Number: 6050
+User:   gopherbot
+Title:  encoding/json: provide tokenizer
+Age:    695 days
+----------------------------------------
+...
+```
+
+#### The `html/template` package *
+
+The `html/template` package uses the same API and expression language as `text/template` but adds features for automatic and context-appropriate escaping of strings appearing within HTML, JavaScript, CSS, or URLs. These features can help avoid a perennial security problem of HTML generation, an [injection attack](https://en.wikipedia.org/wiki/Code_injection).
+
+The template below prints the list of issues as an HTML table:
+
+<small>[gopl.io/ch4/issueshtml/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/issueshtml/main.go)</small>
+
+The command below executes the new template on the results of a slightly different query:
+
+```shell-session
+$ go build gopl.io/ch4/issueshtml
+$ ./issueshtml repo:golang/go commenter:gopherbot json encoder >issues.html
+```
+
+If there are issues whose titles contain HTML metacharacters like `&` and `<`, they are automatically HTML-escaped the titles so that they appear literally. If the `text/template` package is used by mistake, the four-character string `"&lt;"` would have been rendered as a less-than character `'<'`, and the string `"<link>"` would have become a link element, changing the structure of the HTML document and perhaps compromising its security.
+
+To suppress this auto-escaping behavior for fields that contain trusted HTML data, use the named string type `template.HTML` instead of `string`. Similar named types exist for trusted JavaScript, CSS, and URLs. The program below demonstrates the principle by using two fields with the same value but different types: `A` is a `string` and `B` is a `template.HTML`.
+
+<small>[gopl.io/ch4/autoescape/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch4/autoescape/main.go)</small>
+
+```go
+func main() {
+	const templ = `<p>A: {{.A}}</p><p>B: {{.B}}</p>`
+	t := template.Must(template.New("escape").Parse(templ))
+	var data struct {
+		A string        // untrusted plain text
+		B template.HTML // trusted HTML
+	}
+	data.A = "<b>Hello!</b>"
+	data.B = "<b>Hello!</b>"
+	if err := t.Execute(os.Stdout, data); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+[p117]
+
+This section shows only the most basic features of the template system. For more information, consult the package documentation:
+
+```shell-session
+$ go doc text/template
+$ go doc html/template
+```
 
 ### Doubts and Solution
 
@@ -1285,5 +1570,10 @@ EmployeeByID(id).Salary = 0
 
 > JSON's `\U`*hhhh* numeric escapes denote [UTF-16](https://en.wikipedia.org/wiki/UTF-16) codes, not runes.
 
-
 <span class="text-danger">Question</span>: I didn't find any online references for this.
+
+##### **p114 on text templates**
+
+> In the same way that a type may control its string formatting ([Section 2.5](ch2.md#type-declarations)) by defining certain methods, a type may also define methods to control its JSON marshaling and unmarshaling behavior. The JSON-marshaled value of a `time.Time` is a string in a standard format.
+
+<span class="text-danger">Question</span>: How to define methods to control its JSON marshaling and unmarshaling behavior?
