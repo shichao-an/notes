@@ -1622,6 +1622,55 @@ o
 
 A pointer with a [`restrict`](http://en.cppreference.com/w/c/language/restrict) qualifier is called a restrict-qualified pointer (or restrict pointer). It suggests to the compiler that during the `lifetime` of the pointer it is only allowed to modify the object through this pointer, but the complier can decide on its own whether to adopt this suggestion.
 
+#### Array Pointer
+
+An array pointer is a pointer to the array, not a pointer to the first element.
+
+```c
+int x[] = { 1, 2, 3 };
+int(*p)[] = &x;
+
+for (int i = 0; i < 3; i++)
+{
+    printf("x[%d] = %d\n", i, (*p)[i]);
+    printf("x[%d] = %d\n", i, *(*p + i));
+}
+```
+
+`&x` returns a pointer to the array. `*p` obtains the same pointer as `x`, namely the pointer to the first element, and the subscript or pointer operation can be used to access elements.
+
+#### Array of Pointers
+
+An array of pointers is the one whose elements are pointers. It is usually used to represent an array of strings or a [jagged array](https://en.wikipedia.org/wiki/Jagged_array). This kind of array's elements are pointers to the target objects (which can be arrays or other objects) instead of actual contents.
+
+The following code:
+
+```c
+int* x[3] = {};
+
+x[0] = (int[]){ 1 };
+x[1] = (int[]){ 2, 22 };
+x[2] = (int[]){ 3, 33, 33 };
+
+int* x1 = *(x + 1);
+for (int i = 0; i < 2; i++)
+{
+    printf("%d\n", x1[i]);
+    printf("%d\n", *(*(x + 1) + i));
+}
+```
+
+will output:
+
+```text
+2
+2
+22
+22
+```
+
+Array `x` has three pointers to (three) target objects (arrays). `*(x + 1)` obtains the target object, which is equivalent to `x[1]`.
+
 
 ### Doubts and Solutions
 
@@ -1646,7 +1695,7 @@ for (int i = 0; i < len; i++)
 }
 ```
 
-<span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flatten" version of `x`?
+<span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flattened" version of `x`?
 
 
 - - -
