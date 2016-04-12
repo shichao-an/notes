@@ -606,6 +606,10 @@
         
             <li><a href="#qualifiers">Qualifiers</a></li>
         
+            <li><a href="#array-pointer">Array Pointer</a></li>
+        
+            <li><a href="#array-of-pointers">Array of Pointers</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -2167,6 +2171,47 @@ aaa; bbb; ccc;
 <p>They differ in whether <code>const</code> qualifies <code>p</code> or <code>*p</code>.
 o</p>
 <p>A pointer with a <a href="http://en.cppreference.com/w/c/language/restrict"><code>restrict</code></a> qualifier is called a restrict-qualified pointer (or restrict pointer). It suggests to the compiler that during the <code>lifetime</code> of the pointer it is only allowed to modify the object through this pointer, but the complier can decide on its own whether to adopt this suggestion.</p>
+<h4 id="array-pointer">Array Pointer</h4>
+<p>An array pointer is a pointer to the array, not a pointer to the first element.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span><span class="p">(</span><span class="o">*</span><span class="n">p</span><span class="p">)[]</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">p</span><span class="p">)[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x[%d] = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">p</span> <span class="o">+</span> <span class="n">i</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>&amp;x</code> returns a pointer to the array. <code>*p</code> obtains the same pointer as <code>x</code>, namely the pointer to the first element, and the subscript or pointer operation can be used to access elements.</p>
+<h4 id="array-of-pointers">Array of Pointers</h4>
+<p>An array of pointers is the one whose elements are pointers. It is usually used to represent an array of strings or a <a href="https://en.wikipedia.org/wiki/Jagged_array">jagged array</a>. This kind of array's elements are pointers to the target objects (which can be arrays or other objects) instead of actual contents.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span><span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+
+<span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">[]){</span> <span class="mi">1</span> <span class="p">};</span>
+<span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">[]){</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">22</span> <span class="p">};</span>
+<span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">[]){</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">33</span> <span class="p">};</span>
+
+<span class="kt">int</span><span class="o">*</span> <span class="n">x1</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">x1</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">i</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>2
+2
+22
+22
+</pre></div>
+
+
+<p>Array <code>x</code> has three pointers to (three) target objects (arrays). <code>*(x + 1)</code> obtains the target object, which is equivalent to <code>x[1]</code>.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
@@ -2187,7 +2232,7 @@ o</p>
 </pre></div>
 
 
-<p><span class="text-danger">Question</span>: The array <code>x</code> is cast into a pointer p of type <code>int*</code> and iterated over like a one-dimensional regular array. Does this mean <code>p</code> is a "flatten" version of <code>x</code>?</p>
+<p><span class="text-danger">Question</span>: The array <code>x</code> is cast into a pointer p of type <code>int*</code> and iterated over like a one-dimensional regular array. Does this mean <code>p</code> is a "flattened" version of <code>x</code>?</p>
 <hr />
 <h3 id="references">References</h3>
 <ul>
