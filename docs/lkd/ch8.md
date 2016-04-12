@@ -5,7 +5,7 @@ Interrupt handlers, discussed in the [previous chapter](ch7.md), can form only t
 * Interrupt handlers run asynchronously and interrupt other potentially important code, including other interrupt handlers. Therefore, to avoid stalling the interrupted code for too long, interrupt handlers need to run as quickly as possible.
 * Interrupt handlers run with one of the following conditions:
     * The current interrupt level is disabled (if `IRQF_DISABLED` is unset)
-    * All interrupts on the current processor are disabled (if IRQF_DISABLED is set)
+    * All interrupts on the current processor are disabled (if `IRQF_DISABLED` is set)
 
     Disabling interrupts prevents hardware from communicating with the operating systems, so interrupt handlers need to run as quickly as possible.
 
