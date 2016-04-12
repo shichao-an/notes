@@ -555,7 +555,83 @@
               
 
 <h3 id="chapter-5-functions"><strong>Chapter 5. Functions</strong></h3>
+<p>Functions are a critical part of any programming language. [p119]</p>
 <h3 id="function-declarations">Function Declarations</h3>
+<p>A function declaration has a name, a list of parameters, an optional list of results, and a body:</p>
+<pre>
+func <i>name</i>(<i>parameter-list</i>) (<i>result-list</i>) {
+    <i>body</i>
+}
+</pre>
+
+<ul>
+<li>The parameter list specifies the names and types of the function's <a href="https://en.wikipedia.org/wiki/Parameter_(computer_programming)"><em>parameters</em></a>, which are local variables whose values (<em>arguments</em>) are supplied by the caller.</li>
+<li>The result list specifies the types of the values that the function returns.<ul>
+<li><u>If the function returns one unnamed result or no results, parentheses are optional and usually omitted.</u></li>
+<li>Leaving off the result list entirely declares a function that does not return any value.</li>
+</ul>
+</li>
+</ul>
+<p>For example, in the <code>hypot</code> function below:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">hypot</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">float64</span><span class="p">)</span> <span class="kt">float64</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">math</span><span class="p">.</span><span class="nx">Sqrt</span><span class="p">(</span><span class="nx">x</span><span class="o">*</span><span class="nx">x</span> <span class="o">+</span> <span class="nx">y</span><span class="o">*</span><span class="nx">y</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">hypot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span> <span class="c1">// &quot;5&quot;</span>
+</pre></div>
+
+
+<ul>
+<li><code>x</code> and <code>y</code> are parameters in the declaration.</li>
+<li><code>3</code> and <code>4</code> are arguments of the call.</li>
+<li>The function returns a <code>float64</code> value.</li>
+</ul>
+<p>Results may be named, in which case each name declares a local variable initialized to the zero value for its type.</p>
+<p>A function that has a result list must end with a <code>return</code> statement unless execution clearly cannot reach the end of the function, the possible cases being:</p>
+<ul>
+<li>The function ends with a call to <a href="https://golang.org/pkg/builtin/#panic"><code>panic</code></a></li>
+<li>Infinite <code>for</code> loop with no <code>break</code></li>
+</ul>
+<p>A sequence of parameters or results of the same type can be factored so that the type itself is written only once. These two declarations are equivalent:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">f</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span><span class="p">,</span> <span class="nx">k</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">s</span><span class="p">,</span> <span class="nx">t</span> <span class="kt">string</span><span class="p">)</span>                <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">f</span><span class="p">(</span><span class="nx">i</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">k</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">s</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">t</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Below are four ways to declare a function with two parameters and one result, all of type <code>int</code>.  The blank identifier can be used to emphasize that a parameter is unused.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">add</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span>   <span class="p">{</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">+</span> <span class="nx">y</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">sub</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="p">(</span><span class="nx">z</span> <span class="kt">int</span><span class="p">)</span>   <span class="p">{</span> <span class="nx">z</span> <span class="p">=</span> <span class="nx">x</span> <span class="o">-</span> <span class="nx">y</span><span class="p">;</span> <span class="k">return</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">first</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">_</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">x</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">zero</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span>      <span class="p">{</span> <span class="k">return</span> <span class="mi">0</span> <span class="p">}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">add</span><span class="p">)</span>   <span class="c1">// &quot;func(int, int) int&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">sub</span><span class="p">)</span>   <span class="c1">// &quot;func(int, int) int&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">first</span><span class="p">)</span> <span class="c1">// &quot;func(int, int) int&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">zero</span><span class="p">)</span>  <span class="c1">// &quot;func(int, int) int&quot;</span>
+</pre></div>
+
+
+<p>The type of a function is sometimes called its <a href="https://en.wikipedia.org/wiki/Type_signature"><em>signature</em></a>. Two functions have the same type or signature if they have the same sequence of parameter types and the same sequence of result types. The following don't affect the type:</p>
+<ul>
+<li>The names of parameters and results</li>
+<li>Whether or not they were declared using the factored form</li>
+</ul>
+<p>Every function call must provide an argument for each parameter, in the order in which the parameters were declared.</p>
+<p>Go does not have the concept of the following:</p>
+<ul>
+<li>Default parameter values</li>
+<li>Any way to specify arguments by name</li>
+</ul>
+<p>The names of parameters and results don't matter to the caller except as documentation.</p>
+<p>Parameters are local variables within the body of the function, with their initial values set to the arguments supplied by the caller. Function parameters and named results are variables in the same lexical block as the functions' outermost local variables.</p>
+<p>Arguments are passed <a href="https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_value"><em>by value</em></a>: the function receives a copy of each argument; modifications to the copy do not affect the caller. However, if the argument contains some kind of reference, like a pointer, slice, map, function, or channel, then the caller may be affected by any modifications the function makes to variables <em>indirectly</em> referred to by the argument.</p>
+<p>You may occasionally encounter a function declaration without a body, indicating that the function is implemented in a language other than Go. Such a declaration defines the function signature.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">math</span>
+
+<span class="kd">func</span> <span class="nx">Sin</span><span class="p">(</span><span class="nx">x</span> <span class="kt">float64</span><span class="p">)</span> <span class="kt">float64</span> <span class="c1">// implemented in assembly language</span>
+</pre></div>
+
+
 <h3 id="recursion">Recursion</h3>
 <h3 id="multiple-return-values">Multiple Return Values</h3>
 <h3 id="errors">Errors</h3>

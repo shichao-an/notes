@@ -525,6 +525,28 @@
               
 
 <h3 id="chapter-8-bottom-halves-and-deferring-work"><strong>Chapter 8. Bottom Halves and Deferring Work</strong></h3>
+<p>Interrupt handlers, discussed in the <a href="../ch7/">previous chapter</a>, can form only the first half of any interrupt processing solution, with the following limitations:</p>
+<ul>
+<li>Interrupt handlers run asynchronously and interrupt other potentially important code, including other interrupt handlers. Therefore, to avoid stalling the interrupted code for too long, interrupt handlers need to run as quickly as possible.</li>
+<li>
+<p>Interrupt handlers run with one of the following conditions:</p>
+<ul>
+<li>The current interrupt level is disabled (if <code>IRQF_DISABLED</code> is unset)</li>
+<li>All interrupts on the current processor are disabled (if IRQF_DISABLED is set)</li>
+</ul>
+<p>Disabling interrupts prevents hardware from communicating with the operating systems, so interrupt handlers need to run as quickly as possible.</p>
+</li>
+<li>
+<p>Interrupt handlers are often timing-critical because they deal with hardware.</p>
+</li>
+<li>Interrupt handlers do not run in process context, so they cannot block, which limits what they can do.</li>
+</ul>
+<p>Operating systems need a quick, asynchronous, and simple mechanism for immediately responding to hardware and performing any time-critical actions. Interrupt handlers serve this function well. Less critical work can and should be deferred to a later point when interrupts are enabled.</p>
+<p>Consequently, managing interrupts is divided into two parts, or <strong>halves</strong>.</p>
+<ol>
+<li>The first part, interrupt handlers (<strong>top halves</strong>), are executed by the kernel asynchronously in immediate response to a hardware interrupt, as discussed in the previous chapter.</li>
+<li>This chapter looks at the second part of the interrupt solution, <strong>bottom halves</strong>.</li>
+</ol>
             </div>
         </div>
 
