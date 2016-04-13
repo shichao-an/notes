@@ -1671,6 +1671,61 @@ will output:
 
 Array `x` has three pointers to (three) target objects (arrays). `*(x + 1)` obtains the target object, which is equivalent to `x[1]`.
 
+### Structs
+
+#### Imcomplete Structs
+
+A [struct](http://en.cppreference.com/w/c/language/struct) cannot have a member of its own type, but it can have a member as a pointer to its own type. See also [incomplete types](http://en.cppreference.com/w/c/language/type#Incomplete_types).
+
+```c
+struct list_node
+{
+    struct list_node* prev;
+    struct list_node* next;
+    void* value;
+};
+```
+
+Only a struct tag can be used to define an incomplete struct type. Using [`typedef`](https://en.wikipedia.org/wiki/Typedef) like below is not allowed:
+
+```c
+typedef struct
+{
+    list_node* prev;
+    list_node* next;
+    void* value;
+} list_node;
+```
+
+This will result in compiler error:
+
+```text
+$ make
+gcc -Wall -g -c -std=c99 -o main.o main.c
+main.c:15: error: expected specifier-qualifier-list before ‘list_node’
+```
+
+`typedef` and the struct tag can be used together:
+
+```c
+typedef struct node_t
+{
+    struct node_t* prev;
+    struct node_t* next;
+    void* value;
+} list_node;
+```
+
+The tag name can be the same as the type name defined by `typedef`:
+
+```c
+typedef struct node_t
+{
+    struct node_t* prev;
+    struct node_t* next;
+    void* value;
+} node_t;
+```
 
 ### Doubts and Solutions
 
