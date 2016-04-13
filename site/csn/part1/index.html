@@ -611,6 +611,11 @@
             <li><a href="#array-of-pointers">Array of Pointers</a></li>
         
     
+        <li class="main "><a href="#structs">Structs</a></li>
+        
+            <li><a href="#imcomplete-structs">Imcomplete Structs</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -2212,6 +2217,55 @@ o</p>
 
 
 <p>Array <code>x</code> has three pointers to (three) target objects (arrays). <code>*(x + 1)</code> obtains the target object, which is equivalent to <code>x[1]</code>.</p>
+<h3 id="structs">Structs</h3>
+<h4 id="imcomplete-structs">Imcomplete Structs</h4>
+<p>A <a href="http://en.cppreference.com/w/c/language/struct">struct</a> cannot have a member of its own type, but it can have a member as a pointer to its own type. See also <a href="http://en.cppreference.com/w/c/language/type#Incomplete_types">incomplete types</a>.</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">list_node</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_node</span><span class="o">*</span> <span class="n">prev</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_node</span><span class="o">*</span> <span class="n">next</span><span class="p">;</span>
+    <span class="kt">void</span><span class="o">*</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Only a struct tag can be used to define an incomplete struct type. Using <a href="https://en.wikipedia.org/wiki/Typedef"><code>typedef</code></a> like below is not allowed:</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
+<span class="p">{</span>
+    <span class="n">list_node</span><span class="o">*</span> <span class="n">prev</span><span class="p">;</span>
+    <span class="n">list_node</span><span class="o">*</span> <span class="n">next</span><span class="p">;</span>
+    <span class="kt">void</span><span class="o">*</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">list_node</span><span class="p">;</span>
+</pre></div>
+
+
+<p>This will result in compiler error:</p>
+<div class="codehilite"><pre>$ make
+gcc -Wall -g -c -std=c99 -o main.o main.c
+main.c:15: error: expected specifier-qualifier-list before ‘list_node’
+</pre></div>
+
+
+<p><code>typedef</code> and the struct tag can be used together:</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="n">node_t</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">node_t</span><span class="o">*</span> <span class="n">prev</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">node_t</span><span class="o">*</span> <span class="n">next</span><span class="p">;</span>
+    <span class="kt">void</span><span class="o">*</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">list_node</span><span class="p">;</span>
+</pre></div>
+
+
+<p>The tag name can be the same as the type name defined by <code>typedef</code>:</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="n">node_t</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">node_t</span><span class="o">*</span> <span class="n">prev</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">node_t</span><span class="o">*</span> <span class="n">next</span><span class="p">;</span>
+    <span class="kt">void</span><span class="o">*</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">node_t</span><span class="p">;</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
