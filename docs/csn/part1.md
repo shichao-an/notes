@@ -1673,7 +1673,7 @@ Array `x` has three pointers to (three) target objects (arrays). `*(x + 1)` obta
 
 ### Structs
 
-#### Imcomplete Structs
+#### Incomplete Structs
 
 A [struct](http://en.cppreference.com/w/c/language/struct) cannot have a member of its own type, but it can have a member as a pointer to its own type. See also [incomplete types](http://en.cppreference.com/w/c/language/type#Incomplete_types).
 
@@ -1697,7 +1697,7 @@ typedef struct
 } list_node;
 ```
 
-This will result in compiler error:
+This will result in a compiler error:
 
 ```text
 $ make
@@ -1726,6 +1726,73 @@ typedef struct node_t
     void* value;
 } node_t;
 ```
+
+#### Anonymous Stucts
+
+It is a common usage to use an anonymous struct as a member within a struct.
+
+```c
+typedef struct
+{
+    struct
+    {
+        int length;
+        char chars[100];
+    } s;
+    int x;
+} data_t;
+
+int main(int argc, char * argv[])
+{
+    data_t d = { .s.length = 100, .s.chars = "abcd", .x = 1234 };
+    printf("%d\n%s\n%d\n", d.s.length, d.s.chars, d.x);
+    return EXIT_SUCCESS;
+}
+```
+
+It can also be used to define a variable:
+
+```c
+int main(int argc, char * argv[])
+{
+    struct { int a; char b[100]; } d = { .a = 100, .b = "abcd" };
+    printf("%d\n%s\n", d.a, d.b);
+    return EXIT_SUCCESS;
+}
+```
+
+#### Member Offsets
+
+The `offsetof` macro in `stddef.h` can be used to get the offset value of a member:
+
+```c
+typedef struct
+{
+    int x;
+    short y[3];
+    long long z;
+} data_t;
+
+int main(int argc, char* argv[])
+{
+    printf("x %d\n", offsetof(data_t, x));
+    printf("y %d\n", offsetof(data_t, y));
+    printf("y[1] %d\n", offsetof(data_t, y[1]));
+    printf("z %d\n", offsetof(data_t, z));
+    return EXIT_SUCCESS;
+}
+```
+
+This will output:
+
+```text
+x 0
+y 4
+y[1] 6
+z 16
+```
+
+Note the [byte alignment](https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86) in the output. See also [object and alignment](http://en.cppreference.com/w/c/language/object).
 
 ### Doubts and Solutions
 
