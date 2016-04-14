@@ -613,7 +613,11 @@
     
         <li class="main "><a href="#structs">Structs</a></li>
         
-            <li><a href="#imcomplete-structs">Imcomplete Structs</a></li>
+            <li><a href="#incomplete-structs">Incomplete Structs</a></li>
+        
+            <li><a href="#anonymous-stucts">Anonymous Stucts</a></li>
+        
+            <li><a href="#member-offsets">Member Offsets</a></li>
         
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
@@ -2218,7 +2222,7 @@ o</p>
 
 <p>Array <code>x</code> has three pointers to (three) target objects (arrays). <code>*(x + 1)</code> obtains the target object, which is equivalent to <code>x[1]</code>.</p>
 <h3 id="structs">Structs</h3>
-<h4 id="imcomplete-structs">Imcomplete Structs</h4>
+<h4 id="incomplete-structs">Incomplete Structs</h4>
 <p>A <a href="http://en.cppreference.com/w/c/language/struct">struct</a> cannot have a member of its own type, but it can have a member as a pointer to its own type. See also <a href="http://en.cppreference.com/w/c/language/type#Incomplete_types">incomplete types</a>.</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">list_node</span>
 <span class="p">{</span>
@@ -2239,7 +2243,7 @@ o</p>
 </pre></div>
 
 
-<p>This will result in compiler error:</p>
+<p>This will result in a compiler error:</p>
 <div class="codehilite"><pre>$ make
 gcc -Wall -g -c -std=c99 -o main.o main.c
 main.c:15: error: expected specifier-qualifier-list before ‘list_node’
@@ -2266,6 +2270,66 @@ main.c:15: error: expected specifier-qualifier-list before ‘list_node’
 </pre></div>
 
 
+<h4 id="anonymous-stucts">Anonymous Stucts</h4>
+<p>It is a common usage to use an anonymous struct as a member within a struct.</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
+<span class="p">{</span>
+    <span class="k">struct</span>
+    <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">length</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="n">chars</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
+    <span class="p">}</span> <span class="n">s</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">data_t</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">data_t</span> <span class="n">d</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">s</span><span class="p">.</span><span class="n">length</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="p">.</span><span class="n">s</span><span class="p">.</span><span class="n">chars</span> <span class="o">=</span> <span class="s">&quot;abcd&quot;</span><span class="p">,</span> <span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">1234</span> <span class="p">};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">s</span><span class="p">.</span><span class="n">length</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">s</span><span class="p">.</span><span class="n">chars</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>It can also be used to define a variable:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">a</span><span class="p">;</span> <span class="kt">char</span> <span class="n">b</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span> <span class="p">}</span> <span class="n">d</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">a</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="s">&quot;abcd&quot;</span> <span class="p">};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">a</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">b</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="member-offsets">Member Offsets</h4>
+<p>The <code>offsetof</code> macro in <code>stddef.h</code> can be used to get the offset value of a member:</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">;</span>
+    <span class="kt">short</span> <span class="n">y</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+    <span class="kt">long</span> <span class="kt">long</span> <span class="n">z</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">data_t</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;x %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">offsetof</span><span class="p">(</span><span class="n">data_t</span><span class="p">,</span> <span class="n">x</span><span class="p">));</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;y %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">offsetof</span><span class="p">(</span><span class="n">data_t</span><span class="p">,</span> <span class="n">y</span><span class="p">));</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;y[1] %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">offsetof</span><span class="p">(</span><span class="n">data_t</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]));</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;z %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">offsetof</span><span class="p">(</span><span class="n">data_t</span><span class="p">,</span> <span class="n">z</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This will output:</p>
+<div class="codehilite"><pre>x 0
+y 4
+y[1] 6
+z 16
+</pre></div>
+
+
+<p>Note the <a href="https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86">byte alignment</a> in the output. See also <a href="http://en.cppreference.com/w/c/language/object">object and alignment</a>.</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
