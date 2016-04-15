@@ -519,6 +519,11 @@
         <li class="main active"><a href="#chapter-8-bottom-halves-and-deferring-work">Chapter 8. Bottom Halves and Deferring Work</a></li>
         
     
+        <li class="main "><a href="#bottom-halves">Bottom Halves</a></li>
+        
+            <li><a href="#why-bottom-halves">Why Bottom Halves?</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -547,6 +552,40 @@
 <li>The first part, interrupt handlers (<strong>top halves</strong>), are executed by the kernel asynchronously in immediate response to a hardware interrupt, as discussed in the previous chapter.</li>
 <li>This chapter looks at the second part of the interrupt solution, <strong>bottom halves</strong>.</li>
 </ol>
+<h3 id="bottom-halves">Bottom Halves</h3>
+<p>The job of bottom halves is to perform any interrupt-related work not performed by the interrupt handler. You want the interrupt handler to perform as little work as possible and in turn be as fast as possible. By offloading as much work as possible to the bottom half, the interrupt handler can return control of the system to whatever it interrupted as quickly as possible.</p>
+<p>However, the interrupt handler must perform some work; if the work is timing-sensitive, it makes sense to perform it in the interrupt handler. For example, the interrupt handler almost assuredly needs to acknowledge to the hardware the receipt of the interrupt. It may need to copy data to or from the hardware.</p>
+<p>Almost anything else can be performed in the bottom half. For example, if you copy data from the hardware into memory in the top half, it makes sense to process it in the bottom half.</p>
+<p>No hard and fast rules exist about what work to perform where. The decision is left entirely up to the device-driver author. Although no arrangement is <em>illegal</em>, an arrangement can certainly be <em>suboptimal</em>.</p>
+<p>Since interrupt handlers run asynchronously, with at least the current interrupt line disabled, minimizing their duration is important. The following useful tips help decide how to divide the work between the top and bottom half:</p>
+<ul>
+<li>If the work is time sensitive, perform it in the interrupt handler.</li>
+<li>If the work is related to the hardware, perform it in the interrupt handler.</li>
+<li>If the work needs to ensure that another interrupt (particularly the same interrupt) does not interrupt it, perform it in the interrupt handler.</li>
+<li>For everything else, consider performing the work in the bottom half.</li>
+</ul>
+<p>When attempting to write your own device driver, looking at other interrupt handlers and their corresponding bottom halves can help. When deciding how to divide your interrupt processing work between the top and bottom half, ask yourself what <em>must</em> be in the top half and what <em>can</em> be in the bottom half. Generally, the quicker the interrupt handler executes, the better.</p>
+<h4 id="why-bottom-halves">Why Bottom Halves?</h4>
+<p>It is crucial to understand:</p>
+<ul>
+<li>Why to defer work</li>
+<li>When to defer it</li>
+</ul>
+<p>You want to limit the amount of work you perform in an interrupt handler because:</p>
+<ul>
+<li>Interrupt handlers run with the current interrupt line disabled on all processors.</li>
+<li>Interrupt handlers that register with <code>IRQF_DISABLED</code> run with all interrupt lines disabled on the local processor (plus the current interrupt line disabled on all processors).</li>
+</ul>
+<p>Thus, minimizing the time spent with interrupts disabled is important for system response and performance.</p>
+<p>Besides, interrupt handlers run asynchronously with respect to other code, even other interrupt handlers. Therefore you should work to minimize how long interrupt handlers run. Processing incoming network traffic should not prevent the kernel's receipt of keystrokes.The solution is to defer some of the work until later.</p>
+<h5 id="when-is-later"><strong>When is "later"?</strong> *</h5>
+<p><em>Later</em> is often simply <em>not now</em>. <u>The point of a bottom half is not to do work at some specific point in the future, but simply to defer work until any point in the future when the system is less busy and interrupts are again enabled.</u> Often, bottom halves run immediately after the interrupt returns. The key is that they run with all interrupts enabled.</p>
+<p>Linux is not the only operating systems that separates the processing of hardware interrupts into two parts.</p>
+<ul>
+<li>The top half is quick and simple and runs with some or all interrupts disabled.</li>
+<li>The bottom half (however it is implemented) runs later with all interrupts enabled.</li>
+</ul>
+<p>This design keeps system latency low by running with interrupts disabled for as little time as necessary.</p>
             </div>
         </div>
 
