@@ -619,6 +619,15 @@
         
             <li><a href="#member-offsets">Member Offsets</a></li>
         
+            <li><a href="#struct-definitions">Struct Definitions</a></li>
+        
+            <li><a href="#struct-initialization">Struct Initialization</a></li>
+        
+            <li><a href="#flexible-array-member">Flexible Array Member</a></li>
+        
+    
+        <li class="main "><a href="#union">Union</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
@@ -2303,6 +2312,7 @@ main.c:15: error: expected specifier-qualifier-list before ‘list_node’
 
 <h4 id="member-offsets">Member Offsets</h4>
 <p>The <code>offsetof</code> macro in <code>stddef.h</code> can be used to get the offset value of a member:</p>
+<p><small><a href="https://gist.github.com/shichao-an/4337a3f6b19adb668086543bb9699ee9">struct_offset.c</a></small></p>
 <div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
 <span class="p">{</span>
     <span class="kt">int</span> <span class="n">x</span><span class="p">;</span>
@@ -2330,6 +2340,166 @@ z 16
 
 
 <p>Note the <a href="https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86">byte alignment</a> in the output. See also <a href="http://en.cppreference.com/w/c/language/object">object and alignment</a>.</p>
+<h4 id="struct-definitions">Struct Definitions</h4>
+<p>There are many flexible ways to define structs.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="cm">/* directly define the struct type and a variable */</span>
+    <span class="k">struct</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">x</span><span class="p">;</span> <span class="kt">short</span> <span class="n">y</span><span class="p">;</span> <span class="p">}</span> <span class="n">a</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">},</span> <span class="n">a2</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;a.x = %d, a.y = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+
+    <span class="cm">/* the struct type can also be defined inside a function */</span>
+    <span class="k">struct</span> <span class="n">data</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">x</span><span class="p">;</span> <span class="kt">short</span> <span class="n">y</span><span class="p">;</span> <span class="p">};</span>
+
+    <span class="k">struct</span> <span class="n">data</span> <span class="n">b</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">3</span> <span class="p">};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;b.x = %d, b.y = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">b</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+
+    <span class="cm">/* compound literal */</span>
+    <span class="k">struct</span> <span class="n">data</span><span class="o">*</span> <span class="n">c</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="k">struct</span> <span class="n">data</span><span class="p">){</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">};</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;c.x = %d, c.y = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">-&gt;</span><span class="n">x</span><span class="p">,</span> <span class="n">c</span><span class="o">-&gt;</span><span class="n">y</span><span class="p">);</span>
+
+    <span class="cm">/* directly place the struct type definition inside the compound literal */</span>
+    <span class="kt">void</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="k">struct</span> <span class="n">data2</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">x</span><span class="p">;</span> <span class="kt">short</span> <span class="n">y</span><span class="p">;</span> <span class="p">}){</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">22</span> <span class="p">};</span>
+
+    <span class="cm">/* structs with the same memory layout can be cast from each other */</span>
+    <span class="k">struct</span> <span class="n">data</span><span class="o">*</span> <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="k">struct</span> <span class="n">data</span><span class="o">*</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;d.x = %d, d.y = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">d</span><span class="o">-&gt;</span><span class="n">x</span><span class="p">,</span> <span class="n">d</span><span class="o">-&gt;</span><span class="n">y</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>a.x = 1, a.y = 2
+b.x = 0, b.y = 3
+c.x = 1, c.y = 2
+d.x = 11, d.y = 22
+</pre></div>
+
+
+<h4 id="struct-initialization">Struct Initialization</h4>
+<p>Initializing a struct is as simple as initializing an array, including using initializers to initialize specific members. Uninitialized members are set to 0.</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">;</span>
+    <span class="kt">short</span> <span class="n">y</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+    <span class="kt">long</span> <span class="kt">long</span> <span class="n">z</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">data_t</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">data_t</span> <span class="n">d</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="n">data_t</span> <span class="n">d1</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="p">{</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">33</span> <span class="p">},</span> <span class="mi">2LL</span> <span class="p">};</span>
+    <span class="n">data_t</span> <span class="n">d2</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">z</span> <span class="o">=</span> <span class="mi">3LL</span><span class="p">,</span> <span class="p">.</span><span class="n">y</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="p">};</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The result is:</p>
+<div class="codehilite"><pre>d = {x = 0, y = {0, 0, 0}, z = 0}
+d1 = {x = 1, y = {11, 22, 33}, z = 2}
+d2 = {x = 0, y = {0, 0, 2}, z = 3}
+</pre></div>
+
+
+<h4 id="flexible-array-member">Flexible Array Member</h4>
+<p>A struct that contains a <a href="https://en.wikipedia.org/wiki/Flexible_array_member">flexible array member</a> is also known as a "variable length struct". The flexible array member is an array, without its size specified, as the last member of its struct. See also <a href="http://en.cppreference.com/w/c/language/struct">struct declaration</a>.</p>
+<p><small><a href="https://gist.github.com/shichao-an/b735bc3a6f42eecd4802fad3f677511a#file-flexible_array_member-c">flexible_array_member.c</a></small></p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="n">string</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">length</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">chars</span><span class="p">[];</span>
+<span class="p">}</span> <span class="n">string</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">string</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span><span class="p">;</span>  <span class="c1">// length for a 10-byte string (\0 included)</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">len</span><span class="p">];</span>                  <span class="c1">// allocate storage from the stack</span>
+
+    <span class="n">string</span> <span class="o">*</span><span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">string</span><span class="o">*</span><span class="p">)</span><span class="n">buf</span><span class="p">;</span>       <span class="c1">// convert to a struct string pointer</span>
+    <span class="n">s</span><span class="o">-&gt;</span><span class="n">length</span> <span class="o">=</span> <span class="mi">9</span><span class="p">;</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">s</span><span class="o">-&gt;</span><span class="n">chars</span><span class="p">,</span> <span class="s">&quot;123456789&quot;</span><span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">,</span> <span class="n">s</span><span class="o">-&gt;</span><span class="n">chars</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Considering different compilers and ANSI C standards, <code>char chars[]</code> can be replaced by <code>char chars[1]</code> or <code>char</code>.</p>
+<p>Note that when copying this kind of structs, the last array member won't be copied.</p>
+<p><small><a href="https://gist.github.com/shichao-an/b735bc3a6f42eecd4802fad3f677511a#file-flexible_array_member_copy-c">flexible_array_member_copy.c</a></small></p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">string</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">len</span><span class="p">];</span>
+
+    <span class="n">string</span> <span class="o">*</span><span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">string</span><span class="o">*</span><span class="p">)</span><span class="n">buf</span><span class="p">;</span>
+    <span class="n">s</span><span class="o">-&gt;</span><span class="n">length</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">s</span><span class="o">-&gt;</span><span class="n">chars</span><span class="p">,</span> <span class="s">&quot;123456789&quot;</span><span class="p">);</span>
+
+    <span class="n">string</span> <span class="n">s2</span> <span class="o">=</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>                          <span class="c1">// copy struct string s</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s2</span><span class="p">.</span><span class="n">length</span><span class="p">,</span> <span class="n">s2</span><span class="p">.</span><span class="n">chars</span><span class="p">);</span> <span class="c1">// s2.length is copied, s2.chars is not</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Furthermore, the flexible array member cannot be initialized.</p>
+<h3 id="union">Union</h3>
+<p>A <a href="http://en.cppreference.com/w/c/language/union">union</a> is different from a struct in that: a union can only store one member, and the union's size is determined by the member with the largest size.</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">type</span><span class="p">;</span>
+    <span class="k">union</span>
+    <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">ivalue</span><span class="p">;</span>
+        <span class="kt">long</span> <span class="kt">long</span> <span class="n">lvalue</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">data_t</span><span class="p">;</span>
+
+<span class="n">data_t</span> <span class="n">d</span> <span class="o">=</span> <span class="p">{</span> <span class="mh">0x8899</span><span class="p">,</span> <span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">lvalue</span> <span class="o">=</span> <span class="mh">0x1234LL</span> <span class="p">};</span>
+<span class="n">data_t</span> <span class="n">d2</span><span class="p">;</span>
+<span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">d2</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">d</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">d</span><span class="p">));</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;type:%d, value:%lld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">d2</span><span class="p">.</span><span class="n">type</span><span class="p">,</span> <span class="n">d2</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">lvalue</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Though the above example can also be implemented with pointers, the union embeds the data in the struct. This facilitates the use of <a href="http://en.cppreference.com/w/c/string/byte/memcpy"><code>memcpy</code></a> and makes pointer type conversions unnecessary.</p>
+<p>A union can be <a href="http://en.cppreference.com/w/c/language/struct_initialization">initialized</a> using initializers; if no designator is specified, then it defaults to the first member.</p>
+<div class="codehilite"><pre><span class="k">union</span> <span class="n">value_t</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ivalue</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="kt">long</span> <span class="n">lvalue</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">union</span> <span class="n">value_t</span> <span class="n">v1</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">10</span> <span class="p">};</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">v1</span><span class="p">.</span><span class="n">ivalue</span><span class="p">);</span>
+
+<span class="k">union</span> <span class="n">value_t</span> <span class="n">v2</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">lvalue</span> <span class="o">=</span> <span class="mi">20LL</span> <span class="p">};</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%lld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">v2</span><span class="p">.</span><span class="n">lvalue</span><span class="p">);</span>
+
+<span class="k">union</span> <span class="n">value2_t</span> <span class="p">{</span> <span class="kt">char</span> <span class="n">c</span><span class="p">;</span> <span class="kt">int</span> <span class="n">x</span><span class="p">;</span> <span class="p">}</span> <span class="n">v3</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">100</span> <span class="p">};</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">v3</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The following example is a common usage of unions:</p>
+<div class="codehilite"><pre><span class="k">union</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">x</span><span class="p">;</span> <span class="k">struct</span> <span class="p">{</span><span class="kt">char</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">;}</span> <span class="n">bytes</span><span class="p">;</span> <span class="p">}</span> <span class="n">n</span> <span class="o">=</span> <span class="p">{</span> <span class="mh">0x12345678</span> <span class="p">};</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%#x =&gt; %x, %x, %x, %x</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">n</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span><span class="p">.</span><span class="n">bytes</span><span class="p">.</span><span class="n">a</span><span class="p">,</span> <span class="n">n</span><span class="p">.</span><span class="n">bytes</span><span class="p">.</span><span class="n">b</span><span class="p">,</span> <span class="n">n</span><span class="p">.</span><span class="n">bytes</span><span class="p">.</span><span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="p">.</span><span class="n">bytes</span><span class="p">.</span><span class="n">d</span><span class="p">);</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>0x12345678 =&gt; 78, 56, 34, 12
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
