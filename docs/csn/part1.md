@@ -1765,6 +1765,8 @@ int main(int argc, char * argv[])
 
 The `offsetof` macro in `stddef.h` can be used to get the offset value of a member:
 
+<small>[struct_offset.c](https://gist.github.com/shichao-an/4337a3f6b19adb668086543bb9699ee9)</small>
+
 ```c
 typedef struct
 {
@@ -1793,6 +1795,188 @@ z 16
 ```
 
 Note the [byte alignment](https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86) in the output. See also [object and alignment](http://en.cppreference.com/w/c/language/object).
+
+#### Struct Definitions
+
+There are many flexible ways to define structs.
+
+The following code:
+
+
+```c
+int main(int argc, char* argv[])
+{
+    /* directly define the struct type and a variable */
+    struct { int x; short y; } a = { 1, 2 }, a2 = {};
+    printf("a.x = %d, a.y = %d\n", a.x, a.y);
+
+    /* the struct type can also be defined inside a function */
+    struct data { int x; short y; };
+
+    struct data b = { .y = 3 };
+    printf("b.x = %d, b.y = %d\n", b.x, b.y);
+
+    /* compound literal */
+    struct data* c = &(struct data){ 1, 2 };
+    printf("c.x = %d, c.y = %d\n", c->x, c->y);
+
+    /* directly place the struct type definition inside the compound literal */
+    void* p = &(struct data2 { int x; short y; }){ 11, 22 };
+
+    /* structs with the same memory layout can be cast from each other */
+    struct data* d = (struct data*)p;
+    printf("d.x = %d, d.y = %d\n", d->x, d->y);
+
+    return EXIT_SUCCESS;
+}
+```
+
+will output:
+
+```text
+a.x = 1, a.y = 2
+b.x = 0, b.y = 3
+c.x = 1, c.y = 2
+d.x = 11, d.y = 22
+```
+
+#### Struct Initialization
+
+Initializing a struct is as simple as initializing an array, including using initializers to initialize specific members. Uninitialized members are set to 0.
+
+```c
+typedef struct
+{
+    int x;
+    short y[3];
+    long long z;
+} data_t;
+
+int main(int argc, char* argv[])
+{
+    data_t d = {};
+    data_t d1 = { 1, { 11, 22, 33 }, 2LL };
+    data_t d2 = { .z = 3LL, .y[2] = 2 };
+    return EXIT_SUCCESS;
+}
+```
+
+The result is:
+
+```text
+d = {x = 0, y = {0, 0, 0}, z = 0}
+d1 = {x = 1, y = {11, 22, 33}, z = 2}
+d2 = {x = 0, y = {0, 0, 2}, z = 3}
+```
+
+#### Flexible Array Member
+
+A struct that contains a [flexible array member](https://en.wikipedia.org/wiki/Flexible_array_member) is also known as a "variable length struct". The flexible array member is an array, without its size specified, as the last member of its struct. See also [struct declaration](http://en.cppreference.com/w/c/language/struct).
+
+<small>[flexible_array_member.c](https://gist.github.com/shichao-an/b735bc3a6f42eecd4802fad3f677511a#file-flexible_array_member-c)</small>
+
+```c
+typedef struct string
+{
+    int length;
+    char chars[];
+} string;
+
+int main(int argc, char * argv[])
+{
+    int len = sizeof(string) + 10;  // length for a 10-byte string (\0 included)
+    char buf[len];                  // allocate storage from the stack
+
+    string *s = (string*)buf;       // convert to a struct string pointer
+    s->length = 9;
+    strcpy(s->chars, "123456789");
+
+    printf("%d\n%s\n", s->length, s->chars);
+
+    return EXIT_SUCCESS;
+}
+```
+
+Considering different compilers and ANSI C standards, `char chars[]` can be replaced by `char chars[1]` or `char`.
+
+
+Note that when copying this kind of structs, the last array member won't be copied.
+
+<small>[flexible_array_member_copy.c](https://gist.github.com/shichao-an/b735bc3a6f42eecd4802fad3f677511a#file-flexible_array_member_copy-c)</small>
+
+```c
+int main(int argc, char * argv[])
+{
+    int len = sizeof(string) + 10;
+    char buf[len];
+
+    string *s = (string*)buf;
+    s->length = 10;
+    strcpy(s->chars, "123456789");
+
+    string s2 = *s;                          // copy struct string s
+    printf("%d\n%s\n", s2.length, s2.chars); // s2.length is copied, s2.chars is not
+    return EXIT_SUCCESS;
+}
+```
+
+Furthermore, the flexible array member cannot be initialized.
+
+### Union
+
+A [union](http://en.cppreference.com/w/c/language/union) is different from a struct in that: a union can only store one member, and the union's size is determined by the member with the largest size.
+
+```c
+typedef struct
+{
+    int type;
+    union
+    {
+        int ivalue;
+        long long lvalue;
+    } value;
+} data_t;
+
+data_t d = { 0x8899, .value.lvalue = 0x1234LL };
+data_t d2;
+memcpy(&d2, &d, sizeof(d));
+
+printf("type:%d, value:%lld\n", d2.type, d2.value.lvalue);
+```
+
+Though the above example can also be implemented with pointers, the union embeds the data in the struct. This facilitates the use of [`memcpy`](http://en.cppreference.com/w/c/string/byte/memcpy) and makes pointer type conversions unnecessary.
+
+A union can be [initialized](http://en.cppreference.com/w/c/language/struct_initialization) using initializers; if no designator is specified, then it defaults to the first member.
+
+```c
+union value_t
+{
+    int ivalue;
+    long long lvalue;
+};
+
+union value_t v1 = { 10 };
+printf("%d\n", v1.ivalue);
+
+union value_t v2 = { .lvalue = 20LL };
+printf("%lld\n", v2.lvalue);
+
+union value2_t { char c; int x; } v3 = { .x = 100 };
+printf("%d\n", v3.x);
+```
+
+The following example is a common usage of unions:
+
+```c
+union { int x; struct {char a, b, c, d;} bytes; } n = { 0x12345678 };
+printf("%#x => %x, %x, %x, %x\n", n.x, n.bytes.a, n.bytes.b, n.bytes.c, n.bytes.d);
+```
+
+will output:
+
+```text
+0x12345678 => 78, 56, 34, 12
+```
 
 ### Doubts and Solutions
 
