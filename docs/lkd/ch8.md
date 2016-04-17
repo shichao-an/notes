@@ -64,3 +64,49 @@ Linux is not the only operating systems that separates the processing of hardwar
 * The bottom half (however it is implemented) runs later with all interrupts enabled.
 
 This design keeps system latency low by running with interrupts disabled for as little time as necessary.
+
+#### A World of Bottom Halves
+
+While the top half is implemented entirely via the interrupt handler, multiple mechanisms are available for implementing a bottom half. These mechanisms are different interfaces and subsystems that enable you to implement bottom halves. This chapter discusses multiple methods of implementing bottom halves. [p135]
+
+##### **The Original "Bottom Half"**
+
+In the beginning, Linux provided only the "bottom half" for implementing bottom halves. This name was logical because at the time that was the only means available for deferring work. The infrastructure was also known as *BH* to avoid confusion with the generic term *bottom half*.
+
+The BH interface was simple.
+
+* It provided a statically created list of 32 bottom halves for the entire system.
+* The top half could mark whether the bottom half would run by setting a bit in a 32-bit integer.
+* Each BH was globally synchronized. No two could run at the same time, even on different processors.
+
+This was simple and easy to use, but was also inflexible and a bottleneck.
+
+##### **Task Queues**
+
+The kernel developers later introduced *task queues* both as a method of deferring work and as a replacement for the BH mechanism.
+
+The kernel defined a family of queues.
+
+* Each queue contained a linked list of functions to call.
+* The queued functions were run at certain times, depending on which queue they were in.
+* Drivers could register their bottom halves in the appropriate queue.
+
+This worked fairly well, but it was still too inflexible to replace the BH interface entirely. It also was not lightweight enough for performance-critical subsystems, such as networking.
+
+##### **Softirqs and Tasklets**
+
+The *softirqs* and *tasklets* were introduced during the 2.3 development series, to completely replace the BH interface.
+
+* Softirqs are a set of statically defined bottom halves that can run simultaneously on any processor; even two of the same type can run concurrently.
+* Tasklets are flexible, dynamically created bottom halves built on top of softirqs.
+  * Two different tasklets can run concurrently on different processors, but two of the same type of tasklet cannot run simultaneously.
+
+Tasklets are a good trade-off between performance and ease of use. For most bottom-half processing, the tasklet is sufficient. Softirqs are useful when performance is critical, such as with networking. Using softirqs requires more care, however, because two of the same softirq can run at the same time. In addition, softirqs must be registered statically at compile time. Conversely, code can dynamically register tasklets.
+
+While developing the 2.5 kernel, all BH users were converted to the other bottom-half interfaces. Additionally, the task queue interface was replaced by the work queue interface. Work queues are a simple yet useful method of queuing work to later be performed in process context.
+
+Consequently, the 2.6 kernel has three bottom-half mechanisms in the kernel:
+
+* Softirqs
+* tasklets
+* Work queues
