@@ -526,6 +526,13 @@
             <li><a href="#a-world-of-bottom-halves">A World of Bottom Halves</a></li>
         
     
+        <li class="main "><a href="#softirqs">Softirqs</a></li>
+        
+            <li><a href="#the-softirq-handler">The Softirq Handler</a></li>
+        
+            <li><a href="#executing-softirqs">Executing Softirqs</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -623,6 +630,122 @@
 <li>tasklets</li>
 <li>Work queues</li>
 </ul>
+<h5 id="kernel-timers"><strong>Kernel Timers</strong> *</h5>
+<p><em>Kernel timers</em> is another mechanism for deferring work. Unlike the mechanisms discussed in the chapter, timers defer work for a specified amount of time. That is, although the tools discussed in this chapter are useful to defer work to any time but now, you use timers to defer work until at least a specific time has elapsed.</p>
+<p>Therefore, timers have different uses than the general mechanisms discussed in this chapter.  A full discussion of timers is given in <a href="../ch11/">Chapter 11 Timers and Time Management</a>.</p>
+<h5 id="dispelling-the-confusion"><strong>Dispelling the Confusion</strong></h5>
+<p><em>Bottom half</em> is a generic operating system term referring to the deferred portion of interrupt processing. All the kernel's mechanisms for deferring work are "bottom halves". Some people also confusingly call all bottom halves "softirqs".</p>
+<p>Bottom half also refers to the original deferred work mechanism in Linux. This mechanism is also known as a BH, so we call it by that name now and leave the former as a generic description. The BH mechanism was deprecated a while back and fully removed in the 2.5 development kernel series.</p>
+<p>In the current three methods exist for deferring work, tasklets are built on softirqs and work queues are their own subsystem. The following table presents a history of bottom halves.</p>
+<table>
+<thead>
+<tr>
+<th>Bottom Half</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BH</td>
+<td>Removed in 2.5</td>
+</tr>
+<tr>
+<td>Task queues</td>
+<td>Removed in 2.5</td>
+</tr>
+<tr>
+<td>Softirq</td>
+<td>Available since 2.3</td>
+</tr>
+<tr>
+<td>Tasklet</td>
+<td>Available since 2.3</td>
+</tr>
+<tr>
+<td>Work queues</td>
+<td>Available since 2.5</td>
+</tr>
+</tbody>
+</table>
+<h3 id="softirqs">Softirqs</h3>
+<p>Softirqs are rarely used directly; tasklets, which are built on softirqs are a much more common form of bottom half. The softirq code lives in the file <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c">kernel/softirq.c</a> in the kernel source tree.</p>
+<p>Softirqs are statically allocated at compile time. Unlike tasklets, you cannot dynamically register and destroy softirqs. Softirqs are represented by the <code>softirq_action</code> structure, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h"><code>&lt;linux/interrupt.h&gt;</code></a>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L366">include/linux/interrupt.h#L366</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">softirq_action</span>
+<span class="p">{</span>
+    <span class="kt">void</span>    <span class="p">(</span><span class="o">*</span><span class="n">action</span><span class="p">)(</span><span class="k">struct</span> <span class="n">softirq_action</span> <span class="o">*</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>A 32-entry array of this structure is declared in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c">kernel/softirq.c</a>:</p>
+<div class="codehilite"><pre><span class="k">static</span> <span class="k">struct</span> <span class="n">softirq_action</span> <span class="n">softirq_vec</span><span class="p">[</span><span class="n">NR_SOFTIRQS</span><span class="p">];</span>
+</pre></div>
+
+
+<p>Each registered softirq consumes one entry in the array. Consequently, there are <code>NR_SOFTIRQS</code> registered softirqs. The number of registered softirqs is statically determined at compile time and cannot be changed dynamically. The kernel enforces a limit of 32 registered softirqs. In the current kernel, only nine exist.</p>
+<h5 id="the-softirq-handler"><strong>The Softirq Handler</strong></h5>
+<p>The prototype of a softirq handler, <code>action</code>, looks like:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">softirq_handler</span><span class="p">(</span><span class="k">struct</span> <span class="n">softirq_action</span> <span class="o">*</span><span class="p">);</span>
+</pre></div>
+
+
+<p>When the kernel runs a softirq handler, it executes this <code>action</code> function with a pointer to the corresponding <code>softirq_action</code> structure as its argument. For example, if <code>my_softirq</code> pointed to an entry in the <code>softirq_vec</code> array, the kernel would invoke the softirq handler function as:</p>
+<div class="codehilite"><pre><span class="n">my_softirq</span><span class="o">-&gt;</span><span class="n">action</span><span class="p">(</span><span class="n">my_softirq</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Note that the kernel passes the entire structure to the softirq handler. This trick enables future additions to the structure without requiring a change in every softirq handler.</p>
+<p>A softirq never preempts another softirq. The only event that can preempt a softirq is an interrupt handler. Another softirq (even the same one) can run on another processor, however.</p>
+<h5 id="executing-softirqs"><strong>Executing Softirqs</strong></h5>
+<p>A registered softirq must be marked before it will execute. This is called <em>raising the softirq</em>. Usually, an interrupt handler marks its softirq for execution before returning. Then, at a suitable time, the softirq runs. Pending softirqs are checked for and executed in the following places:</p>
+<ul>
+<li>In the return from hardware interrupt code path</li>
+<li>In the <code>ksoftirqd</code> kernel thread</li>
+<li>In any code that explicitly checks for and executes pending softirqs, such as the networking subsystem</li>
+</ul>
+<p>Regardless of the method of invocation, softirq execution occurs in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c#L191"><code>__do_softirq()</code></a>, which is invoked by <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c#L253"><code>do_softirq()</code></a>. The function is quite simple. If there are pending softirqs, <code>__do_softirq()</code> loops over each one, invoking its handler.</p>
+<p>The following code is a simplified variant of the important part of <code>__do_softirq()</code>:</p>
+<div class="codehilite"><pre><span class="n">u32</span> <span class="n">pending</span><span class="p">;</span>
+
+<span class="n">pending</span> <span class="o">=</span> <span class="n">local_softirq_pending</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">pending</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">softirq_action</span> <span class="o">*</span><span class="n">h</span><span class="p">;</span>
+
+    <span class="cm">/* reset the pending bitmask */</span>
+    <span class="n">set_softirq_pending</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">h</span> <span class="o">=</span> <span class="n">softirq_vec</span><span class="p">;</span>
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pending</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">h</span><span class="o">-&gt;</span><span class="n">action</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
+        <span class="n">h</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">pending</span> <span class="o">&gt;&gt;=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">pending</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>It checks for, and executes, any pending softirqs. It specifically does the following:</p>
+<ol>
+<li>It sets the <code>pending</code> local variable to the value returned by the <code>local_softirq_pending()</code> macro.<ul>
+<li>This is a 32-bit mask of pending softirqs: if bit <code>n</code> is set, the <code>n</code>th softirq is pending.</li>
+</ul>
+</li>
+<li>After the pending bitmask of softirqs is saved, it clears the actual bitmask.</li>
+<li>The pointer <code>h</code> is set to the first entry in the <code>softirq_vec</code>.</li>
+<li>If the first bit in pending is set, <code>h-&gt;action(h)</code> is called.</li>
+<li>The pointer <code>h</code> is incremented by one so that it now points to the second entry in the <code>softirq_vec</code> array.</li>
+<li>The bitmask <code>pending</code> is right-shifted by one.<ul>
+<li>This discards the first bit and moves all other bits one place to the right.</li>
+</ul>
+</li>
+<li>The pointer <code>h</code> now points to the second entry in the array, and the pending bitmask now has the second bit as the first. Repeat the previous steps.</li>
+<li>Continue repeating until pending is zero, at which point there are no more pending softirqs and the work is done.<ul>
+<li>This check is sufficient to ensure <code>h</code> always points to a valid entry in <code>softirq_vec</code> because <code>pending</code> has at most 32 set bits and thus this loop executes at most 32 times.</li>
+</ul>
+</li>
+</ol>
             </div>
         </div>
 
