@@ -325,6 +325,45 @@ When setting the size of the TCP socket receive buffer, the ordering of the func
 
 Setting `SO_RCVBUF` option for the connected socket will have no effect on the possible window scale option because `accept` does not return with the connected socket until TCP's three-way handshake is complete. That is why this option must be set for the listening socket. (The sizes of the socket buffers are always inherited from the listening socket by the newly created connected socket)
 
+##### **TCP socket buffer sizes** *
+
+The TCP socket buffer sizes should be at least four times the MSS for the connection. The "socket buffer sizes" means different things in different scenarios:
+
+* For unidirectional data transfer (such as a file transfer in one direction), it means socket send buffer size on the sending host and the socket receive buffer size on the receiving host.
+* For bidirectional data transfer, it means mean both socket buffer sizes on the sender and both socket buffer sizes on the receiver.
+
+With typical default buffer sizes of 8,192 bytes or larger, and a typical MSS of 512 or 1,460, this requirement is normally met.
+
+The minimum MSS multiple of four is a result of the way that TCP's [fast recovery](https://en.wikipedia.org/wiki/TCP_congestion_control#Fast_retransmit) algorithm works. The TCP sender detects that a packet was lost ([RFC 2581](https://tools.ietf.org/html/rfc2581)) when it receives three duplicate acknowledgments. The receiver sends a duplicate acknowledgment for each segment it receives after a lost segment. If the window size is smaller than four segments, there cannot be three duplicate acknowledgments, so the fast recovery algorithm cannot be invoked.
+
+To avoid wasting potential buffer space, the TCP socket buffer sizes should also be an even multiple of the MSS for the connection. Some implementations handle this detail for the application, rounding up the socket buffer size after the connection is established. For example, using the default 4.4BSD size of 8,192 and assuming an Ethernet with an MSS of 1,460, both socket buffers are rounded up to 8,760 (6 x 1,460) when the connection is established. This is another reason to set these two socket options before establishing a connection. This is not a crucial requirement; the additional space in the socket buffer above the multiple of the MSS is simply unused.
+
+##### **Performance consideration of TCP socket buffer sizes** *
+
+The following figure shows a TCP connection between two endpoints (called a *pipe*) with a capacity of eight segments.
+
+[![Figure 7.13. TCP connection (pipe) with a capacity of eight segments.](figure_7.13.png)](figure_7.13.png "Figure 7.13. TCP connection (pipe) with a capacity of eight segments.")
+
+It shows four data segments on the top and four ACKs on the bottom. Even though there are only four segments of data in the pipe, the client must have a send buffer capacity of at least eight segments, because the client TCP must keep a copy of each segment until the ACK is received from the server.
+
+Some details are ignored here:
+
+1. TCP's [slow-start](https://en.wikipedia.org/wiki/TCP_congestion_control#Slow_start) algorithm limits the rate at which segments are initially sent on an idle connection.
+2. TCP often [acknowledges every other segment](https://en.wikipedia.org/wiki/TCP_delayed_acknowledgment), not every segment as shown.
+
+It's important to understand the concept of the full-duplex pipe, its capacity, and how that relates to the socket buffer sizes on both ends of the connection. The capacity of the pipe is called the [bandwidth-delay product](https://en.wikipedia.org/wiki/Bandwidth-delay_product), which is calculated by multiplying the bandwidth (in bits/sec) times the RTT (in seconds), converting the result from bits to bytes. The RTT is easily measured with the `ping` program.
+
+The bandwidth is the value corresponding to the slowest link between two endpoints and must somehow be known. For example, a T1 line (1,536,000 bits/sec) with an RTT of 60 ms gives a bandwidth-delay product of 11,520 bytes.
+
+* If the socket buffer sizes are less than the bandwidth-delay product, the pipe will not stay full, and the performance will be less than expected.
+* Large socket buffers are required when the bandwidth gets larger (e.g., T3 lines at 45 Mbits/sec) or when the RTT gets large (e.g., satellite links with an RTT around 500 ms). When the bandwidth-delay product exceeds TCP's maximum normal window size (65,535 bytes), both endpoints also need the TCP long fat pipe options ([Section 2.6](ch2.md#tcp-options)).
+
+Most implementations have an upper limit for the sizes of the socket send and receive buffers. Older Berkeley-derived implementations had a hard upper limit of around 52,000 bytes, but newer implementations have a default limit of 256,000 bytes or more, and this can usually be increased by the administrator. Unfortunately, there is no simple way for an application to determine this limit. The following are possible ways:
+
+* POSIX defines the `fpathconf` function and using the `_PC_SOCK_MAXBUF` constant as the second argument, which can retrieve the maximum size of the socket buffers.
+* An application can try setting the socket buffers to the desired value, and if that fails, cut the value in half and try again until it succeeds.
+* An application should make sure that it's not actually making the socket buffer smaller when it sets it to a preconfigured "large" value; calling `getsockopt` first to retrieve the system's default and seeing if that's large enough is often a good start.
+
 #### `SO_RCVLOWAT` and `SO_SNDLOWAT` Socket Options
 
 #### `SO_RCVTIMEO` and `SO_SNDTIMEO` Socket Options
