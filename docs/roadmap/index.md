@@ -19,7 +19,7 @@ The interest of studies generally lies in the following fields:
 
 > I'm interested in Linux and it's useful to learn the internals of the Linux kernel.
 
-I have read the majority of LKD; I need to read the rest of the chapters.
+I have read the majority of LKD; I need to read the rest of the chapters, along with UTLK as a supplement and reference.
 
 ##### **System Administration**
 
@@ -114,9 +114,10 @@ I will read x86 assembly and x86 disassembly.
 
 * [TWGR](../twgr/index.md)
 
-#### Operating Systems <small>(2)</small>
+#### Operating Systems <small>(3)</small>
 
 * [LKD](../lkd/index.md)
+* [UTLK](../utlk/index.md)
 * [SPEC](../spec/index.md)
 
 #### System Programming <small>(4)</small>
