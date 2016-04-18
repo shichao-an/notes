@@ -521,45 +521,36 @@
     
         <li class="main "><a href="#memory-addresses">Memory Addresses</a></li>
         
+            <li><a href="#memory-management-unit">Memory Management Unit *</a></li>
+        
+            <li><a href="#memory-arbiter">Memory Arbiter *</a></li>
+        
     
         <li class="main "><a href="#segmentation-in-hardware">Segmentation in Hardware</a></li>
         
-    
-        <li class="main "><a href="#segment-selectors">Segment Selectors</a></li>
+            <li><a href="#segment-selectors-and-segmentation-registers">Segment Selectors and Segmentation Registers</a></li>
         
-    
-        <li class="main "><a href="#segmentation-registers">Segmentation registers</a></li>
+            <li><a href="#segment-descriptors">Segment Descriptors</a></li>
         
-    
-        <li class="main "><a href="#segment-descriptors">Segment Descriptors</a></li>
+            <li><a href="#fast-access-to-segment-descriptors">Fast Access to Segment Descriptors</a></li>
         
-    
-        <li class="main "><a href="#fast-access-to-segment-descriptors">Fast Access to Segment Descriptors</a></li>
-        
-    
-        <li class="main "><a href="#segmentation-unit">Segmentation Unit</a></li>
+            <li><a href="#segmentation-unit">Segmentation Unit</a></li>
         
     
         <li class="main "><a href="#segmentation-in-linux">Segmentation in Linux</a></li>
         
-            <li><a href="#cpl-rpl-and-registers">CPL, RPL and registers</a></li>
+            <li><a href="#cpl-rpl-and-registers">CPL, RPL and registers *</a></li>
         
-            <li><a href="#implicit-segment-selector">Implicit Segment Selector</a></li>
+            <li><a href="#implicit-segment-selector">Implicit Segment Selector *</a></li>
         
-    
-        <li class="main "><a href="#the-linux-gdt">The Linux GDT</a></li>
+            <li><a href="#the-linux-gdt">The Linux GDT</a></li>
         
-    
-        <li class="main "><a href="#the-linux-ldt">The Linux LDT</a></li>
+            <li><a href="#the-linux-ldts">The Linux LDTs</a></li>
         
     
         <li class="main "><a href="#paging-in-hardware">Paging in Hardware</a></li>
         
-    
-        <li class="main "><a href="#regular-paging">Regular Paging</a></li>
-        
-    
-        <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
+            <li><a href="#regular-paging">Regular Paging</a></li>
         
     
     </ul>
@@ -568,64 +559,256 @@
               
 
 <h3 id="chapter-2-memory-addressing"><strong>Chapter 2. Memory Addressing</strong></h3>
-<p>This chapter offers details in <a href="http://en.wikipedia.org/wiki/X86">x86</a> microprocessors address memory chips and how Linux uses the available addressing circuits.</p>
+<p>This chapter discusses addressing techniques by offering details in <a href="http://en.wikipedia.org/wiki/X86">80×86</a> microprocessors address memory chips and how Linux uses the available addressing circuits.</p>
 <h3 id="memory-addresses">Memory Addresses</h3>
+<p>Programmers casually refer to a <strong>memory address</strong> as the way to access the contents of a memory cell. However, when dealing with 80×86 microprocessors, we have to distinguish three kinds of addresses:</p>
 <ul>
-<li><strong>Logical address</strong></li>
-<li><strong>Linear address</strong> (also known as <strong>virtual address</strong>)</li>
-<li><strong>Physical address</strong></li>
+<li><strong>Logical address</strong>: included in the machine language instructions to specify the address of an operand or of an instruction.<ul>
+<li>This type of address embodies the well-known <a href="https://en.wikipedia.org/wiki/X86_memory_segmentation">80×86 segmented architecture</a>.</li>
+<li>Each logical address consists of a <em>segment</em> and an <em>offset</em> (or <em>displacement</em>) that denotes the distance from the start of the segment to the actual address.</li>
 </ul>
-<p>Memory Management Unit (MMU) transforms a logical address into a linear address, and the linear address into a physical address.</p>
+</li>
+<li><strong>Linear address</strong> (also known as <strong>virtual address</strong>): a single 32-bit unsigned integer that can be used to address up to 4 GB, that is, up to 4,294,967,296 memory cells.<ul>
+<li>Linear addresses are usually represented in hexadecimal notation: from <code>0x00000000</code> to <code>0xffffffff</code>.</li>
+</ul>
+</li>
+<li><strong>Physical address</strong>: used to address memory cells in memory chips. They correspond to the electrical signals sent along the address pins of the microprocessor to the memory bus.<ul>
+<li><u>Physical addresses are represented as 32-bit or 36-bit unsigned integers.</u></li>
+</ul>
+</li>
+</ul>
+<h4 id="memory-management-unit">Memory Management Unit *</h4>
+<p><a href="https://en.wikipedia.org/wiki/Memory_management_unit">Memory Management Unit</a> (MMU) transforms a logical address into a linear address (using a hardware circuit called a segmentation unit), and the linear address into a physical address (using a second hardware circuit called a paging unit), as shown in the figure below:</p>
 <p><a href="../figure_2-1.png" title="Figure 2-1. Logical address translation"><img alt="Figure 2-1. Logical address translation" src="../figure_2-1_600.png" /></a></p>
-<p>Memory arbiter: read or write operations on a RAM chip must be performed serially.</p>
+<h4 id="memory-arbiter">Memory Arbiter *</h4>
+<p>The <a href="https://en.wikipedia.org/wiki/Arbiter_(electronics)"><strong>memory arbiter</strong></a> is a hardware circuit inserted between the bus and every RAM chip. Its role is to grant access to a CPU if the chip is free and to delay it if the chip is busy servicing a request by another processor.</p>
+<ul>
+<li>In multiprocessor systems, RAM chips may be accessed concurrently by independent CPUs, since all CPUs usually share the same memory. Thus, memory arbiters are need, because read or write operations on a RAM chip must be performed serially.</li>
+<li>Uniprocessor systems also use memory arbiters, because they include specialized processors called <a href="https://en.wikipedia.org/wiki/Direct_memory_access"><em>DMA controllers</em></a> that operate concurrently with the CPU.</li>
+</ul>
+<p>For multiprocessor systems, the structure of the arbiter is more complex because it has more input ports. The dual Pentium, for instance, maintains a two-port arbiter at each chip entrance and requires that the two CPUs exchange synchronization messages before attempting to use the common bus. From the programming point of view, the arbiter is hidden because it is managed by hardware circuits.</p>
 <h3 id="segmentation-in-hardware">Segmentation in Hardware</h3>
-<p>The following sections focus on address translation when <strong>protected mode</strong> is enabled, in Intel microprocessors starting with the 80286 model.</p>
-<h3 id="segment-selectors">Segment Selectors</h3>
-<p>A logical address consists of:</p>
+<p>Starting with the <a href="https://en.wikipedia.org/wiki/Intel_80286">80286</a> model, Intel microprocessors perform address translation in two different ways called <a href="https://en.wikipedia.org/wiki/Real_mode"><strong>real mode</strong></a> and <a href="https://en.wikipedia.org/wiki/Protected_mode"><strong>protected mode</strong></a>. The following sections focus on address translation when <strong>protected mode</strong> is enabled. Real mode exists mostly to maintain processor compatibility with older models and to allow the operating system to bootstrap.</p>
+<h4 id="segment-selectors-and-segmentation-registers">Segment Selectors and Segmentation Registers</h4>
+<p>A logical address consists of two parts:</p>
 <ul>
-<li><strong>Segment Selector</strong> (segment identifier): 16-bit</li>
-<li>Offset: 32-bit</li>
+<li>Segment identifier: 16-bit field called <strong>Segment Selector</strong> (<a href="#fast-access-to-segment-descriptors">described later</a>)</li>
+<li>Offset: 32-bit field</li>
 </ul>
-<h3 id="segmentation-registers">Segmentation registers</h3>
-<p><strong>Segmentation Registers</strong> hold Segment Selectors.</p>
+<p><a href="../figure_2-2.png" title="Figure 2-2. Segment Selector format"><img alt="Figure 2-2. Segment Selector format" src="../figure_2-2_600.png" /></a></p>
+<p>To retrieve segment selectors easily and quickly, the processor provides <strong>segmentation registers</strong> whose only purpose is to hold Segment Selectors:</p>
 <ul>
-<li><code>cs</code>: code segment (program instructions); 2-bit field for CPU's Current Privilege Level (CPL), Linux uses only levels 0 and 3 for Kernel Mode and User Mode</li>
-<li><code>ss</code>: stack segment (current program stack)</li>
-<li><code>ds</code>: data segment (global and static data)</li>
-<li><code>es</code>, <code>fs</code>, and <code>gs</code>: general purpose (arbitrary data)</li>
+<li><code>cs</code>: code segment register, which points to a segment containing program instructions<ul>
+<li>It includes 2-bit field for CPU's <a href="https://en.wikipedia.org/wiki/Privilege_level">Current Privilege Level</a> (CPL), Linux uses only levels 0 and 3 for Kernel Mode and User Mode</li>
 </ul>
-<h3 id="segment-descriptors">Segment Descriptors</h3>
-<p>Each segment is represented by an 8-byte <strong>Segment Descriptor</strong> that describes the segment characteristics. Segment Descriptors are stored either in the <strong>Global Descriptor Table</strong> (GDT) or in the <strong>Local Descriptor Table</strong> (LDT). The address and size of GDT and LDT are contained in <code>gdtr</code> and <code>ldtr</code> control registers respectively.</p>
+</li>
+<li><code>ss</code>: stack segment register, which points to a segment containing the current program stack</li>
+<li><code>ds</code>: data segment register, which points to a segment containing global and static data</li>
+<li><code>es</code>, <code>fs</code>, and <code>gs</code>: general purpose registers, which may refer to arbitrary data</li>
+</ul>
+<p>Despite only six of them, a program can reuse the same segmentation register for different purposes by saving its content in memory and then restoring it later.</p>
+<h4 id="segment-descriptors">Segment Descriptors</h4>
+<p>Each segment is represented by an 8-byte <strong>Segment Descriptor</strong> that describes the segment characteristics. Segment Descriptors are stored either in the <a href="https://en.wikipedia.org/wiki/Global_Descriptor_Table"><strong>Global Descriptor Table</strong></a> (GDT) or in the <a href="https://en.wikipedia.org/wiki/Global_Descriptor_Table#Local_Descriptor_Table"><strong>Local Descriptor Table</strong></a> (LDT).</p>
+<p>Usually only one GDT is defined, while each process is permitted to have its own LDT if it needs to create additional segments besides those stored in the GDT. The address and size of the GDT in main memory are contained in the <code>gdtr</code> <a href="https://en.wikipedia.org/wiki/Control_register">control register</a>, while the address and size of the currently used LDT are contained in the <code>ldtr</code> control register.</p>
+<p>The Segment Descriptor format is illustrated in the following figure:</p>
+<p><a href="../figure_2-3.png" title="Figure 2-3. Segment Descriptor format"><img alt="Figure 2-3. Segment Descriptor format" src="../figure_2-3_600.png" /></a></p>
+<p>Segment Descriptor fields are explained in the following table:</p>
+<table>
+<thead>
+<tr>
+<th>Field name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Base</code></td>
+<td>Contains the linear address of the first byte of the segment.</td>
+</tr>
+<tr>
+<td><code>G</code></td>
+<td><em>Granularity flag</em>: if it is cleared (equal to 0), the segment size is expressed in bytes; otherwise, it is expressed in multiples of 4096 bytes.</td>
+</tr>
+<tr>
+<td><code>Limit</code></td>
+<td>Holds the offset of the last memory cell in the segment, thus binding the segment length. When G is set to 0, the size of a segment may vary between 1 byte and 1 MB; otherwise, it may vary between 4 KB and 4 GB.</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td><em>System flag</em>: if it is cleared, the segment is asystem segment that stores critical data structures such as the Local Descriptor Table; otherwise, it is a normal code or data segment.</td>
+</tr>
+<tr>
+<td><code>Type</code></td>
+<td>Characterizes the segment type and its access rights (see the text that follows this table).</td>
+</tr>
+<tr>
+<td><code>DPL</code></td>
+<td><em>Descriptor Privilege Level</em>: used to restrict accesses to the segment. It represents the minimal CPU privilege level requested for accessing the segment. Therefore, a segment with its DPL set to 0 is accessible only when the CPL is 0—that is, in Kernel Mode—while a segment with its DPL set to 3 is accessible with every CPL value.</td>
+</tr>
+<tr>
+<td><code>P</code></td>
+<td><em>Segment-Present flag</em>: is equal to 0 if the segment is not stored currently in main memory. Linux always sets this flag (bit 47) to 1, because it never swaps out whole segments to disk.</td>
+</tr>
+<tr>
+<td><code>D</code> or <code>B</code></td>
+<td>Called <code>D</code> or <code>B</code> depending on whether the segment contains code or data. Its meaning is slightly different in the two cases, but it is basically set (equal to 1) if the addresses used as segment offsets are 32 bits long, and it is cleared if they are 16 bits long (see the Intel manual for further details).</td>
+</tr>
+<tr>
+<td><code>AVL</code></td>
+<td>May be used by the operating system, but it is ignored by Linux.</td>
+</tr>
+</tbody>
+</table>
+<p>There are several types of segments, and thus several types of Segment Descriptors. The following list shows the types that are widely used in Linux:</p>
 <ul>
-<li>Code Segment Descriptor: included in GDT or LDT</li>
-<li>Data Segment Descriptor: included in GDT or LDT</li>
-<li>Task State Segment Descriptor (TSSD): refers to a Task State Segment (TSS), a segment used to save the contents of the processor registers; included in GDT only</li>
-<li>Local Descriptor Table Descriptor (LDTD): refers to a segment containing an LDT; included in GDT only</li>
+<li><strong>Code Segment Descriptor</strong>: indicates that the Segment Descriptor refers to a code segment; included in GDT or LDT.<ul>
+<li>This descriptor has the S flag set (non-system segment).</li>
 </ul>
-<h3 id="fast-access-to-segment-descriptors">Fast Access to Segment Descriptors</h3>
-<p>Segmentation registers store only the Segment Selector. The x86 process provides an additional nonprogrammable register for each of the six programmable segmentation registers to speed up the translation of logical addresses into linear addresses. Each nonprogrammable register contains the 8-byte Segment Descriptor.</p>
-<p>Segment Selector fields [p40]:</p>
-<ul>
-<li><code>index</code>: identifies the Segment Descriptor entry contained in GDT or LDT</li>
-<li><code>TI</code> (Table Indicator): specifies whether the Segment Descriptor is included in the GDT (<code>TI</code> = 0) or in the LDT (<code>TI</code> = 1).</li>
-<li><code>RPL</code> (Requestor Privilege Level):  specifies the <a href="#cpl-rpl-and-registers">Current Privilege Level</a> (CPL) of the CPU when the corresponding Segment Selector is loaded into the <code>cs</code> register</li>
+</li>
+<li><strong>Data Segment Descriptor</strong>: indicates that the Segment Descriptor refers to a data segment; included in GDT or LDT<ul>
+<li>This descriptor has the S flag set.</li>
+<li>Stack segments are implemented by means of generic data segments.</li>
 </ul>
-<h3 id="segmentation-unit">Segmentation Unit</h3>
+</li>
+<li><strong>Task State Segment Descriptor</strong> (TSSD): refers to a <a href="https://en.wikipedia.org/wiki/Task_state_segment">Task State Segment</a> (TSS), a segment used to save the contents of the processor registers; included in GDT only<ul>
+<li>The corresponding <code>Type</code> field has the value 11 or 9, depending on whether the corresponding process is currently executing on a CPU.</li>
+<li>The <code>S</code> flag of such descriptors is set to 0.</li>
+</ul>
+</li>
+<li><strong>Local Descriptor Table Descriptor</strong> (LDTD): refers to a segment containing an LDT; included in GDT only<ul>
+<li>The corresponding <code>Type</code> field has the value 2.</li>
+<li>The <code>S</code> flag of such descriptors is set to 0.</li>
+</ul>
+</li>
+</ul>
+<h4 id="fast-access-to-segment-descriptors">Fast Access to Segment Descriptors</h4>
+<p>Recall that <u>logical addresses consist of a 16-bit Segment Selector and a 32-bit Offset, and that segmentation registers store only the Segment Selector.</u></p>
+<p>To speed up the translation of logical addresses into linear addresses, the 80×86 processor provides an additional nonprogrammable register, which cannot be set by a programmer, for each of the six programmable segmentation registers.</p>
+<ol>
+<li>Each nonprogrammable register contains the 8-byte Segment Descriptor specified by the Segment Selector contained in the corresponding segmentation register.</li>
+<li>Every time a Segment Selector is loaded in a segmentation register, the corresponding Segment Descriptor is loaded from memory into the matching nonprogrammable CPU register.</li>
+<li>From then on, translations of logical addresses referring to that segment can be performed without accessing the GDT or LDT stored in main memory; the processor can refer only directly to the CPU register containing the Segment Descriptor.</li>
+<li>Accesses to the GDT or LDT are necessary only when the contents of the segmentation registers change.</li>
+</ol>
+<p>The Segment Selector includes three fields, described in the following table:</p>
+<table>
+<thead>
+<tr>
+<th>Field name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index</code></td>
+<td>Identifies the Segment Descriptor entry contained in the GDT or in the LDT.</td>
+</tr>
+<tr>
+<td><code>TI</code></td>
+<td><em>Table Indicator</em>: specifies whether the Segment Descriptor is included in the GDT (TI = 0) or in the LDT (<code>TI</code> = 1).</td>
+</tr>
+<tr>
+<td><code>RPL</code></td>
+<td><em>Requestor Privilege Level:</em> specifies the <a href="#cpl-rpl-and-registers">Current Privilege Level</a> (CPL)  of the CPU when the corresponding Segment Selector is loaded into the <code>cs</code> register; it also may be used to selectively weaken the processor privilege level when accessing data segments.</td>
+</tr>
+</tbody>
+</table>
+<p>Because a Segment Descriptor is 8 bytes long, its relative address inside the GDT or the LDT is obtained by multiplying the 13-bit <code>index</code> field (<a href="../figure_2-2.png">Figure 2-2</a>) of the Segment Selector by 8. For instance, if the GDT is at <code>0x00020000</code> (the value stored in the <code>gdtr</code> register) and the <code>index</code> specified by the Segment Selector is 2, the address of the corresponding Segment Descriptor is <code>0x00020000 + (2 × 8)</code>, or <code>0x00020010</code>.</p>
+<p>The first entry of the GDT is always set to 0. This ensures that logical addresses with a null Segment Selector will be considered invalid, thus causing a processor exception. The maximum number of Segment Descriptors that can be stored in the GDT is 8,191 (2<sup>13</sup>–1).</p>
+<h4 id="segmentation-unit">Segmentation Unit</h4>
 <p>The <strong>segmentation unit</strong> performs the following operations to obtain the linear address:</p>
-<p><a href="../figure_2-5.png" title="Figure 2-5. Translating a logical address"><img alt="Figure 2-5. Translating a logical address" src="../figure_2-5.png" /></a></p>
+<p><a href="../figure_2-5.png" title="Figure 2-5. Translating a logical address"><img alt="Figure 2-5. Translating a logical address" src="../figure_2-5_600.png" /></a></p>
 <ul>
-<li>Examines the <code>TI</code> field of the Segment Selector to determine which Descriptor Table (GDT or LDT) stores the Segment Descriptor</li>
-<li>Computes the address of the Segment Descriptor from the <code>index</code> field of the Segment Selector</li>
-<li>Adds the offset of the logical address to the <code>Base</code> field of the Segment Descriptor</li>
+<li>Examines the <code>TI</code> field of the Segment Selector to determine which Descriptor Table (GDT or LDT) stores the Segment Descriptor.<ul>
+<li>If the Descriptor is in the GDT, then the segmentation unit gets the base linear address of the GDT from the <code>gdtr</code> register.</li>
+<li>If the Descriptor is in the active LDT, then the segmentation unit gets the base linear address of that LDT from the <code>ldtr</code> register.</li>
 </ul>
+</li>
+<li>Computes the address of the Segment Descriptor from the <code>index</code> field of the Segment Selector.<ul>
+<li>The <code>index</code> field is multiplied by 8 (the size of a Segment Descriptor), and the result is added to the content of the <code>gdtr</code> or <code>ldtr</code> register.</li>
+</ul>
+</li>
+<li>Adds the offset of the logical address to the <code>Base</code> field of the Segment Descriptor to obtain the linear address.</li>
+</ul>
+<p>Thanks to the nonprogrammable registers associated with the segmentation registers, the first two operations need to be performed only when a segmentation register has been changed.</p>
 <h3 id="segmentation-in-linux">Segmentation in Linux</h3>
-<p>All Linux processes running in User Mode use the same pair of segments to address instructions and data. This is similar to processes running in Kernel Mode.</p>
+<p>Segmentation has been included in 80×86 microprocessors to encourage programmers to split their applications into logically related entities, such as subroutines or global and local data areas. However, Linux uses segmentation in a very limited way. Both segmentation and paging can be used to separate the physical address spaces of processes:</p>
 <ul>
-<li>user code segment</li>
-<li>user data segment</li>
-<li>kernel code segment</li>
-<li>kernel data segment</li>
+<li>Segmentation can assign a different linear address space to each process.</li>
+<li>Paging can map the same linear address space into different physical address spaces.</li>
 </ul>
+<p>Linux prefers paging to segmentation for the following reasons:</p>
+<ul>
+<li>Memory management is simpler when all processes use the same segment register values: they share the same set of linear addresses.</li>
+<li>Paging makes Linux is portable to a wide range of architectures; RISC architectures in particular have limited support for segmentation.</li>
+</ul>
+<p><u>The 2.6 version of Linux uses segmentation only when required by the 80×86 architecture.</u></p>
+<ul>
+<li>All Linux processes running in User Mode use the same pair of segments to address instructions and data, called <strong>user code segment</strong> and <strong>user data segment</strong>, respectively.</li>
+<li>All Linux processes running in Kernel Mode use the same pair of segments to address instructions and data, called <strong>kernel code segment</strong> and <strong>kernel data segment</strong>, respectively.</li>
+</ul>
+<p>The following table shows the values of the Segment Descriptor fields for these four crucial segments.</p>
+<table>
+<thead>
+<tr>
+<th>Segment</th>
+<th>Base</th>
+<th>G</th>
+<th>Limit</th>
+<th>S</th>
+<th>Type</th>
+<th>DPL</th>
+<th>D/B</th>
+<th>P</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>user code</td>
+<td><code>0x00000000</code></td>
+<td>1</td>
+<td><code>0xfffff</code></td>
+<td>1</td>
+<td>10</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>user data</td>
+<td><code>0x00000000</code></td>
+<td>1</td>
+<td><code>0xfffff</code></td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>kernel code</td>
+<td><code>0x00000000</code></td>
+<td>1</td>
+<td><code>0xfffff</code></td>
+<td>1</td>
+<td>10</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>kernel data</td>
+<td><code>0x00000000</code></td>
+<td>1</td>
+<td><code>0xfffff</code></td>
+<td>1</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
 <p>Segment Selectors are defined by the macros:</p>
 <ul>
 <li><code>__USER_CS</code></li>
@@ -635,36 +818,67 @@
 </ul>
 <p>To address the kernel code segment, for instance, the kernel just loads the value yielded by the <code>__KERNEL_CS</code> macro into the <code>cs</code> segmentation register.</p>
 <p>The linear addresses associated with such segments all start at 0 and reach the addressing limit of 2<sup>32</sup> –1. This means that all processes, either in User Mode or in Kernel Mode, may use the same logical addresses.</p>
-<h4 id="cpl-rpl-and-registers"><a href="http://en.wikipedia.org/wiki/Protection_ring">CPL</a>, <code>RPL</code> and registers</h4>
+<p>Another important consequence of having all segments start at <code>0x00000000</code> is that in Linux, logical addresses coincide with linear addresses: the value of the Offset field of a logical address always coincides with the value of the corresponding linear address.</p>
+<h4 id="cpl-rpl-and-registers"><a href="http://en.wikipedia.org/wiki/Protection_ring">CPL</a>, <code>RPL</code> and registers *</h4>
 <p>The Current Privilege Level (CPL) of the CPU indicates whether the processor is in User or Kernel Mode and is specified by the <code>RPL</code> field of the Segment Selector stored in the <code>cs</code> register. [p42]</p>
-<p>Whenever the CPL is changed, some segmentation registers (e.g. <code>ds</code>, <code>ss</code>) must be correspondingly updated. [p42-43]</p>
-<h4 id="implicit-segment-selector">Implicit Segment Selector</h4>
-<p>Only Offset component of its logical address is specified:</p>
+<p>Whenever the CPL is changed, some segmentation registers must be correspondingly updated. For instance:</p>
+<ul>
+<li>When the CPL is equal to 3 (User Mode), the <code>ds</code> register must contain the Segment Selector of the user data segment; when the CPL is equal to 0, it must contain the Segment Selector of the kernel data segment.</li>
+<li>When the CPL is 3, the <code>ss</code> must refer to a User Mode stack inside the user data segment; when the CPL is 0, it must refer to a Kernel Mode stack inside the kernel data segment. When switching from User Mode to Kernel Mode, Linux always makes sure that the <code>ss</code> register contains the Segment Selector of the kernel data segment.</li>
+</ul>
+<h4 id="implicit-segment-selector">Implicit Segment Selector *</h4>
+<p>When saving a pointer to an instruction or to a data structure, the kernel does not need to store the Segment Selector component of the logical address, because the <code>ss</code> register contains the current Segment Selector.</p>
+<p>For example, when the kernel invokes a function, it executes a <code>call</code> assembly language instruction specifying only the Offset component of its logical address; the Segment Selector is implicitly selected as the one referred to by the <code>cs</code> register. Because there is only one segment of type "executable in Kernel Mode", namely the code segment identified by <code>__KERNEL_CS</code>, it is sufficient to load <code>__KERNEL_CS</code> into <code>cs</code> whenever the CPU switches to Kernel Mode.</p>
+<p>The same argument goes for pointers to kernel data structures (implicitly using the <code>ds</code> register), as well as for pointers to user data structures (the kernel explicitly uses the <code>es</code> register).</p>
 <ul>
 <li><code>ss</code>: kernel saves a pointer to an instruction or to a data structure</li>
 <li><code>cs</code>: kernel invokes a function</li>
 <li><code>ds</code>: kernel data structure</li>
 <li><code>es</code>: user data structure</li>
 </ul>
-<h3 id="the-linux-gdt">The Linux GDT</h3>
+<p>Besides the four segments described, Linux makes use of a few other specialized segments (discussed in The Linux GDT).</p>
+<h4 id="the-linux-gdt">The Linux GDT</h4>
 <p>In multiprocessor systems there is one GDT for every CPU [p43].</p>
 <ul>
-<li><a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S#L479"><code>cpu_gdt_table</code></a> array: stores GDTs</li>
-<li><a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S"><code>cpu_gdt_descr</code></a> array: addresses and sizes of the GDTs</li>
+<li>All GDTs are stored in the <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S#L479"><code>cpu_gdt_table</code></a> array.</li>
+<li>The addresses and sizes of the GDTs (used when initializing the <code>gdtr</code> registers) are stored in the <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S"><code>cpu_gdt_descr</code></a> array.</li>
 </ul>
-<p>Each GDT includes 18 segment descriptors and 14 null, unused, or reserved entries. Unused entries are inserted on purpose so that Segment Descriptors usually accessed together are kept in the same 32-byte line of the hardware cache.</p>
+<p>These symbols are defined in the file <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S">arch/i386/kernel/head.S</a>.</p>
+<p>The layout of the GDTs is shown schematically in the following figure:</p>
+<p><a href="../figure_2-6.png" title="Figure 2-6. The Global Descriptor Table"><img alt="Figure 2-6. The Global Descriptor Table" src="../figure_2-6_600.png" /></a></p>
+<p>Each GDT includes 18 segment descriptors and 14 null, unused, or reserved entries. Unused entries are inserted on purpose so that Segment Descriptors usually accessed together are kept in the same 32-byte line of the <a href="#hardware-cache">hardware cache</a>.</p>
+<p>The 18 segment descriptors included in each GDT point to the following segments:</p>
 <ul>
-<li><a href="#segmentation-in-linux">Four user and kernel code and data segments</a></li>
-<li>Task State Segment (TSS)</li>
-<li>Default Local Descriptor Table(LDT), usually shared by all processes</li>
-<li>Three Thread-Local Storage (TLS) segments: allows multithreaded applications to make use of up to three segments containing data local to each thread. The <code>set_thread_area()</code> and <code>get_thread_area()</code> system calls, respectively, create and release a TLS segment for the executing process.</li>
-<li>Three segments related to Advanced Power Management (APM)</li>
-<li>Five segments related to Plug and Play (PnP) BIOS services</li>
+<li>Four user and kernel code and data segments (see <a href="#segmentation-in-linux">previous section</a>)</li>
+<li><a href="https://en.wikipedia.org/wiki/Task_state_segment">Task State Segment</a> (TSS): different for each processor in the system.<ul>
+<li>The linear address space corresponding to a TSS is a small subset of the linear address space corresponding to the kernel data segment.</li>
+<li>The Task State Segments are sequentially stored in the <code>init_tss</code> array; in particular, the <code>Base</code> field of the TSS descriptor for the <em>n</em>th CPU points to the <em>n</em>th component of the <code>init_tss</code> array.</li>
+<li>The <code>G</code> (granularity) flag is cleared, while the <code>Limit</code> field is set to <code>0xeb</code>, because the TSS segment is 236 bytes long.</li>
+<li>The <code>Type</code> field is set to 9 or 11 (available 32-bit TSS), and the <code>DPL</code> is set to 0, because processes in User Mode are not allowed to access TSS segments.</li>
+</ul>
+</li>
+<li>A segment including the default Local Descriptor Table (LDT), usually shared by all processes</li>
+<li>Three <a href="https://en.wikipedia.org/wiki/Thread-local_storage">Thread-Local Storage</a> (TLS) segments: allows multithreaded applications to make use of up to three segments containing data local to each thread. The <code>set_thread_area()</code> and <code>get_thread_area()</code> system calls, respectively, create and release a TLS segment for the executing process.</li>
+<li>Three segments related to <a href="https://en.wikipedia.org/wiki/Advanced_Power_Management">Advanced Power Management</a> (APM)</li>
+<li>Five segments related to <a href="https://en.wikipedia.org/wiki/Plug_and_play">Plug and Play</a> (PnP) BIOS services</li>
 <li>A special TSS segment used by the kernel to handle "Double fault" exceptions</li>
 </ul>
-<h3 id="the-linux-ldt">The Linux LDT</h3>
-<p>Most Linux User Mode applications do not make use of a Local Descriptor Table. The kernel defines a default LDT to be shared by most processes. It has five entries but only two are used by the kernel: a <a href="http://en.wikipedia.org/wiki/Call_gate">call gate</a> for <a href="http://en.wikipedia.org/wiki/Intel_Binary_Compatibility_Standard">iBCS</a> executables, and a call gate for Solaris/x86 executables.</p>
-<p>In some cases, processes may require to set up their own LDT, such as applications (such as Wine) that execute segment-oriented Microsoft Windows applications. The <code>modify_ldt()</code> system call allows a process to do this.</p>
+<p>There is a copy of the GDT for each processor in the system. All copies of the GDT store identical entries, except for a few cases:</p>
+<ol>
+<li>Each processor has its own TSS segment, thus the corresponding GDT's entries differ.</li>
+<li>A few entries in the GDT may depend on the process that the CPU is executing (LDT and TLS Segment Descriptors).</li>
+<li>In some cases a processor may temporarily modify an entry in its copy of the GDT, for instance, when invoking an APM's BIOS procedure.</li>
+</ol>
+<h4 id="the-linux-ldts">The Linux LDTs</h4>
+<p>Most Linux User Mode applications do not make use of a Local Descriptor Table. The kernel defines a default LDT to be shared by most processes. It has five entries but only two are used by the kernel:</p>
+<ul>
+<li>A <a href="http://en.wikipedia.org/wiki/Call_gate">call gate</a> for <a href="http://en.wikipedia.org/wiki/Intel_Binary_Compatibility_Standard">iBCS</a> executables</li>
+<li>A call gate for Solaris/x86 executables</li>
+</ul>
+<p><strong>Call gates</strong> are a mechanism provided by 80×86 microprocessors to change the privilege level of the CPU while invoking a predefined function.</p>
+<p>In some cases, processes may require to set up their own LDT, such as applications (such as <a href="https://en.wikipedia.org/wiki/Wine_(software)">Wine</a>) that execute segment-oriented Microsoft Windows applications. The <a href="http://man7.org/linux/man-pages/man2/modify_ldt.2.html"><code>modify_ldt()</code></a> system call allows a process to do this.</p>
+<p>Any custom LDT created by <code>modify_ldt()</code> also requires its own segment. When a processor starts executing a process having a custom LDT, the LDT entry in the CPU-specific copy of the GDT is changed accordingly.</p>
+<p>User Mode applications also may allocate new segments by means of <code>modify_ldt()</code>; the kernel, however, never makes use of these segments, and it does not have to keep track of the corresponding Segment Descriptors, because they are included in the custom LDT of the process.</p>
 <h3 id="paging-in-hardware">Paging in Hardware</h3>
 <p>The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a Page Fault exception if memory access is not valid.</p>
 <ul>
@@ -672,14 +886,8 @@
 <li><strong>Page frames</strong> (or <strong>physical pages</strong>): RAM partitions from the perspective of the paging unit. Each page frame (storage area) contains a page (block of data), thus the length of a page frame coincides with that of a page.</li>
 <li><strong>Page table</strong>: data structures (in main memory) that map linear to physical addresses</li>
 </ul>
-<h3 id="regular-paging">Regular Paging</h3>
+<h4 id="regular-paging">Regular Paging</h4>
 <p>The x86 processors support paging; it is enabled by setting the <code>PG</code> flag of a control register named <code>cr0</code>.</p>
-<hr />
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<p>Segmentation in Linux [p41]</p>
-<blockquote>
-<p>However, Linux uses segmentation in a very limited way. In fact, segmentation and paging are somewhat redundant, because both can be used to separate the physical address spaces of processes: segmentation can assign a different linear address space to each process, while paging can map the same linear address space into different physical address spaces. Linux prefers paging to segmentation for the following reasons:</p>
-</blockquote>
             </div>
         </div>
 
