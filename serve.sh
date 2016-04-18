@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-mkdocs serve &> /dev/null
+mkdocs serve "$@" &> /dev/null
