@@ -552,6 +552,8 @@
         
             <li><a href="#regular-paging">Regular Paging</a></li>
         
+            <li><a href="#extended-paging">Extended Paging</a></li>
+        
     
     </ul>
 </div></div>
@@ -880,14 +882,55 @@
 <p>Any custom LDT created by <code>modify_ldt()</code> also requires its own segment. When a processor starts executing a process having a custom LDT, the LDT entry in the CPU-specific copy of the GDT is changed accordingly.</p>
 <p>User Mode applications also may allocate new segments by means of <code>modify_ldt()</code>; the kernel, however, never makes use of these segments, and it does not have to keep track of the corresponding Segment Descriptors, because they are included in the custom LDT of the process.</p>
 <h3 id="paging-in-hardware">Paging in Hardware</h3>
-<p>The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a Page Fault exception if memory access is not valid.</p>
+<p>The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a <a href="https://en.wikipedia.org/wiki/Page_fault">Page Fault</a> exception if memory access is not valid.</p>
 <ul>
 <li><strong>Pages</strong>: grouped fixed-length intervals of linear addresses; contiguous linear addresses within a page are mapped into contiguous physical addresses. The term "page" to refer both to a set of linear addresses and to the data contained in this group of addresses.</li>
-<li><strong>Page frames</strong> (or <strong>physical pages</strong>): RAM partitions from the perspective of the paging unit. Each page frame (storage area) contains a page (block of data), thus the length of a page frame coincides with that of a page.</li>
-<li><strong>Page table</strong>: data structures (in main memory) that map linear to physical addresses</li>
+<li><strong>Page frames</strong> (or <strong>physical pages</strong>): the paging unit thinks of all RAM as partitioned into fixed-length page frames.<ul>
+<li>Each page frame contains a page, thus the length of a page frame coincides with that of a page.</li>
+<li>A page frame is a constituent of main memory, and hence it is a storage area.</li>
+<li>It is important to distinguish a page from a page frame: the former is just a block of data, which may be stored in any page frame or on disk.</li>
 </ul>
+</li>
+<li><strong>Page table</strong>: data structures that map linear to physical addresses<ul>
+<li>Page tables are stored in main memory and must be properly initialized by the kernel before enabling the paging unit.</li>
+</ul>
+</li>
+</ul>
+<p>Starting with the <a href="https://en.wikipedia.org/wiki/Intel_80386">80386</a>, all 80×86 processors support paging; it is enabled by setting the <code>PG</code> flag of a control register named <code>cr0</code>. When <code>PG = 0</code>, linear addresses are interpreted as physical addresses.</p>
 <h4 id="regular-paging">Regular Paging</h4>
-<p>The x86 processors support paging; it is enabled by setting the <code>PG</code> flag of a control register named <code>cr0</code>.</p>
+<p>Starting with the 80386, the paging unit of Intel processors handles 4 KB pages.</p>
+<p>The 32 bits of a linear address are divided into three fields:</p>
+<ul>
+<li><strong>Directory</strong>: the most significant 10 bits</li>
+<li><strong>Table</strong>: the intermediate 10 bits</li>
+<li><strong>Offset</strong>: the least significant 12 bits</li>
+</ul>
+<p>The translation of linear addresses is accomplished in two steps, each based on a
+type of translation table.</p>
+<ol>
+<li>The first translation table is called the <strong>Page Directory</strong>.</li>
+<li>The second is called the <strong>Page Table</strong>.</li>
+</ol>
+<p>In the following texts, the lowercase "page table" term denotes any page storing the mapping between linear and physical addresses, while the capitalized "Page Table" term denotes a page in the last level of page tables.</p>
+<p>The aim of this two-level scheme is to reduce the amount of RAM required for per-process Page Tables:</p>
+<ul>
+<li>If a simple one-level Page Table was used, then it would require up to 2<sup>20</sup> entries (at 4 bytes per entry, 4 MB of RAM) to represent the Page Table for each process (if the process used a full 4 GB linear address space), even though a process does not use all addresses in that range.</li>
+<li><u>The two-level scheme reduces the memory by requiring Page Tables only for those virtual memory regions actually used by a process.</u></li>
+</ul>
+<p>Each active process must have a Page Directory assigned to it. However, there is no need to allocate RAM for all Page Tables of a process at once; it is more efficient to allocate RAM for a Page Table only when the process effectively needs it.</p>
+<ul>
+<li>The physical address of the Page Directory in use is stored in a control register named <code>cr3</code>.</li>
+<li>The Directory field within the linear address determines the entry in the Page Directory that points to the proper Page Table.</li>
+<li>The Table field determines the entry in the Page Table that contains the physical address of the page frame containing the page.</li>
+<li>The Offset field determines the relative position within the page frame (see the following figure).<ul>
+<li>Because it is 12 bits long, each page consists of 4096 bytes of data.</li>
+</ul>
+</li>
+</ul>
+<p><a href="../figure_2-7.png" title="Figure 2-7. Paging by 80 × 86 processors"><img alt="Figure 2-7. Paging by 80 × 86 processors" src="../figure_2-7_600.png" /></a></p>
+<p>Both the Directory and the Table fields are 10 bits long, so Page Directories and Page Tables can include up to 1,024 entries. Thus, a Page Directory can address up to 1024 × 1024 × 4096=2<sup>32</sup> memory cells, which is expected in 32-bit addresses.</p>
+<p>The entries of Page Directories and Page Tables have the same structure. Each entry includes the following fields:</p>
+<h4 id="extended-paging">Extended Paging</h4>
             </div>
         </div>
 

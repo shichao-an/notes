@@ -243,12 +243,53 @@ User Mode applications also may allocate new segments by means of `modify_ldt()`
 
 ### Paging in Hardware
 
-The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a Page Fault exception if memory access is not valid.
+The paging unit translates linear addresses into physical ones. Its key task is to check the requested access type against the access rights of the linear address, and generates a [Page Fault](https://en.wikipedia.org/wiki/Page_fault) exception if memory access is not valid.
 
 * **Pages**: grouped fixed-length intervals of linear addresses; contiguous linear addresses within a page are mapped into contiguous physical addresses. The term "page" to refer both to a set of linear addresses and to the data contained in this group of addresses.
-* **Page frames** (or **physical pages**): RAM partitions from the perspective of the paging unit. Each page frame (storage area) contains a page (block of data), thus the length of a page frame coincides with that of a page.
-* **Page table**: data structures (in main memory) that map linear to physical addresses
+* **Page frames** (or **physical pages**): the paging unit thinks of all RAM as partitioned into fixed-length page frames.
+    * Each page frame contains a page, thus the length of a page frame coincides with that of a page.
+    * A page frame is a constituent of main memory, and hence it is a storage area.
+    * It is important to distinguish a page from a page frame: the former is just a block of data, which may be stored in any page frame or on disk.
+* **Page table**: data structures that map linear to physical addresses
+    * Page tables are stored in main memory and must be properly initialized by the kernel before enabling the paging unit.
+
+Starting with the [80386](https://en.wikipedia.org/wiki/Intel_80386), all 80×86 processors support paging; it is enabled by setting the `PG` flag of a control register named `cr0`. When `PG = 0`, linear addresses are interpreted as physical addresses.
 
 #### Regular Paging
 
-The x86 processors support paging; it is enabled by setting the `PG` flag of a control register named `cr0`.
+Starting with the 80386, the paging unit of Intel processors handles 4 KB pages.
+
+The 32 bits of a linear address are divided into three fields:
+
+* **Directory**: the most significant 10 bits
+* **Table**: the intermediate 10 bits
+* **Offset**: the least significant 12 bits
+
+The translation of linear addresses is accomplished in two steps, each based on a
+type of translation table.
+
+1. The first translation table is called the **Page Directory**.
+2. The second is called the **Page Table**.
+
+In the following texts, the lowercase "page table" term denotes any page storing the mapping between linear and physical addresses, while the capitalized "Page Table" term denotes a page in the last level of page tables.
+
+The aim of this two-level scheme is to reduce the amount of RAM required for per-process Page Tables:
+
+* If a simple one-level Page Table was used, then it would require up to 2<sup>20</sup> entries (at 4 bytes per entry, 4 MB of RAM) to represent the Page Table for each process (if the process used a full 4 GB linear address space), even though a process does not use all addresses in that range.
+* <u>The two-level scheme reduces the memory by requiring Page Tables only for those virtual memory regions actually used by a process.</u>
+
+Each active process must have a Page Directory assigned to it. However, there is no need to allocate RAM for all Page Tables of a process at once; it is more efficient to allocate RAM for a Page Table only when the process effectively needs it.
+
+* The physical address of the Page Directory in use is stored in a control register named `cr3`.
+* The Directory field within the linear address determines the entry in the Page Directory that points to the proper Page Table.
+* The Table field determines the entry in the Page Table that contains the physical address of the page frame containing the page.
+* The Offset field determines the relative position within the page frame (see the following figure).
+    * Because it is 12 bits long, each page consists of 4096 bytes of data.
+
+[![Figure 2-7. Paging by 80 × 86 processors](figure_2-7_600.png)](figure_2-7.png "Figure 2-7. Paging by 80 × 86 processors")
+
+Both the Directory and the Table fields are 10 bits long, so Page Directories and Page Tables can include up to 1,024 entries. Thus, a Page Directory can address up to 1024 × 1024 × 4096=2<sup>32</sup> memory cells, which is expected in 32-bit addresses.
+
+The entries of Page Directories and Page Tables have the same structure. Each entry includes the following fields:
+
+#### Extended Paging
