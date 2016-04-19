@@ -271,7 +271,10 @@ type of translation table.
 1. The first translation table is called the **Page Directory**.
 2. The second is called the **Page Table**.
 
-In the following texts, the lowercase "page table" term denotes any page storing the mapping between linear and physical addresses, while the capitalized "Page Table" term denotes a page in the last level of page tables.
+In the following texts
+
+* The lowercase "page table" term denotes any page storing the mapping between linear and physical addresses.
+* The capitalized "Page Table" term denotes a page in the last level of page tables.
 
 The aim of this two-level scheme is to reduce the amount of RAM required for per-process Page Tables:
 
@@ -292,4 +295,120 @@ Both the Directory and the Table fields are 10 bits long, so Page Directories an
 
 The entries of Page Directories and Page Tables have the same structure. Each entry includes the following fields:
 
+* `Present` flag.
+    * If it is set, the referred-to page (or Page Table) is contained in main memory.
+    * If it is 0, the page is not contained in main memory. The remaining entry bits may be used by the operating system for its own purposes.
+    * <u>If the entry of a Page Table or Page Directory needed to perform an address translation has the `Present` flag cleared, the paging unit stores the linear address in a control register named `cr2` and generates exception 14: the Page Fault exception.</u>
+* `Field` containing the 20 most significant bits of a page frame physical address.
+    * <u>Because each page frame has a 4-KB capacity, its physical address must be a multiple of 4096, so the 12 least significant bits of the physical address are always equal to 0.</u>
+    * If the field refers to a Page Directory, the page frame contains a Page Table; if it refers to a Page Table, the page frame contains a page of data.
+* `Accessed` flag.
+    * This flag is set each time the paging unit addresses the corresponding page frame.
+    * This flag may be used by the operating system when selecting pages to be swapped out.
+    * The paging unit never resets this flag; this must be done by the operating system.
+* `Dirty` flag.
+    * This flag applies only to the Page Table entries. It is set each time a write operation is performed on the page frame.
+    * As with the `Accessed` flag, `Dirty` may be used by the operating system when selecting pages to be swapped out.
+    * The paging unit never resets this flag; this must be done by the operating system.
+* `Read/Write` flag.
+    * This flag contains the access right (Read/Write or Read) of the page or of the Page Table (see [Hardware Protection Scheme](#hardware-protection-scheme)).
+* `User/Supervisor` flag.
+    * This flag contains the privilege level required to access the page or Page Table (see [Hardware Protection Scheme](#hardware-protection-scheme)).
+* `PCD` and `PWT` flags
+    * The flags control the way the page or Page Table is handled by the hardware cache (see [Hardware Cache](#hardware-cache)).
+* `Page Size` flag.
+    * This flag applies only to Page Directory entries. If it is set, the entry refers to a 2 MB (or 4 MB) long page frame (see the following sections).
+* `Global` flag.
+    * This applies only to Page Table entries.
+    * This flag was introduced in the Pentium Pro to prevent frequently used pages from being flushed from the TLB cache (see [Translation Lookaside Buffers](#translation-lookaside-buffers)).
+    * It works only if the Page Global Enable (`PGE`) flag of register `cr4` is set.
+
 #### Extended Paging
+
+Starting with the [Pentium](https://en.wikipedia.org/wiki/Pentium) model, 80×86 microprocessors introduce **extended paging**, which allows page frames to be 4 MB instead of 4 KB in size, as show in the following figure:
+
+[![Figure 2-8. Extended paging](figure_2-8_600.png)](figure_2-8.png "Figure 2-8. Extended paging")
+
+Extended paging is used to translate large contiguous linear address ranges into corresponding physical ones. The kernel can do without intermediate Page Tables and thus save memory and preserve TLB entries.
+
+As mentioned in the previous section, extended paging is enabled by setting the `Page Size` flag of a Page Directory entry. In this case, the paging unit divides the 32 bits of a linear address into two fields:
+
+* Directory: the most significant 10 bits
+* Offset: the remaining 22 bits
+
+Page Directory entries for extended paging are the same as for normal paging, except that:
+
+* The Page Size flag must be set.
+* Only the 10 most significant bits of the 20-bit physical address field are significant. This is because each physical address is aligned on a 4-MB boundary, so the 22 least significant bits of the address are 0.
+
+```text
+           |      Field       |
+Regular    XXXXXXXXXXXXXXXXXXXX000000000000
+           |      20 SGFNT    |
+
+           |      Field       |
+Extended   XXXXXXXXXX0000000000000000000000
+           |10 SGFNT|
+```
+
+#### Hardware Protection Scheme
+
+The paging unit uses a different protection scheme from the segmentation unit.  While 80×86 processors allow four possible privilege levels to a segment, only two privilege levels are associated with pages and Page Tables, because privileges are controlled by the `User/Supervisor` flag mentioned in [Regular Paging](#regular-paging):
+
+* When this flag is 0, the page can be addressed only when the CPL is less than 3 (this means, for Linux, when the processor is in Kernel Mode).
+* When the flag is 1, the page can always be addressed.
+
+Instead of the three types of access rights (Read, Write, and Execute) associated with segments, only two types of access rights (Read and Write) are associated with pages:
+
+* If the `Read/Write` flag of a Page Directory or Page Table entry is equal to 0, the corresponding Page Table or page can only be read.
+* If the `Read/Write` flag is equal to 1, it can be read and written.
+
+#### An Example of Regular Paging
+
+This section help you understand how regular paging works. Assume that the kernel assigns the linear address space between `0x20000000` and `0x2003ffff` to a running process. (The 3 GB linear address space is an upper limit, but a User Mode process is allowed to reference only a subset of it.) This space consists of exactly 64 pages. We don't care about the physical addresses of the page frames containing the pages; in fact, some of them might not even be in main memory. We are interested only in the remaining fields of the Page Table entries.
+
+##### **Directory field** *
+
+The 10 most significant bits of the linear addresses assigned to the process are the Directory field (interpreted by the paging unit).
+
+* The addresses start with a 2 followed by zeros, so the 10 bits all have the same value, namely `0x080` or 128 decimal.
+    * Thus the Directory field in all the addresses refers to the 129th entry of the process Page Directory.
+    * The corresponding entry must contain the physical address of the Page Table assigned to the process (see the following figure).
+* If no other linear addresses are assigned to the process, all the remaining 1,023 entries of the Page Directory are filled with zeros.
+
+[![Figure 2-9. An example of paging](figure_2-9_600.png)](figure_2-9.png "Figure 2-9. An example of paging")
+
+##### **Table field** *
+
+The values of the intermediate 10 bits, Table field, range from 0 to `0x03f`, or from 0 to 63 decimal. Thus, only the first 64 entries of the Page Table are valid. The remaining 960 entries are filled with zeros.
+
+Suppose that the process needs to read the byte at linear address `0x20021406`. This address is handled by the paging unit as follows:
+
+1. The Directory field `0x80` is used to select entry `0x80` of the Page Directory, which points to the Page Table associated with the process's pages.
+2. The Table field `0x21` is used to select entry `0x21` of the Page Table, which points to the page frame containing the desired page.
+3. Finally, the Offset field `0x406` is used to select the byte at offset `0x406` in the desired page frame.
+
+##### **Page Fault exception** *
+
+The paging unit issues a Page Fault exception while translating the linear address in the following two cases:
+
+* If the `Present` flag of the `0x21` entry of the Page Table is cleared, then the page is not present in main memory.
+* The process attempts to access linear addresses outside of the interval delimited by `0x20000000` and `0x2003ffff`. Because the Page Table entries not assigned to the process are filled with zeros, their `Present` flags are all cleared.
+
+#### The Physical Address Extension (PAE) Paging Mechanism
+
+The amount of RAM supported by a processor is limited by the number of address pins connected to the address bus. Older Intel processors from the 80386 to the Pentium used 32-bit physical addresses. In theory, up to 4 GB of RAM could be installed on such systems; in practice, <u>due to the linear address space requirements of User Mode processes, the kernel cannot directly address more than 1 GB of RAM</u>, as we will see in the later section [Paging in Linux](#paging-in-linux).
+
+However, big servers require more than 4 GB of RAM, which in recent years created a pressure on Intel to expand the amount of RAM supported on the 32-bit 80×86 architecture. Intel has satisfied these requests by increasing the number of address pins on its processors from 32 to 36. Starting with the [Pentium Pro](https://en.wikipedia.org/wiki/Pentium_Pro), all Intel processors are now able to address up to 2<sup>36</sup> = 64 GB of RAM. However, the increased range of physical addresses can be exploited only by introducing a new paging mechanism that translates 32-bit linear addresses into 36-bit physical ones.
+
+With the Pentium Pro processor, Intel introduced a mechanism called [Physical Address Extension](https://en.wikipedia.org/wiki/Physical_Address_Extension) (PAE). (Another mechanism, Page Size Extension (PSE-36), introduced in the Pentium III processor, is not used by Linux, and is thus ignored in this book.)
+
+
+
+#### Paging for 64-bit Architectures
+
+#### Hardware Cache
+
+#### Translation Lookaside Buffers (TLB)
+
+### Paging in Linux
