@@ -403,12 +403,88 @@ However, big servers require more than 4 GB of RAM, which in recent years create
 
 With the Pentium Pro processor, Intel introduced a mechanism called [Physical Address Extension](https://en.wikipedia.org/wiki/Physical_Address_Extension) (PAE). (Another mechanism, Page Size Extension (PSE-36), introduced in the Pentium III processor, is not used by Linux, and is thus ignored in this book.)
 
+PAE is activated by setting the Physical Address Extension (`PAE`) flag in the `cr4` control register. The Page Size (`PS`) flag in the page directory entry enables large page sizes (2 MB when PAE is enabled).
 
+Intel has changed the paging mechanism in order to support PAE.
+
+* The 64 GB of RAM are split into 2<sup>24</sup> distinct page frames, and the physical address field of Page Table entries has been expanded from 20 to 24 bits.
+    * A PAE Page Table entry must include the 12 flag bits (32 - 20 (`Field`) = 12, see [Regular Paging](#regular-paging)) and the 24 physical address bits, for a total of 36 bits, so the Page Table entry size has been doubled from 32 bits to 64 bits. As a result, a 4-KB PAE Page Table includes 512 entries instead of 1,024.
+* A new level of Page Table called the Page Directory Pointer Table (PDPT) consisting of four 64-bit entries has been introduced.
+* The `cr3` control register contains a 27-bit Page Directory Pointer Table base address field. Because PDPTs are stored in the first 4 GB of RAM and aligned to a multiple of 32 bytes (2<sup>5</sup>) (because each PDPT has four 8-byte entries), 27 bits are sufficient to represent the base address of such tables.
+* When mapping linear addresses to 4 KB pages (`PS` flag cleared in Page Directory entry), the 32 bits of a linear address are interpreted in the following way:
+    * `cr3`: points to a PDPT
+    * bits 31–30: point to 1 of 4 possible entries in PDPT
+    * bits 29–21: point to 1 of 512 possible entries in Page Directory
+    * bits 20–12: point to 1 of 512 possible entries in Page Table
+    * bits 11–0: Offset of 4-KB page
+* When mapping linear addresses to 2-MB pages (`PS` flag set in Page Directory entry), the 32 bits of a linear address are interpreted in the following way:
+    * `cr3`: points to a PDPT
+    * bits 31–30: point to 1 of 4 possible entries in PDPT
+    * bits 29–21: point to 1 of 512 possible entries in Page Directory
+    * bits 20–0: Offset of 2-MB page
+
+Once `cr3` is set, it is possible to address up to 4 GB of RAM. If we want to address more RAM, we'll have to put a new value in `cr3` or change the content of the PDPT.
+
+However, the main problem with PAE is that linear addresses are still 32 bits long. This forces kernel programmers to reuse the same linear addresses to map different areas of RAM.
+
+* How Linux initializes Page Tables when PAE is enabled is discussed in section [Final kernel Page Table when RAM size is more than 4096 MB](#final-kernel-page-table-when-ram-size-is-more-than-4096-mb).
+* PAE does not enlarge the linear address space of a process, because it deals only with physical addresses.
+* Only the kernel can modify the page tables of the processes, thus a process running in User Mode cannot use a physical address space larger than 4 GB.
+* On the other hand, PAE allows the kernel to exploit up to 64 GB of RAM, and thus to increase significantly the number of processes in the system.
 
 #### Paging for 64-bit Architectures
 
+As seen in previous sections, two-level paging is commonly used by 32-bit microprocessors and is not suitable for computers that adopt a 64-bit architecture. (The third level of paging present in 80x86 processors with PAE enabled has been introduced only to lower from 1024 to 512 the number of entries in the Page Directory and Page Tables. This enlarges the Page Table entries from 32 bits to 64 bits so that they can store the 24 most significant bits of the physical address.)
+
+Assume for a 64-bit architecture, the standard page size is 4 KB, so the Offset field is 12 bits. This leaves up to 52 bits of the linear address to be distributed between the Table and the Directory fields. If we use only 48 of the 64 bits for addressing (256 TB address space), the remaining 48-12 = 36 bits will have to be split among Table and the Directory fields. If we reserve 18 bits for each of these two fields, both the Page Directory and the Page Tables of each process should include 2<sup>18</sup> entries, which more than 256,000 entries.
+
+For that reason, all hardware paging systems for 64-bit processors make use of additional paging levels. The number of levels used depends on the type of processor. The following table summarizes the main characteristics of the hardware paging systems used by some 64-bit platforms supported by Linux. See section [Hardware Dependency](ch1.md#hardware-dependency) in Chapter 1 for a short description of the hardware associated with the platform name.
+
+Platform name | Page size | Number of address bits used | Number of paging levels | Linear address splitting
+------------- | --------- | --------------------------- | ----------------------- | ------------------------
+`alpha` | 8 KB | 43 | 3 | 10 + 10 + 10 + 13
+`ia64` | 4 KB | 39 | 3 | 9 + 9 + 9 + 12
+`ppc64` | 4 KB | 41 | 3 | 10 + 10 + 9 + 12
+`sh64` | 4 KB | 41 | 3 | 10 + 10 + 9 + 12
+`x86_64` | 4 KB | 48 | 4 | 9 + 9 + 9 + 9 + 12
+
+As we will see in the section [Paging in Linux](#paging-in-linux) later in this chapter, Linux succeeds in providing a common paging model that fits most of the supported hardware paging systems.
+
 #### Hardware Cache
+
+Today's microprocessors have clock rates of several gigahertz (GHz), while [dynamic RAM](https://en.wikipedia.org/wiki/Dynamic_random-access_memory) (DRAM) chips have access times in the range of hundreds of clock cycles. This means that the CPU may be held back considerably while executing instructions that require fetching operands from RAM and/or storing results into RAM.
+
+Hardware cache memories were introduced to reduce the speed mismatch between CPU and RAM. They are based on the well-known [locality principle](https://en.wikipedia.org/wiki/Locality_of_reference), which holds both for programs and data structures. This states that because of the cyclic structure of programs and the packing of related data into linear arrays, addresses close to the ones most recently used have a high probability of being used in the near future.  It therefore makes sense to introduce a smaller and faster memory that contains the most recently used code and data. For this purpose, a new unit called the [*line*](https://en.wikipedia.org/wiki/CPU_cache#Cache_entries) was introduced into the 80×86 architecture. It consists of a few dozen contiguous bytes that are transferred in [burst mode](https://en.wikipedia.org/wiki/Burst_mode_(computing)) between the slow DRAM and the fast on-chip static RAM (SRAM) used to implement caches.
+
+The cache is subdivided into subsets of lines:
+
+* At one extreme, the cache can be **direct mapped**, in which case a line in main memory is always stored at the exact same location in the cache.
+* At the other extreme, the cache is **fully associative**, meaning that any line in memory can be stored at any location in the cache.
+* Most caches are to some degree **N-way set associative**, where any line of main memory can be stored in any one of *N* lines of the cache.
+    * For instance, a line of memory can be stored in two different lines of a two-way set associative cache.
 
 #### Translation Lookaside Buffers (TLB)
 
 ### Paging in Linux
+
+#### The Linear Address Fields
+
+#### Page Table Handling
+
+#### Physical Memory Layout
+
+#### Process Page Tables
+
+#### Kernel Page Tables
+
+##### **Provisional kernel Page Tables**
+
+##### **Final kernel Page Table when RAM size is less than 896 MB**
+
+##### **Final kernel Page Table when RAM size is between 896 MB and 4096 MB**
+
+##### **Final kernel Page Table when RAM size is more than 4096 MB**
+
+#### Fix-Mapped Linear Addresses
+
+#### Handling the Hardware Cache and the TLB

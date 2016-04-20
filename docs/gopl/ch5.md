@@ -85,11 +85,13 @@ package math
 func Sin(x float64) float64 // implemented in assembly language
 ```
 
-
-
-
-
 ### Recursion
+
+Functions may be recursive, which means they may call themselves, either directly or indirectly.
+
+The example program below uses a non-standard package, [`golang.org/x/net/html`](https://godoc.org/golang.org/x/net/html), which provides an HTML parser. The `golang.org/x/...` repositories hold packages designed and maintained by the Go team for applications such as networking, internationalized text processing, mobile platforms, image manipulation, cryptography, and developer tools. These packages are not in the standard library because they're still under development or rarely needed by the majority of Go programmers.
+
+
 ### Multiple Return Values
 ### Errors
 ### Function Values
