@@ -88,6 +88,22 @@ I will read x86 assembly and x86 disassembly.
 1. **Time-consuming**: formatting texts, adding images and sorting out information takes about 1/3 of the overall time spent on learning.
 2. **Tedious**: the notes can sometimes be lengthy and pointless.
 
+### Objectives and Key Results
+
+#### OKR: July 31, 2016
+
+Priority | Category | Primary Book | Secondary Book(s) | Key Results
+-------- | -------- | ------------ | ----------------- | -----------
+1 | Operating System | LKD | UTLK | LKD: most chapters; UTLK: first 3 chapters
+1 | Programming Language | GOPL | - | GOPL: all 13 chapters
+1 | Programming Language | CSN | - | CSN: first 3 parts
+2 | System Programming | UNP | TCPv1 | TBD
+2 | Misc | HTAE | - | TBD
+2 | System Architecture | BD | - | TBD
+3 | Operating System | SPEC | - | TBD
+3 | System Programming | APUE | TLPI/LSP | TBD
+3 | Networks | TCPv1 | TCPIP | TBD
+
 ### Catalog
 
 #### Programming Languages <small>(7)</small>

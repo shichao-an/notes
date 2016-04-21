@@ -91,6 +91,139 @@ Functions may be recursive, which means they may call themselves, either directl
 
 The example program below uses a non-standard package, [`golang.org/x/net/html`](https://godoc.org/golang.org/x/net/html), which provides an HTML parser. The `golang.org/x/...` repositories hold packages designed and maintained by the Go team for applications such as networking, internationalized text processing, mobile platforms, image manipulation, cryptography, and developer tools. These packages are not in the standard library because they're still under development or rarely needed by the majority of Go programmers.
 
+The parts of the `golang.org/x/net/html` API are shown below.
+
+* The function [`html.Parse`](https://godoc.org/golang.org/x/net/html#Parse) reads a sequence of bytes, parses them, and returns the root of the HTML document tree, which is an [`html.Node`](https://godoc.org/golang.org/x/net/html#Node).
+* HTML has several kinds of nodes. We are concerned only with *element* nodes of the form `<name key='value'>`.
+
+```go
+package html
+
+type Node struct {
+	Type NodeType
+	Data string
+	Attr []Attribute
+	FirstChild, NextSibling *Node
+}
+
+type NodeType int32
+
+const (
+	ErrorNode NodeType = iota
+	TextNode
+	DocumentNode
+	ElementNode
+	CommentNode
+	DoctypeNode
+)
+
+type Attribute struct {
+	Key, Val string
+}
+
+func Parse(r io.Reader) (*Node, error)
+```
+
+The `main` function parses the standard input as HTML, extracts the links using a recursive `visit` function, and prints each discovered link:
+
+<small>[gopl.io/ch5/findlinks1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks1/main.go)</small>
+
+```go
+// Findlinks1 prints the links in an HTML document read from standard input.
+package main
+
+import (
+	"fmt"
+	"os"
+	"golang.org/x/net/html"
+)
+
+func main() {
+	doc, err := html.Parse(os.Stdin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "findlinks1: %v\n", err)
+		os.Exit(1)
+	}
+	for _, link := range visit(nil, doc) {
+		fmt.Println(link)
+	}
+}
+```
+
+The `visit` function traverses an HTML node tree, extracts the link from the `href` attribute of each *anchor* element `<a href='...'>`, appends the links to a slice of strings, and returns the resulting slice:
+
+```go
+// visit appends to links each link found in n and returns the result.
+func visit(links []string, n *html.Node) []string {
+	if n.Type == html.ElementNode && n.Data == "a" {
+		for _, a := range n.Attr {
+			if a.Key == "href" {
+				links = append(links, a.Val)
+			}
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		links = visit(links, c)
+	}
+	return links
+}
+```
+
+[p123]
+
+The next program uses recursion over the HTML node tree to print the structure of the tree in outline. As it encounters each element, it pushes the element's tag onto a stack, then prints the stack.
+
+<small>[gopl.io/ch5/outline/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/outline/main.go)</small>
+
+```go
+func main() {
+	doc, err := html.Parse(os.Stdin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "outline: %v\n", err)
+		os.Exit(1)
+	}
+	outline(nil, doc)
+}
+
+func outline(stack []string, n *html.Node) {
+	if n.Type == html.ElementNode {
+		stack = append(stack, n.Data) // push tag
+		fmt.Println(stack)
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		outline(stack, c)
+	}
+}
+```
+
+Note that `outline` "pushes" an element on stack, but there is no corresponding pop. <u>When `outline` calls itself recursively, the callee receives a copy of stack.</u> Although the callee may append elements to this slice, modifying its underlying array and perhaps even allocating a new array, it doesn't modify the initial elements that are visible to the caller, so when the function returns, the caller's stack is as it was before the call.
+
+The following is the outline of `https://golang.org`:
+
+```text
+$ go build gopl.io/ch5/outline
+$ ./fetch https://golang.org | ./outline
+[html]
+[html head]
+[html head meta]
+[html head title]
+[html head link]
+[html body]
+[html body div]
+[html body div]
+[html body div div]
+[html body div div form]
+[html body div div form div]
+[html body div div form div a]
+...
+```
+
+#### Variable-size stacks in Go *
+
+Many programming language implementations use a fixed-size function call stack; sizes from 64KB to 2MB are typical. Fixed-size stacks impose a limit on the depth of recursion, so one must be careful to avoid a [stack overflow](https://en.wikipedia.org/wiki/Stack_overflow) when traversing large data structures recursively; fixed-size stacks may even pose a security risk.
+
+In contrast, <u>typical Go implementations use variable-size stacks that start small and grow as needed up to a limit on the order of a gigabyte, which lets us use recursion safely and without worrying about overflow.</u>
+
 
 ### Multiple Return Values
 ### Errors
