@@ -524,6 +524,8 @@
     
         <li class="main "><a href="#recursion">Recursion</a></li>
         
+            <li><a href="#variable-size-stacks-in-go">Variable-size stacks in Go *</a></li>
+        
     
         <li class="main "><a href="#multiple-return-values">Multiple Return Values</a></li>
         
@@ -635,6 +637,128 @@ func <i>name</i>(<i>parameter-list</i>) (<i>result-list</i>) {
 <h3 id="recursion">Recursion</h3>
 <p>Functions may be recursive, which means they may call themselves, either directly or indirectly.</p>
 <p>The example program below uses a non-standard package, <a href="https://godoc.org/golang.org/x/net/html"><code>golang.org/x/net/html</code></a>, which provides an HTML parser. The <code>golang.org/x/...</code> repositories hold packages designed and maintained by the Go team for applications such as networking, internationalized text processing, mobile platforms, image manipulation, cryptography, and developer tools. These packages are not in the standard library because they're still under development or rarely needed by the majority of Go programmers.</p>
+<p>The parts of the <code>golang.org/x/net/html</code> API are shown below.</p>
+<ul>
+<li>The function <a href="https://godoc.org/golang.org/x/net/html#Parse"><code>html.Parse</code></a> reads a sequence of bytes, parses them, and returns the root of the HTML document tree, which is an <a href="https://godoc.org/golang.org/x/net/html#Node"><code>html.Node</code></a>.</li>
+<li>HTML has several kinds of nodes. We are concerned only with <em>element</em> nodes of the form <code>&lt;name key='value'&gt;</code>.</li>
+</ul>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">html</span>
+
+<span class="kd">type</span> <span class="nx">Node</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Type</span> <span class="nx">NodeType</span>
+    <span class="nx">Data</span> <span class="kt">string</span>
+    <span class="nx">Attr</span> <span class="p">[]</span><span class="nx">Attribute</span>
+    <span class="nx">FirstChild</span><span class="p">,</span> <span class="nx">NextSibling</span> <span class="o">*</span><span class="nx">Node</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">NodeType</span> <span class="kt">int32</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+    <span class="nx">ErrorNode</span> <span class="nx">NodeType</span> <span class="p">=</span> <span class="kc">iota</span>
+    <span class="nx">TextNode</span>
+    <span class="nx">DocumentNode</span>
+    <span class="nx">ElementNode</span>
+    <span class="nx">CommentNode</span>
+    <span class="nx">DoctypeNode</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Attribute</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Key</span><span class="p">,</span> <span class="nx">Val</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Parse</span><span class="p">(</span><span class="nx">r</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Reader</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">Node</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>main</code> function parses the standard input as HTML, extracts the links using a recursive <code>visit</code> function, and prints each discovered link:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks1/main.go">gopl.io/ch5/findlinks1/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Findlinks1 prints the links in an HTML document read from standard input.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+    <span class="s">&quot;golang.org/x/net/html&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;findlinks1: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">link</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">visit</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">doc</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>visit</code> function traverses an HTML node tree, extracts the link from the <code>href</code> attribute of each <em>anchor</em> element <code>&lt;a href='...'&gt;</code>, appends the links to a slice of strings, and returns the resulting slice:</p>
+<div class="codehilite"><pre><span class="c1">// visit appends to links each link found in n and returns the result.</span>
+<span class="kd">func</span> <span class="nx">visit</span><span class="p">(</span><span class="nx">links</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="o">&amp;&amp;</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span> <span class="o">==</span> <span class="s">&quot;a&quot;</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">a</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Attr</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="nx">a</span><span class="p">.</span><span class="nx">Key</span> <span class="o">==</span> <span class="s">&quot;href&quot;</span> <span class="p">{</span>
+                <span class="nx">links</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">links</span><span class="p">,</span> <span class="nx">a</span><span class="p">.</span><span class="nx">Val</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">c</span> <span class="o">:=</span> <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">;</span> <span class="nx">c</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">;</span> <span class="nx">c</span> <span class="p">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">NextSibling</span> <span class="p">{</span>
+        <span class="nx">links</span> <span class="p">=</span> <span class="nx">visit</span><span class="p">(</span><span class="nx">links</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">links</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>[p123]</p>
+<p>The next program uses recursion over the HTML node tree to print the structure of the tree in outline. As it encounters each element, it pushes the element's tag onto a stack, then prints the stack.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/outline/main.go">gopl.io/ch5/outline/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;outline: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">outline</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">doc</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">outline</span><span class="p">(</span><span class="nx">stack</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="p">{</span>
+        <span class="nx">stack</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">stack</span><span class="p">,</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span> <span class="c1">// push tag</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">stack</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">c</span> <span class="o">:=</span> <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">;</span> <span class="nx">c</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">;</span> <span class="nx">c</span> <span class="p">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">NextSibling</span> <span class="p">{</span>
+        <span class="nx">outline</span><span class="p">(</span><span class="nx">stack</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that <code>outline</code> "pushes" an element on stack, but there is no corresponding pop. <u>When <code>outline</code> calls itself recursively, the callee receives a copy of stack.</u> Although the callee may append elements to this slice, modifying its underlying array and perhaps even allocating a new array, it doesn't modify the initial elements that are visible to the caller, so when the function returns, the caller's stack is as it was before the call.</p>
+<p>The following is the outline of <code>https://golang.org</code>:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch5/outline
+$ ./fetch https://golang.org | ./outline
+[html]
+[html head]
+[html head meta]
+[html head title]
+[html head link]
+[html body]
+[html body div]
+[html body div]
+[html body div div]
+[html body div div form]
+[html body div div form div]
+[html body div div form div a]
+...
+</pre></div>
+
+
+<h4 id="variable-size-stacks-in-go">Variable-size stacks in Go *</h4>
+<p>Many programming language implementations use a fixed-size function call stack; sizes from 64KB to 2MB are typical. Fixed-size stacks impose a limit on the depth of recursion, so one must be careful to avoid a <a href="https://en.wikipedia.org/wiki/Stack_overflow">stack overflow</a> when traversing large data structures recursively; fixed-size stacks may even pose a security risk.</p>
+<p>In contrast, <u>typical Go implementations use variable-size stacks that start small and grow as needed up to a limit on the order of a gigabyte, which lets us use recursion safely and without worrying about overflow.</u></p>
 <h3 id="multiple-return-values">Multiple Return Values</h3>
 <h3 id="errors">Errors</h3>
 <h3 id="function-values">Function Values</h3>
