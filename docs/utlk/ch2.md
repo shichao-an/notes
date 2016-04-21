@@ -440,6 +440,8 @@ Assume for a 64-bit architecture, the standard page size is 4 KB, so the Offset 
 
 For that reason, all hardware paging systems for 64-bit processors make use of additional paging levels. The number of levels used depends on the type of processor. The following table summarizes the main characteristics of the hardware paging systems used by some 64-bit platforms supported by Linux. See section [Hardware Dependency](ch1.md#hardware-dependency) in Chapter 1 for a short description of the hardware associated with the platform name.
 
+##### **Paging levels in some 64-bit architectures** *
+
 Platform name | Page size | Number of address bits used | Number of paging levels | Linear address splitting
 ------------- | --------- | --------------------------- | ----------------------- | ------------------------
 `alpha` | 8 KB | 43 | 3 | 10 + 10 + 10 + 13
@@ -454,7 +456,7 @@ As we will see in the section [Paging in Linux](#paging-in-linux) later in this 
 
 Today's microprocessors have clock rates of several gigahertz (GHz), while [dynamic RAM](https://en.wikipedia.org/wiki/Dynamic_random-access_memory) (DRAM) chips have access times in the range of hundreds of clock cycles. This means that the CPU may be held back considerably while executing instructions that require fetching operands from RAM and/or storing results into RAM.
 
-Hardware cache memories were introduced to reduce the speed mismatch between CPU and RAM. They are based on the well-known [locality principle](https://en.wikipedia.org/wiki/Locality_of_reference), which holds both for programs and data structures. This states that because of the cyclic structure of programs and the packing of related data into linear arrays, addresses close to the ones most recently used have a high probability of being used in the near future.  It therefore makes sense to introduce a smaller and faster memory that contains the most recently used code and data. For this purpose, a new unit called the [*line*](https://en.wikipedia.org/wiki/CPU_cache#Cache_entries) was introduced into the 80×86 architecture. It consists of a few dozen contiguous bytes that are transferred in [burst mode](https://en.wikipedia.org/wiki/Burst_mode_(computing)) between the slow DRAM and the fast on-chip static RAM (SRAM) used to implement caches.
+Hardware cache memories were introduced to reduce the speed mismatch between CPU and RAM. They are based on the well-known [locality principle](https://en.wikipedia.org/wiki/Locality_of_reference), which holds both for programs and data structures. This states that because of the cyclic structure of programs and the packing of related data into linear arrays, addresses close to the ones most recently used have a high probability of being used in the near future. It makes sense to introduce a smaller and faster memory that contains the most recently used code and data. Therefore, a new unit called the [*line*](https://en.wikipedia.org/wiki/CPU_cache#Cache_entries) was introduced into the 80×86 architecture. It consists of a few dozen contiguous bytes that are transferred in [burst mode](https://en.wikipedia.org/wiki/Burst_mode_(computing)) between the slow DRAM and the fast on-chip static RAM (SRAM) used to implement caches.
 
 The cache is subdivided into subsets of lines:
 
@@ -463,9 +465,108 @@ The cache is subdivided into subsets of lines:
 * Most caches are to some degree **N-way set associative**, where any line of main memory can be stored in any one of *N* lines of the cache.
     * For instance, a line of memory can be stored in two different lines of a two-way set associative cache.
 
+[![Figure 2-10. Processor hardware cache](figure_2-10_600.png)](figure_2-10.png "Figure 2-10. Processor hardware cache")
+
+As shown in the figure above, the cache unit is inserted between the paging unit and the main memory.
+
+The cache unit includes:
+
+* A **hardware cache** memory, which stores actual lines of memory.
+* A **cache controller**, which stores an array of entries, one entry for each line of the cache memory.
+    * Each entry includes a *tag* and a few flags that describe the status of the cache line.
+    * The tag consists of some bits that allow the cache controller to recognize the memory location currently mapped by the line.
+    * The bits of the memory's physical address are usually split into three groups:
+        * The most significant ones correspond to the tag
+        * The middle ones to the cache controller subset index
+        * The least significant ones to the offset within the line
+
+When accessing a RAM memory cell, the CPU extracts the subset index from the physical address and compares the tags of all lines in the subset with the high-order bits of the physical address:
+
+* If a line with the same tag as the high-order bits of the address is found, the CPU has a *cache hit*.
+* Otherwise, it has a *cache miss*.
+
+When a cache hit occurs, the cache controller behaves differently, depending on the access type:
+
+* For a read operation, the controller selects the data from the cache line and transfers it into a CPU register; the RAM is not accessed and the CPU saves time.
+* For a write operation, the controller may implement one of [two basic strategies](https://en.wikipedia.org/wiki/Cache_(computing)#Writing_policies) called *write-through* and *write-back*.
+    * In a write-through, the controller always writes into both RAM and the cache line, effectively switching off the cache for write operations.
+    * In a write-back, which offers more immediate efficiency, only the cache line is updated and the contents of the RAM are left unchanged. After a write-back, the RAM must eventually be updated.
+
+    The cache controller writes the cache line back into RAM only when the CPU executes an instruction requiring a flush of cache entries or when a FLUSH hardware signal occurs (usually after a cache miss).
+
+When a cache miss occurs, the cache line is written to memory if necessary, and the correct line is fetched from RAM into the cache entry.
+
+Multiprocessor systems have a separate hardware cache for every processor, and therefore they need additional hardware circuitry to synchronize the cache contents.
+
+As shown in the figure below, each CPU has its own local hardware cache. Whenever a CPU modifies its hardware cache, it must check whether the same data is contained in the other hardware cache; if so, it must notify the other CPU to update it with the proper value. This activity is often called [*cache snooping*](https://en.wikipedia.org/wiki/Cache_coherence#Coherency_mechanisms). Luckily, all this is done at the hardware level and is of no concern to the kernel.
+
+[![Figure 2-11. The caches in a dual processor](figure_2-11_600.png)](figure_2-11.png "Figure 2-11. The caches in a dual processor")
+
+Cache technology is rapidly evolving. For example, the first Pentium models included a single on-chip cache called the **L1-cache**. More recent models also include other larger, slower on-chip caches called the **L2-cache**, **L3-cache**, etc. The consistency between the cache levels is implemented at the hardware level. Linux ignores these hardware details and assumes there is a single cache.
+
+* The `CD` flag of the `cr0` processor register is used to enable or disable the cache circuitry.
+* The `NW` flag, in the same register, specifies whether the write-through or the write-back strategy is used for the caches.
+
+The Pentium cache is lets an operating system associate a different cache management policy with each page frame. For this purpose, each Page Directory and each Page Table entry includes two flags:
+
+* `PCD` (Page Cache Disable), which specifies whether the cache must be enabled or disabled while accessing data included in the page frame
+* `PWT` (Page Write-Through), which specifies whether the write-back or the write-through strategy must be applied while writing data into the page frame.
+
+Linux clears the `PCD` and `PWT` flags of all Page Directory and Page Table entries; as a result, caching is enabled for all page frames, and the write-back strategy is always adopted for writing.
+
 #### Translation Lookaside Buffers (TLB)
 
+Besides general-purpose hardware caches, 80×86 processors include another cache called [Translation Lookaside Buffers](https://en.wikipedia.org/wiki/Translation_lookaside_buffer) (TLB) to speed up linear address translation. When a linear address is used for the first time, the corresponding physical address is computed through slow accesses to the Page Tables in RAM. The physical address is then stored in a TLB entry so that further references to the same linear address can be quickly translated.
+
+In a multiprocessor system, each CPU has its own TLB, called the *local TLB* of the CPU. Contrary to the hardware cache, the corresponding entries of the TLB need not be synchronized, because processes running on the existing CPUs may associate the same linear address with different physical ones.
+
+When the `cr3` control register of a CPU is modified, the hardware automatically invalidates all entries of the local TLB, because a new set of page tables is in use and the TLBs are pointing to old data.
+
 ### Paging in Linux
+
+Linux adopts a common paging model that fits both 32-bit and 64-bit architectures.  As explained in section [Paging for 64-bit Architectures](#paging-for-64-bit-architectures), two paging levels are sufficient for 32-bit architectures, while 64-bit architectures require a higher number of paging levels.
+
+* Up to version 2.6.10, the Linux paging model consisted of three paging levels.
+* Starting with version 2.6.11, a four-level paging model has been adopted.
+    * This change has been made to fully support the linear address bit splitting used by the x86_64 platform. See [table](#paging-levels-in-some-64-bit-architectures).
+
+The four types of page tables (as shown in the following figure) are:
+
+* Page Global Directory
+* Page Upper Directory
+* Page Middle Directory
+* Page Table
+
+[![Figure 2-12. The Linux paging model](figure_2-12_600.png)](figure_2-12.png "Figure 2-12. The Linux paging model")
+
+* The Page Global Directory includes the addresses of several Page Upper Directories, which in turn include the addresses of several Page Middle Directories, which in turn include the addresses of several Page Tables.
+* Each Page Table entry points to a page frame.
+* Thus the linear address can be split into up to five parts. The above figure does not show the bit numbers, because the size of each part depends on the computer architecture.
+
+For 32-bit architectures with no Physical Address Extension, two paging levels are sufficient:
+
+* Linux essentially eliminates the Page Upper Directory and the Page Middle Directory fields (so that the same code can work on 32-bit and 64-bit architectures) by saying that they contain zero bits.
+* The kernel keeps a position for the Page Upper Directory and the Page Middle Directory by setting the number of entries in them to 1 and mapping these two entries into the proper entry of the Page Global Directory.
+
+For 32-bit architectures with the Physical Address Extension enabled, three paging levels are used:
+
+* The Linux's Page Global Directory corresponds to the 80×86's Page Directory Pointer Table.
+* The Page Upper Directory is eliminated.
+* The Page Middle Directory corresponds to the 80×86's Page Directory.
+* The Linux's Page Table corresponds to the 80×86's Page Table.
+
+For 64-bit architectures three or four levels of paging are used depending on the linear address bit splitting performed by the hardware (see [table](#paging-levels-in-some-64-bit-architectures)).
+
+Linux's handling of processes relies heavily on paging. In fact, the automatic translation of linear addresses into physical ones makes the following design objectives feasible:
+
+* Assign a different physical address space to each process, ensuring an efficient protection against addressing errors.
+* <u>Distinguish pages (groups of data) from page frames (physical addresses in main memory). This allows the same page to be stored in a page frame, then saved to disk and later reloaded in a different page frame. This is the basic ingredient of the virtual memory mechanism.</u>
+
+In the remaining part of this chapter, we will refer to the paging circuitry used by the 80×86 processors.
+
+Each process has its own Page Global Directory and its own set of Page Tables. <u>When a process switch occurs, Linux saves the `cr3` control register in the descriptor of the process previously in execution and then loads `cr3` with the value stored in the descriptor of the process to be executed next. Thus, when the new process resumes its execution on the CPU, the paging unit refers to the correct set of Page Tables.</u>
+
+Mapping linear to physical addresses now becomes a mechanical task, although it is still somewhat complex. The next few sections of this chapter are a list of functions and macros that retrieve information the kernel needs to find addresses and manage the tables.
 
 #### The Linear Address Fields
 
