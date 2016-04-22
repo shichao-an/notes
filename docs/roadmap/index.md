@@ -69,13 +69,13 @@ I have read the most part of DevOps. In addition to finishing with DevOps, I wil
 
 I will read x86 assembly and x86 disassembly.
 
-#### Methods of Notes
+#### Notes Methodology
 
 1. **Systematic**: on a regular basis, read the major chapters (possibly unordered) of the entire books.
 2. **Ad hoc**: read a specific chapter, section, or topic.
 3. **Timer**: set a timer when reading and note-taking to ensure efficiency.
 
-#### Pros and Cons of Notes
+#### Pros and Cons
 
 ##### **Pros**
 
@@ -88,21 +88,31 @@ I will read x86 assembly and x86 disassembly.
 1. **Time-consuming**: formatting texts, adding images and sorting out information takes about 1/3 of the overall time spent on learning.
 2. **Tedious**: the notes can sometimes be lengthy and pointless.
 
+#### Relationships and Ordering
+
+* LKD => UTLK
+* APUE => LSP => TLPI
+* GOPL => TWGR
+* TCPv1 => TCPIP
+* CSN => PIC
+
 ### Objectives and Key Results
 
-#### OKR: July 31, 2016
+#### OKR-1: July 31, 2016
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
 1 | Operating System | LKD | UTLK | LKD: most chapters; UTLK: first 3 chapters
 1 | Programming Language | GOPL | - | GOPL: all 13 chapters
 1 | Programming Language | CSN | - | CSN: first 3 parts
-2 | System Programming | UNP | TCPv1 | TBD
-2 | Misc | HTAE | - | TBD
-2 | System Architecture | BD | - | TBD
+2 | System Programming | UNP | TCPv1 | UNP: first 11 chapters (excluding SCTP)
+2 | Misc | HTAE | - | HTAE: first 4 chapters
+2 | System Architecture | BD | - | BD: first 7 chapters
+3 | Programming Language | x86 disassembly | - | Non-Windows contents
 3 | Operating System | SPEC | - | TBD
 3 | System Programming | APUE | TLPI/LSP | TBD
 3 | Networks | TCPv1 | TCPIP | TBD
+3 | Security | CNSPP | - | TBD
 
 ### Catalog
 
