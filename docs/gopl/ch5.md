@@ -224,9 +224,162 @@ Many programming language implementations use a fixed-size function call stack; 
 
 In contrast, <u>typical Go implementations use variable-size stacks that start small and grow as needed up to a limit on the order of a gigabyte, which lets us use recursion safely and without worrying about overflow.</u>
 
-
 ### Multiple Return Values
+
+A function can return more than one result. Many examples of functions from standard packages return two values, the desired computational result and an error value or boolean that indicates whether the computation worked.
+
+The program below is a variation of `findlinks` that makes the HTTP request itself. Because the HTTP and parsing operations can fail, `findLinks` declares two results: the list of discovered links and an error. The HTML parser can usually recover from bad input and construct a document containing error nodes, so `Parse` rarely fails; when it does, it’s typically due to underlying I/O errors.
+
+<small>[gopl.io/ch5/findlinks2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks2/main.go)</small>
+
+```go
+func main() {
+	for _, url := range os.Args[1:] {
+		links, err := findLinks(url)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "findlinks2: %v\n", err)
+			continue
+		}
+		for _, link := range links {
+			fmt.Println(link)
+		}
+	}
+}
+
+// findLinks performs an HTTP GET request for url, parses the
+// response as HTML, and extracts and returns the links.
+func findLinks(url string) ([]string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("getting %s: %s", url, resp.Status)
+	}
+	doc, err := html.Parse(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s as HTML: %v", url, err)
+	}
+	return visit(nil, doc), nil
+}
+```
+
+There are four return statements in `findLinks`, each of which returns a pair of values. The first three returns cause the function to pass the underlying errors from the `http` and `html` packages on to the caller.
+
+* In the first case, the error is returned unchanged.
+* In the second and third, it is augmented with additional context information by `fmt.Errorf` ([Section 7.8](ch7.md#the-error-interface)).
+* If `findLinks` is successful, the final return statement returns the slice of links, with no error.
+
+We must ensure that `resp.Body` is closed so that network resources are properly released even in case of error. <u>Go's garbage collector recycles unused memory, but you cannot assume it will release unused operating system resources like open files and network connections.</u> They should be closed explicitly.
+
+The result of calling a multi-valued function is a tuple of values. The caller of such a function must explicitly assign the values to variables if any of them are to be used:
+
+```go
+links, err := findLinks(url)
+```
+
+To ignore one of the values, assign it to the blank identifier:
+
+```go
+links, _ := findLinks(url) // errors ignored
+```
+
+The result of a multi-valued call may itself be returned from a (multi-valued) calling function. For example, the following function behaves like `findLinks` but logs its argument:
+
+```go
+func findLinksLog(url string) ([]string, error) {
+	log.Printf("findLinks %s", url)
+	return findLinks(url)
+}
+```
+
+<u>A multi-valued call may appear as the sole argument when calling a function of multiple parameters.</u> Although rarely used in production code, this feature is sometimes convenient during debugging since it prints all the results of a call using a single statement. The two print statements below have the same effect.
+
+```go
+log.Println(findLinks(url))
+
+links, err := findLinks(url)
+log.Println(links, err)
+```
+
+Well-chosen names can document the significance of a function's results. Names are particularly valuable when a function returns multiple results of the same type. For example:
+
+```go
+func Size(rect image.Rectangle) (width, height int)
+func Split(path string) (dir, file string)
+func HourMinSec(t time.Time) (hour, minute, second int)
+```
+
+However, it's not always necessary to name multiple results solely for documentation. For instance, <u>convention dictates that a final `bool` result indicates success;</u> an [`error`](https://golang.org/pkg/builtin/#error) result often needs no explanation.
+
+#### Bare return *
+
+In a function with named results, the operands of a return statement may be omitted. This is called a *bare return*.
+
+```go
+// CountWordsAndImages does an HTTP GET request for the HTML
+// document url and returns the number of words and images in it.
+func CountWordsAndImages(url string) (words, images int, err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+}
+	doc, err := html.Parse(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		err = fmt.Errorf("parsing HTML: %s", err)
+		return
+	}
+	words, images = countWordsAndImages(doc)
+	return
+}
+
+func countWordsAndImages(n *html.Node) (words, images int) { /* ... */ }
+```
+
+A bare return is a shorthand way to return each of the named result variables in order: in the function above, each return statement is equivalent to.
+
+```go
+return words, images, err
+```
+
+In such functions with many return statements and several results, bare returns can reduce code duplication, but they rarely make code easier to understand. For instance, it's not obvious that the two early returns are equivalent to return `0, 0, err` (because the result variables words and images are initialized to their zero values) and that the final return is equivalent to return `words, images, nil`. For this reason, bare returns should be sparingly used.
+
 ### Errors
+
+Some functions always succeed. For example, `strings.Contains` and `strconv.FormatBool` have well-defined results for all possible argument values and cannot fail, except catastrophic and unpredictable scenarios like running out of memory. [p127]
+
+Other functions always succeed so long as their preconditions are met. For example, the [`time.Date`](https://golang.org/pkg/time/#Date) function always constructs a `time.Time` from its components (year, month, etc.), unless the last argument (the time zone) is `nil`, in which case it panics. This panic is a sure sign of a bug in the calling code and should never happen in a well-written program.
+
+<u>For many other functions, even in a well-written program, success is not assured because it depends on factors beyond the programmers' control.</u> Any function that does I/O, for example, must confront the possibility of error, and only a naive programmer believes a simple read or write cannot fail. We most need to know why when the most reliable operations fail unexpectedly
+
+Errors are thus an important part of a package's API or an applications' user interface, and failure is just one of several expected behaviors. This is the approach Go takes to [error handling](http://blog.golang.org/error-handling-and-go).
+
+A function for which failure is an expected behavior returns an additional result, conventionally the last one. <u>If the failure has only one possible cause, the result is a boolean, usually called `ok`</u>, as in the following example of a cache lookup that always succeeds unless there was no entry for that key:
+
+```go
+value, ok := cache.Lookup(key)
+	if !ok {
+	// ...cache[key] does not exist...
+}
+```
+
+More often, and especially for I/O, the failure may have a variety of causes for which the caller will need an explanation. In such cases, the type of the additional result is `error`.
+
+The built-in type [`error`](https://golang.org/pkg/builtin/#error) is an interface type (detailed in [Chapter 7](ch7.md). An error may be `nil` or non-`nil`; `nil` implies success and non-`nil` implies failure, and non-`nil` error has an error message string which can be obtained by calling its `Error` method or print by calling `fmt.Println(err)` or `fmt.Printf("%v", err)`.
+
+Usually when a function returns a non-nil error, its other results are undefined and should be ignored. However, a few functions may return partial results in error cases. For example, if an error occurs while reading from a file, a call to `Read` returns the number of bytes it was able to read and an `error` value describing the problem. For correct behavior, some callers may need to process the incomplete data before handling the error, so it is important that such functions clearly document their results.
+
+#### Why Go uses control-flow mechanisms for error handling *
+
+Go's approach differs from many other languages in which failures are reported using *exceptions*, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed discussed in [Section 5.9](#panic), it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.
+
+The problem is that exceptions tend to entangle the description of an error with the control flow required to handle it, often leading to an undesirable outcome: routine errors are reported to the end user in the form of an incomprehensible stack trace, full of information about the structure of the program but lacking intelligible context about what went wrong.
+
+By contrast, Go programs use ordinary control-flow mechanisms like `if` and `return` to respond to errors. This style undeniably demands that more attention be paid to error-handling logic, but that is precisely the point.
+
 ### Function Values
 ### Anonymous Functions
 ### Variadic Functions

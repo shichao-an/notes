@@ -529,8 +529,12 @@
     
         <li class="main "><a href="#multiple-return-values">Multiple Return Values</a></li>
         
+            <li><a href="#bare-return">Bare return *</a></li>
+        
     
         <li class="main "><a href="#errors">Errors</a></li>
+        
+            <li><a href="#why-go-uses-control-flow-mechanisms-for-error-handling">Why Go uses control-flow mechanisms for error handling *</a></li>
         
     
         <li class="main "><a href="#function-values">Function Values</a></li>
@@ -760,7 +764,133 @@ $ ./fetch https://golang.org | ./outline
 <p>Many programming language implementations use a fixed-size function call stack; sizes from 64KB to 2MB are typical. Fixed-size stacks impose a limit on the depth of recursion, so one must be careful to avoid a <a href="https://en.wikipedia.org/wiki/Stack_overflow">stack overflow</a> when traversing large data structures recursively; fixed-size stacks may even pose a security risk.</p>
 <p>In contrast, <u>typical Go implementations use variable-size stacks that start small and grow as needed up to a limit on the order of a gigabyte, which lets us use recursion safely and without worrying about overflow.</u></p>
 <h3 id="multiple-return-values">Multiple Return Values</h3>
+<p>A function can return more than one result. Many examples of functions from standard packages return two values, the desired computational result and an error value or boolean that indicates whether the computation worked.</p>
+<p>The program below is a variation of <code>findlinks</code> that makes the HTTP request itself. Because the HTTP and parsing operations can fail, <code>findLinks</code> declares two results: the list of discovered links and an error. The HTML parser can usually recover from bad input and construct a document containing error nodes, so <code>Parse</code> rarely fails; when it does, it’s typically due to underlying I/O errors.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks2/main.go">gopl.io/ch5/findlinks2/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">url</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">{</span>
+        <span class="nx">links</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;findlinks2: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">link</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">links</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// findLinks performs an HTTP GET request for url, parses the</span>
+<span class="c1">// response as HTML, and extracts and returns the links.</span>
+<span class="kd">func</span> <span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">([]</span><span class="kt">string</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">StatusCode</span> <span class="o">!=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span> <span class="p">{</span>
+        <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;getting %s: %s&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;parsing %s as HTML: %v&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">visit</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">doc</span><span class="p">),</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>There are four return statements in <code>findLinks</code>, each of which returns a pair of values. The first three returns cause the function to pass the underlying errors from the <code>http</code> and <code>html</code> packages on to the caller.</p>
+<ul>
+<li>In the first case, the error is returned unchanged.</li>
+<li>In the second and third, it is augmented with additional context information by <code>fmt.Errorf</code> (<a href="../ch7/#the-error-interface">Section 7.8</a>).</li>
+<li>If <code>findLinks</code> is successful, the final return statement returns the slice of links, with no error.</li>
+</ul>
+<p>We must ensure that <code>resp.Body</code> is closed so that network resources are properly released even in case of error. <u>Go's garbage collector recycles unused memory, but you cannot assume it will release unused operating system resources like open files and network connections.</u> They should be closed explicitly.</p>
+<p>The result of calling a multi-valued function is a tuple of values. The caller of such a function must explicitly assign the values to variables if any of them are to be used:</p>
+<div class="codehilite"><pre><span class="nx">links</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+</pre></div>
+
+
+<p>To ignore one of the values, assign it to the blank identifier:</p>
+<div class="codehilite"><pre><span class="nx">links</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="c1">// errors ignored</span>
+</pre></div>
+
+
+<p>The result of a multi-valued call may itself be returned from a (multi-valued) calling function. For example, the following function behaves like <code>findLinks</code> but logs its argument:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">findLinksLog</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">([]</span><span class="kt">string</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;findLinks %s&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><u>A multi-valued call may appear as the sole argument when calling a function of multiple parameters.</u> Although rarely used in production code, this feature is sometimes convenient during debugging since it prints all the results of a call using a single statement. The two print statements below have the same effect.</p>
+<div class="codehilite"><pre><span class="nx">log</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span><span class="p">))</span>
+
+<span class="nx">links</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">findLinks</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+<span class="nx">log</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">links</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Well-chosen names can document the significance of a function's results. Names are particularly valuable when a function returns multiple results of the same type. For example:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Size</span><span class="p">(</span><span class="nx">rect</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Rectangle</span><span class="p">)</span> <span class="p">(</span><span class="nx">width</span><span class="p">,</span> <span class="nx">height</span> <span class="kt">int</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nx">Split</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="nx">file</span> <span class="kt">string</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nx">HourMinSec</span><span class="p">(</span><span class="nx">t</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">)</span> <span class="p">(</span><span class="nx">hour</span><span class="p">,</span> <span class="nx">minute</span><span class="p">,</span> <span class="nx">second</span> <span class="kt">int</span><span class="p">)</span>
+</pre></div>
+
+
+<p>However, it's not always necessary to name multiple results solely for documentation. For instance, <u>convention dictates that a final <code>bool</code> result indicates success;</u> an <a href="https://golang.org/pkg/builtin/#error"><code>error</code></a> result often needs no explanation.</p>
+<h4 id="bare-return">Bare return *</h4>
+<p>In a function with named results, the operands of a return statement may be omitted. This is called a <em>bare return</em>.</p>
+<div class="codehilite"><pre><span class="c1">// CountWordsAndImages does an HTTP GET request for the HTML</span>
+<span class="c1">// document url and returns the number of words and images in it.</span>
+<span class="kd">func</span> <span class="nx">CountWordsAndImages</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">words</span><span class="p">,</span> <span class="nx">images</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span>
+<span class="p">}</span>
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">err</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;parsing HTML: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="nx">words</span><span class="p">,</span> <span class="nx">images</span> <span class="p">=</span> <span class="nx">countWordsAndImages</span><span class="p">(</span><span class="nx">doc</span><span class="p">)</span>
+    <span class="k">return</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">countWordsAndImages</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">(</span><span class="nx">words</span><span class="p">,</span> <span class="nx">images</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>A bare return is a shorthand way to return each of the named result variables in order: in the function above, each return statement is equivalent to.</p>
+<div class="codehilite"><pre><span class="k">return</span> <span class="nx">words</span><span class="p">,</span> <span class="nx">images</span><span class="p">,</span> <span class="nx">err</span>
+</pre></div>
+
+
+<p>In such functions with many return statements and several results, bare returns can reduce code duplication, but they rarely make code easier to understand. For instance, it's not obvious that the two early returns are equivalent to return <code>0, 0, err</code> (because the result variables words and images are initialized to their zero values) and that the final return is equivalent to return <code>words, images, nil</code>. For this reason, bare returns should be sparingly used.</p>
 <h3 id="errors">Errors</h3>
+<p>Some functions always succeed. For example, <code>strings.Contains</code> and <code>strconv.FormatBool</code> have well-defined results for all possible argument values and cannot fail, except catastrophic and unpredictable scenarios like running out of memory. [p127]</p>
+<p>Other functions always succeed so long as their preconditions are met. For example, the <a href="https://golang.org/pkg/time/#Date"><code>time.Date</code></a> function always constructs a <code>time.Time</code> from its components (year, month, etc.), unless the last argument (the time zone) is <code>nil</code>, in which case it panics. This panic is a sure sign of a bug in the calling code and should never happen in a well-written program.</p>
+<p><u>For many other functions, even in a well-written program, success is not assured because it depends on factors beyond the programmers' control.</u> Any function that does I/O, for example, must confront the possibility of error, and only a naive programmer believes a simple read or write cannot fail. We most need to know why when the most reliable operations fail unexpectedly</p>
+<p>Errors are thus an important part of a package's API or an applications' user interface, and failure is just one of several expected behaviors. This is the approach Go takes to <a href="http://blog.golang.org/error-handling-and-go">error handling</a>.</p>
+<p>A function for which failure is an expected behavior returns an additional result, conventionally the last one. <u>If the failure has only one possible cause, the result is a boolean, usually called <code>ok</code></u>, as in the following example of a cache lookup that always succeeds unless there was no entry for that key:</p>
+<div class="codehilite"><pre><span class="nx">value</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">cache</span><span class="p">.</span><span class="nx">Lookup</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+    <span class="c1">// ...cache[key] does not exist...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>More often, and especially for I/O, the failure may have a variety of causes for which the caller will need an explanation. In such cases, the type of the additional result is <code>error</code>.</p>
+<p>The built-in type <a href="https://golang.org/pkg/builtin/#error"><code>error</code></a> is an interface type (detailed in <a href="../ch7/">Chapter 7</a>. An error may be <code>nil</code> or non-<code>nil</code>; <code>nil</code> implies success and non-<code>nil</code> implies failure, and non-<code>nil</code> error has an error message string which can be obtained by calling its <code>Error</code> method or print by calling <code>fmt.Println(err)</code> or <code>fmt.Printf("%v", err)</code>.</p>
+<p>Usually when a function returns a non-nil error, its other results are undefined and should be ignored. However, a few functions may return partial results in error cases. For example, if an error occurs while reading from a file, a call to <code>Read</code> returns the number of bytes it was able to read and an <code>error</code> value describing the problem. For correct behavior, some callers may need to process the incomplete data before handling the error, so it is important that such functions clearly document their results.</p>
+<h4 id="why-go-uses-control-flow-mechanisms-for-error-handling">Why Go uses control-flow mechanisms for error handling *</h4>
+<p>Go's approach differs from many other languages in which failures are reported using <em>exceptions</em>, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed discussed in <a href="#panic">Section 5.9</a>, it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.</p>
+<p>The problem is that exceptions tend to entangle the description of an error with the control flow required to handle it, often leading to an undesirable outcome: routine errors are reported to the end user in the form of an incomprehensible stack trace, full of information about the structure of the program but lacking intelligible context about what went wrong.</p>
+<p>By contrast, Go programs use ordinary control-flow mechanisms like <code>if</code> and <code>return</code> to respond to errors. This style undeniably demands that more attention be paid to error-handling logic, but that is precisely the point.</p>
 <h3 id="function-values">Function Values</h3>
 <h3 id="anonymous-functions">Anonymous Functions</h3>
 <h3 id="variadic-functions">Variadic Functions</h3>
