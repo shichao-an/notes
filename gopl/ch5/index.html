@@ -536,6 +536,8 @@
         
             <li><a href="#why-go-uses-control-flow-mechanisms-for-error-handling">Why Go uses control-flow mechanisms for error handling *</a></li>
         
+            <li><a href="#error-handling-strategies">Error-Handling Strategies</a></li>
+        
     
         <li class="main "><a href="#function-values">Function Values</a></li>
         
@@ -891,6 +893,44 @@ $ ./fetch https://golang.org | ./outline
 <p>Go's approach differs from many other languages in which failures are reported using <em>exceptions</em>, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed discussed in <a href="#panic">Section 5.9</a>, it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.</p>
 <p>The problem is that exceptions tend to entangle the description of an error with the control flow required to handle it, often leading to an undesirable outcome: routine errors are reported to the end user in the form of an incomprehensible stack trace, full of information about the structure of the program but lacking intelligible context about what went wrong.</p>
 <p>By contrast, Go programs use ordinary control-flow mechanisms like <code>if</code> and <code>return</code> to respond to errors. This style undeniably demands that more attention be paid to error-handling logic, but that is precisely the point.</p>
+<h4 id="error-handling-strategies">Error-Handling Strategies</h4>
+<p>When a function call returns an error, it's the caller's responsibility to check it and take appropriate action. Depending on the situation, there may be a number of possibilities. This section discusses five of them.</p>
+<h5 id="propagating-the-error"><strong>Propagating the error</strong> *</h5>
+<p>The first and most common strategy is to propagate the error, so that a failure in a subroutine becomes a failure of the calling routine. In the <code>findLinks</code> function of <a href="#multiple-return-values">Section 5.3</a>, if the call to <code>http.Get</code> fails, <code>findLinks</code> returns the HTTP error to the caller immediately:</p>
+<div class="codehilite"><pre><span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In contrast, if the call to <code>html.Parse</code> fails, <code>findLinks</code> does not return the HTML parser's error directly because it lacks two crucial pieces of information:</p>
+<ol>
+<li>The error occurred in the parser</li>
+<li>The URL of the document that was being parsed.</li>
+</ol>
+<p>In this case, <code>findLinks</code> constructs a new error message that includes both pieces of information as well as the underlying parse error:</p>
+<div class="codehilite"><pre><span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+<span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;parsing %s as HTML: %v&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>fmt.Errorf</code> function formats an error message using <code>fmt.Sprintf</code> and returns a new <code>error</code> value. It is used to build descriptive errors by successively prefixing additional context information to the original error message. When the error is ultimately handled by the program's main function, it should provide a clear causal chain from the root problem to the overall failure, reminiscent of a NASA accident investigation:</p>
+<div class="codehilite"><pre><span class="nx">genesis</span><span class="p">:</span> <span class="nx">crashed</span><span class="p">:</span> <span class="nx">no</span> <span class="nx">parachute</span><span class="p">:</span> <span class="nx">G</span><span class="o">-</span><span class="k">switch</span> <span class="nx">failed</span><span class="p">:</span> <span class="nx">bad</span> <span class="nx">relay</span> <span class="nx">orientation</span>
+</pre></div>
+
+
+<p><u>Because error messages are frequently chained together, message strings should not be capitalized and newlines should be avoided.</u> The resulting errors may be long, but they will be self-contained when found by tools like <code>grep</code>.</p>
+<p>When designing error messages, remember the following:</p>
+<ul>
+<li>Be deliberate, so that each one is a meaningful description of the problem with sufficient and relevant detail.</li>
+<li>Be consistent, so that errors returned by the same function or by a group of functions in the same package are similar in form and can be dealt with in the same way.</li>
+</ul>
+<p>For example, the <a href="https://golang.org/pkg/os/"><code>os</code></a> package guarantees that every error returned by a file operation, such as <code>os.Open</code> or the <code>Read</code>, <code>Write</code>, or <code>Close</code> methods of an open file, describes not just the nature of the failure (permission denied, no such directory, and so on) but also the name of the file, so the caller needn't include this information in the error message it constructs.</p>
+<p>In general, the call <code>f(x)</code> is responsible for reporting the attempted operation <code>f</code> and the argument value <code>x</code> as they relate to the context of the error. The caller is responsible for adding further information that it has but the call <code>f(x)</code> does not, such as the URL in the call to <code>html.Parse</code> above.</p>
 <h3 id="function-values">Function Values</h3>
 <h3 id="anonymous-functions">Anonymous Functions</h3>
 <h3 id="variadic-functions">Variadic Functions</h3>
