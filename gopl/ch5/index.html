@@ -557,6 +557,11 @@
         <li class="main "><a href="#recover">Recover</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -931,12 +936,108 @@ $ ./fetch https://golang.org | ./outline
 </ul>
 <p>For example, the <a href="https://golang.org/pkg/os/"><code>os</code></a> package guarantees that every error returned by a file operation, such as <code>os.Open</code> or the <code>Read</code>, <code>Write</code>, or <code>Close</code> methods of an open file, describes not just the nature of the failure (permission denied, no such directory, and so on) but also the name of the file, so the caller needn't include this information in the error message it constructs.</p>
 <p>In general, the call <code>f(x)</code> is responsible for reporting the attempted operation <code>f</code> and the argument value <code>x</code> as they relate to the context of the error. The caller is responsible for adding further information that it has but the call <code>f(x)</code> does not, such as the URL in the call to <code>html.Parse</code> above.</p>
+<h5 id="retrying-the-failed-operation"><strong>Retrying the failed operation</strong> *</h5>
+<p>The second strategy is for errors that represent transient or unpredictable problems; in such cases, it may make sense to retry the failed operation, possibly with a delay between tries and with a limit on the number of attempts or the time spent trying before giving up entirely.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/wait/wait.go">gopl.io/ch5/wait/wait.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// WaitForServer attempts to contact the server of a URL.</span>
+<span class="c1">// It tries for one minute using exponential back-off.</span>
+<span class="c1">// It reports an error if all attempts fail.</span>
+<span class="kd">func</span> <span class="nx">WaitForServer</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">timeout</span> <span class="p">=</span> <span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Minute</span>
+    <span class="nx">deadline</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">().</span><span class="nx">Add</span><span class="p">(</span><span class="nx">timeout</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">tries</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">().</span><span class="nx">Before</span><span class="p">(</span><span class="nx">deadline</span><span class="p">);</span> <span class="nx">tries</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Head</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">nil</span> <span class="c1">// success</span>
+        <span class="p">}</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;server not responding (%s); retrying...&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="nx">time</span><span class="p">.</span><span class="nx">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span> <span class="o">&lt;&lt;</span> <span class="nb">uint</span><span class="p">(</span><span class="nx">tries</span><span class="p">))</span> <span class="c1">// exponential back-off</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;server %s failed to respond after %s&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">timeout</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h5 id="printing-the-error-and-stopping-the-program"><strong>Printing the error and stopping the program</strong> *</h5>
+<p>Third, if progress is impossible, the caller can print the error and stop the program gracefully,
+but <u>this action should generally be reserved for the main package of a program.</u></p>
+<p>Library functions should usually propagate errors to the caller, unless the error is a sign of an internal inconsistency, that is, a bug.</p>
+<div class="codehilite"><pre><span class="c1">// (In function main.)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">WaitForServer</span><span class="p">(</span><span class="nx">url</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;Site is down: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A more convenient, equivalent way is to call <a href="https://golang.org/pkg/log/#Fatalf"><code>log.Fatalf</code></a>. As with all the <a href="https://golang.org/pkg/log/"><code>log</code></a> functions, by default it prefixes the time and date to the error message.</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">WaitForServer</span><span class="p">(</span><span class="nx">url</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;Site is down: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The default format is helpful in a long-running server, but not useful for an interactive tool:</p>
+<div class="codehilite"><pre>2006/01/02 15:04:05 Site is down: no such domain: bad.gopl.io
+</pre></div>
+
+
+<p>We can set the prefix used by the <code>log</code> package to the name of the command, and suppress the display of the date and time:</p>
+<div class="codehilite"><pre><span class="nx">log</span><span class="p">.</span><span class="nx">SetPrefix</span><span class="p">(</span><span class="s">&quot;wait: &quot;</span><span class="p">)</span>
+<span class="nx">log</span><span class="p">.</span><span class="nx">SetFlags</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+
+
+<h5 id="logging-the-error-and-continuing"><strong>Logging the error and continuing</strong> *</h5>
+<p>Fourth, in some cases, it's sufficient just to log the error and then continue, perhaps with
+reduced functionality. Using the <code>log</code> package adds the usual prefix:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">Ping</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;ping failed: %v; networking disabled&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To print directly to the standard error stream:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">Ping</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;ping failed: %v; networking disabled\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note that all <code>log</code> functions append a newline if one is not already present.</p>
+<h5 id="ignoring-the-error"><strong>Ignoring the error</strong> *</h5>
+<p>Fifth and finally, in rare cases we can safely ignore an error entirely:</p>
+<div class="codehilite"><pre><span class="nx">dir</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ioutil</span><span class="p">.</span><span class="nx">TempDir</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;scratch&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;failed to create temp dir: %v&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// ...use temp dir...</span>
+<span class="nx">os</span><span class="p">.</span><span class="nx">RemoveAll</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span> <span class="c1">// ignore errors; $TMPDIR is cleaned periodically</span>
+</pre></div>
+
+
+<p>The call to <code>os.RemoveAll</code> may fail, but the program ignores it because the operating system periodically cleans out the temporary directory. In this case, discarding the error was intentional, but the program logic would be the same had we forgotten to deal with it. When you deliberately ignore one, document your intention clearly.</p>
+<h5 id="summary-of-error-handling"><strong>Summary of error handling</strong> *</h5>
+<p>Error handling in Go has a particular rhythm.</p>
+<ol>
+<li>After checking an error, failure is usually dealt with before success.</li>
+<li>If failure causes the function to return, the logic for success is not indented within an else block but follows at the outer level.</li>
+<li>Functions tend to exhibit a common structure, with a series of initial checks to reject errors, followed by the substance of the function at the end, minimally indented.</li>
+</ol>
 <h3 id="function-values">Function Values</h3>
 <h3 id="anonymous-functions">Anonymous Functions</h3>
 <h3 id="variadic-functions">Variadic Functions</h3>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
 <h3 id="panic">Panic</h3>
 <h3 id="recover">Recover</h3>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p131-on-error-handling"><strong>p131 on error handling</strong></h5>
+<blockquote>
+<p>After checking an error, failure is usually dealt with before success.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean exactly?</p>
             </div>
         </div>
 
