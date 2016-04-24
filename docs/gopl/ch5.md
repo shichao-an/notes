@@ -427,6 +427,115 @@ For example, the [`os`](https://golang.org/pkg/os/) package guarantees that ever
 
 In general, the call `f(x)` is responsible for reporting the attempted operation `f` and the argument value `x` as they relate to the context of the error. The caller is responsible for adding further information that it has but the call `f(x)` does not, such as the URL in the call to `html.Parse` above.
 
+##### **Retrying the failed operation** *
+
+The second strategy is for errors that represent transient or unpredictable problems; in such cases, it may make sense to retry the failed operation, possibly with a delay between tries and with a limit on the number of attempts or the time spent trying before giving up entirely.
+
+<small>[gopl.io/ch5/wait/wait.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/wait/wait.go)</small>
+
+```go
+// WaitForServer attempts to contact the server of a URL.
+// It tries for one minute using exponential back-off.
+// It reports an error if all attempts fail.
+func WaitForServer(url string) error {
+	const timeout = 1 * time.Minute
+	deadline := time.Now().Add(timeout)
+	for tries := 0; time.Now().Before(deadline); tries++ {
+		_, err := http.Head(url)
+		if err == nil {
+			return nil // success
+		}
+		log.Printf("server not responding (%s); retrying...", err)
+		time.Sleep(time.Second << uint(tries)) // exponential back-off
+	}
+	return fmt.Errorf("server %s failed to respond after %s", url, timeout)
+}
+```
+
+##### **Printing the error and stopping the program** *
+
+Third, if progress is impossible, the caller can print the error and stop the program gracefully,
+but <u>this action should generally be reserved for the main package of a program.</u>
+
+Library functions should usually propagate errors to the caller, unless the error is a sign of an internal inconsistency, that is, a bug.
+
+```go
+// (In function main.)
+if err := WaitForServer(url); err != nil {
+	fmt.Fprintf(os.Stderr, "Site is down: %v\n", err)
+	os.Exit(1)
+}
+```
+
+A more convenient, equivalent way is to call [`log.Fatalf`](https://golang.org/pkg/log/#Fatalf). As with all the [`log`](https://golang.org/pkg/log/) functions, by default it prefixes the time and date to the error message.
+
+```go
+if err := WaitForServer(url); err != nil {
+	log.Fatalf("Site is down: %v\n", err)
+}
+```
+
+The default format is helpful in a long-running server, but not useful for an interactive tool:
+
+```text
+2006/01/02 15:04:05 Site is down: no such domain: bad.gopl.io
+```
+
+We can set the prefix used by the `log` package to the name of the command, and suppress the display of the date and time:
+
+```go
+log.SetPrefix("wait: ")
+log.SetFlags(0)
+```
+
+##### **Logging the error and continuing** *
+
+Fourth, in some cases, it's sufficient just to log the error and then continue, perhaps with
+reduced functionality. Using the `log` package adds the usual prefix:
+
+```go
+if err := Ping(); err != nil {
+	log.Printf("ping failed: %v; networking disabled", err)
+}
+```
+
+To print directly to the standard error stream:
+
+```go
+if err := Ping(); err != nil {
+	fmt.Fprintf(os.Stderr, "ping failed: %v; networking disabled\n", err)
+}
+```
+
+Note that all `log` functions append a newline if one is not already present.
+
+##### **Ignoring the error** *
+
+
+Fifth and finally, in rare cases we can safely ignore an error entirely:
+
+```go
+dir, err := ioutil.TempDir("", "scratch")
+if err != nil {
+	return fmt.Errorf("failed to create temp dir: %v", err)
+}
+
+// ...use temp dir...
+os.RemoveAll(dir) // ignore errors; $TMPDIR is cleaned periodically
+```
+
+The call to `os.RemoveAll` may fail, but the program ignores it because the operating system periodically cleans out the temporary directory. In this case, discarding the error was intentional, but the program logic would be the same had we forgotten to deal with it. When you deliberately ignore one, document your intention clearly.
+
+
+##### **Summary of error handling** *
+
+Error handling in Go has a particular rhythm.
+
+1. After checking an error, failure is usually dealt with before success.
+2. If failure causes the function to return, the logic for success is not indented within an else block but follows at the outer level.
+3. Functions tend to exhibit a common structure, with a series of initial checks to reject errors, followed by the substance of the function at the end, minimally indented.
+
+
 
 ### Function Values
 ### Anonymous Functions
@@ -434,3 +543,13 @@ In general, the call `f(x)` is responsible for reporting the attempted operation
 ### Deferred Function Calls
 ### Panic
 ### Recover
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p131 on error handling**
+
+> After checking an error, failure is usually dealt with before success.
+
+<span class="text-danger">Question</span>: What does it mean exactly?
