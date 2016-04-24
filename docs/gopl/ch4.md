@@ -1565,7 +1565,6 @@ EmployeeByID(id).Salary = 0
 
 <span class="text-danger">Question</span>: Why is that?
 
-
 ##### **p107 on JSON**
 
 > JSON's `\U`*hhhh* numeric escapes denote [UTF-16](https://en.wikipedia.org/wiki/UTF-16) codes, not runes.
