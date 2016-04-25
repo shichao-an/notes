@@ -2,6 +2,11 @@
 
 This page summarizes the roadmap of learning focuses within the next 8 to 12 months.
 
+### Contents
+
+* [Objectives and Key Results](okr.md)
+* [Catalog](catalog.md)
+
 ### Summary
 
 #### Fields of Interest
@@ -87,81 +92,3 @@ I will read x86 assembly and x86 disassembly.
 
 1. **Time-consuming**: formatting texts, adding images and sorting out information takes about 1/3 of the overall time spent on learning.
 2. **Tedious**: the notes can sometimes be lengthy and pointless.
-
-#### Relationships and Ordering
-
-* LKD => UTLK
-* APUE => LSP => TLPI
-* GOPL => TWGR
-* TCPv1 => TCPIP
-* CSN => PIC
-
-### Objectives and Key Results
-
-#### OKR-1: July 31, 2016
-
-Priority | Category | Primary Book | Secondary Book(s) | Key Results
--------- | -------- | ------------ | ----------------- | -----------
-1 | Operating System | LKD | UTLK | LKD: most chapters; UTLK: first 3 chapters
-1 | Programming Language | GOPL | - | GOPL: all 13 chapters
-1 | Programming Language | CSN | - | CSN: first 3 parts
-2 | System Programming | UNP | TCPv1 | UNP: first 11 chapters (excluding SCTP)
-2 | Misc | HTAE | - | HTAE: first 4 chapters
-2 | System Architecture | BD | - | BD: first 7 chapters
-3 | Programming Language | x86 disassembly | - | Non-Windows contents
-3 | Operating System | SPEC | - | TBD
-3 | System Programming | APUE | TLPI/LSP | TBD
-3 | Networks | TCPv1 | TCPIP | TBD
-3 | Security | CNSPP | - | TBD
-
-### Catalog
-
-#### Programming Languages <small>(7)</small>
-
-##### **x86 Assembly**
-
-* [x86 assembly](../asm/index.md)
-* [x86 disassembly](../disassembly/index.md)
-
-##### **C**
-
-* [PIC](../pic/index.md)
-* [CSN](../csn/index.md)
-
-##### **Go**
-
-* [GOPL](../gopl/index.md)
-
-##### **Python**
-
-* [PER](../per/index.md)
-
-##### **Ruby**
-
-* [TWGR](../twgr/index.md)
-
-#### Operating Systems <small>(3)</small>
-
-* [LKD](../lkd/index.md)
-* [UTLK](../utlk/index.md)
-* [SPEC](../spec/index.md)
-
-#### System Programming <small>(4)</small>
-
-* [APUE](../apue/index.md)
-* [UNP](../unp/index.md)
-* [LSP](../lsp/index.md)
-* [TLPI](../tlpi/index.md)
-
-#### Networks and Security <small>(5)</small>
-
-* [TCPv1](../tcpv1/index.md)
-* [TCPIP](../tcpip/index.md)
-* [CNAPP](../cnapp/index.md)
-* [CNSPP](../cnspp/index.md)
-* [HTAE](../htae/index.md)
-
-#### System Architecture <small>(2)</small>
-
-* [BD](../bd/index.md)
-* [DevOps](../devops/index.md)
