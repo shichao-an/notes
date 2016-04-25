@@ -535,9 +535,169 @@ Error handling in Go has a particular rhythm.
 2. If failure causes the function to return, the logic for success is not indented within an else block but follows at the outer level.
 3. Functions tend to exhibit a common structure, with a series of initial checks to reject errors, followed by the substance of the function at the end, minimally indented.
 
+#### End of File (EOF)
 
+Occasionally, program must take different
+actions depending on the kind of error that has occurred. Consider an attempt to read *n* bytes
+of data from a file:
+
+* If *n* is chosen to be the length of the file, any error represents a failure.
+* If the caller repeatedly tries to read fixed-size chunks until the file is exhausted, the caller must respond differently to an [end-of-file](https://en.wikipedia.org/wiki/End-of-file) condition than it does to all other errors.
+
+For this reason, the [`io`](https://golang.org/pkg/io/) package guarantees that any read failure caused by an end-of-file condition is always reported by a distinguished error, [`io.EOF`](https://golang.org/pkg/io/#EOF), which is defined as follows:
+
+```go
+package io
+
+import "errors"
+
+// EOF is the error returned by Read when no more input is available.
+var EOF = errors.New("EOF")
+```
+
+The caller can detect this condition using a simple comparison, as in the loop below, which reads runes from the standard input. (The [`charcount`](https://github.com/shichao-an/gopl.io/blob/master/ch4/charcount/main.go) program in Section 4.3 provides a more complete example.)
+
+```go
+in := bufio.NewReader(os.Stdin)
+for {
+	r, _, err := in.ReadRune()
+	if err == io.EOF {
+		break // finished reading
+	}
+	if err != nil {
+		return fmt.Errorf("read failed: %v", err)
+	}
+	// ...use r...
+}
+```
+
+Since in an end-of-file condition there is no information to report besides the fact of it, `io.EOF` has a fixed error message, `"EOF"`. For other errors, we may need to report both the quality and quantity of the error, so a fixed error value will not do. [Section 7.11](ch7.md#discriminating-errors-with-type-assertions) will present a more systematic way to distinguish certain error values from others.
 
 ### Function Values
+
+Functions are [*first-class values*](https://en.wikipedia.org/wiki/First-class_citizen) in Go: like other values, function values have types, and they may be assigned to variables or passed to or returned from functions. A function value may be called like any other function. For example:
+
+```go
+func square(n int) int { return n * n }
+func negative(n int) int { return -n }
+func product(m, n int) int { return m * n }
+
+f := square
+fmt.Println(f(3)) // "9"
+
+f = negative
+fmt.Println(f(3))     // "-3"
+fmt.Printf("%T\n", f) // "func(int) int"
+
+f = product // compile error: can't assign f(int, int) int to f(int) int
+```
+
+The zero value of a function type is `nil`. Calling a `nil` function value causes a panic:
+
+```go
+var f func(int) int
+f(3) // panic: call of nil function
+```
+
+Function values may be compared with `nil`:
+
+```go
+var f func(int) int
+	if f != nil {
+	f(3)
+}
+```
+
+But they are not comparable, so they may not be compared against each other or used as keys in a map.
+
+With function values, we can parameterize our functions over not only data, but also behavior. The standard libraries contain many examples. For instance, `strings.Map` applies a function to each character of a string, joining the results to make another string.
+
+```go
+func add1(r rune) rune { return r + 1 }
+fmt.Println(strings.Map(add1, "HAL-9000")) // "IBM.:111"
+fmt.Println(strings.Map(add1, "VMS")) // "WNT"
+fmt.Println(strings.Map(add1, "Admix")) // "Benjy"
+```
+
+The `findLinks` function from [Section 5.2](#recursion) uses a helper function, `visit`, to visit all the nodes in an HTML document and apply an action to each one. Using a function value, we can separate the logic for tree traversal from the logic for the action to be applied to each node, so that we can reuse the traversal with different actions.
+
+<small>[gopl.io/ch5/outline2/outline.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/outline2/outline.go)</small>
+
+```go
+// forEachNode calls the functions pre(x) and post(x) for each node
+// x in the tree rooted at n. Both functions are optional.
+// pre is called before the children are visited (preorder) and
+// post is called after (postorder).
+func forEachNode(n *html.Node, pre, post func(n *html.Node)) {
+	if pre != nil {
+		pre(n)
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		forEachNode(c, pre, post)
+	}
+
+	if post != nil {
+		post(n)
+	}
+}
+```
+
+The `forEachNode` function accepts two function arguments, one to call before a node's children are visited and one to call after. This arrangement gives the caller a great deal of flexibility. For example, the functions `startElement` and `endElement` print the start and end tags of an HTML element like `<b>...</b>`:
+
+```go
+var depth int
+
+func startElement(n *html.Node) {
+	if n.Type == html.ElementNode {
+		fmt.Printf("%*s<%s>\n", depth*2, "", n.Data)
+		depth++
+	}
+}
+
+func endElement(n *html.Node) {
+	if n.Type == html.ElementNode {
+		depth--
+		fmt.Printf("%*s</%s>\n", depth*2, "", n.Data)
+	}
+}
+```
+
+The functions also indent the output using another `fmt.Printf` trick. The `*` adverb in `%*s` prints a string padded with a variable number of spaces. The width and the string are provided by the arguments `depth*2` and `""`.
+
+If we call `forEachNode` on an HTML document, like this:
+
+```go
+forEachNode(doc, startElement, endElement)
+```
+
+This will output:
+
+```text
+$ go build gopl.io/ch5/outline2
+$ ./outline2 http://gopl.io
+<html>
+  <head>
+    <meta>
+    </meta>
+    <title>
+    </title>
+    <style>
+    </style>
+  </head>
+  <body>
+    <table>
+      <tbody>
+        <tr>
+          <td>
+            <a>
+              <img>
+              </img>
+...
+```
+
+
+
 ### Anonymous Functions
 ### Variadic Functions
 ### Deferred Function Calls
