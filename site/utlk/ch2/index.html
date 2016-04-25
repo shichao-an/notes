@@ -1272,7 +1272,71 @@ Extended   XXXXXXXXXX0000000000000000000000
 <p>Each process has its own Page Global Directory and its own set of Page Tables. <u>When a process switch occurs, Linux saves the <code>cr3</code> control register in the descriptor of the process previously in execution and then loads <code>cr3</code> with the value stored in the descriptor of the process to be executed next. Thus, when the new process resumes its execution on the CPU, the paging unit refers to the correct set of Page Tables.</u></p>
 <p>Mapping linear to physical addresses now becomes a mechanical task, although it is still somewhat complex. The next few sections of this chapter are a list of functions and macros that retrieve information the kernel needs to find addresses and manage the tables.</p>
 <h4 id="the-linear-address-fields">The Linear Address Fields</h4>
+<p>The following macros simplify Page Table handling:</p>
+<ul>
+<li><code>PAGE_SHIFT</code>: specifies the length in bits of the Offset field. When applied to 80×86 processors, it yields the value 12.<ul>
+<li>Because all the addresses in a page must fit in the Offset field, the size of a page on 80×86 systems is 2<sup>12</sup> or 4,096 bytes</li>
+<li>The <code>PAGE_SHIFT</code> of 12 can be considered the logarithm base 2 of the total page size.</li>
+<li>This macro is used by <code>PAGE_SIZE</code> to return the size of the page.</li>
+<li>The <code>PAGE_MASK</code> macro yields the value <code>0xfffff000</code> and is used to mask all the bits of the Offset field.</li>
+</ul>
+</li>
+<li><code>PMD_SHIFT</code>: the total length in bits of the Offset and Table fields of a linear address, which is the logarithm of the size of the area a Page Middle Directory entry can map.<ul>
+<li>The <code>PMD_SIZE</code> macro computes the size of the area mapped by a single entry of the Page Middle Directory, that is, of a Page Table.</li>
+<li>The <code>PMD_MASK</code> macro is used to mask all the bits of the Offset and Table fields.</li>
+<li>When PAE is disabled:<ul>
+<li><code>PMD_SHIFT</code> yields the value 22 (12 from Offset plus 10 from Table).</li>
+<li><code>PMD_SIZE</code> yields 2<sup>22</sup> or 4 MB.</li>
+<li><code>PMD_MASK</code> yields <code>0xffc00000</code>.</li>
+</ul>
+</li>
+<li>When PAE is enabled:<ul>
+<li><code>PMD_SHIFT</code> yields the value 21 (12 from Offset plus 9 from Table).</li>
+<li><code>PMD_SIZE</code> yields 2<sup>21</sup> or 2 MB.</li>
+<li><code>PMD_MASK</code> yields <code>0xffe00000</code>.</li>
+</ul>
+</li>
+<li>Large pages do not make use of the last level of page tables:<ul>
+<li><code>LARGE_PAGE_SIZE</code>, which yields the size of a large page, is equal to <code>PMD_SIZE</code> (2<sup><code>PMD_SHIFT</code></sup>).</li>
+<li><code>LARGE_PAGE_MASK</code>, which is used to mask all the bits of the Offset and Table fields in a large page address, is equal to <code>PMD_MASK</code>.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>PUD_SHIFT</code>: determines the logarithm of the size of the area a Page Upper Directory entry can map.<ul>
+<li>The <code>PUD_SIZE</code> macro computes the size of the area mapped by a single entry of the Page Global Directory.</li>
+<li>The <code>PUD_MASK</code> macro is used to mask all the bits of the Offset, Table, and Page Middle Directory fields.</li>
+<li>On the 80×86 processors, <code>PUD_SHIFT</code> is always equal to <code>PMD_SHIFT</code>, and <code>PUD_SIZE</code> is equal to 4 MB or 2 MB.</li>
+</ul>
+</li>
+<li><code>PGDIR_SHIFT</code>: determines the logarithm of the size of the area that a Page Global Directory entry can map.<ul>
+<li>The <code>PGDIR_SIZE</code> macro computes the size of the area mapped by a single entry of the Page Global Directory.</li>
+<li>The <code>PGDIR_MASK</code> macro is used to mask all the bits of the Offset, Table, Page Middle Directory, and PageUpper Directory fields.</li>
+<li>When PAE is disabled:<ul>
+<li><code>PGDIR_SHIFT</code> yields the value 22 (the same value yielded by <code>PMD_SHIFT</code> and by <code>PUD_SHIFT</code>)</li>
+<li><code>PGDIR_SIZE</code> yields 2<sup>22</sup> or 4 MB, and <code>PGDIR_MASK</code> yields <code>0xffc00000</code>.</li>
+</ul>
+</li>
+<li>When PAE is enabled:<ul>
+<li><code>PGDIR_SHIFT</code> yields the value 30 (12 from Offset plus 9 from Table plus 9 from Page Middle Directory).</li>
+<li><code>PGDIR_SIZE</code> yields 2<sup>30</sup> or 1 GB.</li>
+<li><code>PGDIR_MASK</code> yields <code>0xc0000000</code>.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>PTRS_PER_PTE</code>, <code>PTRS_PER_PMD</code>, <code>PTRS_PER_PUD</code>, and <code>PTRS_PER_PGD</code>: compute the number of entries in the Page Table, Page Middle Directory, Page Upper Directory, and Page Global Directory.<ul>
+<li>When PAE is disabled, they yield the values 1,024, 1, 1, and 1,024, respectively.</li>
+<li>When PAE is enabled, they yield the values 512, 512, 1, and 4, respectively.</li>
+</ul>
+</li>
+</ul>
 <h4 id="page-table-handling">Page Table Handling</h4>
+<p><code>pte_t</code>, <code>pmd_t</code>, <code>pud_t</code>, and <code>pgd_t</code> describe the format of a Page Table, a Page Middle Directory, a Page Upper Directory, and a Page Global Directory entry, respectively. They are 64-bit data types when PAE is enabled and 32-bit data types otherwise. <code>pgprot_t</code> is another 64-bit (PAE enabled) or 32-bit (PAE disabled) data type that represents the protection flags associated with a single entry.</p>
+<ul>
+<li>Five type-conversion macros, <code>__pte</code>, <code>__pmd</code>, <code>__pud</code>, <code>__pgd</code>, and <code>__pgprot</code>, cast an unsigned integer into the required type.</li>
+<li>Five other type-conversion macros, <code>pte_val</code>, <code>pmd_val</code>, <code>pud_val</code>, <code>pgd_val</code>, and <code>pgprot_val</code>, perform the reverse casting from one of the four previously mentioned specialized types into an unsigned integer</li>
+</ul>
 <h4 id="physical-memory-layout">Physical Memory Layout</h4>
 <h4 id="process-page-tables">Process Page Tables</h4>
 <h4 id="kernel-page-tables">Kernel Page Tables</h4>
