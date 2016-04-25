@@ -538,6 +538,8 @@
         
             <li><a href="#error-handling-strategies">Error-Handling Strategies</a></li>
         
+            <li><a href="#end-of-file-eof">End of File (EOF)</a></li>
+        
     
         <li class="main "><a href="#function-values">Function Values</a></li>
         
@@ -1025,7 +1027,151 @@ reduced functionality. Using the <code>log</code> package adds the usual prefix:
 <li>If failure causes the function to return, the logic for success is not indented within an else block but follows at the outer level.</li>
 <li>Functions tend to exhibit a common structure, with a series of initial checks to reject errors, followed by the substance of the function at the end, minimally indented.</li>
 </ol>
+<h4 id="end-of-file-eof">End of File (EOF)</h4>
+<p>Occasionally, program must take different
+actions depending on the kind of error that has occurred. Consider an attempt to read <em>n</em> bytes
+of data from a file:</p>
+<ul>
+<li>If <em>n</em> is chosen to be the length of the file, any error represents a failure.</li>
+<li>If the caller repeatedly tries to read fixed-size chunks until the file is exhausted, the caller must respond differently to an <a href="https://en.wikipedia.org/wiki/End-of-file">end-of-file</a> condition than it does to all other errors.</li>
+</ul>
+<p>For this reason, the <a href="https://golang.org/pkg/io/"><code>io</code></a> package guarantees that any read failure caused by an end-of-file condition is always reported by a distinguished error, <a href="https://golang.org/pkg/io/#EOF"><code>io.EOF</code></a>, which is defined as follows:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">io</span>
+
+<span class="kn">import</span> <span class="s">&quot;errors&quot;</span>
+
+<span class="c1">// EOF is the error returned by Read when no more input is available.</span>
+<span class="kd">var</span> <span class="nx">EOF</span> <span class="p">=</span> <span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;EOF&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The caller can detect this condition using a simple comparison, as in the loop below, which reads runes from the standard input. (The <a href="https://github.com/shichao-an/gopl.io/blob/master/ch4/charcount/main.go"><code>charcount</code></a> program in Section 4.3 provides a more complete example.)</p>
+<div class="codehilite"><pre><span class="nx">in</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewReader</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+<span class="k">for</span> <span class="p">{</span>
+    <span class="nx">r</span><span class="p">,</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">in</span><span class="p">.</span><span class="nx">ReadRune</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">==</span> <span class="nx">io</span><span class="p">.</span><span class="nx">EOF</span> <span class="p">{</span>
+        <span class="k">break</span> <span class="c1">// finished reading</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;read failed: %v&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="c1">// ...use r...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Since in an end-of-file condition there is no information to report besides the fact of it, <code>io.EOF</code> has a fixed error message, <code>"EOF"</code>. For other errors, we may need to report both the quality and quantity of the error, so a fixed error value will not do. <a href="../ch7/#discriminating-errors-with-type-assertions">Section 7.11</a> will present a more systematic way to distinguish certain error values from others.</p>
 <h3 id="function-values">Function Values</h3>
+<p>Functions are <a href="https://en.wikipedia.org/wiki/First-class_citizen"><em>first-class values</em></a> in Go: like other values, function values have types, and they may be assigned to variables or passed to or returned from functions. A function value may be called like any other function. For example:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">square</span><span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">n</span> <span class="o">*</span> <span class="nx">n</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">negative</span><span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span class="nx">n</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">product</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span> <span class="nx">n</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">m</span> <span class="o">*</span> <span class="nx">n</span> <span class="p">}</span>
+
+<span class="nx">f</span> <span class="o">:=</span> <span class="nx">square</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span> <span class="c1">// &quot;9&quot;</span>
+
+<span class="nx">f</span> <span class="p">=</span> <span class="nx">negative</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>     <span class="c1">// &quot;-3&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">f</span><span class="p">)</span> <span class="c1">// &quot;func(int) int&quot;</span>
+
+<span class="nx">f</span> <span class="p">=</span> <span class="nx">product</span> <span class="c1">// compile error: can&#39;t assign f(int, int) int to f(int) int</span>
+</pre></div>
+
+
+<p>The zero value of a function type is <code>nil</code>. Calling a <code>nil</code> function value causes a panic:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">f</span> <span class="kd">func</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="kt">int</span>
+<span class="nx">f</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1">// panic: call of nil function</span>
+</pre></div>
+
+
+<p>Function values may be compared with <code>nil</code>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">f</span> <span class="kd">func</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="kt">int</span>
+    <span class="k">if</span> <span class="nx">f</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">f</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>But they are not comparable, so they may not be compared against each other or used as keys in a map.</p>
+<p>With function values, we can parameterize our functions over not only data, but also behavior. The standard libraries contain many examples. For instance, <code>strings.Map</code> applies a function to each character of a string, joining the results to make another string.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">add1</span><span class="p">(</span><span class="nx">r</span> <span class="kt">rune</span><span class="p">)</span> <span class="kt">rune</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">r</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Map</span><span class="p">(</span><span class="nx">add1</span><span class="p">,</span> <span class="s">&quot;HAL-9000&quot;</span><span class="p">))</span> <span class="c1">// &quot;IBM.:111&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Map</span><span class="p">(</span><span class="nx">add1</span><span class="p">,</span> <span class="s">&quot;VMS&quot;</span><span class="p">))</span> <span class="c1">// &quot;WNT&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Map</span><span class="p">(</span><span class="nx">add1</span><span class="p">,</span> <span class="s">&quot;Admix&quot;</span><span class="p">))</span> <span class="c1">// &quot;Benjy&quot;</span>
+</pre></div>
+
+
+<p>The <code>findLinks</code> function from <a href="#recursion">Section 5.2</a> uses a helper function, <code>visit</code>, to visit all the nodes in an HTML document and apply an action to each one. Using a function value, we can separate the logic for tree traversal from the logic for the action to be applied to each node, so that we can reuse the traversal with different actions.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/outline2/outline.go">gopl.io/ch5/outline2/outline.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// forEachNode calls the functions pre(x) and post(x) for each node</span>
+<span class="c1">// x in the tree rooted at n. Both functions are optional.</span>
+<span class="c1">// pre is called before the children are visited (preorder) and</span>
+<span class="c1">// post is called after (postorder).</span>
+<span class="kd">func</span> <span class="nx">forEachNode</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">,</span> <span class="nx">pre</span><span class="p">,</span> <span class="nx">post</span> <span class="kd">func</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">pre</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">pre</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="nx">c</span> <span class="o">:=</span> <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">;</span> <span class="nx">c</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">;</span> <span class="nx">c</span> <span class="p">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">NextSibling</span> <span class="p">{</span>
+        <span class="nx">forEachNode</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">pre</span><span class="p">,</span> <span class="nx">post</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="nx">post</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">post</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>forEachNode</code> function accepts two function arguments, one to call before a node's children are visited and one to call after. This arrangement gives the caller a great deal of flexibility. For example, the functions <code>startElement</code> and <code>endElement</code> print the start and end tags of an HTML element like <code>&lt;b&gt;...&lt;/b&gt;</code>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">depth</span> <span class="kt">int</span>
+
+<span class="kd">func</span> <span class="nx">startElement</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%*s&lt;%s&gt;\n&quot;</span><span class="p">,</span> <span class="nx">depth</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span>
+        <span class="nx">depth</span><span class="o">++</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">endElement</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="p">{</span>
+        <span class="nx">depth</span><span class="o">--</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%*s&lt;/%s&gt;\n&quot;</span><span class="p">,</span> <span class="nx">depth</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The functions also indent the output using another <code>fmt.Printf</code> trick. The <code>*</code> adverb in <code>%*s</code> prints a string padded with a variable number of spaces. The width and the string are provided by the arguments <code>depth*2</code> and <code>""</code>.</p>
+<p>If we call <code>forEachNode</code> on an HTML document, like this:</p>
+<div class="codehilite"><pre><span class="nx">forEachNode</span><span class="p">(</span><span class="nx">doc</span><span class="p">,</span> <span class="nx">startElement</span><span class="p">,</span> <span class="nx">endElement</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This will output:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch5/outline2
+$ ./outline2 http://gopl.io
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;meta&gt;
+    &lt;/meta&gt;
+    &lt;title&gt;
+    &lt;/title&gt;
+    &lt;style&gt;
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;table&gt;
+      &lt;tbody&gt;
+        &lt;tr&gt;
+          &lt;td&gt;
+            &lt;a&gt;
+              &lt;img&gt;
+              &lt;/img&gt;
+...
+</pre></div>
+
+
 <h3 id="anonymous-functions">Anonymous Functions</h3>
 <h3 id="variadic-functions">Variadic Functions</h3>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
