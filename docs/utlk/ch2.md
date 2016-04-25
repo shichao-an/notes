@@ -570,7 +570,51 @@ Mapping linear to physical addresses now becomes a mechanical task, although it 
 
 #### The Linear Address Fields
 
+The following macros simplify Page Table handling:
+
+* `PAGE_SHIFT`: specifies the length in bits of the Offset field. When applied to 80×86 processors, it yields the value 12.
+    * Because all the addresses in a page must fit in the Offset field, the size of a page on 80×86 systems is 2<sup>12</sup> or 4,096 bytes
+    * The `PAGE_SHIFT` of 12 can be considered the logarithm base 2 of the total page size.
+    * This macro is used by `PAGE_SIZE` to return the size of the page.
+    * The `PAGE_MASK` macro yields the value `0xfffff000` and is used to mask all the bits of the Offset field.
+* `PMD_SHIFT`: the total length in bits of the Offset and Table fields of a linear address, which is the logarithm of the size of the area a Page Middle Directory entry can map.
+    * The `PMD_SIZE` macro computes the size of the area mapped by a single entry of the Page Middle Directory, that is, of a Page Table.
+    * The `PMD_MASK` macro is used to mask all the bits of the Offset and Table fields.
+    * When PAE is disabled:
+        * `PMD_SHIFT` yields the value 22 (12 from Offset plus 10 from Table).
+        * `PMD_SIZE` yields 2<sup>22</sup> or 4 MB.
+        * `PMD_MASK` yields `0xffc00000`.
+    * When PAE is enabled:
+        * `PMD_SHIFT` yields the value 21 (12 from Offset plus 9 from Table).
+        * `PMD_SIZE` yields 2<sup>21</sup> or 2 MB.
+        * `PMD_MASK` yields `0xffe00000`.
+    * Large pages do not make use of the last level of page tables:
+        * `LARGE_PAGE_SIZE`, which yields the size of a large page, is equal to `PMD_SIZE` (2<sup>`PMD_SHIFT`</sup>).
+        * `LARGE_PAGE_MASK`, which is used to mask all the bits of the Offset and Table fields in a large page address, is equal to `PMD_MASK`.
+* `PUD_SHIFT`: determines the logarithm of the size of the area a Page Upper Directory entry can map.
+    * The `PUD_SIZE` macro computes the size of the area mapped by a single entry of the Page Global Directory.
+    * The `PUD_MASK` macro is used to mask all the bits of the Offset, Table, and Page Middle Directory fields.
+    * On the 80×86 processors, `PUD_SHIFT` is always equal to `PMD_SHIFT`, and `PUD_SIZE` is equal to 4 MB or 2 MB.
+* `PGDIR_SHIFT`: determines the logarithm of the size of the area that a Page Global Directory entry can map.
+    * The `PGDIR_SIZE` macro computes the size of the area mapped by a single entry of the Page Global Directory.
+    * The `PGDIR_MASK` macro is used to mask all the bits of the Offset, Table, Page Middle Directory, and PageUpper Directory fields.
+    * When PAE is disabled:
+        * `PGDIR_SHIFT` yields the value 22 (the same value yielded by `PMD_SHIFT` and by `PUD_SHIFT`)
+        * `PGDIR_SIZE` yields 2<sup>22</sup> or 4 MB, and `PGDIR_MASK` yields `0xffc00000`.
+    * When PAE is enabled:
+        * `PGDIR_SHIFT` yields the value 30 (12 from Offset plus 9 from Table plus 9 from Page Middle Directory).
+        * `PGDIR_SIZE` yields 2<sup>30</sup> or 1 GB.
+        * `PGDIR_MASK` yields `0xc0000000`.
+* `PTRS_PER_PTE`, `PTRS_PER_PMD`, `PTRS_PER_PUD`, and `PTRS_PER_PGD`: compute the number of entries in the Page Table, Page Middle Directory, Page Upper Directory, and Page Global Directory.
+    * When PAE is disabled, they yield the values 1,024, 1, 1, and 1,024, respectively.
+    * When PAE is enabled, they yield the values 512, 512, 1, and 4, respectively.
+
 #### Page Table Handling
+
+`pte_t`, `pmd_t`, `pud_t`, and `pgd_t` describe the format of a Page Table, a Page Middle Directory, a Page Upper Directory, and a Page Global Directory entry, respectively. They are 64-bit data types when PAE is enabled and 32-bit data types otherwise. `pgprot_t` is another 64-bit (PAE enabled) or 32-bit (PAE disabled) data type that represents the protection flags associated with a single entry.
+
+* Five type-conversion macros, `__pte`, `__pmd`, `__pud`, `__pgd`, and `__pgprot`, cast an unsigned integer into the required type.
+* Five other type-conversion macros, `pte_val`, `pmd_val`, `pud_val`, `pgd_val`, and `pgprot_val`, perform the reverse casting from one of the four previously mentioned specialized types into an unsigned integer
 
 #### Physical Memory Layout
 
