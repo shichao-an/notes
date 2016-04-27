@@ -1763,7 +1763,7 @@ int main(int argc, char * argv[])
 
 #### Member Offsets
 
-The `offsetof` macro in `stddef.h` can be used to get the offset value of a member:
+The [`offsetof`](http://en.cppreference.com/w/c/types/offsetof) macro in `stddef.h` can be used to get the offset value of a member:
 
 <small>[struct_offset.c](https://gist.github.com/shichao-an/4337a3f6b19adb668086543bb9699ee9)</small>
 
@@ -1977,6 +1977,92 @@ will output:
 ```text
 0x12345678 => 78, 56, 34, 12
 ```
+
+### [Bit Fields](http://en.cppreference.com/w/c/language/bit_field)
+
+Multiple members of a struct or union can be "compressed and stored" in a single field to save memory.
+
+```c
+struct
+{
+    unsigned int year : 22;
+    unsigned int month : 4;
+    unsigned int day : 5;
+} d = { 2010, 4, 30 };
+
+printf("size: %d\n", sizeof(d));
+printf("year = %u, month = %u, day = %u\n", d.year, d.month, d.day);
+```
+
+A common usage of bit fields is [flag fields](https://en.wikipedia.org/wiki/Flag_field), which is more straightforward than [bitwise operation](https://en.wikipedia.org/wiki/Bitwise_operation) and saves memory.
+
+<small>[bit_field.c](https://gist.github.com/shichao-an/f77f1a8a70f34942d3bd480866d73408#file-bit_field-c)</small>
+
+```c
+int main(int argc, char * argv[])
+{
+    struct
+    {
+        bool a: 1;
+        bool b: 1;
+        bool c: 1;
+    } flags = { .b = true };
+
+    printf("%s\n", flags.b ? "b.T" : "b.F");
+    printf("%s\n", flags.c ? "c.T" : "c.F");
+
+    return EXIT_SUCCESS;
+}
+```
+
+[`offsetof`](http://en.cppreference.com/w/c/types/offsetof) cannot be used on a bit field.
+
+### Declarations
+
+A [declaration](http://en.cppreference.com/w/c/language/declarations) specifies the meaning and properties of a target. The same target can be declared in multiple places, but only one [definition](http://en.cppreference.com/w/c/language/declarations#Definitions) is allowed.
+
+A definition creates the object and allocate storage for it, while a declaration does not.
+
+A declaration normally include:
+
+* Declaring a user-defined type (UDT), such as struct, union and enumeration.
+* Declaring a function.
+* Declaring and defining a [global variable](https://en.wikipedia.org/wiki/Global_variable).
+* Delcaring an [external variable](https://en.wikipedia.org/wiki/External_variable).
+* Using `typedef` to declare a new name for an existing type.
+
+If the function body is present when declaring a function, then this declaration is also a definition.
+
+If storage is allocated for the object when it is declared, then this declaration is also a definition.
+
+#### Type Qualifiers
+
+The [type qualifiers](https://en.wikipedia.org/wiki/Type_qualifier) in C99 are:
+
+* [`const`](http://en.cppreference.com/w/c/language/const): constant qualifier. The object cannot be modifed.
+* [`volatile`](http://en.cppreference.com/w/c/language/volatile): the target may be modified by other threads or events. Before using this variable, it must be re-accessed from the memory.
+* [`restrict`](http://en.cppreference.com/w/c/language/restrict): restrict-qualified pointer. Except through this pointer, no other way is allowed to modify the target object.
+
+#### Linkage
+
+Element | [Storage](http://en.cppreference.com/w/c/language/storage_duration#Storage_duration) | [Scope](http://en.cppreference.com/w/c/language/scope) | [Lifetime](http://en.cppreference.com/w/c/language/lifetime) | [Linkage](http://en.cppreference.com/w/c/language/storage_duration#Linkage)
+- | - | - | - | -
+Global UDTs | | File | | Internal linkage
+Nested UDTs | | Class | | Internal linkage
+Local UDTs | | Block | No linkage
+Global functions and variables | `extern` | File | Permanent | External linkage
+Static global functions and variables | `static` | File | Permanent | Internal linkage
+Local variables and constants | `auto` | Block | Temporary | No linkage
+Global static variables and constants | `static` | Block | Permanent | No linkage
+Global constants | | File | Permanent | Internal linkage
+Static global constants | `static` | File | Permanent | Internal linkage
+Macro definitions | | File | | Internal linkage
+
+#### Implicit Initialization
+
+Objects that has static storage duration will be initialized to the default value 0 (`NULL` for pointers).
+
+
 
 ### Doubts and Solutions
 
