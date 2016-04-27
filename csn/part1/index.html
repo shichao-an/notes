@@ -629,6 +629,18 @@
         <li class="main "><a href="#union">Union</a></li>
         
     
+        <li class="main "><a href="#bit-fields">Bit Fields</a></li>
+        
+    
+        <li class="main "><a href="#declarations">Declarations</a></li>
+        
+            <li><a href="#type-qualifiers">Type Qualifiers</a></li>
+        
+            <li><a href="#linkage">Linkage</a></li>
+        
+            <li><a href="#implicit-initialization">Implicit Initialization</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -2311,7 +2323,7 @@ main.c:15: error: expected specifier-qualifier-list before ‘list_node’
 
 
 <h4 id="member-offsets">Member Offsets</h4>
-<p>The <code>offsetof</code> macro in <code>stddef.h</code> can be used to get the offset value of a member:</p>
+<p>The <a href="http://en.cppreference.com/w/c/types/offsetof"><code>offsetof</code></a> macro in <code>stddef.h</code> can be used to get the offset value of a member:</p>
 <p><small><a href="https://gist.github.com/shichao-an/4337a3f6b19adb668086543bb9699ee9">struct_offset.c</a></small></p>
 <div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span>
 <span class="p">{</span>
@@ -2500,6 +2512,146 @@ d2 = {x = 0, y = {0, 0, 2}, z = 3}
 </pre></div>
 
 
+<h3 id="bit-fields"><a href="http://en.cppreference.com/w/c/language/bit_field">Bit Fields</a></h3>
+<p>Multiple members of a struct or union can be "compressed and stored" in a single field to save memory.</p>
+<div class="codehilite"><pre><span class="k">struct</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="nl">year</span> <span class="p">:</span> <span class="mi">22</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="nl">month</span> <span class="p">:</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="nl">day</span> <span class="p">:</span> <span class="mi">5</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">d</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">2010</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span> <span class="p">};</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;size: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">d</span><span class="p">));</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;year = %u, month = %u, day = %u</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">year</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">month</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">day</span><span class="p">);</span>
+</pre></div>
+
+
+<p>A common usage of bit fields is <a href="https://en.wikipedia.org/wiki/Flag_field">flag fields</a>, which is more straightforward than <a href="https://en.wikipedia.org/wiki/Bitwise_operation">bitwise operation</a> and saves memory.</p>
+<p><small><a href="https://gist.github.com/shichao-an/f77f1a8a70f34942d3bd480866d73408#file-bit_field-c">bit_field.c</a></small></p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="k">struct</span>
+    <span class="p">{</span>
+        <span class="kt">bool</span> <span class="nl">a</span><span class="p">:</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="kt">bool</span> <span class="nl">b</span><span class="p">:</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="kt">bool</span> <span class="nl">c</span><span class="p">:</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">flags</span> <span class="o">=</span> <span class="p">{</span> <span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="nb">true</span> <span class="p">};</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">flags</span><span class="p">.</span><span class="n">b</span> <span class="o">?</span> <span class="s">&quot;b.T&quot;</span> <span class="o">:</span> <span class="s">&quot;b.F&quot;</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">flags</span><span class="p">.</span><span class="n">c</span> <span class="o">?</span> <span class="s">&quot;c.T&quot;</span> <span class="o">:</span> <span class="s">&quot;c.F&quot;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><a href="http://en.cppreference.com/w/c/types/offsetof"><code>offsetof</code></a> cannot be used on a bit field.</p>
+<h3 id="declarations">Declarations</h3>
+<p>A <a href="http://en.cppreference.com/w/c/language/declarations">declaration</a> specifies the meaning and properties of a target. The same target can be declared in multiple places, but only one <a href="http://en.cppreference.com/w/c/language/declarations#Definitions">definition</a> is allowed.</p>
+<p>A definition creates the object and allocate storage for it, while a declaration does not.</p>
+<p>A declaration normally include:</p>
+<ul>
+<li>Declaring a user-defined type (UDT), such as struct, union and enumeration.</li>
+<li>Declaring a function.</li>
+<li>Declaring and defining a <a href="https://en.wikipedia.org/wiki/Global_variable">global variable</a>.</li>
+<li>Delcaring an <a href="https://en.wikipedia.org/wiki/External_variable">external variable</a>.</li>
+<li>Using <code>typedef</code> to declare a new name for an existing type.</li>
+</ul>
+<p>If the function body is present when declaring a function, then this declaration is also a definition.</p>
+<p>If storage is allocated for the object when it is declared, then this declaration is also a definition.</p>
+<h4 id="type-qualifiers">Type Qualifiers</h4>
+<p>The <a href="https://en.wikipedia.org/wiki/Type_qualifier">type qualifiers</a> in C99 are:</p>
+<ul>
+<li><a href="http://en.cppreference.com/w/c/language/const"><code>const</code></a>: constant qualifier. The object cannot be modifed.</li>
+<li><a href="http://en.cppreference.com/w/c/language/volatile"><code>volatile</code></a>: the target may be modified by other threads or events. Before using this variable, it must be re-accessed from the memory.</li>
+<li><a href="http://en.cppreference.com/w/c/language/restrict"><code>restrict</code></a>: restrict-qualified pointer. Except through this pointer, no other way is allowed to modify the target object.</li>
+</ul>
+<h4 id="linkage">Linkage</h4>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th><a href="http://en.cppreference.com/w/c/language/storage_duration#Storage_duration">Storage</a></th>
+<th><a href="http://en.cppreference.com/w/c/language/scope">Scope</a></th>
+<th><a href="http://en.cppreference.com/w/c/language/lifetime">Lifetime</a></th>
+<th><a href="http://en.cppreference.com/w/c/language/storage_duration#Linkage">Linkage</a></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Global UDTs</td>
+<td></td>
+<td>File</td>
+<td></td>
+<td>Internal linkage</td>
+</tr>
+<tr>
+<td>Nested UDTs</td>
+<td></td>
+<td>Class</td>
+<td></td>
+<td>Internal linkage</td>
+</tr>
+<tr>
+<td>Local UDTs</td>
+<td></td>
+<td>Block</td>
+<td>No linkage</td>
+<td></td>
+</tr>
+<tr>
+<td>Global functions and variables</td>
+<td><code>extern</code></td>
+<td>File</td>
+<td>Permanent</td>
+<td>External linkage</td>
+</tr>
+<tr>
+<td>Static global functions and variables</td>
+<td><code>static</code></td>
+<td>File</td>
+<td>Permanent</td>
+<td>Internal linkage</td>
+</tr>
+<tr>
+<td>Local variables and constants</td>
+<td><code>auto</code></td>
+<td>Block</td>
+<td>Temporary</td>
+<td>No linkage</td>
+</tr>
+<tr>
+<td>Global static variables and constants</td>
+<td><code>static</code></td>
+<td>Block</td>
+<td>Permanent</td>
+<td>No linkage</td>
+</tr>
+<tr>
+<td>Global constants</td>
+<td></td>
+<td>File</td>
+<td>Permanent</td>
+<td>Internal linkage</td>
+</tr>
+<tr>
+<td>Static global constants</td>
+<td><code>static</code></td>
+<td>File</td>
+<td>Permanent</td>
+<td>Internal linkage</td>
+</tr>
+<tr>
+<td>Macro definitions</td>
+<td></td>
+<td>File</td>
+<td></td>
+<td>Internal linkage</td>
+</tr>
+</tbody>
+</table>
+<h4 id="implicit-initialization">Implicit Initialization</h4>
+<p>Objects that has static storage duration will be initialized to the default value 0 (<code>NULL</code> for pointers).</p>
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
