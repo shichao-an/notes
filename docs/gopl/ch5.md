@@ -696,12 +696,151 @@ $ ./outline2 http://gopl.io
 ...
 ```
 
-
-
 ### Anonymous Functions
+
+Named functions can be declared only at the package level, but we can use a *function literal* to denote a function value within any expression. A function literal is written like a function declaration, but without a name following the `func` keyword. It is an expression, and its value is called an [*anonymous function*](https://en.wikipedia.org/wiki/Anonymous_function).
+
+Function literals let us define a function at its point of use. As an example, the earlier call to `strings.Map` in [Section 5.5](#function-values) can be rewritten as:
+
+```go
+strings.Map(func(r rune) rune { return r + 1 }, "HAL-9000")
+```
+
+<u>Functions defined in this way have access to the entire lexical environment, so the inner function can refer to variables from the enclosing function.</u> For example:
+
+<small>[gopl.io/ch5/squares/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/squares/main.go)</small>
+
+```go
+// squares returns a function that returns
+// the next square number each time it is called.
+func squares() func() int {
+	var x int
+	return func() int {
+		x++
+		return x * x
+	}
+}
+
+func main() {
+	f := squares()
+	fmt.Println(f()) // "1"
+	fmt.Println(f()) // "4"
+	fmt.Println(f()) // "9"
+	fmt.Println(f()) // "16"
+}
+```
+
+The function `squares` returns another function of type `func() int`. A call to `squares` creates a local variable `x` and returns an anonymous function that, each time it is called, increments `x` and returns its square. A second call to squares would create a second variable `x` and return a new anonymous function.
+
+This example demonstrates:
+
+* Function values are not just code but can have state.
+    * <u>The anonymous inner function can access and update the local variables of the enclosing function. These hidden variable references are why we classify functions as reference types and why function values are not comparable.</u>
+    * Function values like these are implemented using a technique called [*closures*](https://en.wikipedia.org/wiki/Closure_(computer_programming)), and Go programmers often use this term for function values.
+* The lifetime of a variable is not determined by its scope
+    * In the above example, the variable `x` exists after `squares` has returned within `main`, even though `x` is hidden inside `f`.
+
+The following example is a problem of computing a sequence of computer science courses that satisfies the prerequisite requirements of each one. The prerequisites are given in the `prereqs` table below, which is a mapping from each course to the list of courses that must be completed before it.
+
+<small>[gopl.io/ch5/toposort/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/toposort/main.go)</small>
+
+```go
+// prereqs maps computer science courses to their prerequisites.
+var prereqs = map[string][]string{
+	"algorithms": {"data structures"},
+	"calculus":   {"linear algebra"},
+
+	"compilers": {
+		"data structures",
+		"formal languages",
+		"computer organization",
+	},
+
+	"data structures":       {"discrete math"},
+	"databases":             {"data structures"},
+	"discrete math":         {"intro to programming"},
+	"formal languages":      {"discrete math"},
+	"networks":              {"operating systems"},
+	"operating systems":     {"data structures", "computer organization"},
+	"programming languages": {"data structures", "computer organization"},
+}
+```
+
+This kind of problem is known as [topological sorting](https://en.wikipedia.org/wiki/Topological_sorting). The prerequisite information forms a directed graph with a node for each course and edges from each course to the courses that it depends on. The graph is acyclic: there is no path from a course that leads back to itself. We can compute a valid sequence using depth-first search through the graph with the code below:
+
+```go
+func main() {
+	for i, course := range topoSort(prereqs) {
+		fmt.Printf("%d:\t%s\n", i+1, course)
+	}
+}
+
+func topoSort(m map[string][]string) []string {
+	var order []string
+	seen := make(map[string]bool)
+	var visitAll func(items []string)
+
+	visitAll = func(items []string) {
+		for _, item := range items {
+			if !seen[item] {
+				seen[item] = true
+				visitAll(m[item])
+				order = append(order, item)
+			}
+		}
+	}
+
+	var keys []string
+	for key := range m {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+	visitAll(keys)
+	return order
+}
+```
+
+<u>When an anonymous function requires recursion, we must first declare a variable, and then assign the anonymous function to that variable.</u>
+
+If two steps are combined in the declaration, the function literal would not be within the scope of the variable `visitAll` so it would have no way to call itself recursively:
+
+```go
+visitAll := func(items []string) {
+	// ...
+	visitAll(m[item]) // compile error: undefined: visitAll
+	// ...
+}
+```
+
+The output of the `toposort` program is shown below. It is deterministic, an often-desirable property that doesn't always come for free. The values of the `prereqs` map are slices, not more maps, so their iteration order is deterministic, and we sorted the keys of `prereqs` before making the initial calls to `visitAll`.
+
+```text
+1: intro to programming
+2: discrete math
+3: data structures
+4: algorithms
+5: linear algebra
+6: calculus
+7: formal languages
+8: computer organization
+9: compilers
+10: databases
+11: operating systems
+12: networks
+13: programming languages
+```
+
+
+
+
+
 ### Variadic Functions
+
 ### Deferred Function Calls
+
 ### Panic
+
 ### Recover
 
 ### Doubts and Solution

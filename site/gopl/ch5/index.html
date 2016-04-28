@@ -1173,6 +1173,132 @@ $ ./outline2 http://gopl.io
 
 
 <h3 id="anonymous-functions">Anonymous Functions</h3>
+<p>Named functions can be declared only at the package level, but we can use a <em>function literal</em> to denote a function value within any expression. A function literal is written like a function declaration, but without a name following the <code>func</code> keyword. It is an expression, and its value is called an <a href="https://en.wikipedia.org/wiki/Anonymous_function"><em>anonymous function</em></a>.</p>
+<p>Function literals let us define a function at its point of use. As an example, the earlier call to <code>strings.Map</code> in <a href="#function-values">Section 5.5</a> can be rewritten as:</p>
+<div class="codehilite"><pre><span class="nx">strings</span><span class="p">.</span><span class="nx">Map</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">r</span> <span class="kt">rune</span><span class="p">)</span> <span class="kt">rune</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">r</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">},</span> <span class="s">&quot;HAL-9000&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<p><u>Functions defined in this way have access to the entire lexical environment, so the inner function can refer to variables from the enclosing function.</u> For example:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/squares/main.go">gopl.io/ch5/squares/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// squares returns a function that returns</span>
+<span class="c1">// the next square number each time it is called.</span>
+<span class="kd">func</span> <span class="nx">squares</span><span class="p">()</span> <span class="kd">func</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">x</span> <span class="kt">int</span>
+    <span class="k">return</span> <span class="kd">func</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+        <span class="nx">x</span><span class="o">++</span>
+        <span class="k">return</span> <span class="nx">x</span> <span class="o">*</span> <span class="nx">x</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">f</span> <span class="o">:=</span> <span class="nx">squares</span><span class="p">()</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">())</span> <span class="c1">// &quot;1&quot;</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">())</span> <span class="c1">// &quot;4&quot;</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">())</span> <span class="c1">// &quot;9&quot;</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">f</span><span class="p">())</span> <span class="c1">// &quot;16&quot;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The function <code>squares</code> returns another function of type <code>func() int</code>. A call to <code>squares</code> creates a local variable <code>x</code> and returns an anonymous function that, each time it is called, increments <code>x</code> and returns its square. A second call to squares would create a second variable <code>x</code> and return a new anonymous function.</p>
+<p>This example demonstrates:</p>
+<ul>
+<li>Function values are not just code but can have state.<ul>
+<li><u>The anonymous inner function can access and update the local variables of the enclosing function. These hidden variable references are why we classify functions as reference types and why function values are not comparable.</u></li>
+<li>Function values like these are implemented using a technique called <a href="https://en.wikipedia.org/wiki/Closure_(computer_programming)"><em>closures</em></a>, and Go programmers often use this term for function values.</li>
+</ul>
+</li>
+<li>The lifetime of a variable is not determined by its scope<ul>
+<li>In the above example, the variable <code>x</code> exists after <code>squares</code> has returned within <code>main</code>, even though <code>x</code> is hidden inside <code>f</code>.</li>
+</ul>
+</li>
+</ul>
+<p>The following example is a problem of computing a sequence of computer science courses that satisfies the prerequisite requirements of each one. The prerequisites are given in the <code>prereqs</code> table below, which is a mapping from each course to the list of courses that must be completed before it.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/toposort/main.go">gopl.io/ch5/toposort/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// prereqs maps computer science courses to their prerequisites.</span>
+<span class="kd">var</span> <span class="nx">prereqs</span> <span class="p">=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">][]</span><span class="kt">string</span><span class="p">{</span>
+    <span class="s">&quot;algorithms&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;data structures&quot;</span><span class="p">},</span>
+    <span class="s">&quot;calculus&quot;</span><span class="p">:</span>   <span class="p">{</span><span class="s">&quot;linear algebra&quot;</span><span class="p">},</span>
+
+    <span class="s">&quot;compilers&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;data structures&quot;</span><span class="p">,</span>
+        <span class="s">&quot;formal languages&quot;</span><span class="p">,</span>
+        <span class="s">&quot;computer organization&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+
+    <span class="s">&quot;data structures&quot;</span><span class="p">:</span>       <span class="p">{</span><span class="s">&quot;discrete math&quot;</span><span class="p">},</span>
+    <span class="s">&quot;databases&quot;</span><span class="p">:</span>             <span class="p">{</span><span class="s">&quot;data structures&quot;</span><span class="p">},</span>
+    <span class="s">&quot;discrete math&quot;</span><span class="p">:</span>         <span class="p">{</span><span class="s">&quot;intro to programming&quot;</span><span class="p">},</span>
+    <span class="s">&quot;formal languages&quot;</span><span class="p">:</span>      <span class="p">{</span><span class="s">&quot;discrete math&quot;</span><span class="p">},</span>
+    <span class="s">&quot;networks&quot;</span><span class="p">:</span>              <span class="p">{</span><span class="s">&quot;operating systems&quot;</span><span class="p">},</span>
+    <span class="s">&quot;operating systems&quot;</span><span class="p">:</span>     <span class="p">{</span><span class="s">&quot;data structures&quot;</span><span class="p">,</span> <span class="s">&quot;computer organization&quot;</span><span class="p">},</span>
+    <span class="s">&quot;programming languages&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;data structures&quot;</span><span class="p">,</span> <span class="s">&quot;computer organization&quot;</span><span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This kind of problem is known as <a href="https://en.wikipedia.org/wiki/Topological_sorting">topological sorting</a>. The prerequisite information forms a directed graph with a node for each course and edges from each course to the courses that it depends on. The graph is acyclic: there is no path from a course that leads back to itself. We can compute a valid sequence using depth-first search through the graph with the code below:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">course</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">topoSort</span><span class="p">(</span><span class="nx">prereqs</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d:\t%s\n&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nx">course</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">topoSort</span><span class="p">(</span><span class="nx">m</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">][]</span><span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">order</span> <span class="p">[]</span><span class="kt">string</span>
+    <span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+    <span class="kd">var</span> <span class="nx">visitAll</span> <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span>
+
+    <span class="nx">visitAll</span> <span class="p">=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">item</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">items</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">item</span><span class="p">]</span> <span class="p">{</span>
+                <span class="nx">seen</span><span class="p">[</span><span class="nx">item</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+                <span class="nx">visitAll</span><span class="p">(</span><span class="nx">m</span><span class="p">[</span><span class="nx">item</span><span class="p">])</span>
+                <span class="nx">order</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">order</span><span class="p">,</span> <span class="nx">item</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kd">var</span> <span class="nx">keys</span> <span class="p">[]</span><span class="kt">string</span>
+    <span class="k">for</span> <span class="nx">key</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span> <span class="p">{</span>
+        <span class="nx">keys</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">keys</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="nx">sort</span><span class="p">.</span><span class="nx">Strings</span><span class="p">(</span><span class="nx">keys</span><span class="p">)</span>
+    <span class="nx">visitAll</span><span class="p">(</span><span class="nx">keys</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">order</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><u>When an anonymous function requires recursion, we must first declare a variable, and then assign the anonymous function to that variable.</u></p>
+<p>If two steps are combined in the declaration, the function literal would not be within the scope of the variable <code>visitAll</code> so it would have no way to call itself recursively:</p>
+<div class="codehilite"><pre><span class="nx">visitAll</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+    <span class="nx">visitAll</span><span class="p">(</span><span class="nx">m</span><span class="p">[</span><span class="nx">item</span><span class="p">])</span> <span class="c1">// compile error: undefined: visitAll</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The output of the <code>toposort</code> program is shown below. It is deterministic, an often-desirable property that doesn't always come for free. The values of the <code>prereqs</code> map are slices, not more maps, so their iteration order is deterministic, and we sorted the keys of <code>prereqs</code> before making the initial calls to <code>visitAll</code>.</p>
+<div class="codehilite"><pre>1: intro to programming
+2: discrete math
+3: data structures
+4: algorithms
+5: linear algebra
+6: calculus
+7: formal languages
+8: computer organization
+9: compilers
+10: databases
+11: operating systems
+12: networks
+13: programming languages
+</pre></div>
+
+
 <h3 id="variadic-functions">Variadic Functions</h3>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
 <h3 id="panic">Panic</h3>
