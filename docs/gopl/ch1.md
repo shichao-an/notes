@@ -155,7 +155,9 @@ In the above form, parentheses are never used around the three components of a `
     * An increment or assignment statement,
     * A function call.
 * The *condition* is a boolean expression evaluated at the beginning of each iteration of the loop; if it evaluates to true, the statements controlled by the loop are executed.
-* The *post* statement is executed after the body of the loop, then the condition is evaluated again. The loop ends when the condition becomes false.  Any of these parts may be omitted. If there is no initialization and no post, the semicolons may also be omitted:
+* The *post* statement is executed after the body of the loop, then the condition is evaluated again. The loop ends when the condition becomes false.
+
+Any of these parts may be omitted.
 
 If there is no *initialization* and no *post*, the semicolons may also be omitted:
 
