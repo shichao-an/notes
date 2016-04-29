@@ -1299,6 +1299,57 @@ $ ./outline2 http://gopl.io
 </pre></div>
 
 
+<p>Returning to the <code>findLinks</code> example, link-extraction function <code>links.Extract</code> is moved to its own package, since it'll be used again in <a href="ch8.md">Chapter 8</a>. We replaced the <code>visit</code> function with an anonymous function that appends to the <code>links</code> slice directly, and used <code>forEachNode</code> to handle the traversal. Since <code>Extract</code> needs only the <code>pre</code> function, it passes <code>nil</code> for the <code>post</code> argument.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/links/links.go">gopl.io/ch5/links/links.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package links provides a link-extraction function.</span>
+<span class="kn">package</span> <span class="nx">links</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;net/http&quot;</span>
+    <span class="s">&quot;golang.org/x/net/html&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">// Extract makes an HTTP GET request to the specified URL, parses</span>
+<span class="c1">// the response as HTML, and returns the links in the HTML document.</span>
+<span class="kd">func</span> <span class="nx">Extract</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">([]</span><span class="kt">string</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">StatusCode</span> <span class="o">!=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span> <span class="p">{</span>
+        <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;getting %s: %s&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;parsing %s as HTML: %v&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="kd">var</span> <span class="nx">links</span> <span class="p">[]</span><span class="kt">string</span>
+    <span class="nx">visitNode</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="o">&amp;&amp;</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span> <span class="o">==</span> <span class="s">&quot;a&quot;</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">a</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Attr</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="nx">a</span><span class="p">.</span><span class="nx">Key</span> <span class="o">!=</span> <span class="s">&quot;href&quot;</span> <span class="p">{</span>
+                    <span class="k">continue</span>
+                <span class="p">}</span>
+                <span class="nx">link</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">a</span><span class="p">.</span><span class="nx">Val</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                    <span class="k">continue</span> <span class="c1">// ignore bad URLs</span>
+                <span class="p">}</span>
+                <span class="nx">links</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">links</span><span class="p">,</span> <span class="nx">link</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="nx">forEachNode</span><span class="p">(</span><span class="nx">doc</span><span class="p">,</span> <span class="nx">visitNode</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">links</span><span class="p">,</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Instead of appending the raw <code>href</code> attribute value to the <code>links</code> slice, this version parses it as a URL relative to the base URL of the document, <a href="https://golang.org/pkg/net/url/#URL.Parse"><code>resp.Request.URL</code></a>. The resulting <code>link</code> is in absolute form, suitable for use in a call to <code>http.Get</code>.</p>
 <h3 id="variadic-functions">Variadic Functions</h3>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
 <h3 id="panic">Panic</h3>
