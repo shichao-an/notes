@@ -831,6 +831,61 @@ The output of the `toposort` program is shown below. It is deterministic, an oft
 13: programming languages
 ```
 
+Returning to the `findLinks` example, link-extraction function `links.Extract` is moved to its own package, since it'll be used again in [Chapter 8](ch8.md). We replaced the `visit` function with an anonymous function that appends to the `links` slice directly, and used `forEachNode` to handle the traversal. Since `Extract` needs only the `pre` function, it passes `nil` for the `post` argument.
+
+<small>[gopl.io/ch5/links/links.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/links/links.go)</small>
+
+```go
+
+
+// Package links provides a link-extraction function.
+package links
+
+import (
+	"fmt"
+	"net/http"
+	"golang.org/x/net/html"
+)
+
+// Extract makes an HTTP GET request to the specified URL, parses
+// the response as HTML, and returns the links in the HTML document.
+func Extract(url string) ([]string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("getting %s: %s", url, resp.Status)
+	}
+
+	doc, err := html.Parse(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s as HTML: %v", url, err)
+	}
+
+	var links []string
+	visitNode := func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, a := range n.Attr {
+				if a.Key != "href" {
+					continue
+				}
+				link, err := resp.Request.URL.Parse(a.Val)
+				if err != nil {
+					continue // ignore bad URLs
+				}
+				links = append(links, link.String())
+			}
+		}
+	}
+	forEachNode(doc, visitNode, nil)
+	return links, nil
+}
+```
+
+Instead of appending the raw `href` attribute value to the `links` slice, this version parses it as a URL relative to the base URL of the document, [`resp.Request.URL`](https://golang.org/pkg/net/url/#URL.Parse). The resulting `link` is in absolute form, suitable for use in a call to `http.Get`.
 
 
 
