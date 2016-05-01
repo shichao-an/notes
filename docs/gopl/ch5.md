@@ -887,8 +887,78 @@ func Extract(url string) ([]string, error) {
 
 Instead of appending the raw `href` attribute value to the `links` slice, this version parses it as a URL relative to the base URL of the document, [`resp.Request.URL`](https://golang.org/pkg/net/url/#URL.Parse). The resulting `link` is in absolute form, suitable for use in a call to `http.Get`.
 
+Crawling the web is a problem of graph traversal. The `topoSort` example showed a depth-first traversal. The following web crawler uses breadth-first traversal. In [Chapter 8](ch8.md), we'll explore concurrent traversal.
 
+The function below encapsulates the essence of a breadth-first traversal:
 
+* The caller provides an initial list `worklist` of items to visit and a function value `f` to call for each item, which is identified by a string.
+* The function `f` returns a list of new items to append to the worklist.
+* The `breadthFirst` function returns when all items have been visited. It maintains a set of strings to ensure that no item is visited twice.
+
+<small>[gopl.io/ch5/findlinks3/findlinks.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks3/findlinks.go)</small>
+
+```go
+// breadthFirst calls f for each item in the worklist.
+// Any items returned by f are added to the worklist.
+// f is called at most once for each item.
+func breadthFirst(f func(item string) []string, worklist []string) {
+	seen := make(map[string]bool)
+	for len(worklist) > 0 {
+		items := worklist
+		worklist = nil
+		for _, item := range items {
+			if !seen[item] {
+				seen[item] = true
+				worklist = append(worklist, f(item)...)
+			}
+		}
+	}
+}
+```
+
+The argument "`f(item)...`" causes all the items in the list returned by `f` to be appended to the worklist.
+
+In this crawler, items are URLs. The `crawl` function, which is passed to `breadthFirst`, prints the URL, extracts its links, and returns them so that they are also visited.
+
+```go
+func crawl(url string) []string {
+	fmt.Println(url)
+	list, err := links.Extract(url)
+	if err != nil {
+		log.Print(err)
+	}
+	return list
+}
+```
+
+To start off the crawler, we use the command-line arguments as the initial URLs.
+
+```go
+func main() {
+	// Crawl the web breadth-first,
+	// starting from the command-line arguments.
+	breadthFirst(crawl, os.Args[1:])
+}
+```
+
+Crawl the web starting from `https://golang.org`:
+
+```text
+$ go build gopl.io/ch5/findlinks3
+$ ./findlinks3 https://golang.org
+https://golang.org/
+https://golang.org/doc/
+https://golang.org/pkg/
+https://golang.org/project/
+https://code.google.com/p/go-tour/
+https://golang.org/doc/code.html
+https://www.youtube.com/watch?v=XCsL89YtqCs
+http://research.swtch.com/gotour
+https://vimeo.com/53221560
+...
+```
+
+The process ends when all reachable web pages have been crawled or the memory of the computer is exhausted.
 
 ### Variadic Functions
 
