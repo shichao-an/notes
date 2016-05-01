@@ -1350,6 +1350,72 @@ $ ./outline2 http://gopl.io
 
 
 <p>Instead of appending the raw <code>href</code> attribute value to the <code>links</code> slice, this version parses it as a URL relative to the base URL of the document, <a href="https://golang.org/pkg/net/url/#URL.Parse"><code>resp.Request.URL</code></a>. The resulting <code>link</code> is in absolute form, suitable for use in a call to <code>http.Get</code>.</p>
+<p>Crawling the web is a problem of graph traversal. The <code>topoSort</code> example showed a depth-first traversal. The following web crawler uses breadth-first traversal. In <a href="ch8.md">Chapter 8</a>, we'll explore concurrent traversal.</p>
+<p>The function below encapsulates the essence of a breadth-first traversal:</p>
+<ul>
+<li>The caller provides an initial list <code>worklist</code> of items to visit and a function value <code>f</code> to call for each item, which is identified by a string.</li>
+<li>The function <code>f</code> returns a list of new items to append to the worklist.</li>
+<li>The <code>breadthFirst</code> function returns when all items have been visited. It maintains a set of strings to ensure that no item is visited twice.</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks3/findlinks.go">gopl.io/ch5/findlinks3/findlinks.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// breadthFirst calls f for each item in the worklist.</span>
+<span class="c1">// Any items returned by f are added to the worklist.</span>
+<span class="c1">// f is called at most once for each item.</span>
+<span class="kd">func</span> <span class="nx">breadthFirst</span><span class="p">(</span><span class="nx">f</span> <span class="kd">func</span><span class="p">(</span><span class="nx">item</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">worklist</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nb">len</span><span class="p">(</span><span class="nx">worklist</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">items</span> <span class="o">:=</span> <span class="nx">worklist</span>
+        <span class="nx">worklist</span> <span class="p">=</span> <span class="kc">nil</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">item</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">items</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">item</span><span class="p">]</span> <span class="p">{</span>
+                <span class="nx">seen</span><span class="p">[</span><span class="nx">item</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+                <span class="nx">worklist</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">worklist</span><span class="p">,</span> <span class="nx">f</span><span class="p">(</span><span class="nx">item</span><span class="p">)</span><span class="o">...</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The argument "<code>f(item)...</code>" causes all the items in the list returned by <code>f</code> to be appended to the worklist.</p>
+<p>In this crawler, items are URLs. The <code>crawl</code> function, which is passed to <code>breadthFirst</code>, prints the URL, extracts its links, and returns them so that they are also visited.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="nx">list</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">links</span><span class="p">.</span><span class="nx">Extract</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">list</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To start off the crawler, we use the command-line arguments as the initial URLs.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// Crawl the web breadth-first,</span>
+    <span class="c1">// starting from the command-line arguments.</span>
+    <span class="nx">breadthFirst</span><span class="p">(</span><span class="nx">crawl</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Crawl the web starting from <code>https://golang.org</code>:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch5/findlinks3
+$ ./findlinks3 https://golang.org
+https://golang.org/
+https://golang.org/doc/
+https://golang.org/pkg/
+https://golang.org/project/
+https://code.google.com/p/go-tour/
+https://golang.org/doc/code.html
+https://www.youtube.com/watch?v=XCsL89YtqCs
+http://research.swtch.com/gotour
+https://vimeo.com/53221560
+...
+</pre></div>
+
+
+<p>The process ends when all reachable web pages have been crawled or the memory of the computer is exhausted.</p>
 <h3 id="variadic-functions">Variadic Functions</h3>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
 <h3 id="panic">Panic</h3>
