@@ -18,9 +18,9 @@ Several differences between Linux and Unix implementations:
 	1. run in Kernel Mode;
 	2. are non-interactive;
 	3. created during system startup
-* Kernel routines can be activated in: 
+* Kernel routines can be activated in:
 	1. system call;
-	2. exception signaled by a process; 
+	2. exception signaled by a process;
 	3. interrupt by a peripheral device;
 	4. kernel thread executed
 
@@ -65,7 +65,7 @@ A **kernel control** path denotes the sequence of instructions executed by the k
 #### Verbatim
 
 Chatper 1 on Linux Versus Other Unix-Like Kernels [p3]:
-> Linux uses kernel threads in a very limited way to execute a few kernel functions periodically; however, they do not represent the basic execution context abstraction. 
+> Linux uses kernel threads in a very limited way to execute a few kernel functions periodically; however, they do not represent the basic execution context abstraction.
 
 ### Summary
 

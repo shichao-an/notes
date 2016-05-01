@@ -46,7 +46,6 @@ The case of the first letter of a name determines its visibility across package 
 * [Camel case](https://en.wikipedia.org/wiki/CamelCase) are used when forming names by combining words, e.g. `QuoteRuneToASCII` and `parseRequestLine` (instead of `quote_rune_to_ASCII` or `parse_request_line`).
 * The letters of acronyms and initialisms like `ASCII` and `HTML` are always rendered in the same case, so a function might be called `htmlEscape`, `HTMLEscape`, or `escapeHTML`, but not `escapeHtml`.
 
-
 ### Declarations
 
 A **declaration** names a program entity and specifies its properties. There are four major kinds of declarations:
@@ -364,7 +363,7 @@ func newInt() *int {
 	return &dummy
 }
 ```
-G
+
 Each call to new returns a distinct variable with a unique address:
 
 ```go
@@ -431,6 +430,7 @@ func g() {
 	*y = 1
 }
 ```
+
 In the above code:
 
 * `x` must be heap-allocated because it is still reachable from the variable `global` after `f` has returned, despite being declared as a local variable; we say `x` *escapes* from `f`.
@@ -518,6 +518,7 @@ f, err = os.Open("foo.txt") // function call returns two values
 ```
 
 Often, functions use these additional results to indicate some kind of error by returning either of the following:
+
 * An `error` (as in the call to `os.Open`)
 * A `bool`, usually called `ok`.
 

@@ -115,7 +115,6 @@ The `&^` operator is bit clear (AND NOT): in the expression `z = x &^ y`, each b
 
 The code below shows how bitwise operations can be used to interpret a `uint8` value as a compact and efficient set of 8 independent bits. It uses `Printf`'s `%b` verb to print a number’s binary digits; `08` modifies `%b` to pad the result with zeros to exactly 8 digits.
 
-
 ```go
 var x uint8 = 1<<1 | 1<<5
 var y uint8 = 1<<1 | 1<<2
@@ -799,6 +798,7 @@ func comma(s string) string {
 	return comma(s[:n-3]) + "," + s[n-3:]
 }
 ```
+
 [p73]
 
 
@@ -1138,7 +1138,6 @@ fmt.Printf("%T\n", 0.0)    // "float64"
 fmt.Printf("%T\n", 0i)     // "complex128"
 fmt.Printf("%T\n", '\000') // "int32" (rune)
 ```
-
 
 ### Doubts and Solution
 
