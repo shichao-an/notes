@@ -546,6 +546,8 @@
     
         <li class="main "><a href="#anonymous-functions">Anonymous Functions</a></li>
         
+            <li><a href="#caveat-capturing-iteration-variables">Caveat: Capturing Iteration Variables</a></li>
+        
     
         <li class="main "><a href="#variadic-functions">Variadic Functions</a></li>
         
@@ -1416,6 +1418,64 @@ https://vimeo.com/53221560
 
 
 <p>The process ends when all reachable web pages have been crawled or the memory of the computer is exhausted.</p>
+<h4 id="caveat-capturing-iteration-variables">Caveat: Capturing Iteration Variables</h4>
+<p>This section discusses a pitfall of Go's lexical scope rules that can cause surprising results.</p>
+<p>Consider a program that must create a set of directories and later remove them. We can use a slice of function values to hold the clean-up operations. (All error handling in this example for brevity.)</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">rmdirs</span> <span class="p">[]</span><span class="kd">func</span><span class="p">()</span>
+<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">d</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tempDirs</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">dir</span> <span class="o">:=</span> <span class="nx">d</span>               <span class="c1">// NOTE: necessary!</span>
+    <span class="nx">os</span><span class="p">.</span><span class="nx">MkdirAll</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="mo">0755</span><span class="p">)</span> <span class="c1">// creates parent directories too</span>
+    <span class="nx">rmdirs</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">rmdirs</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">RemoveAll</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span>
+    <span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// ...do some work...</span>
+
+<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">rmdir</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">rmdirs</span> <span class="p">{</span>
+    <span class="nx">rmdir</span><span class="p">()</span> <span class="c1">// clean up</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>You may be wondering why we assigned the loop variable <code>d</code> to a new local variable <code>dir</code> within the loop body, instead of just using the loop variable <code>dir</code> as in this subtly incorrect variant:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">rmdirs</span> <span class="p">[]</span><span class="kd">func</span><span class="p">()</span>
+<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">dir</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tempDirs</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">os</span><span class="p">.</span><span class="nx">MkdirAll</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="mo">0755</span><span class="p">)</span>
+    <span class="nx">rmdirs</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">rmdirs</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">RemoveAll</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span> <span class="c1">// NOTE: incorrect!</span>
+    <span class="p">})</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The reason is a consequence of the scope rules for loop variables. In the program immediately above:</p>
+<ol>
+<li>The <code>for</code> loop introduces a new lexical block in which the variable <code>dir</code> is declared. All function values created by this loop "capture" and share the same variable, which is an addressable storage location, not its value at that particular moment.</li>
+<li>The value of <code>dir</code> is updated in successive iterations, so by the time the cleanup functions are called, the <code>dir</code> variable has been updated several times by the now-completed <code>for</code> loop.</li>
+<li>Thus <code>dir</code> holds the value from the final iteration, and consequently all calls to <code>os.RemoveAll</code> will attempt to remove the same directory.</li>
+</ol>
+<p>Frequently, <u>the inner variable introduced to work around this problem (<code>dir</code> in the example above) is given the exact same name as the outer variable of which it is a copy.</u> This leads to odd-looking but crucial variable declarations like this:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">dir</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tempDirs</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">dir</span> <span class="o">:=</span> <span class="nx">dir</span> <span class="c1">// declares inner dir, initialized to outer dir</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The risk is not unique to <code>range</code>-based <code>for</code> loops. The loop in the example below suffers from the same problem due to unintended capture of the index variable <code>i</code>.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">rmdirs</span> <span class="p">[]</span><span class="kd">func</span><span class="p">()</span>
+<span class="nx">dirs</span> <span class="o">:=</span> <span class="nx">tempDirs</span><span class="p">()</span>
+<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">dirs</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+    <span class="nx">os</span><span class="p">.</span><span class="nx">MkdirAll</span><span class="p">(</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="mo">0755</span><span class="p">)</span> <span class="c1">// OK</span>
+    <span class="nx">rmdirs</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">rmdirs</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">RemoveAll</span><span class="p">(</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span> <span class="c1">// NOTE: incorrect!</span>
+    <span class="p">})</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The problem of iteration variable capture is most often encountered when using the <code>go</code> statement (<a href="ch8.md">Chapter 8</a>) or with <code>defer</code> (to be discussed later) since both may delay the execution of a function value until after the loop has finished. But the problem is not inherent to <code>go</code> or <code>defer</code>. See also <a href="https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables">Common Mistakes</a>.</p>
 <h3 id="variadic-functions">Variadic Functions</h3>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
 <h3 id="panic">Panic</h3>
