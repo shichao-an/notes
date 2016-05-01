@@ -511,7 +511,6 @@ Note that all `log` functions append a newline if one is not already present.
 
 ##### **Ignoring the error** *
 
-
 Fifth and finally, in rare cases we can safely ignore an error entirely:
 
 ```go
@@ -525,7 +524,6 @@ os.RemoveAll(dir) // ignore errors; $TMPDIR is cleaned periodically
 ```
 
 The call to `os.RemoveAll` may fail, but the program ignores it because the operating system periodically cleans out the temporary directory. In this case, discarding the error was intentional, but the program logic would be the same had we forgotten to deal with it. When you deliberately ignore one, document your intention clearly.
-
 
 ##### **Summary of error handling** *
 
@@ -959,6 +957,71 @@ https://vimeo.com/53221560
 ```
 
 The process ends when all reachable web pages have been crawled or the memory of the computer is exhausted.
+
+#### Caveat: Capturing Iteration Variables
+
+This section discusses a pitfall of Go's lexical scope rules that can cause surprising results.
+
+Consider a program that must create a set of directories and later remove them. We can use a slice of function values to hold the clean-up operations. (All error handling in this example for brevity.)
+
+```go
+var rmdirs []func()
+for _, d := range tempDirs() {
+	dir := d               // NOTE: necessary!
+	os.MkdirAll(dir, 0755) // creates parent directories too
+	rmdirs = append(rmdirs, func() {
+		os.RemoveAll(dir)
+	})
+}
+
+// ...do some work...
+
+for _, rmdir := range rmdirs {
+	rmdir() // clean up
+}
+```
+
+You may be wondering why we assigned the loop variable `d` to a new local variable `dir` within the loop body, instead of just using the loop variable `dir` as in this subtly incorrect variant:
+
+```go
+var rmdirs []func()
+for _, dir := range tempDirs() {
+	os.MkdirAll(dir, 0755)
+	rmdirs = append(rmdirs, func() {
+		os.RemoveAll(dir) // NOTE: incorrect!
+	})
+}
+```
+
+The reason is a consequence of the scope rules for loop variables. In the program immediately above:
+
+1. The `for` loop introduces a new lexical block in which the variable `dir` is declared. All function values created by this loop "capture" and share the same variable, which is an addressable storage location, not its value at that particular moment.
+2. The value of `dir` is updated in successive iterations, so by the time the cleanup functions are called, the `dir` variable has been updated several times by the now-completed `for` loop.
+3. Thus `dir` holds the value from the final iteration, and consequently all calls to `os.RemoveAll` will attempt to remove the same directory.
+
+Frequently, <u>the inner variable introduced to work around this problem (`dir` in the example above) is given the exact same name as the outer variable of which it is a copy.</u> This leads to odd-looking but crucial variable declarations like this:
+
+```go
+for _, dir := range tempDirs() {
+	dir := dir // declares inner dir, initialized to outer dir
+	// ...
+}
+```
+
+The risk is not unique to `range`-based `for` loops. The loop in the example below suffers from the same problem due to unintended capture of the index variable `i`.
+
+```go
+var rmdirs []func()
+dirs := tempDirs()
+for i := 0; i < len(dirs); i++ {
+	os.MkdirAll(dirs[i], 0755) // OK
+	rmdirs = append(rmdirs, func() {
+		os.RemoveAll(dirs[i]) // NOTE: incorrect!
+	})
+}
+```
+
+The problem of iteration variable capture is most often encountered when using the `go` statement ([Chapter 8](ch8.md)) or with `defer` (to be discussed later) since both may delay the execution of a function value until after the loop has finished. But the problem is not inherent to `go` or `defer`. See also [Common Mistakes](https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables).
 
 ### Variadic Functions
 

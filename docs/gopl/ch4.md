@@ -930,7 +930,6 @@ There are two forms of struct literal.
 
 The first form, as shown below, requires that a value be specified for every field, in the right order. The writer and reader have to remember exactly what the fields are, and it makes the code fragile if the set of fields later grow or are reordered.
 
-
 ```go
 type Point struct{ X, Y int }
 p := Point{1, 2}
@@ -1084,7 +1083,6 @@ In Go, we can declare a field with a type but no name, called an *anonymous fiel
 
 For example, in the code below, `Circle` and `Wheel` have one anonymous field each: `Point` is embedded within `Circle`, and a `Circle` is embedded within `Wheel`.
 
-
 ```go
 type Circle struct {
 	Point
@@ -1181,7 +1179,6 @@ These basic types may be combined recursively using JSON arrays and objects:
     * JSON arrays are used to encode Go arrays and slices.
 * A JSON object is a mapping from strings to values, written as a sequence of `name:value` pairs separated by commas and surrounded by braces
     * JSON objects are used to encode Go maps (with string keys) and structs.
-
 
 ```text
 boolean     true
