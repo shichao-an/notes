@@ -616,6 +616,16 @@ The following macros simplify Page Table handling:
 * Five type-conversion macros, `__pte`, `__pmd`, `__pud`, `__pgd`, and `__pgprot`, cast an unsigned integer into the required type.
 * Five other type-conversion macros, `pte_val`, `pmd_val`, `pud_val`, `pgd_val`, and `pgprot_val`, perform the reverse casting from one of the four previously mentioned specialized types into an unsigned integer
 
+The kernel also provides several macros and functions to read or modify page table entries:
+
+* `pte_none`, `pmd_none`, `pud_none`, and `pgd_none` yield the value 1 if the corresponding entry has the value 0; otherwise, they yield the value 0.
+* `pte_clear`, `pmd_clear`, `pud_clear`, and `pgd_clear` clear an entry of the corresponding page table, thus forbidding a process to use the linear addresses mapped by the page table entry.
+    * The `ptep_get_and_clear()` function clears a Page Table entry and returns the previous value.
+* `set_pte`, `set_pmd`, `set_pud`, and `set_pgd` write a given value into a page table entry.
+    * `set_pte_atomic` is identical to `set_pte`, but when PAE is enabled it also ensures that the 64-bit value is written atomically.
+* `pte_same(a,b)` returns 1 if two Page Table entries `a` and `b` refer to the same page and specify the same access privileges, 0 otherwise.
+* `pmd_large(e)` returns 1 if the Page Middle Directory entry `e` refers to a large page (2 MB or 4 MB), 0 otherwise.
+
 #### Physical Memory Layout
 
 #### Process Page Tables
