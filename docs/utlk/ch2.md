@@ -624,7 +624,19 @@ The kernel also provides several macros and functions to read or modify page tab
 * `set_pte`, `set_pmd`, `set_pud`, and `set_pgd` write a given value into a page table entry.
     * `set_pte_atomic` is identical to `set_pte`, but when PAE is enabled it also ensures that the 64-bit value is written atomically.
 * `pte_same(a,b)` returns 1 if two Page Table entries `a` and `b` refer to the same page and specify the same access privileges, 0 otherwise.
-* `pmd_large(e)` returns 1 if the Page Middle Directory entry `e` refers to a large page (2 MB or 4 MB), 0 otherwise.
+* `pmd_large(e)` returns 1 if the Page Middle Directory entry `e` refers to a large page (2 MB or 4 MB), 0 otherwise. See [Extended Paging](#extended-paging) and [The Linear Address Fields](#the-linear-address-fields) for large page sizes.
+
+The `pmd_bad` macro is used by functions to check Page Middle Directory entries passed as input parameters. It yields the value 1 if the entry points to a bad Page Table, that is, if at least one of the following conditions applies:
+
+* The page is not in main memory (`Present` flag cleared).
+* The page allows only Read access (`Read/Write` flag cleared).
+* Either `Accessed` or `Dirty` is cleared (<u>Linux always forces these flags to be set for every existing Page Table</u>).
+
+The `pud_bad` and `pgd_bad` macros always yield 0. No `pte_bad` macro is defined, because it is legal for a Page Table entry to refer to a page that is not present in main memory, not writable, or not accessible at all.
+
+The `pte_present` macro yields the value 1 if either the `Present` flag or the `Page Size` flag of a Page Table entry is equal to 1, the value 0 otherwise. Recall that the `Page Size` flag in Page Table entries has no meaning for the paging unit of the microprocessor; <u>the kernel, however, marks `Present` equal to 0 and Page Size equal to 1 for the pages present in main memory but without read, write, or execute privileges. In this way, any access to such pages triggers a Page Fault exception because `Present` is cleared, and the kernel can detect that the fault is not due to a missing page by checking the value of `Page Size`.</u>
+
+The `pmd_present` macro yields the value 1 if the `Present` flag of the corresponding entry is equal to 1, that is, if the corresponding page or Page Table is loaded in main memory. The `pud_present` and `pgd_present` macros always yield the value 1.
 
 #### Physical Memory Layout
 

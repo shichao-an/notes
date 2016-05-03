@@ -1349,8 +1349,17 @@ Extended   XXXXXXXXXX0000000000000000000000
 </ul>
 </li>
 <li><code>pte_same(a,b)</code> returns 1 if two Page Table entries <code>a</code> and <code>b</code> refer to the same page and specify the same access privileges, 0 otherwise.</li>
-<li><code>pmd_large(e)</code> returns 1 if the Page Middle Directory entry <code>e</code> refers to a large page (2 MB or 4 MB), 0 otherwise.</li>
+<li><code>pmd_large(e)</code> returns 1 if the Page Middle Directory entry <code>e</code> refers to a large page (2 MB or 4 MB), 0 otherwise. See <a href="#extended-paging">Extended Paging</a> and <a href="#the-linear-address-fields">The Linear Address Fields</a> for large page sizes.</li>
 </ul>
+<p>The <code>pmd_bad</code> macro is used by functions to check Page Middle Directory entries passed as input parameters. It yields the value 1 if the entry points to a bad Page Table, that is, if at least one of the following conditions applies:</p>
+<ul>
+<li>The page is not in main memory (<code>Present</code> flag cleared).</li>
+<li>The page allows only Read access (<code>Read/Write</code> flag cleared).</li>
+<li>Either <code>Accessed</code> or <code>Dirty</code> is cleared (<u>Linux always forces these flags to be set for every existing Page Table</u>).</li>
+</ul>
+<p>The <code>pud_bad</code> and <code>pgd_bad</code> macros always yield 0. No <code>pte_bad</code> macro is defined, because it is legal for a Page Table entry to refer to a page that is not present in main memory, not writable, or not accessible at all.</p>
+<p>The <code>pte_present</code> macro yields the value 1 if either the <code>Present</code> flag or the <code>Page Size</code> flag of a Page Table entry is equal to 1, the value 0 otherwise. Recall that the <code>Page Size</code> flag in Page Table entries has no meaning for the paging unit of the microprocessor; <u>the kernel, however, marks <code>Present</code> equal to 0 and Page Size equal to 1 for the pages present in main memory but without read, write, or execute privileges. In this way, any access to such pages triggers a Page Fault exception because <code>Present</code> is cleared, and the kernel can detect that the fault is not due to a missing page by checking the value of <code>Page Size</code>.</u></p>
+<p>The <code>pmd_present</code> macro yields the value 1 if the <code>Present</code> flag of the corresponding entry is equal to 1, that is, if the corresponding page or Page Table is loaded in main memory. The <code>pud_present</code> and <code>pgd_present</code> macros always yield the value 1.</p>
 <h4 id="physical-memory-layout">Physical Memory Layout</h4>
 <h4 id="process-page-tables">Process Page Tables</h4>
 <h4 id="kernel-page-tables">Kernel Page Tables</h4>

@@ -1025,7 +1025,122 @@ The problem of iteration variable capture is most often encountered when using t
 
 ### Variadic Functions
 
+A [**variadic function**](https://en.wikipedia.org/wiki/Variadic_function) can be called with varying numbers of arguments. The most familiar examples are `fmt.Printf` and its variants. `Printf` requires one fixed argument at the beginning, then accepts any number of subsequent arguments.
+
+To declare a variadic function, the type of the final parameter is preceded by an ellipsis, "`...`", which indicates that the function may be called with any number of arguments of this type.
+
+<small>[gopl.io/ch5/sum/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/sum/main.go)</small>
+
+```go
+func sum(vals ...int) int {
+	total := 0
+	for _, val := range vals {
+		total += val
+	}
+	return total
+}
+```
+
+* The `sum` function above returns the sum of zero or more `int` arguments.
+* Within the body of the function, the type of `vals` is an `[]int` slice.
+* When `sum` is called, any number of values may be provided for its `vals` parameter.
+
+```go
+fmt.Println(sum())           // "0"
+fmt.Println(sum(3))          // "3"
+fmt.Println(sum(1, 2, 3, 4)) // "10"
+```
+
+<u>Implicitly, the caller allocates an array, copies the arguments into it, and passes a slice of the entire array to the function.</u>
+
+To invoke a variadic function when the arguments are already in a slice, place an ellipsis after the final argument. The call below behaves the same as the last call above.
+
+```go
+values := []int{1, 2, 3, 4}
+fmt.Println(sum(values...)) // "10"
+```
+
+Although the `...int` parameter behaves like a slice within the function body, the type of a variadic function is distinct from the type of a function with an ordinary slice parameter.
+
+```go
+func f(...int) {}
+func g([]int)  {}
+
+fmt.Printf("%T\n", f) // "func(...int)"
+fmt.Printf("%T\n", g) // "func([]int)"
+```
+
+Variadic functions are often used for string formatting. The `errorf` function below constructs a formatted error message with a line number at the beginning. <u>The suffix `f` is a widely followed naming convention for variadic functions that accept a `Printf`-style format string.</u>
+
+```go
+func errorf(linenum int, format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "Line %d: ", linenum)
+	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintln(os.Stderr)
+}
+linenum, name := 12, "count"
+errorf(linenum, "undefined: %s", name) // "Line 12: undefined: count"
+```
+
+The `interface{}` type means that this function can accept any values for its final arguments, which is discussed in [Chapter 7](ch7.md).
+
 ### Deferred Function Calls
+
+The `findLinks` examples used the output of `http.Get` as the input to `html.Parse`. However, many pages contain images, plain text, and other file formats instead of HTML. Feeding such files into an HTML parser could have undesirable effects.
+
+The program below fetches an HTML document and prints its title. The `title` function inspects the [`Content-Type`](https://en.wikipedia.org/wiki/Media_type) header of the server's response and returns an error if the document is not HTML.
+
+<small>[gopl.io/ch5/title1/title.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/title1/title.go)</small>
+
+```go
+func title(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+
+	// Check Content-Type is HTML (e.g., "text/html; charset=utf-8").
+	ct := resp.Header.Get("Content-Type")
+	if ct != "text/html" && !strings.HasPrefix(ct, "text/html;") {
+		resp.Body.Close()
+		return fmt.Errorf("%s has type %s, not text/html", url, ct)
+	}
+
+	doc, err := html.Parse(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("parsing %s as HTML: %v", url, err)
+	}
+
+	visitNode := func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "title" &&
+			n.FirstChild != nil {
+			fmt.Println(n.FirstChild.Data)
+		}
+	}
+	forEachNode(doc, visitNode, nil)
+	return nil
+}
+```
+
+```text
+$ go build gopl.io/ch5/title1
+$ ./title1 http://gopl.io
+The Go Programming Language
+$ ./title1 https://golang.org/doc/effective_go.html
+Effective Go - The Go Programming Language
+$ ./title1 https://golang.org/doc/gopher/frontpage.png
+title: https://golang.org/doc/gopher/frontpage.png has type image/png, not text/html
+```
+
+The `resp.Body.Close()` call, which is duplicated, ensures that title closes the network connection on all execution paths, including failures. As functions grow more complex and have to handle more errors, such duplication of clean-up logic may become a maintenance problem. Go' `defer` mechanism makes things simpler.
+
+Syntactically, a `defer` statement is an ordinary function or method call prefixed by the keyword `defer`.
+
+* The function and argument expressions are evaluated when the statement is executed, but the actual call is *deferred* until the (caller) function that contains the `defer` statement has finished. The "finished" here means either normally or abnormally:
+    * Normally: the caller function executing a return statement or falling off the end.
+    * Abnormally: the caller function panicking.
+* Any number of calls may be deferred; <u>they are executed in the reverse of the order in which they were deferred.</u>
 
 ### Panic
 
