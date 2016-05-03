@@ -1477,7 +1477,113 @@ https://vimeo.com/53221560
 
 <p>The problem of iteration variable capture is most often encountered when using the <code>go</code> statement (<a href="ch8.md">Chapter 8</a>) or with <code>defer</code> (to be discussed later) since both may delay the execution of a function value until after the loop has finished. But the problem is not inherent to <code>go</code> or <code>defer</code>. See also <a href="https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables">Common Mistakes</a>.</p>
 <h3 id="variadic-functions">Variadic Functions</h3>
+<p>A <a href="https://en.wikipedia.org/wiki/Variadic_function"><strong>variadic function</strong></a> can be called with varying numbers of arguments. The most familiar examples are <code>fmt.Printf</code> and its variants. <code>Printf</code> requires one fixed argument at the beginning, then accepts any number of subsequent arguments.</p>
+<p>To declare a variadic function, the type of the final parameter is preceded by an ellipsis, "<code>...</code>", which indicates that the function may be called with any number of arguments of this type.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/sum/main.go">gopl.io/ch5/sum/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">sum</span><span class="p">(</span><span class="nx">vals</span> <span class="o">...</span><span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">total</span> <span class="o">:=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">val</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">vals</span> <span class="p">{</span>
+        <span class="nx">total</span> <span class="o">+=</span> <span class="nx">val</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">total</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>sum</code> function above returns the sum of zero or more <code>int</code> arguments.</li>
+<li>Within the body of the function, the type of <code>vals</code> is an <code>[]int</code> slice.</li>
+<li>When <code>sum</code> is called, any number of values may be provided for its <code>vals</code> parameter.</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">sum</span><span class="p">())</span>           <span class="c1">// &quot;0&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">sum</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>          <span class="c1">// &quot;3&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span> <span class="c1">// &quot;10&quot;</span>
+</pre></div>
+
+
+<p><u>Implicitly, the caller allocates an array, copies the arguments into it, and passes a slice of the entire array to the function.</u></p>
+<p>To invoke a variadic function when the arguments are already in a slice, place an ellipsis after the final argument. The call below behaves the same as the last call above.</p>
+<div class="codehilite"><pre><span class="nx">values</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">sum</span><span class="p">(</span><span class="nx">values</span><span class="o">...</span><span class="p">))</span> <span class="c1">// &quot;10&quot;</span>
+</pre></div>
+
+
+<p>Although the <code>...int</code> parameter behaves like a slice within the function body, the type of a variadic function is distinct from the type of a function with an ordinary slice parameter.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">f</span><span class="p">(</span><span class="o">...</span><span class="kt">int</span><span class="p">)</span> <span class="p">{}</span>
+<span class="kd">func</span> <span class="nx">g</span><span class="p">([]</span><span class="kt">int</span><span class="p">)</span>  <span class="p">{}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">f</span><span class="p">)</span> <span class="c1">// &quot;func(...int)&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">g</span><span class="p">)</span> <span class="c1">// &quot;func([]int)&quot;</span>
+</pre></div>
+
+
+<p>Variadic functions are often used for string formatting. The <code>errorf</code> function below constructs a formatted error message with a line number at the beginning. <u>The suffix <code>f</code> is a widely followed naming convention for variadic functions that accept a <code>Printf</code>-style format string.</u></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">errorf</span><span class="p">(</span><span class="nx">linenum</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">format</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">args</span> <span class="o">...</span><span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;Line %d: &quot;</span><span class="p">,</span> <span class="nx">linenum</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="nx">format</span><span class="p">,</span> <span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">linenum</span><span class="p">,</span> <span class="nx">name</span> <span class="o">:=</span> <span class="mi">12</span><span class="p">,</span> <span class="s">&quot;count&quot;</span>
+<span class="nx">errorf</span><span class="p">(</span><span class="nx">linenum</span><span class="p">,</span> <span class="s">&quot;undefined: %s&quot;</span><span class="p">,</span> <span class="nx">name</span><span class="p">)</span> <span class="c1">// &quot;Line 12: undefined: count&quot;</span>
+</pre></div>
+
+
+<p>The <code>interface{}</code> type means that this function can accept any values for its final arguments, which is discussed in <a href="../ch7/">Chapter 7</a>.</p>
 <h3 id="deferred-function-calls">Deferred Function Calls</h3>
+<p>The <code>findLinks</code> examples used the output of <code>http.Get</code> as the input to <code>html.Parse</code>. However, many pages contain images, plain text, and other file formats instead of HTML. Feeding such files into an HTML parser could have undesirable effects.</p>
+<p>The program below fetches an HTML document and prints its title. The <code>title</code> function inspects the <a href="https://en.wikipedia.org/wiki/Media_type"><code>Content-Type</code></a> header of the server's response and returns an error if the document is not HTML.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/title1/title.go">gopl.io/ch5/title1/title.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">title</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Check Content-Type is HTML (e.g., &quot;text/html; charset=utf-8&quot;).</span>
+    <span class="nx">ct</span> <span class="o">:=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Header</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;Content-Type&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">ct</span> <span class="o">!=</span> <span class="s">&quot;text/html&quot;</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">strings</span><span class="p">.</span><span class="nx">HasPrefix</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="s">&quot;text/html;&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;%s has type %s, not text/html&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">ct</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;parsing %s as HTML: %v&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="nx">visitNode</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="o">&amp;&amp;</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span> <span class="o">==</span> <span class="s">&quot;title&quot;</span> <span class="o">&amp;&amp;</span>
+            <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="nx">forEachNode</span><span class="p">(</span><span class="nx">doc</span><span class="p">,</span> <span class="nx">visitNode</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<div class="codehilite"><pre>$ go build gopl.io/ch5/title1
+$ ./title1 http://gopl.io
+The Go Programming Language
+$ ./title1 https://golang.org/doc/effective_go.html
+Effective Go - The Go Programming Language
+$ ./title1 https://golang.org/doc/gopher/frontpage.png
+title: https://golang.org/doc/gopher/frontpage.png has type image/png, not text/html
+</pre></div>
+
+
+<p>The <code>resp.Body.Close()</code> call, which is duplicated, ensures that title closes the network connection on all execution paths, including failures. As functions grow more complex and have to handle more errors, such duplication of clean-up logic may become a maintenance problem. Go' <code>defer</code> mechanism makes things simpler.</p>
+<p>Syntactically, a <code>defer</code> statement is an ordinary function or method call prefixed by the keyword <code>defer</code>.</p>
+<ul>
+<li>The function and argument expressions are evaluated when the statement is executed, but the actual call is <em>deferred</em> until the (caller) function that contains the <code>defer</code> statement has finished. The "finished" here means either normally or abnormally:<ul>
+<li>Normally: the caller function executing a return statement or falling off the end.</li>
+<li>Abnormally: the caller function panicking.</li>
+</ul>
+</li>
+<li>Any number of calls may be deferred; <u>they are executed in the reverse of the order in which they were deferred.</u></li>
+</ul>
 <h3 id="panic">Panic</h3>
 <h3 id="recover">Recover</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
