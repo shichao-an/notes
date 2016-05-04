@@ -1584,6 +1584,47 @@ title: https://golang.org/doc/gopher/frontpage.png has type image/png, not text/
 </li>
 <li>Any number of calls may be deferred; <u>they are executed in the reverse of the order in which they were deferred.</u></li>
 </ul>
+<p>A <code>defer</code> statement is often used with paired operations to ensure that resources are released in all cases no matter how complex the control flow. Some examples for such paired operations are:</p>
+<ul>
+<li>Open and close</li>
+<li>Connect and disconnect</li>
+<li>Lock and unlock</li>
+</ul>
+<p>The right place for a <code>defer</code> statement that releases a resource is immediately after the resource has been successfully acquired. In the <code>title</code> function below, a single deferred call replaces both previous calls to <code>resp.Body.Close()</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/title2/title.go">gopl.io/ch5/title2/title.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">title</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+
+    <span class="nx">ct</span> <span class="o">:=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Header</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;Content-Type&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">ct</span> <span class="o">!=</span> <span class="s">&quot;text/html&quot;</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">strings</span><span class="p">.</span><span class="nx">HasPrefix</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="s">&quot;text/html;&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;%s has type %s, not text/html&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">ct</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="nx">doc</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">html</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;parsing %s as HTML: %v&quot;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// ...print doc&#39;s title element...</span>
+    <span class="c1">//!-</span>
+    <span class="nx">visitNode</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="o">&amp;&amp;</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span> <span class="o">==</span> <span class="s">&quot;title&quot;</span> <span class="o">&amp;&amp;</span>
+            <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="nx">forEachNode</span><span class="p">(</span><span class="nx">doc</span><span class="p">,</span> <span class="nx">visitNode</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+    <span class="c1">//!+</span>
+
+    <span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <h3 id="panic">Panic</h3>
 <h3 id="recover">Recover</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
