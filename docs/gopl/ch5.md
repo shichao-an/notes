@@ -1142,6 +1142,49 @@ Syntactically, a `defer` statement is an ordinary function or method call prefix
     * Abnormally: the caller function panicking.
 * Any number of calls may be deferred; <u>they are executed in the reverse of the order in which they were deferred.</u>
 
+A `defer` statement is often used with paired operations to ensure that resources are released in all cases no matter how complex the control flow. Some examples for such paired operations are:
+
+* Open and close
+* Connect and disconnect
+* Lock and unlock
+
+The right place for a `defer` statement that releases a resource is immediately after the resource has been successfully acquired. In the `title` function below, a single deferred call replaces both previous calls to `resp.Body.Close()`:
+
+<small>[gopl.io/ch5/title2/title.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/title2/title.go)</small>
+
+```go
+func title(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	ct := resp.Header.Get("Content-Type")
+	if ct != "text/html" && !strings.HasPrefix(ct, "text/html;") {
+		return fmt.Errorf("%s has type %s, not text/html", url, ct)
+	}
+
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		return fmt.Errorf("parsing %s as HTML: %v", url, err)
+	}
+
+	// ...print doc's title element...
+	//!-
+	visitNode := func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "title" &&
+			n.FirstChild != nil {
+			fmt.Println(n.FirstChild.Data)
+		}
+	}
+	forEachNode(doc, visitNode, nil)
+	//!+
+
+	return nil
+}
+```
+
 ### Panic
 
 ### Recover
