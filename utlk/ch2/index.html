@@ -1358,8 +1358,47 @@ Extended   XXXXXXXXXX0000000000000000000000
 <li>Either <code>Accessed</code> or <code>Dirty</code> is cleared (<u>Linux always forces these flags to be set for every existing Page Table</u>).</li>
 </ul>
 <p>The <code>pud_bad</code> and <code>pgd_bad</code> macros always yield 0. No <code>pte_bad</code> macro is defined, because it is legal for a Page Table entry to refer to a page that is not present in main memory, not writable, or not accessible at all.</p>
-<p>The <code>pte_present</code> macro yields the value 1 if either the <code>Present</code> flag or the <code>Page Size</code> flag of a Page Table entry is equal to 1, the value 0 otherwise. Recall that the <code>Page Size</code> flag in Page Table entries has no meaning for the paging unit of the microprocessor; <u>the kernel, however, marks <code>Present</code> equal to 0 and Page Size equal to 1 for the pages present in main memory but without read, write, or execute privileges. In this way, any access to such pages triggers a Page Fault exception because <code>Present</code> is cleared, and the kernel can detect that the fault is not due to a missing page by checking the value of <code>Page Size</code>.</u></p>
+<p>The <code>pte_present</code> macro yields the value 1 if either the <code>Present</code> flag or the <code>Page Size</code> flag of a Page Table entry is equal to 1, the value 0 otherwise. Recall that the <code>Page Size</code> flag in Page Table entries has no meaning for the paging unit of the microprocessor; <u>the kernel, however, marks <code>Present</code> equal to 0 and <code>Page Size</code> equal to 1 for the pages present in main memory but without read, write, or execute privileges. In this way, any access to such pages triggers a Page Fault exception because <code>Present</code> is cleared, and the kernel can detect that the fault is not due to a missing page by checking the value of <code>Page Size</code>.</u></p>
 <p>The <code>pmd_present</code> macro yields the value 1 if the <code>Present</code> flag of the corresponding entry is equal to 1, that is, if the corresponding page or Page Table is loaded in main memory. The <code>pud_present</code> and <code>pgd_present</code> macros always yield the value 1.</p>
+<p>The functions listed in the table below query the value of any flag in a Page Table entry; with the exception of <code>pte_file()</code>, these functions work properly only on Page Table entries for which <code>pte_present</code> returns 1.</p>
+<table>
+<thead>
+<tr>
+<th>Function name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pte_user()</code></td>
+<td>Reads the <code>User/Supervisor</code> flag</td>
+</tr>
+<tr>
+<td><code>pte_read()</code></td>
+<td>Reads the <code>User/Supervisor</code> flag (pages on the 80×86 processor cannot be protected against reading)</td>
+</tr>
+<tr>
+<td><code>pte_write()</code></td>
+<td>Reads the <code>Read/Write</code> flag</td>
+</tr>
+<tr>
+<td><code>pte_exec()</code></td>
+<td>Reads the <code>User/Supervisor</code> flag (pages on the 80x86 processor cannot be protected against code execution)</td>
+</tr>
+<tr>
+<td><code>pte_dirty()</code></td>
+<td>Reads the <code>Dirty</code> flag</td>
+</tr>
+<tr>
+<td><code>pte_young()</code></td>
+<td>Reads the <code>Accessed</code> flag</td>
+</tr>
+<tr>
+<td><code>pte_file()</code></td>
+<td>Reads the <code>Dirty</code> flag (when the <code>Present</code> flag is cleared and the <code>Dirty</code> flag is set, the page belongs to a non-linear disk file mapping)</td>
+</tr>
+</tbody>
+</table>
 <h4 id="physical-memory-layout">Physical Memory Layout</h4>
 <h4 id="process-page-tables">Process Page Tables</h4>
 <h4 id="kernel-page-tables">Kernel Page Tables</h4>
