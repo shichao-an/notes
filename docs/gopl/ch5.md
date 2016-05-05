@@ -374,7 +374,7 @@ Usually when a function returns a non-nil error, its other results are undefined
 
 #### Why Go uses control-flow mechanisms for error handling *
 
-Go's approach differs from many other languages in which failures are reported using *exceptions*, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed discussed in [Section 5.9](#panic), it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.
+Go's approach differs from many other languages in which failures are reported using *exceptions*, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed in [Section 5.9](#panic), it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.
 
 The problem is that exceptions tend to entangle the description of an error with the control flow required to handle it, often leading to an undesirable outcome: routine errors are reported to the end user in the form of an incomprehensible stack trace, full of information about the structure of the program but lacking intelligible context about what went wrong.
 
@@ -1215,8 +1215,9 @@ func lookup(key string) int {
 }
 ```
 
-The `defer` statement can also be used to pair "on entry" and "on exit" actions when debugging
-a complex function.
+#### On-entry and on-exit actions *
+
+The `defer` statement can also be used to pair "on entry" and "on exit" actions when debugging a complex function.
 
 The `bigSlowOperation` function below does two things:
 
@@ -1249,6 +1250,110 @@ $ ./trace
 2015/11/18 09:53:26 enter bigSlowOperation
 2015/11/18 09:53:36 exit bigSlowOperation (10.000589217s)
 ```
+
+#### Accessing result variables *
+
+Deferred functions run after return statements have updated the function's result variables.  Because an anonymous function can access its enclosing function's variables, including named results, a deferred anonymous function can observe the function's results.
+
+For the following function:
+
+```go
+func double(x int) int {
+	return x + x
+}
+```
+
+By naming its result variable and adding a `defer` statement, we can make the function print its arguments and results each time it is called.
+
+```go
+func double(x int) (result int) {
+	defer func() { fmt.Printf("double(%d) = %d\n", x, result) }()
+	return x + x
+}
+
+_=double(4)
+// Output:
+// "double(4) = 8"
+```
+
+This is useful in functions with many return statements.
+
+A deferred anonymous function can even change the values that the enclosing function returns to its caller:
+
+```go
+func triple(x int) (result int) {
+	defer func() { result += x }()
+	return double(x)
+}
+fmt.Println(triple(4)) // "12"
+```
+
+Because deferred functions aren't executed until the end of a function's execution, a `defer` statement in a loop deserves extra scrutiny. The code below could run out of file descriptors since no file will be closed until all files have been processed:
+
+```go
+for _, filename := range filenames {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close() // NOTE: risky; could run out of file descriptors
+	// ...process f...
+}
+```
+
+One solution is to move the loop body, including the `defer` statement, into another function that is called on each iteration:
+
+```go
+for _, filename := range filenames {
+	if err := doFile(filename); err != nil {
+		return err
+	}
+}
+
+func doFile(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	// ...process f...
+}
+```
+
+The example below is an improved `fetch` program ([Section 1.5](ch1.md#fetching-a-url)) that writes the HTTP response to a local file instead of to the standard output. It derives the file name from the last component of the URL path, which it obtains using the `path.Base` function.
+
+<small>[gopl.io/ch5/fetch/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/fetch/main.go)</small>
+
+```go
+// Fetch downloads the URL and returns the
+// name and length of the local file.
+func fetch(url string) (filename string, n int64, err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", 0, err
+	}
+	defer resp.Body.Close()
+
+	local := path.Base(resp.Request.URL.Path)
+	if local == "/" {
+		local = "index.html"
+	}
+	f, err := os.Create(local)
+	if err != nil {
+		return "", 0, err
+	}
+	n, err = io.Copy(f, resp.Body)
+	// Close file, but prefer error from Copy, if any.
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	return local, n, err
+}
+```
+
+1. The call to `resp.Body.Close` is deferred.
+2. It's tempting to use a second deferred call, to `f.Close`, to close the local file, but this would be subtly wrong because `os.Create` opens a file for writing, creating it as needed. On many file systems, notably NFS, write errors are not reported immediately but may be postponed until the file is closed. Failure to check the result of the close operation could cause serious data loss to go unnoticed.
+3. If both `io.Copy` and `f.Close` fail, we should prefer to report the error from `io.Copy` since it occurred first and is more likely to tell us the root cause.
 
 ### Panic
 
