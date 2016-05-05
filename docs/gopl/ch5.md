@@ -1288,6 +1288,8 @@ func triple(x int) (result int) {
 fmt.Println(triple(4)) // "12"
 ```
 
+#### Caveats of deferred functions *
+
 Because deferred functions aren't executed until the end of a function's execution, a `defer` statement in a loop deserves extra scrutiny. The code below could run out of file descriptors since no file will be closed until all files have been processed:
 
 ```go
