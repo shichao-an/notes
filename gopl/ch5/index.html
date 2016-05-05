@@ -1625,6 +1625,64 @@ title: https://golang.org/doc/gopher/frontpage.png has type image/png, not text/
 </pre></div>
 
 
+<p>The same pattern can be used for other resources. For example, close an open file:</p>
+<p><small><a href="https://golang.org/src/io/ioutil/ioutil.go">io/ioutil/ioutil.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">ioutil</span>
+
+<span class="kd">func</span> <span class="nx">ReadFile</span><span class="p">(</span><span class="nx">filename</span> <span class="kt">string</span><span class="p">)</span> <span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">ReadAll</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Unlock a mutex (<a href="ch9.md#mutual-exclusion-syncmutex">Section 9.2</a>):</p>
+<div class="codehilite"><pre>var mu sync.Mutex
+var m = make(map[string]int)
+
+func lookup(key string) int {
+    mu.Lock()
+    defer mu.Unlock()
+    return m[key]
+}
+</pre></div>
+
+
+<p>The <code>defer</code> statement can also be used to pair "on entry" and "on exit" actions when debugging
+a complex function.</p>
+<p>The <code>bigSlowOperation</code> function below does two things:</p>
+<ol>
+<li>It calls trace immediately, which does the "on entry" action.</li>
+<li>Then, it returns a function value that, when called, does the corresponding "on exit" action.</li>
+</ol>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/trace/main.go">gopl.io/ch5/trace/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">bigSlowOperation</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="nx">trace</span><span class="p">(</span><span class="s">&quot;bigSlowOperation&quot;</span><span class="p">)()</span> <span class="c1">// don&#39;t forget the extra parentheses</span>
+    <span class="c1">// ...lots of work...</span>
+    <span class="nx">time</span><span class="p">.</span><span class="nx">Sleep</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span> <span class="c1">// simulate slow operation by sleeping</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">trace</span><span class="p">(</span><span class="nx">msg</span> <span class="kt">string</span><span class="p">)</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">start</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;enter %s&quot;</span><span class="p">,</span> <span class="nx">msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;exit %s (%s)&quot;</span><span class="p">,</span> <span class="nx">msg</span><span class="p">,</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Since</span><span class="p">(</span><span class="nx">start</span><span class="p">))</span> <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><u>By deferring a call to the returned function in this way, we can instrument the entry point and all exit points of a function in a single statement and even pass values,</u> like the start time, between the two actions. Do not forget the final parentheses in the defer statement, or the "on entry" action will happen on exit and the on-exit action won't happen at all.</p>
+<p>Each time <code>bigSlowOperation</code> is called, it logs its entry and exit and the elapsed time between them.</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch5/trace
+$ ./trace
+2015/11/18 09:53:26 enter bigSlowOperation
+2015/11/18 09:53:36 <span class="nb">exit</span> bigSlowOperation <span class="o">(</span>10.000589217s<span class="o">)</span>
+</pre></div>
+
+
 <h3 id="panic">Panic</h3>
 <h3 id="recover">Recover</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
