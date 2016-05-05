@@ -1185,6 +1185,71 @@ func title(url string) error {
 }
 ```
 
+The same pattern can be used for other resources. For example, close an open file:
+
+<small>[io/ioutil/ioutil.go](https://golang.org/src/io/ioutil/ioutil.go)</small>
+
+```go
+package ioutil
+
+func ReadFile(filename string) ([]byte, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ReadAll(f)
+}
+```
+
+Unlock a mutex ([Section 9.2](ch9.md#mutual-exclusion-syncmutex)):
+
+```
+var mu sync.Mutex
+var m = make(map[string]int)
+
+func lookup(key string) int {
+	mu.Lock()
+	defer mu.Unlock()
+	return m[key]
+}
+```
+
+The `defer` statement can also be used to pair "on entry" and "on exit" actions when debugging
+a complex function.
+
+The `bigSlowOperation` function below does two things:
+
+1. It calls trace immediately, which does the "on entry" action.
+2. Then, it returns a function value that, when called, does the corresponding "on exit" action.
+
+<small>[gopl.io/ch5/trace/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/trace/main.go)</small>
+
+```go
+func bigSlowOperation() {
+	defer trace("bigSlowOperation")() // don't forget the extra parentheses
+	// ...lots of work...
+	time.Sleep(10 * time.Second) // simulate slow operation by sleeping
+}
+
+func trace(msg string) func() {
+	start := time.Now()
+	log.Printf("enter %s", msg)
+	return func() { log.Printf("exit %s (%s)", msg, time.Since(start)) }
+}
+```
+
+<u>By deferring a call to the returned function in this way, we can instrument the entry point and all exit points of a function in a single statement and even pass values,</u> like the start time, between the two actions. Do not forget the final parentheses in the defer statement, or the "on entry" action will happen on exit and the on-exit action won't happen at all.
+
+Each time `bigSlowOperation` is called, it logs its entry and exit and the elapsed time between them.
+
+```
+$ go build gopl.io/ch5/trace
+$ ./trace
+2015/11/18 09:53:26 enter bigSlowOperation
+2015/11/18 09:53:36 exit bigSlowOperation (10.000589217s)
+```
+
 ### Panic
 
 ### Recover
