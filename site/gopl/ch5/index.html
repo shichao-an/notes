@@ -554,6 +554,10 @@
     
         <li class="main "><a href="#deferred-function-calls">Deferred Function Calls</a></li>
         
+            <li><a href="#on-entry-and-on-exit-actions">On-entry and on-exit actions *</a></li>
+        
+            <li><a href="#accessing-result-variables">Accessing result variables *</a></li>
+        
     
         <li class="main "><a href="#panic">Panic</a></li>
         
@@ -899,7 +903,7 @@ $ ./fetch https://golang.org | ./outline
 <p>The built-in type <a href="https://golang.org/pkg/builtin/#error"><code>error</code></a> is an interface type (detailed in <a href="../ch7/">Chapter 7</a>. An error may be <code>nil</code> or non-<code>nil</code>; <code>nil</code> implies success and non-<code>nil</code> implies failure, and non-<code>nil</code> error has an error message string which can be obtained by calling its <code>Error</code> method or print by calling <code>fmt.Println(err)</code> or <code>fmt.Printf("%v", err)</code>.</p>
 <p>Usually when a function returns a non-nil error, its other results are undefined and should be ignored. However, a few functions may return partial results in error cases. For example, if an error occurs while reading from a file, a call to <code>Read</code> returns the number of bytes it was able to read and an <code>error</code> value describing the problem. For correct behavior, some callers may need to process the incomplete data before handling the error, so it is important that such functions clearly document their results.</p>
 <h4 id="why-go-uses-control-flow-mechanisms-for-error-handling">Why Go uses control-flow mechanisms for error handling *</h4>
-<p>Go's approach differs from many other languages in which failures are reported using <em>exceptions</em>, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed discussed in <a href="#panic">Section 5.9</a>, it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.</p>
+<p>Go's approach differs from many other languages in which failures are reported using <em>exceptions</em>, not ordinary values. Although Go does have an exception mechanism of sorts, which is discussed in <a href="#panic">Section 5.9</a>, it is used only for reporting truly unexpected errors that indicate a bug, not the routine errors that a robust program should be built to expect.</p>
 <p>The problem is that exceptions tend to entangle the description of an error with the control flow required to handle it, often leading to an undesirable outcome: routine errors are reported to the end user in the form of an incomprehensible stack trace, full of information about the structure of the program but lacking intelligible context about what went wrong.</p>
 <p>By contrast, Go programs use ordinary control-flow mechanisms like <code>if</code> and <code>return</code> to respond to errors. This style undeniably demands that more attention be paid to error-handling logic, but that is precisely the point.</p>
 <h4 id="error-handling-strategies">Error-Handling Strategies</h4>
@@ -1652,8 +1656,8 @@ func lookup(key string) int {
 </pre></div>
 
 
-<p>The <code>defer</code> statement can also be used to pair "on entry" and "on exit" actions when debugging
-a complex function.</p>
+<h4 id="on-entry-and-on-exit-actions">On-entry and on-exit actions *</h4>
+<p>The <code>defer</code> statement can also be used to pair "on entry" and "on exit" actions when debugging a complex function.</p>
 <p>The <code>bigSlowOperation</code> function below does two things:</p>
 <ol>
 <li>It calls trace immediately, which does the "on entry" action.</li>
@@ -1683,6 +1687,101 @@ $ ./trace
 </pre></div>
 
 
+<h4 id="accessing-result-variables">Accessing result variables *</h4>
+<p>Deferred functions run after return statements have updated the function's result variables.  Because an anonymous function can access its enclosing function's variables, including named results, a deferred anonymous function can observe the function's results.</p>
+<p>For the following function:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">double</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">x</span> <span class="o">+</span> <span class="nx">x</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>By naming its result variable and adding a <code>defer</code> statement, we can make the function print its arguments and results each time it is called.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">double</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="p">(</span><span class="nx">result</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;double(%d) = %d\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">}()</span>
+    <span class="k">return</span> <span class="nx">x</span> <span class="o">+</span> <span class="nx">x</span>
+<span class="p">}</span>
+
+<span class="nx">_</span><span class="p">=</span><span class="nx">double</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// &quot;double(4) = 8&quot;</span>
+</pre></div>
+
+
+<p>This is useful in functions with many return statements.</p>
+<p>A deferred anonymous function can even change the values that the enclosing function returns to its caller:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">triple</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="p">(</span><span class="nx">result</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">result</span> <span class="o">+=</span> <span class="nx">x</span> <span class="p">}()</span>
+    <span class="k">return</span> <span class="nx">double</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">triple</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span> <span class="c1">// &quot;12&quot;</span>
+</pre></div>
+
+
+<p>Because deferred functions aren't executed until the end of a function's execution, a <code>defer</code> statement in a loop deserves extra scrutiny. The code below could run out of file descriptors since no file will be closed until all files have been processed:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">filename</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+    <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span> <span class="c1">// NOTE: risky; could run out of file descriptors</span>
+    <span class="c1">// ...process f...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>One solution is to move the loop body, including the <code>defer</code> statement, into another function that is called on each iteration:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">filename</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">doFile</span><span class="p">(</span><span class="nx">filename</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">doFile</span><span class="p">(</span><span class="nx">filename</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="c1">// ...process f...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The example below is an improved <code>fetch</code> program (<a href="../ch1/#fetching-a-url">Section 1.5</a>) that writes the HTTP response to a local file instead of to the standard output. It derives the file name from the last component of the URL path, which it obtains using the <code>path.Base</code> function.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/fetch/main.go">gopl.io/ch5/fetch/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Fetch downloads the URL and returns the</span>
+<span class="c1">// name and length of the local file.</span>
+<span class="kd">func</span> <span class="nx">fetch</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">filename</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">n</span> <span class="kt">int64</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+
+    <span class="nx">local</span> <span class="o">:=</span> <span class="nx">path</span><span class="p">.</span><span class="nx">Base</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">local</span> <span class="o">==</span> <span class="s">&quot;/&quot;</span> <span class="p">{</span>
+        <span class="nx">local</span> <span class="p">=</span> <span class="s">&quot;index.html&quot;</span>
+    <span class="p">}</span>
+    <span class="nx">f</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Create</span><span class="p">(</span><span class="nx">local</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="nx">n</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+    <span class="c1">// Close file, but prefer error from Copy, if any.</span>
+    <span class="k">if</span> <span class="nx">closeErr</span> <span class="o">:=</span> <span class="nx">f</span><span class="p">.</span><span class="nx">Close</span><span class="p">();</span> <span class="nx">err</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">err</span> <span class="p">=</span> <span class="nx">closeErr</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">local</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="nx">err</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ol>
+<li>The call to <code>resp.Body.Close</code> is deferred.</li>
+<li>It's tempting to use a second deferred call, to <code>f.Close</code>, to close the local file, but this would be subtly wrong because <code>os.Create</code> opens a file for writing, creating it as needed. On many file systems, notably NFS, write errors are not reported immediately but may be postponed until the file is closed. Failure to check the result of the close operation could cause serious data loss to go unnoticed.</li>
+<li>If both <code>io.Copy</code> and <code>f.Close</code> fail, we should prefer to report the error from <code>io.Copy</code> since it occurred first and is more likely to tell us the root cause.</li>
+</ol>
 <h3 id="panic">Panic</h3>
 <h3 id="recover">Recover</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>

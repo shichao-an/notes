@@ -634,9 +634,21 @@ The `pmd_bad` macro is used by functions to check Page Middle Directory entries 
 
 The `pud_bad` and `pgd_bad` macros always yield 0. No `pte_bad` macro is defined, because it is legal for a Page Table entry to refer to a page that is not present in main memory, not writable, or not accessible at all.
 
-The `pte_present` macro yields the value 1 if either the `Present` flag or the `Page Size` flag of a Page Table entry is equal to 1, the value 0 otherwise. Recall that the `Page Size` flag in Page Table entries has no meaning for the paging unit of the microprocessor; <u>the kernel, however, marks `Present` equal to 0 and Page Size equal to 1 for the pages present in main memory but without read, write, or execute privileges. In this way, any access to such pages triggers a Page Fault exception because `Present` is cleared, and the kernel can detect that the fault is not due to a missing page by checking the value of `Page Size`.</u>
+The `pte_present` macro yields the value 1 if either the `Present` flag or the `Page Size` flag of a Page Table entry is equal to 1, the value 0 otherwise. Recall that the `Page Size` flag in Page Table entries has no meaning for the paging unit of the microprocessor; <u>the kernel, however, marks `Present` equal to 0 and `Page Size` equal to 1 for the pages present in main memory but without read, write, or execute privileges. In this way, any access to such pages triggers a Page Fault exception because `Present` is cleared, and the kernel can detect that the fault is not due to a missing page by checking the value of `Page Size`.</u>
 
 The `pmd_present` macro yields the value 1 if the `Present` flag of the corresponding entry is equal to 1, that is, if the corresponding page or Page Table is loaded in main memory. The `pud_present` and `pgd_present` macros always yield the value 1.
+
+The functions listed in the table below query the value of any flag in a Page Table entry; with the exception of `pte_file()`, these functions work properly only on Page Table entries for which `pte_present` returns 1.
+
+Function name | Description
+------------- | -----------
+`pte_user()` | Reads the `User/Supervisor` flag
+`pte_read()` | Reads the `User/Supervisor` flag (pages on the 80×86 processor cannot be protected against reading)
+`pte_write()` | Reads the `Read/Write` flag
+`pte_exec()` | Reads the `User/Supervisor` flag (pages on the 80x86 processor cannot be protected against code execution)
+`pte_dirty()` | Reads the `Dirty` flag
+`pte_young()` | Reads the `Accessed` flag
+`pte_file()` | Reads the `Dirty` flag (when the `Present` flag is cleared and the `Dirty` flag is set, the page belongs to a non-linear disk file mapping)
 
 #### Physical Memory Layout
 

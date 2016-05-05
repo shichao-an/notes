@@ -112,6 +112,7 @@ func main() {
 	fmt.Println(s)
 }
 ```
+
 #### Comments that describe the program *
 
 Comments begin with `//`. By convention, we describe each package in a comment immediately preceding its package declaration; for a `main` package, this comment is one or more complete sentences that describe the program as a whole.
@@ -239,6 +240,7 @@ func main() {
 	fmt.Println(strings.Join(os.Args[1:], " "))
 }
 ```
+
 If we don’t care about format but just want to see the values, perhaps for debugging, we can let `Println` format the results for us:
 
 ```go
@@ -680,6 +682,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
 }
 ```
+
 This program does the following:
 
 1. The `main` function connects a handler function to incoming URLs that begin with `/` (which is all URLs) using [`http.HandleFunc`](https://golang.org/pkg/net/http/#HandleFunc), and starts a server listening for incoming requests on port 8000 using [`http.ListenAndServe`](https://golang.org/pkg/net/http/#ListenAndServe).
@@ -758,7 +761,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 [p21]
 
-The call to `ParseForm` is nested within an `if` statement. Go allows a simple statement such as a local variable declaration to precede the `if` condition, which is particularly useful for error handling as in this example. It could have been written it as:
+The call to `ParseForm` is nested within an `if` statement. Go allows a simple statement such as a local variable declaration to precede the `if` condition, which is particularly useful for error handling as in this example:
+
+```go
+if err := r.ParseForm(); err != nil {
+	log.Print(err)
+}
+```
+
+This code could have been written it as:
 
 ```go
 err := r.ParseForm()
@@ -773,7 +784,7 @@ In these programs, three very different types are used as output streams:
 
 * The `fetch` program copied HTTP response data to `os.Stdout`,
 * The `fetchall` program threw the response away by copying it to the trivial sink `ioutil.Discard`.
-* The web server above used `fmt.Fprintf `to write to an `http.ResponseWriter` representing the web browser.
+* The web server above used `fmt.Fprintf` to write to an `http.ResponseWriter` representing the web browser.
 
 Although these three types differ in the details of what they do, they all satisfy a common
 interface, allowing any of them to be used wherever an output stream is needed. That interface, called `io.Writer`, is discussed in [Section 7.1](ch7.md#interfaces-as-contracts).
