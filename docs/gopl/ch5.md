@@ -1359,6 +1359,15 @@ func fetch(url string) (filename string, n int64, err error) {
 
 ### Panic
 
+Go's type system catches many mistakes at compile time; other mistakes, such as an out-of-bounds array access or nil pointer dereference, require checks at run time. When the Go runtime detects these mistakes, it *panics*.
+
+During a typical panic, normal execution stops, all deferred function calls in that goroutine are executed, and the program crashes with a log message:
+
+1. This log message includes the panic value, which is usually an error message and a [stack trace](https://en.wikipedia.org/wiki/Stack_trace) (for each goroutine) showing the stack of function calls that were active at the time of the panic.
+2. This log message often has enough information to diagnose the root cause of the problem without running the program again, so it should always be included in a bug report about a panicking program.
+
+
+
 ### Recover
 
 ### Doubts and Solution
