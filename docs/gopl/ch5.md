@@ -1366,7 +1366,146 @@ During a typical panic, normal execution stops, all deferred function calls in t
 1. This log message includes the panic value, which is usually an error message and a [stack trace](https://en.wikipedia.org/wiki/Stack_trace) (for each goroutine) showing the stack of function calls that were active at the time of the panic.
 2. This log message often has enough information to diagnose the root cause of the problem without running the program again, so it should always be included in a bug report about a panicking program.
 
+Besides the panics that come from the runtime, the built-in `panic` function may be called directly. It accepts any value as an argument. A panic is often the best thing to do when some "impossible" situation happens, for instance, execution reaches a case that logically can't happen:
 
+```go
+switch s := suit(drawCard()); s {
+case "Spades": // ...
+case "Hearts": // ...
+case "Diamonds": // ...
+case "Clubs": // ...
+default:
+	panic(fmt.Sprintf("invalid suit %q", s)) // Joker?
+}
+```
+
+It's good practice to assert that the preconditions of a function hold only if you can provide a more informative error message or detect an error sooner. Otherwise, there is no point asserting a condition that the runtime will check for you.
+
+```go
+func Reset(x *Buffer) {
+	if x == nil {
+		panic("x is nil") // unnecessary!
+	}
+	x.elements = nil
+}
+```
+
+#### Panic vs. `error` values
+
+Although Go's panic mechanism resembles exceptions in other languages, its usages are quite different. Since a panic causes the program to crash, it is generally used for grave errors, such as a logical inconsistency in the program; diligent programmers consider any crash to be proof of a bug in their code.
+
+In a robust program, "expected" errors that arise from incorrect input, misconfiguration, or failing I/O, should be handled gracefully; they are best dealt with using error values.
+
+Consider the function [`regexp.Compile`](https://golang.org/pkg/regexp/#Compile), which compiles a regular expression into an efficient form for matching. It returns an error if called with an ill-formed pattern, but checking this error is unnecessary and burdensome if the caller knows that a particular call cannot fail. In such cases, it's reasonable for the caller to handle an error by panicking, since it is believed to be impossible.
+
+Since most regular expressions are literals in the program source code, the [`regexp`](https://golang.org/pkg/regexp/) package provides a wrapper function [`regexp.MustCompile`](https://golang.org/pkg/regexp/#MustCompile) that does this check:
+
+```go
+package regexp
+
+func Compile(expr string) (*Regexp, error) { /* ... */ }
+
+func MustCompile(expr string) *Regexp {
+	re, err := Compile(expr)
+	if err != nil {
+		panic(err)
+	}
+	return re
+}
+```
+
+This wrapper function makes it convenient for clients to initialize a package-level variable with a compiled regular expression, like this:
+
+```go
+var httpSchemeRE = regexp.MustCompile(`^https?:`) // "http:" or "https:"
+```
+
+`MustCompile` should not be called with untrusted input values. <u>The `Must` prefix is a common naming convention for functions of this kind,</u> like `template.Must` in [Section 4.6](#text-and-html-templates).
+
+When a panic occurs, all deferred functions are run in reverse order, starting with those of the topmost function on the stack and proceeding up to `main`. For example:
+
+<small>[gopl.io/ch5/defer1/defer.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/defer1/defer.go)</small>
+
+```go
+func main() {
+	f(3)
+}
+
+func f(x int) {
+	fmt.Printf("f(%d)\n", x+0/x) // panics if x == 0
+	defer fmt.Printf("defer %d\n", x)
+	f(x - 1)
+}
+```
+
+When the program is run, it prints the following to the standard output:
+
+```text
+f(3)
+f(2)
+f(1)
+defer 1
+defer 2
+defer 3
+```
+
+And the following to the standard error (simplified for clarity):
+
+```text
+panic: runtime error: integer divide by zero
+main.f(0)
+        src/gopl.io/ch5/defer1/defer.go:14
+main.f(1)
+        src/gopl.io/ch5/defer1/defer.go:16
+main.f(2)
+        src/gopl.io/ch5/defer1/defer.go:16
+main.f(3)
+        src/gopl.io/ch5/defer1/defer.go:16
+main.main()
+        src/gopl.io/ch5/defer1/defer.go:10
+```
+
+1. A panic occurs during the call to `f(0)`, causing the three deferred calls to `fmt.Printf` to run.
+2. Then the runtime terminates the program, printing the panic message and a stack dump to the standard error stream.
+
+For diagnostic purposes, the [`runtime`](https://golang.org/pkg/runtime/) package lets the programmer dump the stack.
+
+For example, the program below defers a call to `printStack` in `main`:
+
+<small>[gopl.io/ch5/defer2/defer.go](https://github.com/shichao-an/gopl.io/blob/master/ch5/defer2/defer.go)</small>
+
+```go
+func main() {
+	defer printStack()
+	f(3)
+}
+
+func printStack() {
+	var buf [4096]byte
+	n := runtime.Stack(buf[:], false)
+	os.Stdout.Write(buf[:n])
+}
+```
+
+The following additional text (simplified for clarity) is printed to the standard output:
+
+```text
+goroutine 1 [running]:
+main.printStack()
+	src/gopl.io/ch5/defer2/defer.go:20
+main.f(0)
+	src/gopl.io/ch5/defer2/defer.go:27
+main.f(1)
+	src/gopl.io/ch5/defer2/defer.go:29
+main.f(2)
+	src/gopl.io/ch5/defer2/defer.go:29
+main.f(3)
+	src/gopl.io/ch5/defer2/defer.go:29
+main.main()
+	src/gopl.io/ch5/defer2/defer.go:15
+```
+
+Those familiar with exceptions in other languages may found that `runtime.Stack` can print information about functions that seem to have already been "[unwound](https://en.wikipedia.org/wiki/Call_stack#Unwinding)". Go's panic mechanism runs the deferred functions *before* it unwinds the stack.
 
 ### Recover
 
@@ -1379,3 +1518,9 @@ During a typical panic, normal execution stops, all deferred function calls in t
 > After checking an error, failure is usually dealt with before success.
 
 <span class="text-danger">Question</span>: What does it mean exactly?
+
+##### **p148 on panic**
+
+> During a typical panic, normal execution stops, all deferred function calls in that goroutine are executed, and the program crashes with a log message.
+
+<span class="text-danger">Question</span>: From this text, does it mean that all functions in Go are "goroutines"?
