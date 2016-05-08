@@ -1390,7 +1390,7 @@ func Reset(x *Buffer) {
 }
 ```
 
-#### Panic vs. `error` values
+#### Panic vs. `error` values *
 
 Although Go's panic mechanism resembles exceptions in other languages, its usages are quite different. Since a panic causes the program to crash, it is generally used for grave errors, such as a logical inconsistency in the program; diligent programmers consider any crash to be proof of a bug in their code.
 
@@ -1421,6 +1421,8 @@ var httpSchemeRE = regexp.MustCompile(`^https?:`) // "http:" or "https:"
 ```
 
 `MustCompile` should not be called with untrusted input values. <u>The `Must` prefix is a common naming convention for functions of this kind,</u> like `template.Must` in [Section 4.6](#text-and-html-templates).
+
+#### Panic and deferred functions *
 
 When a panic occurs, all deferred functions are run in reverse order, starting with those of the topmost function on the stack and proceeding up to `main`. For example:
 

@@ -563,7 +563,9 @@
     
         <li class="main "><a href="#panic">Panic</a></li>
         
-            <li><a href="#panic-vs-error-values">Panic vs. error values</a></li>
+            <li><a href="#panic-vs-error-values">Panic vs. error values *</a></li>
+        
+            <li><a href="#panic-and-deferred-functions">Panic and deferred functions *</a></li>
         
     
         <li class="main "><a href="#recover">Recover</a></li>
@@ -1816,7 +1818,7 @@ $ ./trace
 </pre></div>
 
 
-<h4 id="panic-vs-error-values">Panic vs. <code>error</code> values</h4>
+<h4 id="panic-vs-error-values">Panic vs. <code>error</code> values *</h4>
 <p>Although Go's panic mechanism resembles exceptions in other languages, its usages are quite different. Since a panic causes the program to crash, it is generally used for grave errors, such as a logical inconsistency in the program; diligent programmers consider any crash to be proof of a bug in their code.</p>
 <p>In a robust program, "expected" errors that arise from incorrect input, misconfiguration, or failing I/O, should be handled gracefully; they are best dealt with using error values.</p>
 <p>Consider the function <a href="https://golang.org/pkg/regexp/#Compile"><code>regexp.Compile</code></a>, which compiles a regular expression into an efficient form for matching. It returns an error if called with an ill-formed pattern, but checking this error is unnecessary and burdensome if the caller knows that a particular call cannot fail. In such cases, it's reasonable for the caller to handle an error by panicking, since it is believed to be impossible.</p>
@@ -1841,6 +1843,7 @@ $ ./trace
 
 
 <p><code>MustCompile</code> should not be called with untrusted input values. <u>The <code>Must</code> prefix is a common naming convention for functions of this kind,</u> like <code>template.Must</code> in <a href="#text-and-html-templates">Section 4.6</a>.</p>
+<h4 id="panic-and-deferred-functions">Panic and deferred functions *</h4>
 <p>When a panic occurs, all deferred functions are run in reverse order, starting with those of the topmost function on the stack and proceeding up to <code>main</code>. For example:</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/defer1/defer.go">gopl.io/ch5/defer1/defer.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
