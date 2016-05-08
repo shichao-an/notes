@@ -563,6 +563,8 @@
     
         <li class="main "><a href="#panic">Panic</a></li>
         
+            <li><a href="#panic-vs-error-values">Panic vs. error values</a></li>
+        
     
         <li class="main "><a href="#recover">Recover</a></li>
         
@@ -1792,6 +1794,130 @@ $ ./trace
 <li>This log message includes the panic value, which is usually an error message and a <a href="https://en.wikipedia.org/wiki/Stack_trace">stack trace</a> (for each goroutine) showing the stack of function calls that were active at the time of the panic.</li>
 <li>This log message often has enough information to diagnose the root cause of the problem without running the program again, so it should always be included in a bug report about a panicking program.</li>
 </ol>
+<p>Besides the panics that come from the runtime, the built-in <code>panic</code> function may be called directly. It accepts any value as an argument. A panic is often the best thing to do when some "impossible" situation happens, for instance, execution reaches a case that logically can't happen:</p>
+<div class="codehilite"><pre><span class="k">switch</span> <span class="nx">s</span> <span class="o">:=</span> <span class="nx">suit</span><span class="p">(</span><span class="nx">drawCard</span><span class="p">());</span> <span class="nx">s</span> <span class="p">{</span>
+<span class="k">case</span> <span class="s">&quot;Spades&quot;</span><span class="p">:</span> <span class="c1">// ...</span>
+<span class="k">case</span> <span class="s">&quot;Hearts&quot;</span><span class="p">:</span> <span class="c1">// ...</span>
+<span class="k">case</span> <span class="s">&quot;Diamonds&quot;</span><span class="p">:</span> <span class="c1">// ...</span>
+<span class="k">case</span> <span class="s">&quot;Clubs&quot;</span><span class="p">:</span> <span class="c1">// ...</span>
+<span class="k">default</span><span class="p">:</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;invalid suit %q&quot;</span><span class="p">,</span> <span class="nx">s</span><span class="p">))</span> <span class="c1">// Joker?</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>It's good practice to assert that the preconditions of a function hold only if you can provide a more informative error message or detect an error sooner. Otherwise, there is no point asserting a condition that the runtime will check for you.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Reset</span><span class="p">(</span><span class="nx">x</span> <span class="o">*</span><span class="nx">Buffer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">x</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nb">panic</span><span class="p">(</span><span class="s">&quot;x is nil&quot;</span><span class="p">)</span> <span class="c1">// unnecessary!</span>
+    <span class="p">}</span>
+    <span class="nx">x</span><span class="p">.</span><span class="nx">elements</span> <span class="p">=</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="panic-vs-error-values">Panic vs. <code>error</code> values</h4>
+<p>Although Go's panic mechanism resembles exceptions in other languages, its usages are quite different. Since a panic causes the program to crash, it is generally used for grave errors, such as a logical inconsistency in the program; diligent programmers consider any crash to be proof of a bug in their code.</p>
+<p>In a robust program, "expected" errors that arise from incorrect input, misconfiguration, or failing I/O, should be handled gracefully; they are best dealt with using error values.</p>
+<p>Consider the function <a href="https://golang.org/pkg/regexp/#Compile"><code>regexp.Compile</code></a>, which compiles a regular expression into an efficient form for matching. It returns an error if called with an ill-formed pattern, but checking this error is unnecessary and burdensome if the caller knows that a particular call cannot fail. In such cases, it's reasonable for the caller to handle an error by panicking, since it is believed to be impossible.</p>
+<p>Since most regular expressions are literals in the program source code, the <a href="https://golang.org/pkg/regexp/"><code>regexp</code></a> package provides a wrapper function <a href="https://golang.org/pkg/regexp/#MustCompile"><code>regexp.MustCompile</code></a> that does this check:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">regexp</span>
+
+<span class="kd">func</span> <span class="nx">Compile</span><span class="p">(</span><span class="nx">expr</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">Regexp</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">MustCompile</span><span class="p">(</span><span class="nx">expr</span> <span class="kt">string</span><span class="p">)</span> <span class="o">*</span><span class="nx">Regexp</span> <span class="p">{</span>
+    <span class="nx">re</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">Compile</span><span class="p">(</span><span class="nx">expr</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">re</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This wrapper function makes it convenient for clients to initialize a package-level variable with a compiled regular expression, like this:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">httpSchemeRE</span> <span class="p">=</span> <span class="nx">regexp</span><span class="p">.</span><span class="nx">MustCompile</span><span class="p">(</span><span class="s">`^https?:`</span><span class="p">)</span> <span class="c1">// &quot;http:&quot; or &quot;https:&quot;</span>
+</pre></div>
+
+
+<p><code>MustCompile</code> should not be called with untrusted input values. <u>The <code>Must</code> prefix is a common naming convention for functions of this kind,</u> like <code>template.Must</code> in <a href="#text-and-html-templates">Section 4.6</a>.</p>
+<p>When a panic occurs, all deferred functions are run in reverse order, starting with those of the topmost function on the stack and proceeding up to <code>main</code>. For example:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/defer1/defer.go">gopl.io/ch5/defer1/defer.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">f</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">f</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;f(%d)\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="o">+</span><span class="mi">0</span><span class="o">/</span><span class="nx">x</span><span class="p">)</span> <span class="c1">// panics if x == 0</span>
+    <span class="k">defer</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;defer %d\n&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>
+    <span class="nx">f</span><span class="p">(</span><span class="nx">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When the program is run, it prints the following to the standard output:</p>
+<div class="codehilite"><pre>f(3)
+f(2)
+f(1)
+defer 1
+defer 2
+defer 3
+</pre></div>
+
+
+<p>And the following to the standard error (simplified for clarity):</p>
+<div class="codehilite"><pre>panic: runtime error: integer divide by zero
+main.f(0)
+        src/gopl.io/ch5/defer1/defer.go:14
+main.f(1)
+        src/gopl.io/ch5/defer1/defer.go:16
+main.f(2)
+        src/gopl.io/ch5/defer1/defer.go:16
+main.f(3)
+        src/gopl.io/ch5/defer1/defer.go:16
+main.main()
+        src/gopl.io/ch5/defer1/defer.go:10
+</pre></div>
+
+
+<ol>
+<li>A panic occurs during the call to <code>f(0)</code>, causing the three deferred calls to <code>fmt.Printf</code> to run.</li>
+<li>Then the runtime terminates the program, printing the panic message and a stack dump to the standard error stream.</li>
+</ol>
+<p>For diagnostic purposes, the <a href="https://golang.org/pkg/runtime/"><code>runtime</code></a> package lets the programmer dump the stack.</p>
+<p>For example, the program below defers a call to <code>printStack</code> in <code>main</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/defer2/defer.go">gopl.io/ch5/defer2/defer.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="nx">printStack</span><span class="p">()</span>
+    <span class="nx">f</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">printStack</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">buf</span> <span class="p">[</span><span class="mi">4096</span><span class="p">]</span><span class="kt">byte</span>
+    <span class="nx">n</span> <span class="o">:=</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">Stack</span><span class="p">(</span><span class="nx">buf</span><span class="p">[:],</span> <span class="kc">false</span><span class="p">)</span>
+    <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">.</span><span class="nx">Write</span><span class="p">(</span><span class="nx">buf</span><span class="p">[:</span><span class="nx">n</span><span class="p">])</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following additional text (simplified for clarity) is printed to the standard output:</p>
+<div class="codehilite"><pre>goroutine 1 [running]:
+main.printStack()
+    src/gopl.io/ch5/defer2/defer.go:20
+main.f(0)
+    src/gopl.io/ch5/defer2/defer.go:27
+main.f(1)
+    src/gopl.io/ch5/defer2/defer.go:29
+main.f(2)
+    src/gopl.io/ch5/defer2/defer.go:29
+main.f(3)
+    src/gopl.io/ch5/defer2/defer.go:29
+main.main()
+    src/gopl.io/ch5/defer2/defer.go:15
+</pre></div>
+
+
+<p>Those familiar with exceptions in other languages may found that <code>runtime.Stack</code> can print information about functions that seem to have already been "<a href="https://en.wikipedia.org/wiki/Call_stack#Unwinding">unwound</a>". Go's panic mechanism runs the deferred functions <em>before</em> it unwinds the stack.</p>
 <h3 id="recover">Recover</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
@@ -1800,6 +1926,11 @@ $ ./trace
 <p>After checking an error, failure is usually dealt with before success.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: What does it mean exactly?</p>
+<h5 id="p148-on-panic"><strong>p148 on panic</strong></h5>
+<blockquote>
+<p>During a typical panic, normal execution stops, all deferred function calls in that goroutine are executed, and the program crashes with a log message.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: From this text, does it mean that all functions in Go are "goroutines"?</p>
             </div>
         </div>
 
