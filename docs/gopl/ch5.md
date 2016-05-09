@@ -1511,6 +1511,25 @@ Those familiar with exceptions in other languages may found that `runtime.Stack`
 
 ### Recover
 
+Giving up is not always the right response to a panic. It might be possible to recover in some way, or at least do the clean-up before quitting. For example, a web server that encounters an unexpected problem could close the connection rather than leave the client hanging.
+
+If the built-in `recover` function is called within a deferred function and the function containing the `defer` statement is panicking, `recover` ends the current state of panic and returns the panic value. The function that was panicking does not continue where it left off but returns normally. If `recover` is called at any other time, it has no effect and returns `nil`.
+
+In the following parser example, instead of crashing, it turns these panics into ordinary parse errors.
+
+```go
+func Parse(input string) (s *Syntax, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("internal error: %v", p)
+		}
+	}()
+	// ...parser...
+}
+```
+
+The deferred function in `Parse` recovers from a panic, using the panic value to construct an error message; a fancier version might include the entire call stack using `runtime.Stack`. <u>The deferred function then assigns to the `err` result, which is returned to the caller.</u>
+
 ### Doubts and Solution
 
 #### Verbatim
