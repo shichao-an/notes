@@ -1922,6 +1922,21 @@ main.main()
 
 <p>Those familiar with exceptions in other languages may found that <code>runtime.Stack</code> can print information about functions that seem to have already been "<a href="https://en.wikipedia.org/wiki/Call_stack#Unwinding">unwound</a>". Go's panic mechanism runs the deferred functions <em>before</em> it unwinds the stack.</p>
 <h3 id="recover">Recover</h3>
+<p>Giving up is not always the right response to a panic. It might be possible to recover in some way, or at least do the clean-up before quitting. For example, a web server that encounters an unexpected problem could close the connection rather than leave the client hanging.</p>
+<p>If the built-in <code>recover</code> function is called within a deferred function and the function containing the <code>defer</code> statement is panicking, <code>recover</code> ends the current state of panic and returns the panic value. The function that was panicking does not continue where it left off but returns normally. If <code>recover</code> is called at any other time, it has no effect and returns <code>nil</code>.</p>
+<p>In the following parser example, instead of crashing, it turns these panics into ordinary parse errors.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Parse</span><span class="p">(</span><span class="nx">input</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Syntax</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">p</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">p</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">err</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;internal error: %v&quot;</span><span class="p">,</span> <span class="nx">p</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}()</span>
+    <span class="c1">// ...parser...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The deferred function in <code>Parse</code> recovers from a panic, using the panic value to construct an error message; a fancier version might include the entire call stack using <code>runtime.Stack</code>. <u>The deferred function then assigns to the <code>err</code> result, which is returned to the caller.</u></p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p131-on-error-handling"><strong>p131 on error handling</strong></h5>
