@@ -1937,6 +1937,60 @@ main.main()
 
 
 <p>The deferred function in <code>Parse</code> recovers from a panic, using the panic value to construct an error message; a fancier version might include the entire call stack using <code>runtime.Stack</code>. <u>The deferred function then assigns to the <code>err</code> result, which is returned to the caller.</u></p>
+<p>Recovering indiscriminately from panics is a dubious practice because:</p>
+<ul>
+<li>The state of a package's variables after a panic is rarely well defined or documented. For example:<ul>
+<li>A critical update to a data structure was incomplete.</li>
+<li>A file or network connection was opened but not closed.</li>
+<li>A lock was acquired but not released.</li>
+</ul>
+</li>
+<li>Indiscriminate recovery may cause bugs to go unnoticed. For example, a crash is replaced with a line in a log file.</li>
+</ul>
+<p>Recovering from a panic within the same package simplifies the handling of complex or unexpected errors. However, there is a general rule of exceptions:</p>
+<ol>
+<li>You should not attempt to recover from another package's panic. Public APIs should report failures as errors.</li>
+<li>You should not recover from a panic that may pass through a function you do not maintain, such as a caller-provided callback, since you cannot reason about its safety.</li>
+</ol>
+<p>For example, the <code>net/http</code> package provides a web server that dispatches incoming requests to user-provided handler functions. Rather than allowing a panic in one of these handlers kill the process, the server calls <code>recover</code>, prints a stack trace, and continues serving. This is convenient in practice, but it does risk leaking resources or leaving the failed handler in an unspecified state that could lead to other problems.</p>
+<p>For all the above reasons, it's safest to recover only from panics that were intended to be recovered from, which should be rare. This can be achieved by using a distinct, unexported type for the panic value and testing whether the value returned by recover has that type. If so, we report the panic as an ordinary error; if not, we call panic with the same value to resume the state of panic.</p>
+<div class="codehilite"><pre><span class="c1">// soleTitle returns the text of the first non-empty title element</span>
+<span class="c1">// in doc, and an error if there was not exactly one.</span>
+<span class="kd">func</span> <span class="nx">soleTitle</span><span class="p">(</span><span class="nx">doc</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">(</span><span class="nx">title</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">type</span> <span class="nx">bailout</span> <span class="kd">struct</span><span class="p">{}</span>
+
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">switch</span> <span class="nx">p</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">p</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="kc">nil</span><span class="p">:</span>
+            <span class="c1">// no panic</span>
+        <span class="k">case</span> <span class="nx">bailout</span><span class="p">{}:</span>
+            <span class="c1">// &quot;expected&quot; panic</span>
+            <span class="nx">err</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;multiple title elements&quot;</span><span class="p">)</span>
+        <span class="k">default</span><span class="p">:</span>
+            <span class="nb">panic</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="c1">// unexpected panic; carry on panicking</span>
+        <span class="p">}</span>
+    <span class="p">}()</span>
+
+    <span class="c1">// Bail out of recursion if we find more than one non-empty title.</span>
+    <span class="nx">forEachNode</span><span class="p">(</span><span class="nx">doc</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">html</span><span class="p">.</span><span class="nx">Node</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">html</span><span class="p">.</span><span class="nx">ElementNode</span> <span class="o">&amp;&amp;</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Data</span> <span class="o">==</span> <span class="s">&quot;title&quot;</span> <span class="o">&amp;&amp;</span>
+            <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="nx">title</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
+                <span class="nb">panic</span><span class="p">(</span><span class="nx">bailout</span><span class="p">{})</span> <span class="c1">// multiple title elements</span>
+            <span class="p">}</span>
+            <span class="nx">title</span> <span class="p">=</span> <span class="nx">n</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">.</span><span class="nx">Data</span>
+        <span class="p">}</span>
+    <span class="p">},</span> <span class="kc">nil</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">title</span> <span class="o">==</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;no title element&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">title</span><span class="p">,</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The deferred handler function calls <code>recover</code>, checks the panic value, and reports an ordinary error if the value was <code>bailout{}</code>. All other non-nil values indicate an unexpected panic, in which case the handler calls panic with that value, undoing the effect of recover and resuming the original state of panic. [p153]</p>
+<p>From some conditions there is no recovery. For example, running out of memory causes the Go runtime to terminate the program with a fatal error.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p131-on-error-handling"><strong>p131 on error handling</strong></h5>
