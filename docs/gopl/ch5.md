@@ -1530,6 +1530,62 @@ func Parse(input string) (s *Syntax, err error) {
 
 The deferred function in `Parse` recovers from a panic, using the panic value to construct an error message; a fancier version might include the entire call stack using `runtime.Stack`. <u>The deferred function then assigns to the `err` result, which is returned to the caller.</u>
 
+Recovering indiscriminately from panics is a dubious practice because:
+
+* The state of a package's variables after a panic is rarely well defined or documented. For example:
+    * A critical update to a data structure was incomplete.
+    * A file or network connection was opened but not closed.
+    * A lock was acquired but not released.
+* Indiscriminate recovery may cause bugs to go unnoticed. For example, a crash is replaced with a line in a log file.
+
+Recovering from a panic within the same package simplifies the handling of complex or unexpected errors. However, there is a general rule of exceptions:
+
+1. You should not attempt to recover from another package's panic. Public APIs should report failures as errors.
+2. You should not recover from a panic that may pass through a function you do not maintain, such as a caller-provided callback, since you cannot reason about its safety.
+
+For example, the `net/http` package provides a web server that dispatches incoming requests to user-provided handler functions. Rather than allowing a panic in one of these handlers kill the process, the server calls `recover`, prints a stack trace, and continues serving. This is convenient in practice, but it does risk leaking resources or leaving the failed handler in an unspecified state that could lead to other problems.
+
+For all the above reasons, it's safest to recover only from panics that were intended to be recovered from, which should be rare. This can be achieved by using a distinct, unexported type for the panic value and testing whether the value returned by recover has that type. If so, we report the panic as an ordinary error; if not, we call panic with the same value to resume the state of panic.
+
+```go
+// soleTitle returns the text of the first non-empty title element
+// in doc, and an error if there was not exactly one.
+func soleTitle(doc *html.Node) (title string, err error) {
+	type bailout struct{}
+
+	defer func() {
+		switch p := recover(); p {
+		case nil:
+			// no panic
+		case bailout{}:
+			// "expected" panic
+			err = fmt.Errorf("multiple title elements")
+		default:
+			panic(p) // unexpected panic; carry on panicking
+		}
+	}()
+
+	// Bail out of recursion if we find more than one non-empty title.
+	forEachNode(doc, func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "title" &&
+			n.FirstChild != nil {
+			if title != "" {
+				panic(bailout{}) // multiple title elements
+			}
+			title = n.FirstChild.Data
+		}
+	}, nil)
+	if title == "" {
+		return "", fmt.Errorf("no title element")
+	}
+	return title, nil
+}
+```
+
+The deferred handler function calls `recover`, checks the panic value, and reports an ordinary error if the value was `bailout{}`. All other non-nil values indicate an unexpected panic, in which case the handler calls panic with that value, undoing the effect of recover and resuming the original state of panic. [p153]
+
+From some conditions there is no recovery. For example, running out of memory causes the Go runtime to terminate the program with a fatal error.
+
 ### Doubts and Solution
 
 #### Verbatim
