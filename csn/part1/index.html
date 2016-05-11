@@ -641,6 +641,16 @@
             <li><a href="#implicit-initialization">Implicit Initialization</a></li>
         
     
+        <li class="main "><a href="#preprocessor">Preprocessor</a></li>
+        
+            <li><a href="#constants">Constants</a></li>
+        
+            <li><a href="#macro-functions">Macro Functions</a></li>
+        
+    
+        <li class="main "><a href="#variadic-macros">Variadic Macros</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solutions">Doubts and Solutions</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -831,7 +841,7 @@ long double complex size=24
 <ul>
 <li>Each enumerator in the body of an enumeration specifier becomes an integer constant with type <code>int</code> and can be used whenever integer constants are required.</li>
 <li>If enumerator is followed by <code>= constant-expression</code>, its value is the value of that constant expression.</li>
-<li>If enumerator is not followed by<code>= constant-expression</code>, its value is the value one greater than the value of the previous enumerator in the same enumeration.</li>
+<li>If enumerator is not followed by <code>= constant-expression</code>, its value is the value one greater than the value of the previous enumerator in the same enumeration.</li>
 <li>The value of the first enumerator (if it does not use <code>= constant-expression</code>) is zero.</li>
 </ul>
 <p>The following code:</p>
@@ -2652,6 +2662,77 @@ d2 = {x = 0, y = {0, 0, 2}, z = 3}
 </table>
 <h4 id="implicit-initialization">Implicit Initialization</h4>
 <p>Objects that has static storage duration will be initialized to the default value 0 (<code>NULL</code> for pointers).</p>
+<h3 id="preprocessor"><a href="http://en.cppreference.com/w/c/preprocessor">Preprocessor</a></h3>
+<p>Preprocessing directives start with <code>#</code> (which can be preceded by spaces or tabs) and are normally one-line, but can continue on the next line with <code>\</code>.</p>
+<h4 id="constants">Constants</h4>
+<p>The preprocessor will expand and replace the macros.</p>
+<p>The following code:</p>
+<div class="codehilite"><pre><span class="cp">#define SIZE 10</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">[</span><span class="n">SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will expand to:</p>
+<div class="codehilite"><pre>$ gcc -E main.c
+
+int main(int argc, char* argv[])
+{
+    int x[10] = {};
+    return 0;
+}
+</pre></div>
+
+
+<h4 id="macro-functions">Macro Functions</h4>
+<p>Macros can be used to define pseudo-functions. Usually, <code>({...})</code> is used to structure multi-line statements, with the last expression being return values (no <code>return</code> and ended with <code>;</code>).</p>
+<div class="codehilite"><pre><span class="cp">#define test(x, y) ({ \</span>
+<span class="cp">    int _z = x + y; \</span>
+<span class="cp">    _z; })</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">test</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will expand to:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">({</span> <span class="kt">int</span> <span class="n">_z</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span> <span class="n">_z</span><span class="p">;</span> <span class="p">}));</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h3 id="variadic-macros">Variadic Macros</h3>
+<p><code>__VA_ARGS__</code> can be used to represent variable number of arguments.</p>
+<div class="codehilite"><pre><span class="cp">#define println(format, ...) ({ \</span>
+<span class="cp">    printf(format &quot;\n&quot;, __VA_ARGS__); })</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">println</span><span class="p">(</span><span class="s">&quot;%s, %d&quot;</span><span class="p">,</span> <span class="s">&quot;string&quot;</span><span class="p">,</span> <span class="mi">1234</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>will expand to:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="p">({</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s, %d&quot;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="s">&quot;string&quot;</span><span class="p">,</span> <span class="mi">1234</span><span class="p">);</span> <span class="p">});</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solutions">Doubts and Solutions</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p29-on-multidimensional-arrays"><strong>p29 on multidimensional arrays</strong></h5>
