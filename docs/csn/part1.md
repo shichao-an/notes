@@ -204,7 +204,7 @@ enum identifier { enumerator-list }
 
 * Each enumerator in the body of an enumeration specifier becomes an integer constant with type `int` and can be used whenever integer constants are required.
 * If enumerator is followed by `= constant-expression`, its value is the value of that constant expression.
-* If enumerator is not followed by` = constant-expression`, its value is the value one greater than the value of the previous enumerator in the same enumeration.
+* If enumerator is not followed by `= constant-expression`, its value is the value one greater than the value of the previous enumerator in the same enumeration.
 * The value of the first enumerator (if it does not use `= constant-expression`) is zero.
 
 The following code:
@@ -1285,7 +1285,6 @@ will output:
 
 In the above code, `sizeof(x)` in `test` and `test2` is actually `sizeof(int*)`. We must either explicitly pass the length of the array, or use a special character (`NULL`) to mark the end of the array.
 
-
 C99 supports arrays of variable size used as function parameters. Possible forms of passing array arguments are:
 
 <small>[array-params.c](https://gist.github.com/shichao-an/9497fd38d97760ceee5f#file-array-params-c)</small>
@@ -1592,6 +1591,7 @@ int* p = &x[1];
 *p += 10;
 printf("%d\n", x[1]);
 ```
+
 Note that `[]` takes precedence over `&`, and `*` takes precedence over arithmetic operators.
 
 #### Qualifiers
@@ -1801,7 +1801,6 @@ Note the [byte alignment](https://en.wikipedia.org/wiki/Data_structure_alignment
 There are many flexible ways to define structs.
 
 The following code:
-
 
 ```c
 int main(int argc, char* argv[])
@@ -2062,7 +2061,88 @@ Macro definitions | | File | | Internal linkage
 
 Objects that has static storage duration will be initialized to the default value 0 (`NULL` for pointers).
 
+### [Preprocessor](http://en.cppreference.com/w/c/preprocessor)
 
+Preprocessing directives start with `#` (which can be preceded by spaces or tabs) and are normally one-line, but can continue on the next line with `\`.
+
+#### Constants
+
+The preprocessor will expand and replace the macros.
+
+The following code:
+
+```c
+#define SIZE 10
+
+int main(int argc, char* argv[])
+{
+    int x[SIZE] = {};
+    return EXIT_SUCCESS;
+}
+```
+
+will expand to:
+
+```text
+$ gcc -E main.c
+
+int main(int argc, char* argv[])
+{
+    int x[10] = {};
+    return 0;
+}
+```
+
+#### Macro Functions
+
+Macros can be used to define pseudo-functions. Usually, `({...})` is used to structure multi-line statements, with the last expression being return values (no `return` and ended with `;`).
+
+```c
+#define test(x, y) ({ \
+    int _z = x + y; \
+    _z; })
+
+int main(int argc, char* argv[])
+{
+    printf("%d\n", test(1, 2));
+    return EXIT_SUCCESS;
+}
+```
+
+will expand to:
+
+```c
+int main(int argc, char* argv[])
+{
+    printf("%d\n", ({ int _z = 1 + 2; _z; }));
+    return 0;
+}
+```
+
+### Variadic Macros
+
+`__VA_ARGS__` can be used to represent variable number of arguments.
+
+```c
+#define println(format, ...) ({ \
+    printf(format "\n", __VA_ARGS__); })
+
+int main(int argc, char* argv[])
+{
+    println("%s, %d", "string", 1234);
+    return EXIT_SUCCESS;
+}
+```
+
+will expand to:
+
+```c
+int main(int argc, char* argv[])
+{
+    ({ printf("%s, %d" "\n", "string", 1234); });
+    return 0;
+}
+```
 
 ### Doubts and Solutions
 
@@ -2088,7 +2168,6 @@ for (int i = 0; i < len; i++)
 ```
 
 <span class="text-danger">Question</span>: The array `x` is cast into a pointer p of type `int*` and iterated over like a one-dimensional regular array. Does this mean `p` is a "flattened" version of `x`?
-
 
 - - -
 

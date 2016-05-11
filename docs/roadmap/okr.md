@@ -7,8 +7,8 @@
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
 1 | Operating System | LKD | UTLK | LKD: most chapters; UTLK: first 3 chapters
-1 | Programming Language | GOPL | - | GOPL: all 13 chapters
-1 | Programming Language | CSN | - | CSN: first 3 parts
+1 | Programming Language | GOPL | - | GOPL: all 13 chapters /w second-pass
+1 | Programming Language | CSN | - | CSN: first 3 parts /w second-pass
 2 | System Programming | UNP | TCPv1 | UNP: first 11 chapters (excluding SCTP)
 2 | Misc | HTAE | - | HTAE: first 4 chapters
 2 | System Architecture | BD | - | BD: first 7 chapters
