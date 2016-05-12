@@ -543,7 +543,95 @@
               
 
 <h3 id="chapter-6-methods"><strong>Chapter 6. Methods</strong></h3>
+<p>An <em>object</em> is a value or variable that has methods, and a <em>method</em> is a function associated with a particular type. An object-oriented program uses methods to express the properties and operations of each data structure so that clients need not access the object's representation directly.</p>
+<p>[p155]</p>
+<p>This chapter discusses the following topics on methods:</p>
+<ul>
+<li>How to define and use methods effectively</li>
+<li>Encapsulation</li>
+<li>Composition</li>
+</ul>
 <h3 id="method-declarations">Method Declarations</h3>
+<p>A method is declared with a variant of the ordinary function declaration in which an extra parameter appears before the function name. The parameter attaches the function to the type of that parameter.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch6/geometry/geometry.go">gopl.io/ch6/geometry/geometry.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">geometry</span>
+
+<span class="kn">import</span> <span class="s">&quot;math&quot;</span>
+
+<span class="kd">type</span> <span class="nx">Point</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span> <span class="kt">float64</span> <span class="p">}</span>
+
+<span class="c1">// traditional function</span>
+<span class="kd">func</span> <span class="nx">Distance</span><span class="p">(</span><span class="nx">p</span><span class="p">,</span> <span class="nx">q</span> <span class="nx">Point</span><span class="p">)</span> <span class="kt">float64</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">math</span><span class="p">.</span><span class="nx">Hypot</span><span class="p">(</span><span class="nx">q</span><span class="p">.</span><span class="nx">X</span><span class="o">-</span><span class="nx">p</span><span class="p">.</span><span class="nx">X</span><span class="p">,</span> <span class="nx">q</span><span class="p">.</span><span class="nx">Y</span><span class="o">-</span><span class="nx">p</span><span class="p">.</span><span class="nx">Y</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// same thing, but as a method of the Point type</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">Point</span><span class="p">)</span> <span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span> <span class="nx">Point</span><span class="p">)</span> <span class="kt">float64</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">math</span><span class="p">.</span><span class="nx">Hypot</span><span class="p">(</span><span class="nx">q</span><span class="p">.</span><span class="nx">X</span><span class="o">-</span><span class="nx">p</span><span class="p">.</span><span class="nx">X</span><span class="p">,</span> <span class="nx">q</span><span class="p">.</span><span class="nx">Y</span><span class="o">-</span><span class="nx">p</span><span class="p">.</span><span class="nx">Y</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The extra parameter <code>p</code> is called the method's <em>receiver</em>, a legacy from early object-oriented languages that described calling a method as "sending a message to an object".</p>
+<p>In Go, the receiver does not have a special name like <code>this</code> or <code>self</code>; it's naming is similar to any other parameter. Since the receiver name will be frequently used, it's a good idea to choose something short and to be consistent across methods. A common choice is the first letter of the type name, like <code>p</code> for <code>Point</code>.</p>
+<p>In a method call, the receiver argument appears before the method name. This parallels the declaration, in which the receiver parameter appears before the method name.</p>
+<div class="codehilite"><pre><span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">q</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">p</span><span class="p">,</span> <span class="nx">q</span><span class="p">))</span> <span class="c1">// &quot;5&quot;, function call</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">))</span>  <span class="c1">// &quot;5&quot;, method call</span>
+</pre></div>
+
+
+<p>There's no conflict between the two declarations of functions called <code>Distance</code> above:</p>
+<ul>
+<li>The first declares a package-level function called <code>geometry.Distance</code>.</li>
+<li>The second declares a method of the type <code>Point</code> called <code>Point.Distance</code>.</li>
+</ul>
+<p>Since each type has its own name space for methods, we can use the name <code>Distance</code> for other methods as long as they belong to different types. The following example defines a type <code>Path</code> that represents a sequence of line segments and a <code>Distance</code> method:</p>
+<div class="codehilite"><pre><span class="c1">// A Path is a journey connecting the points with straight lines.</span>
+<span class="kd">type</span> <span class="nx">Path</span> <span class="p">[]</span><span class="nx">Point</span>
+
+<span class="c1">// Distance returns the distance traveled along the path.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">path</span> <span class="nx">Path</span><span class="p">)</span> <span class="nx">Distance</span><span class="p">()</span> <span class="kt">float64</span> <span class="p">{</span>
+    <span class="nx">sum</span> <span class="o">:=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">path</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+            <span class="nx">sum</span> <span class="o">+=</span> <span class="nx">path</span><span class="p">[</span><span class="nx">i</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">path</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">sum</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Although <code>Path</code> is a named slice type, not a struct type like <code>Point</code>, we can still define methods for it.</p>
+<p>Unlike many other object-oriented languages, <u>Go allows methods to be associated with any type, such as numbers, strings, slices, maps, and even functions.</u> Methods may be declared on any named type defined in the same package, so long as its underlying type is neither a pointer nor an interface.</p>
+<p>The two <code>Distance</code> methods have different types. They're not related to each other at all, though <code>Path.Distance</code> uses <code>Point.Distance</code> internally to compute the length of each segment that connects adjacent points.</p>
+<p>The following code calls the new method to compute the perimeter of a right triangle:</p>
+<div class="codehilite"><pre><span class="nx">perim</span> <span class="o">:=</span> <span class="nx">Path</span><span class="p">{</span>
+    <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span>
+    <span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span>
+    <span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">},</span>
+    <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span>
+<span class="p">}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">perim</span><span class="p">.</span><span class="nx">Distance</span><span class="p">())</span> <span class="c1">// &quot;12&quot;</span>
+</pre></div>
+
+
+<p>In the two examples above, there are two calls to methods named <code>Distance</code>. <u>The compiler determines which function to call based on both the method name and the type of the receiver.</u></p>
+<ul>
+<li>In the first, <code>path[i-1]</code> has type <code>Point</code> so <code>Point.Distance</code> is called.</li>
+<li>In the second, <code>perim</code> has type <code>Path</code>, so <code>Path.Distance</code> is called.</li>
+</ul>
+<p>All methods of a given type must have unique names, but different types can use the same name for a method, like the <code>Distance</code> methods for <code>Point</code> and <code>Path</code>; there's no need to qualify function names (for example, <code>PathDistance</code>) to disambiguate. The first benefit to using methods over ordinary functions is: method names can be shorter. This benefit is magnified for calls originating outside the package, since they can use the shorter name and omit the package name:</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;gopl.io/ch6/geometry&quot;</span>
+<span class="nx">perim</span> <span class="o">:=</span> <span class="nx">geometry</span><span class="p">.</span><span class="nx">Path</span><span class="p">{{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">}}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">geometry</span><span class="p">.</span><span class="nx">PathDistance</span><span class="p">(</span><span class="nx">perim</span><span class="p">))</span> <span class="c1">// &quot;12&quot;, standalone function</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">perim</span><span class="p">.</span><span class="nx">Distance</span><span class="p">())</span>             <span class="c1">// &quot;12&quot;, method of geometry.Path</span>
+</pre></div>
+
+
 <h3 id="methods-with-a-pointer-receiver">Methods with a Pointer Receiver</h3>
 <h3 id="composing-types-by-struct-embedding">Composing Types by Struct Embedding</h3>
 <h3 id="method-values-and-expressions">Method Values and Expressions</h3>
