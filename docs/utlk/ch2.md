@@ -650,7 +650,104 @@ Function name | Description
 `pte_young()` | Reads the `Accessed` flag
 `pte_file()` | Reads the `Dirty` flag (when the `Present` flag is cleared and the `Dirty` flag is set, the page belongs to a non-linear disk file mapping)
 
+The follow table lists another group of functions that sets the value of the flags in a Page Table entry:
+
+Function name | Description
+------------- | -----------
+`mk_pte_huge()` | Sets the `Page Size` and `Present` flags of a Page Table entry
+`pte_wrprotect()` | Clears the `Read/Write` flag
+`pte_rdprotect()` | Clears the `User/Supervisor` flag
+`pte_exprotect()` | Clears the `User/Supervisor` flag
+`pte_mkwrite()` | Sets the `Read/Write` flag
+`pte_mkread()` | Sets the `User/Supervisor` flag
+`pte_mkexec()` | Sets the `User/Supervisor` flag
+`pte_mkclean()` | Clears the `Dirty` flag
+`pte_mkdirty()` | Sets the `Dirty` flag
+`pte_mkold()` | Clears the `Accessed` flag (makes the page old)
+`pte_mkyoung()` | Sets the `Accessed` flag (makes the page young)
+`pte_modify(p,v)` | Sets all access rights in a Page Table entry `p` to a specified value `v`
+`ptep_set_wrprotect()` | Like `pte_wrprotect()`, but acts on a pointer to a Page Table entry
+`ptep_set_access_flags()` | If the `Dirty` flag is set, sets the page's access rights to a specified value and invokes `flush_tlb_page()` (see the section [Handling the Hardware Cache and the TLB](#handling-the-hardware-cache-and-the-tlb) later in this chapter)
+`ptep_mkdirty()` | Like `pte_mkdirty()` but acts on a pointer to a Page Table entry
+`ptep_test_and_clear_dirty()` | Like `pte_mkclean()` but acts on a pointer to a Page Table entry and returns the old value of the flag
+`ptep_test_and_clear_young()` | Like `pte_mkold()` but acts on a pointer to a Page Table entry and returns the old value of the flag
+
+The following table lists the macros that combine a page address and a group of protection flags into a page table entry or perform the reverse operation of extracting the page address from a page table entry. Notice that some of these macros refer to a page through the linear address of its "page descriptor" (see the section "Page Descriptors" in Chapter 8) rather than the linear address of the page itself.
+
+(p64-65 skipped for now)
+
 #### Physical Memory Layout
+
+During the initialization phase the kernel must build a **physical addresses map** that specifies which physical address ranges are usable by the kernel and which are unavailable (either because they map hardware devices' I/O shared memory or because the corresponding page frames contain BIOS data).
+
+The kernel considers the following page frames as *reserved*:
+
+* Those falling in the unavailable physical address ranges
+* Those containing the kernel’s code and initialized data structures
+
+<u>A page contained in a reserved page frame can never be dynamically assigned or swapped to disk.</u>
+
+As a general rule, the Linux kernel is installed in RAM starting from the physical address `0x00100000` (i.e. from the second megabyte). The total number of page frames required depends on how the kernel is configured. A typical configuration yields a kernel that can be loaded in less than 3 MB of RAM.
+
+The reason why isn't the kernel loaded starting with the first available megabyte of RAM is: the PC architecture has several peculiarities that must be taken into account. For example:
+
+* Page frame 0 is used by BIOS to store the system hardware configuration detected during the [Power-On Self-Test](https://en.wikipedia.org/wiki/Power-on_self-test) (POST)
+    * Moreover, the BIOS of many laptops writes data on this page frame even after the system is initialized.
+* Physical addresses ranging from `0x000a0000` to `0x000fffff` are usually reserved to BIOS routines and to map the internal memory of ISA graphics cards. This area is the well-known hole from 640 KB to 1 MB in all IBM-compatible PCs: the physical addresses exist but they are reserved, and the corresponding page frames cannot be used by the operating system.
+* Additional page frames within the first megabyte may be reserved by specific computer models. For example, the IBM ThinkPad maps the `0xa0` page frame into the `0x9f` one.
+
+In the early stage of the boot sequence, the kernel queries the BIOS and learns the size of the physical memory. In recent computers, the kernel also invokes a BIOS procedure to build a list of physical address ranges and their corresponding memory types.
+
+Later, the kernel executes the `machine_specific_memory_setup()` function, which builds the physical addresses map.
+
+* The kernel builds this table on the basis of the BIOS list, if this is available.
+* Otherwise the kernel builds the table following the conservative default setup: all page frames with numbers from `0x9f` (`LOWMEMSIZE()`) to `0x100` (`HIGH_MEMORY`) are marked as reserved.
+
+The following table shows typical configuration for a computer having 128 MB (`0x00000000` through `0x07ffffff`) of RAM.
+
+Start | End | Type
+----- | --- | ----
+`0x00000000` | `0x0009ffff` | Usable
+`0x000f0000` | `0x000fffff` | Reserved
+`0x00100000` | `0x07feffff` | Usable
+`0x07ff0000` | `0x07ff2fff` | ACPI data
+`0x07ff3000` | `0x07ffffff` | ACPI NVS
+`0xffff0000` | `0xffffffff` | Reserved
+
+* The physical address range from `0x07ff0000` to `0x07ff2fff` (Type "ACPI data") stores information about the hardware devices of the system written by the BIOS in the POST phase; during the initialization phase, the kernel copies such information in a suitable kernel data structure, and then considers these page frames usable.
+* Conversely, the physical address range of `0x07ff3000` to `0x07ffffff` (Type "ACPI NVS") is mapped to ROM chips of the hardware devices.
+* The physical address range starting from `0xffff0000` is marked as reserved, because it is mapped by the hardware to the BIOS's ROM chip.
+* Notice that the BIOS may not provide information for some physical address ranges (in the table, the range is 0x000a0000 to 0x000effff). To be on the safe side, Linux assumes that such ranges are not usable.
+
+The kernel might not see all physical memory reported by the BIOS: for instance, the kernel can address only 4 GB of RAM if it has not been compiled with PAE support, even if a larger amount of physical memory is actually available.
+
+The `setup_memory()` function is invoked right after `machine_specific_memory_setup()`: it analyzes the table of physical memory regions and initializes a few variables that describe the kernel's physical memory layout. These variables are shown in the following table:
+
+Variable name | Description
+------------- | -----------
+`num_physpages` | Page frame number of the highest usable page frame
+`totalram_pages` | Total number of usable page frames
+`min_low_pfn` | Page frame number of the first usable page frame after the kernel image in RAM
+`max_pfn` | Page frame number of the last usable page frame
+`max_low_pfn` | Page frame number of the last page frame directly mapped by the kernel (low memory)
+`totalhigh_pages` | Total number of page frames not directly mapped by the kernel (high memory)
+`highstart_pfn` | Page frame number of the first page frame not directly mapped by the kernel
+`highend_pfn` | Page frame number of the last page frame not directly mapped by the kernel
+
+To avoid loading the kernel into groups of noncontiguous page frames, Linux prefers to skip the first megabyte of RAM. Page frames not reserved by the PC architecture will be used by Linux to store dynamically assigned pages.
+
+The figure below shows how the first 3 MB of RAM are filled by Linux, which assume that the kernel requires less than 3 MB of RAM.
+
+[![Figure 2-13. The first 768 page frames (3 MB) in Linux 2.6](figure_2-13_600.png)](figure_2-13.png "Figure 2-13. The first 768 page frames (3 MB) in Linux 2.6")
+
+* The symbol `_text`, which corresponds to physical address `0x00100000`, denotes the address of the first byte of kernel code.
+* The symbol `_etext` identifies the end of the kernel code.
+* Kernel data is divided into two groups: initialized and uninitialized.
+    * The initialized data starts right after `_etext` and ends at `_edata`.
+    * The uninitialized data follows and ends up at `_end`.
+
+The symbols appearing in the figure are not defined in Linux source code; they are produced while compiling the kernel. You can find the linear address of these symbols in the file [System.map](https://en.wikipedia.org/wiki/System.map), which is created right after the kernel is compiled.
+
 
 #### Process Page Tables
 
