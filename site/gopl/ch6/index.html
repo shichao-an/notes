@@ -633,6 +633,58 @@
 
 
 <h3 id="methods-with-a-pointer-receiver">Methods with a Pointer Receiver</h3>
+<p>Calling a function makes a copy of each argument value. If either of the following occurs, we must pass the address of the variable using a pointer:</p>
+<ul>
+<li>The function needs to update a variable.</li>
+<li>An argument is so large that we wish to avoid copying it.</li>
+</ul>
+<p>The same goes for methods that need to update the receiver variable: we attach them to the pointer type, such as <code>*Point</code>. For example:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">Point</span><span class="p">)</span> <span class="nx">ScaleBy</span><span class="p">(</span><span class="nx">factor</span> <span class="kt">float64</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">p</span><span class="p">.</span><span class="nx">X</span> <span class="o">*=</span> <span class="nx">factor</span>
+    <span class="nx">p</span><span class="p">.</span><span class="nx">Y</span> <span class="o">*=</span> <span class="nx">factor</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The name of this method is <code>(*Point).ScaleBy</code>. The parentheses are necessary; without them, the expression would be parsed as <code>*(Point.ScaleBy)</code>.</p>
+<p>Convention dictates that if any method of <code>Point</code> has a pointer receiver, then all methods of <code>Point</code> should have a pointer receiver, even ones that don't strictly need it.  We've broken this rule for <code>Point</code> so that we can show both kinds of method.</p>
+<p>Named types (<code>Point</code>) and pointers to them (<code>*Point</code>) are the only types that may appear in a
+receiver declaration. <u>To avoid ambiguities, method declarations are not permitted on named types that are themselves <code>pointer</code> types</u>:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">P</span> <span class="o">*</span><span class="kt">int</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">P</span><span class="p">)</span> <span class="nx">f</span><span class="p">()</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span> <span class="c1">// compile error: invalid receiver type</span>
+</pre></div>
+
+
+<p>The <code>(*Point).ScaleBy</code> method can be called by providing a <code>*Point</code> receiver. The following three cases are equivalent:</p>
+<div class="codehilite"><pre><span class="nx">r</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">r</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">*</span><span class="nx">r</span><span class="p">)</span> <span class="c1">// &quot;{2, 4}&quot;</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">pptr</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">p</span>
+<span class="nx">pptr</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="c1">// &quot;{2, 4}&quot;</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="p">(</span><span class="o">&amp;</span><span class="nx">p</span><span class="p">).</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="c1">// &quot;{2, 4}&quot;</span>
+</pre></div>
+
+
+<p>The last two cases are verbose; <u>if the receiver <code>p</code> is a variable of type <code>Point</code> but the method requires a *Point receiver, the compiler will perform an implicit <code>&amp;p</code> on the variable.</u> So we can use the following shorthand:</p>
+<div class="codehilite"><pre><span class="nx">p</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This works only for variables, including struct fields like <code>p.X</code> and array or slice elements like <code>perim[0]</code>. We cannot call a <code>*Point</code> method on a non-addressable <code>Point</code> receiver, because there's no way to obtain the address of a temporary value. For example:</p>
+<div class="codehilite"><pre><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1">// compile error: can&#39;t take address of Point literal</span>
+</pre></div>
+
+
 <h3 id="composing-types-by-struct-embedding">Composing Types by Struct Embedding</h3>
 <h3 id="method-values-and-expressions">Method Values and Expressions</h3>
 <h3 id="example-bit-vector-type">Example: Bit Vector Type</h3>
