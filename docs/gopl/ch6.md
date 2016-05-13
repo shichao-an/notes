@@ -105,6 +105,66 @@ fmt.Println(perim.Distance())             // "12", method of geometry.Path
 
 ### Methods with a Pointer Receiver
 
+Calling a function makes a copy of each argument value. If either of the following occurs, we must pass the address of the variable using a pointer:
+
+* The function needs to update a variable.
+* An argument is so large that we wish to avoid copying it.
+
+The same goes for methods that need to update the receiver variable: we attach them to the pointer type, such as `*Point`. For example:
+
+```go
+func (p *Point) ScaleBy(factor float64) {
+	p.X *= factor
+	p.Y *= factor
+}
+```
+
+The name of this method is `(*Point).ScaleBy`. The parentheses are necessary; without them, the expression would be parsed as `*(Point.ScaleBy)`.
+
+Convention dictates that if any method of `Point` has a pointer receiver, then all methods of `Point` should have a pointer receiver, even ones that don't strictly need it.  We've broken this rule for `Point` so that we can show both kinds of method.
+
+Named types (`Point`) and pointers to them (`*Point`) are the only types that may appear in a
+receiver declaration. <u>To avoid ambiguities, method declarations are not permitted on named types that are themselves `pointer` types</u>:
+
+```go
+type P *int
+func (P) f() { /* ... */ } // compile error: invalid receiver type
+```
+
+The `(*Point).ScaleBy` method can be called by providing a `*Point` receiver. The following three cases are equivalent:
+
+```go
+r := &Point{1, 2}
+r.ScaleBy(2)
+fmt.Println(*r) // "{2, 4}"
+```
+
+```go
+p := Point{1, 2}
+pptr := &p
+pptr.ScaleBy(2)
+fmt.Println(p) // "{2, 4}"
+```
+
+```go
+p := Point{1, 2}
+(&p).ScaleBy(2)
+fmt.Println(p) // "{2, 4}"
+```
+
+The last two cases are verbose; <u>if the receiver `p` is a variable of type `Point` but the method requires a *Point receiver, the compiler will perform an implicit `&p` on the variable.</u> So we can use the following shorthand:
+
+```go
+p.ScaleBy(2)
+```
+
+This works only for variables, including struct fields like `p.X` and array or slice elements like `perim[0]`. We cannot call a `*Point` method on a non-addressable `Point` receiver, because there's no way to obtain the address of a temporary value. For example:
+
+```go
+Point{1, 2}.ScaleBy(2) // compile error: can't take address of Point literal
+```
+
+
 ### Composing Types by Struct Embedding
 
 ### Method Values and Expressions
