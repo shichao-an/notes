@@ -524,6 +524,8 @@
     
         <li class="main "><a href="#methods-with-a-pointer-receiver">Methods with a Pointer Receiver</a></li>
         
+            <li><a href="#summary-of-three-cases">Summary of three cases *</a></li>
+        
     
         <li class="main "><a href="#composing-types-by-struct-embedding">Composing Types by Struct Embedding</a></li>
         
@@ -685,6 +687,33 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 </pre></div>
 
 
+<p>However, we can call a <code>Point</code> method (e.g. <code>Point.Distance</code>) with a <code>*Point</code> receiver, because there is a way to obtain the value from the address by loading the value pointed to by the receiver. The compiler will perform an implicit <code>*</code> on the variable. These two function calls are equivalent:</p>
+<div class="codehilite"><pre><span class="nx">pptr</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span>
+<span class="p">(</span><span class="o">*</span><span class="nx">pptr</span><span class="p">).</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span>
+</pre></div>
+
+
+<h4 id="summary-of-three-cases">Summary of three cases *</h4>
+<p>In every valid method call expression, exactly one of these three statements is true.</p>
+<p>The receiver argument has the same type as the receiver parameter. For example, both have type <code>T</code> or both have type <code>*T</code>:</p>
+<div class="codehilite"><pre><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span> <span class="c1">// Point</span>
+<span class="nx">pptr</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>         <span class="c1">// *Point</span>
+</pre></div>
+
+
+<p>The receiver argument is a variable of type <code>T</code> and the receiver parameter has type <code>*T</code>. The compiler implicitly takes the address of the variable. For example:</p>
+<div class="codehilite"><pre><span class="nx">p</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1">// implicit (&amp;p)</span>
+</pre></div>
+
+
+<p>The receiver argument has type <code>*T</code> and the receiver parameter has type <code>T</code>. The compiler
+implicitly dereferences the receiver, in other words, loads the value. For example:</p>
+<div class="codehilite"><pre><span class="nx">pptr</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span> <span class="c1">// implicit (*pptr)</span>
+</pre></div>
+
+
+<p>If all the methods of a named type <code>T</code> have a receiver type of <code>T</code> itself (not <code>*T</code>), it is safe to copy instances of that type; calling any of its methods necessarily makes a copy. For example, <code>time.Duration</code> values are liberally copied, including as arguments to functions.</p>
+<p>But if any method has a pointer receiver, you should avoid copying instances of <code>T</code> because doing so may violate internal invariants. For example, copying an instance of <code>bytes.Buffer</code> would cause the original and the copy to alias (<a href="../ch2/#pointers">Section 2.3.2</a>) the same underlying array of bytes. Subsequent method calls would have unpredictable effects.</p>
 <h3 id="composing-types-by-struct-embedding">Composing Types by Struct Embedding</h3>
 <h3 id="method-values-and-expressions">Method Values and Expressions</h3>
 <h3 id="example-bit-vector-type">Example: Bit Vector Type</h3>
