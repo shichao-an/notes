@@ -199,6 +199,27 @@ If all the methods of a named type `T` have a receiver type of `T` itself (not `
 
 But if any method has a pointer receiver, you should avoid copying instances of `T` because doing so may violate internal invariants. For example, copying an instance of `bytes.Buffer` would cause the original and the copy to alias ([Section 2.3.2](ch2.md#pointers)) the same underlying array of bytes. Subsequent method calls would have unpredictable effects.
 
+#### Nil Is a Valid Receiver Value
+
+Some methods allow nil pointers as their receivers, especially if `nil` is a meaningful zero value of the type (e.g. maps and slices), just as some functions allow nil pointers as arguments. For example, `nil` represents the empty list:
+
+```go
+// An IntList is a linked list of integers.
+// A nil *IntList represents the empty list.
+type IntList struct {
+	Value int
+	Tail *IntList
+}
+
+// Sum returns the sum of the list elements.
+func (list *IntList) Sum() int {
+	if list == nil {
+		return 0
+	}
+	return list.Value + list.Tail.Sum()
+}
+```
+
 ### Composing Types by Struct Embedding
 
 ### Method Values and Expressions
