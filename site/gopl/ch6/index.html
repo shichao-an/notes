@@ -636,6 +636,49 @@ implicitly dereferences the receiver, in other words, loads the value. For examp
 </pre></div>
 
 
+<p>When you define a type whose methods allow nil as a receiver value, it's worth documenting this explicitly in the comment, as in the example above.</p>
+<p>The following is part of the definition of the Values type from the <a href="https://golang.org/pkg/net/url/"><code>net/url</code></a> package:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">url</span>
+
+<span class="c1">// Values maps a string key to a list of values.</span>
+<span class="kd">type</span> <span class="nx">Values</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">][]</span><span class="kt">string</span>
+
+<span class="c1">// Get returns the first value associated with the given key,</span>
+<span class="c1">// or &quot;&quot; if there are none.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">v</span> <span class="nx">Values</span><span class="p">)</span> <span class="nx">Get</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">vs</span> <span class="o">:=</span> <span class="nx">v</span><span class="p">[</span><span class="nx">key</span><span class="p">];</span> <span class="nb">len</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">vs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="s">&quot;&quot;</span>
+<span class="p">}</span>
+
+<span class="c1">// Add adds the value to key.</span>
+<span class="c1">// It appends to any existing values associated with key.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">v</span> <span class="nx">Values</span><span class="p">)</span> <span class="nx">Add</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">value</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">v</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">v</span><span class="p">[</span><span class="nx">key</span><span class="p">],</span> <span class="nx">value</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>It exposes its representation as a map but also provides methods to simplify access to the map, whose values are slices of strings; it's a <a href="https://en.wikipedia.org/wiki/Multimap"><em>multimap</em></a>. Its clients can use its intrinsic operators (<code>make</code>, slice literals, <code>m[key]</code>, and so on), or its methods, or both:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch6/urlvalues/main.go">gopl.io/ch6/urlvalues/main.go</a></small></p>
+<div class="codehilite"><pre><span class="nx">m</span> <span class="o">:=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">Values</span><span class="p">{</span><span class="s">&quot;lang&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;en&quot;</span><span class="p">}}</span> <span class="c1">// direct construction</span>
+<span class="nx">m</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">,</span> <span class="s">&quot;1&quot;</span><span class="p">)</span>
+<span class="nx">m</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">,</span> <span class="s">&quot;2&quot;</span><span class="p">)</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;lang&quot;</span><span class="p">))</span> <span class="c1">// &quot;en&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;q&quot;</span><span class="p">))</span>    <span class="c1">// &quot;&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">))</span> <span class="c1">// &quot;1&quot;      (first value)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">m</span><span class="p">[</span><span class="s">&quot;item&quot;</span><span class="p">])</span>     <span class="c1">// &quot;[1 2]&quot;  (direct map access)</span>
+
+<span class="nx">m</span> <span class="p">=</span> <span class="kc">nil</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">))</span> <span class="c1">// &quot;&quot;</span>
+<span class="nx">m</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">,</span> <span class="s">&quot;3&quot;</span><span class="p">)</span>         <span class="c1">// panic: assignment to entry in nil map</span>
+</pre></div>
+
+
+<p>In the final call to <code>Get</code>, the nil receiver behaves like an empty map. It is equivalent to being written as <code>Values(nil).Get("item"))</code>, not <code>nil.Get("item")</code>, which will not compile because the type of <code>nil</code> has not been determined (see <a href="https://play.golang.org/p/fW0q7pRRUp">modified version of the example above</a>). By contrast, the final call to <code>Add</code> panics as it tries to update a <code>nil</code> map.</p>
+<p>Because <code>url.Values</code> is a map type and a map refers to its key/value pairs indirectly, any updates and deletions that <code>url.Values.Add</code> makes to the map elements are visible to the caller. However, as with ordinary functions, any changes a method makes to the reference itself, like setting it to <code>nil</code> or making it refer to a different map data structure, will not be reflected in the caller.</p>
 <h3 id="composing-types-by-struct-embedding">Composing Types by Struct Embedding</h3>
 <h3 id="method-values-and-expressions">Method Values and Expressions</h3>
 <h3 id="example-bit-vector-type">Example: Bit Vector Type</h3>
