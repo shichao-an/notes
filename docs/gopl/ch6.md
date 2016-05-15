@@ -175,21 +175,20 @@ pptr.Distance(q)
 
 In every valid method call expression, exactly one of these three statements is true.
 
-The receiver argument has the same type as the receiver parameter. For example, both have type `T` or both have type `*T`:
+**Case 1: the receiver argument has the same type as the receiver parameter.** For example, both have type `T` or both have type `*T`:
 
 ```go
 Point{1, 2}.Distance(q) // Point
 pptr.ScaleBy(2)         // *Point
 ```
 
-The receiver argument is a variable of type `T` and the receiver parameter has type `*T`. The compiler implicitly takes the address of the variable. For example:
+**Case 2: the receiver argument is a variable of type `T` and the receiver parameter has type `*T`.** The compiler implicitly takes the address of the variable. For example:
 
 ```go
 p.ScaleBy(2) // implicit (&p)
 ```
 
-The receiver argument has type `*T` and the receiver parameter has type `T`. The compiler
-implicitly dereferences the receiver, in other words, loads the value. For example:
+**Case 3: the receiver argument has type `*T` and the receiver parameter has type `T`.** The compiler implicitly dereferences the receiver, in other words, loads the value. For example:
 
 ```go
 pptr.Distance(q) // implicit (*pptr)
@@ -269,11 +268,158 @@ In the final call to `Get`, the nil receiver behaves like an empty map. It is eq
 
 Because `url.Values` is a map type and a map refers to its key/value pairs indirectly, any updates and deletions that `url.Values.Add` makes to the map elements are visible to the caller. However, as with ordinary functions, any changes a method makes to the reference itself, like setting it to `nil` or making it refer to a different map data structure, will not be reflected in the caller.
 
-
 ### Composing Types by Struct Embedding
+
+The following example defines a `ColoredPoint` type:
+
+```go
+import "image/color"
+
+type Point struct{ X, Y float64 }
+
+type ColoredPoint struct {
+	Point
+	Color color.RGBA
+}
+```
+
+We could have defined `ColoredPoint` as a struct of three fields, but instead we embedded a `Point` to provide the `X` and `Y` fields. As discussed in [Section 4.4.3](ch4.md#struct-embedding-and-anonymous-fields), embedding enables us to take a syntactic shortcut to defining a `ColoredPoint` that contains all the fields of `Point`, plus some more. We can select the fields of `ColoredPoint` that were contributed by the embedded `Point` without mentioning `Point`:
+
+```go
+var cp ColoredPoint
+cp.X = 1
+fmt.Println(cp.Point.X) // "1"
+cp.Point.Y = 2
+fmt.Println(cp.Y) // "2"
+```
+
+A similar mechanism applies to the methods of `Point`. We can call methods of the embedded `Point` field using a receiver of type `ColoredPoint`, even though `ColoredPoint` has no declared methods:
+
+```go
+red := color.RGBA{255, 0, 0, 255}
+blue := color.RGBA{0, 0, 255, 255}
+var p = ColoredPoint{Point{1, 1}, red}
+var q = ColoredPoint{Point{5, 4}, blue}
+fmt.Println(p.Distance(q.Point)) // "5"
+p.ScaleBy(2)
+q.ScaleBy(2)
+fmt.Println(p.Distance(q.Point)) // "10"
+```
+
+The methods of `Point` have been *promoted* to `ColoredPoint`. In this way, <u>embedding allows complex types with many methods to be built up by the *composition* of several fields, each providing a few methods.</u>
+
+Note that it is a mistake to view `Point` as a base class and `ColoredPoint` as a subclass or derived class, or to interpret the relationship between these types as if a `ColoredPoint` "is a" Point, from a object-oriented language perspective. Notice the calls to `Distance` above. `Distance` has a parameter of type `Point`, and `q` is not a `Point`, so although `q` does have an embedded field of that type, we must explicitly select it. Attempting to pass `q` would be an error:
+
+```go
+p.Distance(q) // compile error: cannot use q (ColoredPoint) as Point
+```
+
+A `ColoredPoint` is not a `Point`, but it "has a" `Point`, and it has two additional methods `Distance` and `ScaleBy` promoted from `Point`. In terms of implementation, the embedded field instructs the compiler to generate additional wrapper methods that delegate to the declared methods, equivalent to these:
+
+```go
+func (p ColoredPoint) Distance(q Point) float64 {
+	return p.Point.Distance(q)
+}
+func (p *ColoredPoint) ScaleBy(factor float64) {
+	p.Point.ScaleBy(factor)
+}
+```
+
+When `Point.Distance` is called by the first of these wrapper methods, its receiver value is `p.Point`, not `p`. <u>There is no way for the `Point.Distance` method to access the `ColoredPoint` in which the `Point` is embedded.</u>
+
+The type of an anonymous field may be a pointer to a named type, in which case fields and methods are promoted indirectly from the pointed-to object. Adding another level of indirection enables us to share common structures and vary the relationships between objects dynamically. The declaration of `ColoredPoint` below embeds a `*Point`:
+
+```go
+type ColoredPoint struct {
+	*Point
+	Color color.RGBA
+}
+
+p := ColoredPoint{&Point{1, 1}, red}
+q := ColoredPoint{&Point{5, 4}, blue}
+fmt.Println(p.Distance(*q.Point)) // "5"
+q.Point = p.Point                 // p and q now share the same Point
+p.ScaleBy(2)
+fmt.Println(*p.Point, *q.Point) // "{2 2} {2 2}"
+```
+
+A struct type may have more than one anonymous field. If the declaration of `ColoredPoint` is:
+
+```go
+type ColoredPoint struct {
+	Point
+	color.RGBA
+}
+```
+
+Then a value of this type would have the following:
+
+* All the methods of `Point`
+* All the methods of `RGBA`
+* Any additional methods declared on `ColoredPoint` directly
+
+When the compiler resolves a selector such as `p.ScaleBy` to a method, it looks for that method in the following order:
+
+1. Directly declared method named `ScaleBy`
+2. Methods promoted once from `ColoredPoint`'s embedded fields
+3. Methods promoted twice from embedded fields within `Point` and `RGBA`, and so on
+
+The compiler reports an error if the selector was ambiguous because two methods were promoted from the same rank.
+
+Methods can be declared only on named types (e.g. `Point`) and pointers to them (e.g. `*Point`). With embedding, it's possible and sometimes useful for *unnamed* struct types to have methods.
+
+The following example shows part of a simple cache implemented using two package-level variables, a mutex ([Section 9.2](ch9.md##mutual-exclusion-syncmutex)) and the map that it guards:
+
+```go
+var (
+	mu sync.Mutex // guards mapping
+	mapping = make(map[string]string)
+)
+
+func Lookup(key string) string {
+	mu.Lock()
+	v := mapping[key]
+	mu.Unlock()
+	return v
+}
+```
+
+The version below is functionally equivalent but groups together the two related variables in a single package-level variable, cache:
+
+```go
+var cache = struct {
+	sync.Mutex
+	mapping map[string]string
+} {
+	mapping: make(map[string]string),
+}
+
+func Lookup(key string) string {
+	cache.Lock()
+	v := cache.mapping[key]
+	cache.Unlock()
+	return v
+}
+```
+
+The new variable gives more expressive names to the variables related to the cache, and because the `sync.Mutex` field is embedded within it, its `Lock` and `Unlock` methods are promoted to the unnamed struct type, allowing us to lock the `cache` with a self-explanatory syntax.
 
 ### Method Values and Expressions
 
 ### Example: Bit Vector Type
 
 ### Encapsulation
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p161 pointer receiver**
+
+> Any changes a method makes to the reference itself, like setting it to `nil` or making it refer to a different map data structure, will not be reflected in the caller.
+
+<span class="text-danger">Question</span>: What does it mean?
+
+<span class="text-info">Solution</span>:
+
+The "will not be reflected in the caller" probably means "no effect" in the caller function. This is similar to setting an argument (within the callee function) to `nil` or making it refer to another object.
