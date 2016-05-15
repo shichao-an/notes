@@ -442,6 +442,11 @@
         <li class="main "><a href="#encapsulation">Encapsulation</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -598,19 +603,18 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 
 <h4 id="summary-of-three-cases">Summary of three cases *</h4>
 <p>In every valid method call expression, exactly one of these three statements is true.</p>
-<p>The receiver argument has the same type as the receiver parameter. For example, both have type <code>T</code> or both have type <code>*T</code>:</p>
+<p><strong>Case 1: the receiver argument has the same type as the receiver parameter.</strong> For example, both have type <code>T</code> or both have type <code>*T</code>:</p>
 <div class="codehilite"><pre><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span> <span class="c1">// Point</span>
 <span class="nx">pptr</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>         <span class="c1">// *Point</span>
 </pre></div>
 
 
-<p>The receiver argument is a variable of type <code>T</code> and the receiver parameter has type <code>*T</code>. The compiler implicitly takes the address of the variable. For example:</p>
+<p><strong>Case 2: the receiver argument is a variable of type <code>T</code> and the receiver parameter has type <code>*T</code>.</strong> The compiler implicitly takes the address of the variable. For example:</p>
 <div class="codehilite"><pre><span class="nx">p</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1">// implicit (&amp;p)</span>
 </pre></div>
 
 
-<p>The receiver argument has type <code>*T</code> and the receiver parameter has type <code>T</code>. The compiler
-implicitly dereferences the receiver, in other words, loads the value. For example:</p>
+<p><strong>Case 3: the receiver argument has type <code>*T</code> and the receiver parameter has type <code>T</code>.</strong> The compiler implicitly dereferences the receiver, in other words, loads the value. For example:</p>
 <div class="codehilite"><pre><span class="nx">pptr</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span> <span class="c1">// implicit (*pptr)</span>
 </pre></div>
 
@@ -680,9 +684,138 @@ implicitly dereferences the receiver, in other words, loads the value. For examp
 <p>In the final call to <code>Get</code>, the nil receiver behaves like an empty map. It is equivalent to being written as <code>Values(nil).Get("item"))</code>, not <code>nil.Get("item")</code>, which will not compile because the type of <code>nil</code> has not been determined (see <a href="https://play.golang.org/p/fW0q7pRRUp">modified version of the example above</a>). By contrast, the final call to <code>Add</code> panics as it tries to update a <code>nil</code> map.</p>
 <p>Because <code>url.Values</code> is a map type and a map refers to its key/value pairs indirectly, any updates and deletions that <code>url.Values.Add</code> makes to the map elements are visible to the caller. However, as with ordinary functions, any changes a method makes to the reference itself, like setting it to <code>nil</code> or making it refer to a different map data structure, will not be reflected in the caller.</p>
 <h3 id="composing-types-by-struct-embedding">Composing Types by Struct Embedding</h3>
+<p>The following example defines a <code>ColoredPoint</code> type:</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;image/color&quot;</span>
+
+<span class="kd">type</span> <span class="nx">Point</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span> <span class="kt">float64</span> <span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">ColoredPoint</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Point</span>
+    <span class="nx">Color</span> <span class="nx">color</span><span class="p">.</span><span class="nx">RGBA</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We could have defined <code>ColoredPoint</code> as a struct of three fields, but instead we embedded a <code>Point</code> to provide the <code>X</code> and <code>Y</code> fields. As discussed in <a href="../ch4/#struct-embedding-and-anonymous-fields">Section 4.4.3</a>, embedding enables us to take a syntactic shortcut to defining a <code>ColoredPoint</code> that contains all the fields of <code>Point</code>, plus some more. We can select the fields of <code>ColoredPoint</code> that were contributed by the embedded <code>Point</code> without mentioning <code>Point</code>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">cp</span> <span class="nx">ColoredPoint</span>
+<span class="nx">cp</span><span class="p">.</span><span class="nx">X</span> <span class="p">=</span> <span class="mi">1</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">cp</span><span class="p">.</span><span class="nx">Point</span><span class="p">.</span><span class="nx">X</span><span class="p">)</span> <span class="c1">// &quot;1&quot;</span>
+<span class="nx">cp</span><span class="p">.</span><span class="nx">Point</span><span class="p">.</span><span class="nx">Y</span> <span class="p">=</span> <span class="mi">2</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">cp</span><span class="p">.</span><span class="nx">Y</span><span class="p">)</span> <span class="c1">// &quot;2&quot;</span>
+</pre></div>
+
+
+<p>A similar mechanism applies to the methods of <code>Point</code>. We can call methods of the embedded <code>Point</code> field using a receiver of type <code>ColoredPoint</code>, even though <code>ColoredPoint</code> has no declared methods:</p>
+<div class="codehilite"><pre><span class="nx">red</span> <span class="o">:=</span> <span class="nx">color</span><span class="p">.</span><span class="nx">RGBA</span><span class="p">{</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">}</span>
+<span class="nx">blue</span> <span class="o">:=</span> <span class="nx">color</span><span class="p">.</span><span class="nx">RGBA</span><span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">}</span>
+<span class="kd">var</span> <span class="nx">p</span> <span class="p">=</span> <span class="nx">ColoredPoint</span><span class="p">{</span><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="nx">red</span><span class="p">}</span>
+<span class="kd">var</span> <span class="nx">q</span> <span class="p">=</span> <span class="nx">ColoredPoint</span><span class="p">{</span><span class="nx">Point</span><span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">},</span> <span class="nx">blue</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">.</span><span class="nx">Point</span><span class="p">))</span> <span class="c1">// &quot;5&quot;</span>
+<span class="nx">p</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">q</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">.</span><span class="nx">Point</span><span class="p">))</span> <span class="c1">// &quot;10&quot;</span>
+</pre></div>
+
+
+<p>The methods of <code>Point</code> have been <em>promoted</em> to <code>ColoredPoint</code>. In this way, <u>embedding allows complex types with many methods to be built up by the <em>composition</em> of several fields, each providing a few methods.</u></p>
+<p>Note that it is a mistake to view <code>Point</code> as a base class and <code>ColoredPoint</code> as a subclass or derived class, or to interpret the relationship between these types as if a <code>ColoredPoint</code> "is a" Point, from a object-oriented language perspective. Notice the calls to <code>Distance</code> above. <code>Distance</code> has a parameter of type <code>Point</code>, and <code>q</code> is not a <code>Point</code>, so although <code>q</code> does have an embedded field of that type, we must explicitly select it. Attempting to pass <code>q</code> would be an error:</p>
+<div class="codehilite"><pre><span class="nx">p</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span> <span class="c1">// compile error: cannot use q (ColoredPoint) as Point</span>
+</pre></div>
+
+
+<p>A <code>ColoredPoint</code> is not a <code>Point</code>, but it "has a" <code>Point</code>, and it has two additional methods <code>Distance</code> and <code>ScaleBy</code> promoted from <code>Point</code>. In terms of implementation, the embedded field instructs the compiler to generate additional wrapper methods that delegate to the declared methods, equivalent to these:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">ColoredPoint</span><span class="p">)</span> <span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span> <span class="nx">Point</span><span class="p">)</span> <span class="kt">float64</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Point</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="nx">q</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ColoredPoint</span><span class="p">)</span> <span class="nx">ScaleBy</span><span class="p">(</span><span class="nx">factor</span> <span class="kt">float64</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">p</span><span class="p">.</span><span class="nx">Point</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="nx">factor</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When <code>Point.Distance</code> is called by the first of these wrapper methods, its receiver value is <code>p.Point</code>, not <code>p</code>. <u>There is no way for the <code>Point.Distance</code> method to access the <code>ColoredPoint</code> in which the <code>Point</code> is embedded.</u></p>
+<p>The type of an anonymous field may be a pointer to a named type, in which case fields and methods are promoted indirectly from the pointed-to object. Adding another level of indirection enables us to share common structures and vary the relationships between objects dynamically. The declaration of <code>ColoredPoint</code> below embeds a <code>*Point</code>:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">ColoredPoint</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="o">*</span><span class="nx">Point</span>
+    <span class="nx">Color</span> <span class="nx">color</span><span class="p">.</span><span class="nx">RGBA</span>
+<span class="p">}</span>
+
+<span class="nx">p</span> <span class="o">:=</span> <span class="nx">ColoredPoint</span><span class="p">{</span><span class="o">&amp;</span><span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="nx">red</span><span class="p">}</span>
+<span class="nx">q</span> <span class="o">:=</span> <span class="nx">ColoredPoint</span><span class="p">{</span><span class="o">&amp;</span><span class="nx">Point</span><span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">},</span> <span class="nx">blue</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">Distance</span><span class="p">(</span><span class="o">*</span><span class="nx">q</span><span class="p">.</span><span class="nx">Point</span><span class="p">))</span> <span class="c1">// &quot;5&quot;</span>
+<span class="nx">q</span><span class="p">.</span><span class="nx">Point</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Point</span>                 <span class="c1">// p and q now share the same Point</span>
+<span class="nx">p</span><span class="p">.</span><span class="nx">ScaleBy</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">*</span><span class="nx">p</span><span class="p">.</span><span class="nx">Point</span><span class="p">,</span> <span class="o">*</span><span class="nx">q</span><span class="p">.</span><span class="nx">Point</span><span class="p">)</span> <span class="c1">// &quot;{2 2} {2 2}&quot;</span>
+</pre></div>
+
+
+<p>A struct type may have more than one anonymous field. If the declaration of <code>ColoredPoint</code> is:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">ColoredPoint</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Point</span>
+    <span class="nx">color</span><span class="p">.</span><span class="nx">RGBA</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Then a value of this type would have the following:</p>
+<ul>
+<li>All the methods of <code>Point</code></li>
+<li>All the methods of <code>RGBA</code></li>
+<li>Any additional methods declared on <code>ColoredPoint</code> directly</li>
+</ul>
+<p>When the compiler resolves a selector such as <code>p.ScaleBy</code> to a method, it looks for that method in the following order:</p>
+<ol>
+<li>Directly declared method named <code>ScaleBy</code></li>
+<li>Methods promoted once from <code>ColoredPoint</code>'s embedded fields</li>
+<li>Methods promoted twice from embedded fields within <code>Point</code> and <code>RGBA</code>, and so on</li>
+</ol>
+<p>The compiler reports an error if the selector was ambiguous because two methods were promoted from the same rank.</p>
+<p>Methods can be declared only on named types (e.g. <code>Point</code>) and pointers to them (e.g. <code>*Point</code>). With embedding, it's possible and sometimes useful for <em>unnamed</em> struct types to have methods.</p>
+<p>The following example shows part of a simple cache implemented using two package-level variables, a mutex (<a href="ch9.md##mutual-exclusion-syncmutex">Section 9.2</a>) and the map that it guards:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">mu</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span> <span class="c1">// guards mapping</span>
+    <span class="nx">mapping</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">Lookup</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">v</span> <span class="o">:=</span> <span class="nx">mapping</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">v</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The version below is functionally equivalent but groups together the two related variables in a single package-level variable, cache:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">cache</span> <span class="p">=</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span>
+    <span class="nx">mapping</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span>
+<span class="p">}</span> <span class="p">{</span>
+    <span class="nx">mapping</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Lookup</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">cache</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">v</span> <span class="o">:=</span> <span class="nx">cache</span><span class="p">.</span><span class="nx">mapping</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="nx">cache</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">v</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The new variable gives more expressive names to the variables related to the cache, and because the <code>sync.Mutex</code> field is embedded within it, its <code>Lock</code> and <code>Unlock</code> methods are promoted to the unnamed struct type, allowing us to lock the <code>cache</code> with a self-explanatory syntax.</p>
 <h3 id="method-values-and-expressions">Method Values and Expressions</h3>
 <h3 id="example-bit-vector-type">Example: Bit Vector Type</h3>
 <h3 id="encapsulation">Encapsulation</h3>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p161-pointer-receiver"><strong>p161 pointer receiver</strong></h5>
+<blockquote>
+<p>Any changes a method makes to the reference itself, like setting it to <code>nil</code> or making it refer to a different map data structure, will not be reflected in the caller.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean?</p>
+<p><span class="text-info">Solution</span>:</p>
+<p>The "will not be reflected in the caller" probably means "no effect" in the caller function. This is similar to setting an argument (within the callee function) to <code>nil</code> or making it refer to another object.</p>
             </div>
         </div>
 
