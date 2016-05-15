@@ -220,6 +220,56 @@ func (list *IntList) Sum() int {
 }
 ```
 
+When you define a type whose methods allow nil as a receiver value, it's worth documenting this explicitly in the comment, as in the example above.
+
+The following is part of the definition of the Values type from the [`net/url`](https://golang.org/pkg/net/url/) package:
+
+```go
+package url
+
+// Values maps a string key to a list of values.
+type Values map[string][]string
+
+// Get returns the first value associated with the given key,
+// or "" if there are none.
+func (v Values) Get(key string) string {
+	if vs := v[key]; len(vs) > 0 {
+		return vs[0]
+	}
+	return ""
+}
+
+// Add adds the value to key.
+// It appends to any existing values associated with key.
+func (v Values) Add(key, value string) {
+	v[key] = append(v[key], value)
+}
+```
+
+It exposes its representation as a map but also provides methods to simplify access to the map, whose values are slices of strings; it's a [*multimap*](https://en.wikipedia.org/wiki/Multimap). Its clients can use its intrinsic operators (`make`, slice literals, `m[key]`, and so on), or its methods, or both:
+
+<small>[gopl.io/ch6/urlvalues/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch6/urlvalues/main.go)</small>
+
+```go
+m := url.Values{"lang": {"en"}} // direct construction
+m.Add("item", "1")
+m.Add("item", "2")
+
+fmt.Println(m.Get("lang")) // "en"
+fmt.Println(m.Get("q"))    // ""
+fmt.Println(m.Get("item")) // "1"      (first value)
+fmt.Println(m["item"])     // "[1 2]"  (direct map access)
+
+m = nil
+fmt.Println(m.Get("item")) // ""
+m.Add("item", "3")         // panic: assignment to entry in nil map
+```
+
+In the final call to `Get`, the nil receiver behaves like an empty map. It is equivalent to being written as `Values(nil).Get("item"))`, not `nil.Get("item")`, which will not compile because the type of `nil` has not been determined (see [modified version of the example above](https://play.golang.org/p/fW0q7pRRUp)). By contrast, the final call to `Add` panics as it tries to update a `nil` map.
+
+Because `url.Values` is a map type and a map refers to its key/value pairs indirectly, any updates and deletions that `url.Values.Add` makes to the map elements are visible to the caller. However, as with ordinary functions, any changes a method makes to the reference itself, like setting it to `nil` or making it refer to a different map data structure, will not be reflected in the caller.
+
+
 ### Composing Types by Struct Embedding
 
 ### Method Values and Expressions
