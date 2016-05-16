@@ -406,7 +406,190 @@ The new variable gives more expressive names to the variables related to the cac
 
 ### Method Values and Expressions
 
+#### Method Values *
+
+Usually, we select and call a method in the same expression, as in `p.Distance()`, but it's possible to separate these two operations. The selector `p.Distance` yields a **method value**, a function that binds a method (`Point.Distance`) to a specific receiver value `p`. This function can then be invoked without a receiver value; it needs only the non-receiver arguments.
+
+```go
+p := Point{1, 2}
+q := Point{4, 6}
+distanceFromP := p.Distance // method value
+fmt.Println(distanceFromP(q)) // "5"
+var origin Point // {0, 0}
+fmt.Println(distanceFromP(origin)) // "2.23606797749979", √5
+scaleP := p.ScaleBy // method value
+scaleP(2) // p becomes (2, 4)
+scaleP(3) // then (6, 12)
+scaleP(10) // then (60, 120)
+```
+
+Method values are useful when a package's API requires a function value and the clients' desired behavior for that function is to call a method on a specific receiver.
+
+For example, the function [`time.AfterFunc`](https://golang.org/pkg/time/#AfterFunc) calls a function value after a specified delay. The following program uses it to launch the rocket `r` after 10 seconds:
+
+```go
+type Rocket struct { /* ... */ }
+func (r *Rocket) Launch() { /* ... */ }
+r := new(Rocket)
+time.AfterFunc(10 * time.Second, func() { r.Launch() })
+```
+
+The last line above can be replaced with a shorter equivalent method value synatx:
+
+```go
+time.AfterFunc(10 * time.Second, r.Launch)
+```
+
+#### Method Expressions *
+
+Related to the method value is the **method expression**. When calling a method, as opposed to an ordinary function, we must supply the receiver in a special way using the selector syntax. A method expression, written `T.f` or `(*T).f` where `T` is a type, yields a function value with a regular first parameter taking the place of the receiver, so it can be called in the usual way.
+
+```go
+p := Point{1, 2}
+q := Point{4, 6}
+distance := Point.Distance // method expression
+fmt.Println(distance(p, q)) // "5"
+fmt.Printf("%T\n", distance) // "func(Point, Point) float64"
+scale := (*Point).ScaleBy
+scale(&p, 2)
+fmt.Println(p) // "{2 4}"
+fmt.Printf("%T\n", scale) // "func(*Point, float64)"
+```
+
+Method expressions can be helpful when you need a value to represent a choice among several methods belonging to the same type so that you can call the chosen method with many different receivers.
+
+In the following example, the variable `op` represents either the addition or the subtraction method of type `Point`, and `Path.TranslateBy` calls it for each point in the `Path`:
+
+```go
+type Point struct{ X, Y float64 }
+func (p Point) Add(q Point) Point { return Point{p.X + q.X, p.Y + q.Y} }
+func (p Point) Sub(q Point) Point { return Point{p.X - q.X, p.Y - q.Y} }
+
+type Path []Point
+
+func (path Path) TranslateBy(offset Point, add bool) {
+	var op func(p, q Point) Point
+	if add {
+		op = Point.Add
+	} else {
+		op = Point.Sub
+	}
+	for i := range path {
+		// Call either path[i].Add(offset) or path[i].Sub(offset).
+		path[i] = op(path[i], offset)
+	}
+}
+```
+
 ### Example: Bit Vector Type
+
+Sets in Go are usually implemented as a `map[T]bool`, where `T` is the element type. Although a set represented by a map is very flexible, a specialized representation may outperform it. A [**bit vector**](https://en.wikipedia.org/wiki/Bit_array) is ideal in the following example cases:
+
+* Dataflow analysis where set elements are small non-negative integers.
+* Sets have many elements.
+* Set operations like union and intersection are common.
+
+A bit vector uses a slice of unsigned integer values or "words", each bit of which represents a possible element of the set. The set contains `i` if the `i`-th bit is set. The following program demonstrates a simple bit vector type with three methods:
+
+<small>[gopl.io/ch6/intset/intset.go](https://github.com/shichao-an/gopl.io/blob/master/ch6/intset/intset.go)</small>
+
+```go
+// An IntSet is a set of small non-negative integers.
+// Its zero value represents the empty set.
+type IntSet struct {
+	words []uint64
+}
+
+// Has reports whether the set contains the non-negative value x.
+func (s *IntSet) Has(x int) bool {
+	word, bit := x/64, uint(x%64)
+	return word < len(s.words) && s.words[word]&(1<<bit) != 0
+}
+
+// Add adds the non-negative value x to the set.
+func (s *IntSet) Add(x int) {
+	word, bit := x/64, uint(x%64)
+	for word >= len(s.words) {
+		s.words = append(s.words, 0)
+	}
+	s.words[word] |= 1 << bit
+}
+
+// UnionWith sets s to the union of s and t.
+func (s *IntSet) UnionWith(t *IntSet) {
+	for i, tword := range t.words {
+		if i < len(s.words) {
+			s.words[i] |= tword
+		} else {
+			s.words = append(s.words, tword)
+		}
+	}
+}
+```
+
+Since each word has 64 bits, to locate the bit for `x`, we use the quotient `x/64` as the word index and the remainder `x%64` as the bit index within that word. The `UnionWith` operation uses the bitwise OR operator `|` to compute the union 64 elements at a time.
+
+The following code defines a method to print an `IntSet` as a string:
+
+```go
+// String returns the set as a string of the form "{1 2 3}".
+func (s *IntSet) String() string {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, word := range s.words {
+		if word == 0 {
+			continue
+		}
+		for j := 0; j < 64; j++ {
+			if word&(1<<uint(j)) != 0 {
+				if buf.Len() > len("{") {
+					buf.WriteByte(' ')
+				}
+				fmt.Fprintf(&buf, "%d", 64*i+j)
+			}
+		}
+	}
+	buf.WriteByte('}')
+	return buf.String()
+}
+```
+
+Notice the similarity of the `String` method above with [`intsToString`](https://github.com/shichao-an/gopl.io/blob/master/ch3/printints/main.go) in [Section 3.5.4](ch3.md#strings-and-byte-slices):
+
+* `bytes.Buffer` is often used this way in `String` methods.
+* The `fmt` package treats types with a `String` method specially so that values of complicated types can display themselves in a user-friendly manner. Instead of printing the raw representation of the value (a struct in this case), `fmt` calls the `String` method.
+* The mechanism relies on interfaces and type assertions, which is explained in [Chapter 7](ch7.md).
+
+The following code demonstrates the use of `IntSet`:
+
+```go
+var x, y IntSet
+x.Add(1)
+x.Add(144)
+x.Add(9)
+fmt.Println(x.String()) // "{1 9 144}"
+
+y.Add(9)
+y.Add(42)
+fmt.Println(y.String()) // "{9 42}"
+
+x.UnionWith(&y)
+fmt.Println(x.String()) // "{1 9 42 144}"
+
+fmt.Println(x.Has(9), x.Has(123)) // "true false"
+```
+
+Note that we declared `String` and `Has` as methods of the pointer type `*IntSet` not out of necessity, but for consistency with the other two methods (`Add` and `UnionWith`), which need a pointer receiver because they assign to `s.words`. Consequently, an `IntSet` value does not have a `String` method:
+
+```go
+fmt.Println(&x)         // "{1 9 42 144}"
+fmt.Println(x.String()) // "{1 9 42 144}"
+fmt.Println(x)          // "{[4398046511618 0 65536]}"
+```
+
+1. In the first case, we print an `*IntSet` pointer, which does have a `String` method.
+2. In the second case, we call `String()` on an `IntSet` variable; the compiler inserts the implicit `&` operation, giving us a pointer, which has the `String` method.
+3. In the third case, because the `IntSet` value does not have a `String` method, `fmt.Println` prints the representation of the struct instead. It's important not to forget the `&` operator. Making `String` a method of `IntSet`, not `*IntSet`, might be a good idea, but this is a case-by-case judgment.
 
 ### Encapsulation
 
