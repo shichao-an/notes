@@ -609,6 +609,22 @@ The following macros simplify Page Table handling:
     * When PAE is disabled, they yield the values 1,024, 1, 1, and 1,024, respectively.
     * When PAE is enabled, they yield the values 512, 512, 1, and 4, respectively.
 
+##### **Summary of linear address fields** *
+
+For regular paging, the number of bits for each field in the linear address are:
+
+PAE | Page Global Directory | Page Upper Directory | Page Middle Directory | Page Table | Offset
+--- | --------------------- | -------------------- | --------------------- | ---------- | ------
+Disabled | 10 | 0 | 0 | 10 | 12
+Enabled | 2 | 0 | 9 | 9 | 12
+
+For extended paging (large pages), the number of bits for each field in the linear address are:
+
+PAE | Page Global Directory | Page Upper Directory | Page Middle Directory | Offset
+--- | --------------------- | -------------------- | --------------------- | ------
+Disabled | 10 | 0 | 0 | 22
+Enabled | 2 | 0 | 9 | 21
+
 #### Page Table Handling
 
 `pte_t`, `pmd_t`, `pud_t`, and `pgd_t` describe the format of a Page Table, a Page Middle Directory, a Page Upper Directory, and a Page Global Directory entry, respectively. They are 64-bit data types when PAE is enabled and 32-bit data types otherwise. `pgprot_t` is another 64-bit (PAE enabled) or 32-bit (PAE disabled) data type that represents the protection flags associated with a single entry.
@@ -717,7 +733,7 @@ Start | End | Type
 * The physical address range from `0x07ff0000` to `0x07ff2fff` (Type "ACPI data") stores information about the hardware devices of the system written by the BIOS in the POST phase; during the initialization phase, the kernel copies such information in a suitable kernel data structure, and then considers these page frames usable.
 * Conversely, the physical address range of `0x07ff3000` to `0x07ffffff` (Type "ACPI NVS") is mapped to ROM chips of the hardware devices.
 * The physical address range starting from `0xffff0000` is marked as reserved, because it is mapped by the hardware to the BIOS's ROM chip.
-* Notice that the BIOS may not provide information for some physical address ranges (in the table, the range is 0x000a0000 to 0x000effff). To be on the safe side, Linux assumes that such ranges are not usable.
+* Notice that the BIOS may not provide information for some physical address ranges (in the table, the range is `0x000a0000` to `0x000effff`). To be on the safe side, Linux assumes that such ranges are not usable.
 
 The kernel might not see all physical memory reported by the BIOS: for instance, the kernel can address only 4 GB of RAM if it has not been compiled with PAE support, even if a larger amount of physical memory is actually available.
 
@@ -748,8 +764,19 @@ The figure below shows how the first 3 MB of RAM are filled by Linux, which assu
 
 The symbols appearing in the figure are not defined in Linux source code; they are produced while compiling the kernel. You can find the linear address of these symbols in the file [System.map](https://en.wikipedia.org/wiki/System.map), which is created right after the kernel is compiled.
 
-
 #### Process Page Tables
+
+The linear address space of a process is divided into two parts:
+
+* Linear addresses from `0x00000000` to `0xbfffffff` can be addressed when the process runs in either User or Kernel Mode.
+* Linear addresses from `0xc0000000` to `0xffffffff` can be addressed only when the process runs in Kernel Mode.
+
+When a process runs in User Mode, it issues linear addresses smaller than `0xc0000000`; when it runs in Kernel Mode, it is executing kernel code and the linear addresses issued are greater than or equal to `0xc0000000`. In some cases, however, the kernel must access the User Mode linear address space to retrieve or store data.
+
+The `PAGE_OFFSET` macro yields the value `0xc0000000`, which is the offset in the linear address space of a process where the kernel lives.
+
+* The content of the first entries of the Page Global Directory that map linear addresses lower than `0xc0000000` (the first 768 entries with PAE disabled, or the first 3 entries with PAE enabled) depends on the specific process.
+* Conversely, the remaining entries should be the same for all processes and equal to the corresponding entries of the master kernel Page Global Directory (see the following section).
 
 #### Kernel Page Tables
 
