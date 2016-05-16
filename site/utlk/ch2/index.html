@@ -1232,6 +1232,66 @@ Extended   XXXXXXXXXX0000000000000000000000
 </ul>
 </li>
 </ul>
+<h5 id="summary-of-linear-address-fields"><strong>Summary of linear address fields</strong> *</h5>
+<p>For regular paging, the number of bits for each field in the linear address are:</p>
+<table>
+<thead>
+<tr>
+<th>PAE</th>
+<th>Page Global Directory</th>
+<th>Page Upper Directory</th>
+<th>Page Middle Directory</th>
+<th>Page Table</th>
+<th>Offset</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Disabled</td>
+<td>10</td>
+<td>0</td>
+<td>0</td>
+<td>10</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Enabled</td>
+<td>2</td>
+<td>0</td>
+<td>9</td>
+<td>9</td>
+<td>12</td>
+</tr>
+</tbody>
+</table>
+<p>For extended paging (large pages), the number of bits for each field in the linear address are:</p>
+<table>
+<thead>
+<tr>
+<th>PAE</th>
+<th>Page Global Directory</th>
+<th>Page Upper Directory</th>
+<th>Page Middle Directory</th>
+<th>Offset</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Disabled</td>
+<td>10</td>
+<td>0</td>
+<td>0</td>
+<td>22</td>
+</tr>
+<tr>
+<td>Enabled</td>
+<td>2</td>
+<td>0</td>
+<td>9</td>
+<td>21</td>
+</tr>
+</tbody>
+</table>
 <h4 id="page-table-handling">Page Table Handling</h4>
 <p><code>pte_t</code>, <code>pmd_t</code>, <code>pud_t</code>, and <code>pgd_t</code> describe the format of a Page Table, a Page Middle Directory, a Page Upper Directory, and a Page Global Directory entry, respectively. They are 64-bit data types when PAE is enabled and 32-bit data types otherwise. <code>pgprot_t</code> is another 64-bit (PAE enabled) or 32-bit (PAE disabled) data type that represents the protection flags associated with a single entry.</p>
 <ul>
@@ -1451,7 +1511,7 @@ Extended   XXXXXXXXXX0000000000000000000000
 <li>The physical address range from <code>0x07ff0000</code> to <code>0x07ff2fff</code> (Type "ACPI data") stores information about the hardware devices of the system written by the BIOS in the POST phase; during the initialization phase, the kernel copies such information in a suitable kernel data structure, and then considers these page frames usable.</li>
 <li>Conversely, the physical address range of <code>0x07ff3000</code> to <code>0x07ffffff</code> (Type "ACPI NVS") is mapped to ROM chips of the hardware devices.</li>
 <li>The physical address range starting from <code>0xffff0000</code> is marked as reserved, because it is mapped by the hardware to the BIOS's ROM chip.</li>
-<li>Notice that the BIOS may not provide information for some physical address ranges (in the table, the range is 0x000a0000 to 0x000effff). To be on the safe side, Linux assumes that such ranges are not usable.</li>
+<li>Notice that the BIOS may not provide information for some physical address ranges (in the table, the range is <code>0x000a0000</code> to <code>0x000effff</code>). To be on the safe side, Linux assumes that such ranges are not usable.</li>
 </ul>
 <p>The kernel might not see all physical memory reported by the BIOS: for instance, the kernel can address only 4 GB of RAM if it has not been compiled with PAE support, even if a larger amount of physical memory is actually available.</p>
 <p>The <code>setup_memory()</code> function is invoked right after <code>machine_specific_memory_setup()</code>: it analyzes the table of physical memory regions and initializes a few variables that describe the kernel's physical memory layout. These variables are shown in the following table:</p>
@@ -1511,6 +1571,17 @@ Extended   XXXXXXXXXX0000000000000000000000
 </ul>
 <p>The symbols appearing in the figure are not defined in Linux source code; they are produced while compiling the kernel. You can find the linear address of these symbols in the file <a href="https://en.wikipedia.org/wiki/System.map">System.map</a>, which is created right after the kernel is compiled.</p>
 <h4 id="process-page-tables">Process Page Tables</h4>
+<p>The linear address space of a process is divided into two parts:</p>
+<ul>
+<li>Linear addresses from <code>0x00000000</code> to <code>0xbfffffff</code> can be addressed when the process runs in either User or Kernel Mode.</li>
+<li>Linear addresses from <code>0xc0000000</code> to <code>0xffffffff</code> can be addressed only when the process runs in Kernel Mode.</li>
+</ul>
+<p>When a process runs in User Mode, it issues linear addresses smaller than <code>0xc0000000</code>; when it runs in Kernel Mode, it is executing kernel code and the linear addresses issued are greater than or equal to <code>0xc0000000</code>. In some cases, however, the kernel must access the User Mode linear address space to retrieve or store data.</p>
+<p>The <code>PAGE_OFFSET</code> macro yields the value <code>0xc0000000</code>, which is the offset in the linear address space of a process where the kernel lives.</p>
+<ul>
+<li>The content of the first entries of the Page Global Directory that map linear addresses lower than <code>0xc0000000</code> (the first 768 entries with PAE disabled, or the first 3 entries with PAE enabled) depends on the specific process.</li>
+<li>Conversely, the remaining entries should be the same for all processes and equal to the corresponding entries of the master kernel Page Global Directory (see the following section).</li>
+</ul>
 <h4 id="kernel-page-tables">Kernel Page Tables</h4>
 <h5 id="provisional-kernel-page-tables"><strong>Provisional kernel Page Tables</strong></h5>
 <h5 id="final-kernel-page-table-when-ram-size-is-less-than-896-mb"><strong>Final kernel Page Table when RAM size is less than 896 MB</strong></h5>
