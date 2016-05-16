@@ -435,6 +435,10 @@
     
         <li class="main "><a href="#method-values-and-expressions">Method Values and Expressions</a></li>
         
+            <li><a href="#method-values">Method Values *</a></li>
+        
+            <li><a href="#method-expressions">Method Expressions *</a></li>
+        
     
         <li class="main "><a href="#example-bit-vector-type">Example: Bit Vector Type</a></li>
         
@@ -805,7 +809,176 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 
 <p>The new variable gives more expressive names to the variables related to the cache, and because the <code>sync.Mutex</code> field is embedded within it, its <code>Lock</code> and <code>Unlock</code> methods are promoted to the unnamed struct type, allowing us to lock the <code>cache</code> with a self-explanatory syntax.</p>
 <h3 id="method-values-and-expressions">Method Values and Expressions</h3>
+<h4 id="method-values">Method Values *</h4>
+<p>Usually, we select and call a method in the same expression, as in <code>p.Distance()</code>, but it's possible to separate these two operations. The selector <code>p.Distance</code> yields a <strong>method value</strong>, a function that binds a method (<code>Point.Distance</code>) to a specific receiver value <code>p</code>. This function can then be invoked without a receiver value; it needs only the non-receiver arguments.</p>
+<div class="codehilite"><pre><span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">q</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">}</span>
+<span class="nx">distanceFromP</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Distance</span> <span class="c1">// method value</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">distanceFromP</span><span class="p">(</span><span class="nx">q</span><span class="p">))</span> <span class="c1">// &quot;5&quot;</span>
+<span class="kd">var</span> <span class="nx">origin</span> <span class="nx">Point</span> <span class="c1">// {0, 0}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">distanceFromP</span><span class="p">(</span><span class="nx">origin</span><span class="p">))</span> <span class="c1">// &quot;2.23606797749979&quot;, √5</span>
+<span class="nx">scaleP</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">ScaleBy</span> <span class="c1">// method value</span>
+<span class="nx">scaleP</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1">// p becomes (2, 4)</span>
+<span class="nx">scaleP</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1">// then (6, 12)</span>
+<span class="nx">scaleP</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="c1">// then (60, 120)</span>
+</pre></div>
+
+
+<p>Method values are useful when a package's API requires a function value and the clients' desired behavior for that function is to call a method on a specific receiver.</p>
+<p>For example, the function <a href="https://golang.org/pkg/time/#AfterFunc"><code>time.AfterFunc</code></a> calls a function value after a specified delay. The following program uses it to launch the rocket <code>r</code> after 10 seconds:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Rocket</span> <span class="kd">struct</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">r</span> <span class="o">*</span><span class="nx">Rocket</span><span class="p">)</span> <span class="nx">Launch</span><span class="p">()</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="nx">r</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">Rocket</span><span class="p">)</span>
+<span class="nx">time</span><span class="p">.</span><span class="nx">AfterFunc</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Launch</span><span class="p">()</span> <span class="p">})</span>
+</pre></div>
+
+
+<p>The last line above can be replaced with a shorter equivalent method value synatx:</p>
+<div class="codehilite"><pre><span class="nx">time</span><span class="p">.</span><span class="nx">AfterFunc</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Launch</span><span class="p">)</span>
+</pre></div>
+
+
+<h4 id="method-expressions">Method Expressions *</h4>
+<p>Related to the method value is the <strong>method expression</strong>. When calling a method, as opposed to an ordinary function, we must supply the receiver in a special way using the selector syntax. A method expression, written <code>T.f</code> or <code>(*T).f</code> where <code>T</code> is a type, yields a function value with a regular first parameter taking the place of the receiver, so it can be called in the usual way.</p>
+<div class="codehilite"><pre><span class="nx">p</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+<span class="nx">q</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">{</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">}</span>
+<span class="nx">distance</span> <span class="o">:=</span> <span class="nx">Point</span><span class="p">.</span><span class="nx">Distance</span> <span class="c1">// method expression</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">distance</span><span class="p">(</span><span class="nx">p</span><span class="p">,</span> <span class="nx">q</span><span class="p">))</span> <span class="c1">// &quot;5&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">distance</span><span class="p">)</span> <span class="c1">// &quot;func(Point, Point) float64&quot;</span>
+<span class="nx">scale</span> <span class="o">:=</span> <span class="p">(</span><span class="o">*</span><span class="nx">Point</span><span class="p">).</span><span class="nx">ScaleBy</span>
+<span class="nx">scale</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">p</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="c1">// &quot;{2 4}&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">scale</span><span class="p">)</span> <span class="c1">// &quot;func(*Point, float64)&quot;</span>
+</pre></div>
+
+
+<p>Method expressions can be helpful when you need a value to represent a choice among several methods belonging to the same type so that you can call the chosen method with many different receivers.</p>
+<p>In the following example, the variable <code>op</code> represents either the addition or the subtraction method of type <code>Point</code>, and <code>Path.TranslateBy</code> calls it for each point in the <code>Path</code>:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Point</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">X</span><span class="p">,</span> <span class="nx">Y</span> <span class="kt">float64</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">Point</span><span class="p">)</span> <span class="nx">Add</span><span class="p">(</span><span class="nx">q</span> <span class="nx">Point</span><span class="p">)</span> <span class="nx">Point</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">Point</span><span class="p">{</span><span class="nx">p</span><span class="p">.</span><span class="nx">X</span> <span class="o">+</span> <span class="nx">q</span><span class="p">.</span><span class="nx">X</span><span class="p">,</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Y</span> <span class="o">+</span> <span class="nx">q</span><span class="p">.</span><span class="nx">Y</span><span class="p">}</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">Point</span><span class="p">)</span> <span class="nx">Sub</span><span class="p">(</span><span class="nx">q</span> <span class="nx">Point</span><span class="p">)</span> <span class="nx">Point</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">Point</span><span class="p">{</span><span class="nx">p</span><span class="p">.</span><span class="nx">X</span> <span class="o">-</span> <span class="nx">q</span><span class="p">.</span><span class="nx">X</span><span class="p">,</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Y</span> <span class="o">-</span> <span class="nx">q</span><span class="p">.</span><span class="nx">Y</span><span class="p">}</span> <span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Path</span> <span class="p">[]</span><span class="nx">Point</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">path</span> <span class="nx">Path</span><span class="p">)</span> <span class="nx">TranslateBy</span><span class="p">(</span><span class="nx">offset</span> <span class="nx">Point</span><span class="p">,</span> <span class="nx">add</span> <span class="kt">bool</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">op</span> <span class="kd">func</span><span class="p">(</span><span class="nx">p</span><span class="p">,</span> <span class="nx">q</span> <span class="nx">Point</span><span class="p">)</span> <span class="nx">Point</span>
+    <span class="k">if</span> <span class="nx">add</span> <span class="p">{</span>
+        <span class="nx">op</span> <span class="p">=</span> <span class="nx">Point</span><span class="p">.</span><span class="nx">Add</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">op</span> <span class="p">=</span> <span class="nx">Point</span><span class="p">.</span><span class="nx">Sub</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">path</span> <span class="p">{</span>
+        <span class="c1">// Call either path[i].Add(offset) or path[i].Sub(offset).</span>
+        <span class="nx">path</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">op</span><span class="p">(</span><span class="nx">path</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="nx">offset</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <h3 id="example-bit-vector-type">Example: Bit Vector Type</h3>
+<p>Sets in Go are usually implemented as a <code>map[T]bool</code>, where <code>T</code> is the element type. Although a set represented by a map is very flexible, a specialized representation may outperform it. A <a href="https://en.wikipedia.org/wiki/Bit_array"><strong>bit vector</strong></a> is ideal in the following example cases:</p>
+<ul>
+<li>Dataflow analysis where set elements are small non-negative integers.</li>
+<li>Sets have many elements.</li>
+<li>Set operations like union and intersection are common.</li>
+</ul>
+<p>A bit vector uses a slice of unsigned integer values or "words", each bit of which represents a possible element of the set. The set contains <code>i</code> if the <code>i</code>-th bit is set. The following program demonstrates a simple bit vector type with three methods:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch6/intset/intset.go">gopl.io/ch6/intset/intset.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// An IntSet is a set of small non-negative integers.</span>
+<span class="c1">// Its zero value represents the empty set.</span>
+<span class="kd">type</span> <span class="nx">IntSet</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">words</span> <span class="p">[]</span><span class="kt">uint64</span>
+<span class="p">}</span>
+
+<span class="c1">// Has reports whether the set contains the non-negative value x.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">IntSet</span><span class="p">)</span> <span class="nx">Has</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="nx">word</span><span class="p">,</span> <span class="nx">bit</span> <span class="o">:=</span> <span class="nx">x</span><span class="o">/</span><span class="mi">64</span><span class="p">,</span> <span class="nb">uint</span><span class="p">(</span><span class="nx">x</span><span class="o">%</span><span class="mi">64</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">word</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">[</span><span class="nx">word</span><span class="p">]</span><span class="o">&amp;</span><span class="p">(</span><span class="mi">1</span><span class="o">&lt;&lt;</span><span class="nx">bit</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span>
+<span class="p">}</span>
+
+<span class="c1">// Add adds the non-negative value x to the set.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">IntSet</span><span class="p">)</span> <span class="nx">Add</span><span class="p">(</span><span class="nx">x</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">word</span><span class="p">,</span> <span class="nx">bit</span> <span class="o">:=</span> <span class="nx">x</span><span class="o">/</span><span class="mi">64</span><span class="p">,</span> <span class="nb">uint</span><span class="p">(</span><span class="nx">x</span><span class="o">%</span><span class="mi">64</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">word</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">s</span><span class="p">.</span><span class="nx">words</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">[</span><span class="nx">word</span><span class="p">]</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="nx">bit</span>
+<span class="p">}</span>
+
+<span class="c1">// UnionWith sets s to the union of s and t.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">IntSet</span><span class="p">)</span> <span class="nx">UnionWith</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">IntSet</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">tword</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">t</span><span class="p">.</span><span class="nx">words</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">|=</span> <span class="nx">tword</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">s</span><span class="p">.</span><span class="nx">words</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">words</span><span class="p">,</span> <span class="nx">tword</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Since each word has 64 bits, to locate the bit for <code>x</code>, we use the quotient <code>x/64</code> as the word index and the remainder <code>x%64</code> as the bit index within that word. The <code>UnionWith</code> operation uses the bitwise OR operator <code>|</code> to compute the union 64 elements at a time.</p>
+<p>The following code defines a method to print an <code>IntSet</code> as a string:</p>
+<div class="codehilite"><pre><span class="c1">// String returns the set as a string of the form &quot;{1 2 3}&quot;.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">IntSet</span><span class="p">)</span> <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">buf</span> <span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
+    <span class="nx">buf</span><span class="p">.</span><span class="nx">WriteByte</span><span class="p">(</span><span class="sc">&#39;{&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">word</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">s</span><span class="p">.</span><span class="nx">words</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">word</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+            <span class="k">continue</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="nx">j</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="p">&lt;</span> <span class="mi">64</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="nx">word</span><span class="o">&amp;</span><span class="p">(</span><span class="mi">1</span><span class="o">&lt;&lt;</span><span class="nb">uint</span><span class="p">(</span><span class="nx">j</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="nx">buf</span><span class="p">.</span><span class="nx">Len</span><span class="p">()</span> <span class="p">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="s">&quot;{&quot;</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nx">buf</span><span class="p">.</span><span class="nx">WriteByte</span><span class="p">(</span><span class="sc">&#39; &#39;</span><span class="p">)</span>
+                <span class="p">}</span>
+                <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">buf</span><span class="p">,</span> <span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="mi">64</span><span class="o">*</span><span class="nx">i</span><span class="o">+</span><span class="nx">j</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="nx">buf</span><span class="p">.</span><span class="nx">WriteByte</span><span class="p">(</span><span class="sc">&#39;}&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">buf</span><span class="p">.</span><span class="nx">String</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Notice the similarity of the <code>String</code> method above with <a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/printints/main.go"><code>intsToString</code></a> in <a href="../ch3/#strings-and-byte-slices">Section 3.5.4</a>:</p>
+<ul>
+<li><code>bytes.Buffer</code> is often used this way in <code>String</code> methods.</li>
+<li>The <code>fmt</code> package treats types with a <code>String</code> method specially so that values of complicated types can display themselves in a user-friendly manner. Instead of printing the raw representation of the value (a struct in this case), <code>fmt</code> calls the <code>String</code> method.</li>
+<li>The mechanism relies on interfaces and type assertions, which is explained in <a href="../ch7/">Chapter 7</a>.</li>
+</ul>
+<p>The following code demonstrates the use of <code>IntSet</code>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="nx">IntSet</span>
+<span class="nx">x</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="nx">x</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">144</span><span class="p">)</span>
+<span class="nx">x</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// &quot;{1 9 144}&quot;</span>
+
+<span class="nx">y</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+<span class="nx">y</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">y</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// &quot;{9 42}&quot;</span>
+
+<span class="nx">x</span><span class="p">.</span><span class="nx">UnionWith</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">y</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// &quot;{1 9 42 144}&quot;</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">.</span><span class="nx">Has</span><span class="p">(</span><span class="mi">9</span><span class="p">),</span> <span class="nx">x</span><span class="p">.</span><span class="nx">Has</span><span class="p">(</span><span class="mi">123</span><span class="p">))</span> <span class="c1">// &quot;true false&quot;</span>
+</pre></div>
+
+
+<p>Note that we declared <code>String</code> and <code>Has</code> as methods of the pointer type <code>*IntSet</code> not out of necessity, but for consistency with the other two methods (<code>Add</code> and <code>UnionWith</code>), which need a pointer receiver because they assign to <code>s.words</code>. Consequently, an <code>IntSet</code> value does not have a <code>String</code> method:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">x</span><span class="p">)</span>         <span class="c1">// &quot;{1 9 42 144}&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// &quot;{1 9 42 144}&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>          <span class="c1">// &quot;{[4398046511618 0 65536]}&quot;</span>
+</pre></div>
+
+
+<ol>
+<li>In the first case, we print an <code>*IntSet</code> pointer, which does have a <code>String</code> method.</li>
+<li>In the second case, we call <code>String()</code> on an <code>IntSet</code> variable; the compiler inserts the implicit <code>&amp;</code> operation, giving us a pointer, which has the <code>String</code> method.</li>
+<li>In the third case, because the <code>IntSet</code> value does not have a <code>String</code> method, <code>fmt.Println</code> prints the representation of the struct instead. It's important not to forget the <code>&amp;</code> operator. Making <code>String</code> a method of <code>IntSet</code>, not <code>*IntSet</code>, might be a good idea, but this is a case-by-case judgment.</li>
+</ol>
 <h3 id="encapsulation">Encapsulation</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
