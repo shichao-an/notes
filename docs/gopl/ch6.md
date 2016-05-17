@@ -593,6 +593,28 @@ fmt.Println(x)          // "{[4398046511618 0 65536]}"
 
 ### Encapsulation
 
+A variable or method of an object is said to be *encapsulated* if it is inaccessible to clients of the object. [Encapsulation](https://en.wikipedia.org/wiki/Encapsulation_(computer_programming)), sometimes called [*information hiding*](https://en.wikipedia.org/wiki/Information_hiding), is a key aspect of object-oriented programming.
+
+Go has only one mechanism to control the visibility of names: capitalized identifiers are exported from the package in which they are defined, and uncapitalized names are not. This mechanism not only limits access to members of a package, but also limits access to the fields of a struct or the methods of a type. As a consequence, to encapsulate an object, it must be made into a struct.
+
+That's the reason the `IntSet` type from the previous section was declared as a struct type, even though it has only a single field:
+
+```go
+type IntSet struct {
+	words []uint64
+}
+```
+
+`IntSet` could be defined as a slice type as follows (we also have to replace each occurrence of `s.words` by `*s` in its methods):
+
+```go
+type IntSet []uint64
+```
+
+Although this version of `IntSet` would be essentially equivalent, it would allow clients from other packages to read and modify the slice directly. In other words, whereas the expression `*s` could be used in any package, `s.words` may appear only in the package that defines `IntSet`.
+
+Another consequence of this name-based mechanism is that the unit of encapsulation is the package, not the type as in many other languages. <u>The fields of a struct type are visible to all code within the same package.</u> Whether the code appears in a function or a method makes no difference.
+
 ### Doubts and Solution
 
 #### Verbatim

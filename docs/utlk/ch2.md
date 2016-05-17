@@ -299,7 +299,7 @@ The entries of Page Directories and Page Tables have the same structure. Each en
     * If it is set, the referred-to page (or Page Table) is contained in main memory.
     * If it is 0, the page is not contained in main memory. The remaining entry bits may be used by the operating system for its own purposes.
     * <u>If the entry of a Page Table or Page Directory needed to perform an address translation has the `Present` flag cleared, the paging unit stores the linear address in a control register named `cr2` and generates exception 14: the Page Fault exception.</u>
-* `Field` containing the 20 most significant bits of a page frame physical address.
+* Field containing the 20 most significant bits of a page frame physical address.
     * <u>Because each page frame has a 4-KB capacity, its physical address must be a multiple of 4096, so the 12 least significant bits of the physical address are always equal to 0.</u>
     * If the field refers to a Page Directory, the page frame contains a Page Table; if it refers to a Page Table, the page frame contains a page of data.
 * `Accessed` flag.
@@ -322,6 +322,10 @@ The entries of Page Directories and Page Tables have the same structure. Each en
     * This applies only to Page Table entries.
     * This flag was introduced in the Pentium Pro to prevent frequently used pages from being flushed from the TLB cache (see [Translation Lookaside Buffers](#translation-lookaside-buffers)).
     * It works only if the Page Global Enable (`PGE`) flag of register `cr4` is set.
+
+The entries of Page Directories and Page Tables have the following structure:
+
+[![Structure of a Page Directory and Page Table entry](figure_u2-1_600.png)](figure_u2-1.png "Structure of a Page Directory and Page Table entry")
 
 #### Extended Paging
 
@@ -779,6 +783,15 @@ The `PAGE_OFFSET` macro yields the value `0xc0000000`, which is the offset in th
 * Conversely, the remaining entries should be the same for all processes and equal to the corresponding entries of the master kernel Page Global Directory (see the following section).
 
 #### Kernel Page Tables
+
+The kernel maintains a set of page tables for its own use, rooted at a so-called **master kernel Page Global Directory**. After system initialization, this set of page tables is never directly used by any process or kernel thread; rather, the highest entries of the master kernel Page Global Directory are the reference model for the corresponding entries of the Page Global Directories of every regular process in the system.
+
+The kernel ensures that changes to the master kernel Page Global Directory are propagated to the Page Global Directories that are actually used by processes. [p69]
+
+The kernel initializes its own page tables in two phases. In fact, right after the kernel image is loaded into memory, the CPU is still running in real mode (see [Segmentation in Hardware](#segmentation-in-hardware)); thus, paging is not enabled.
+
+1. In the first phase, the kernel creates a limited address space including the kernel's code and data segments, the initial Page Tables, and 128 KB for some dynamic data structures. This minimal address space is just large enough to install the kernel in RAM and to initialize its core data structures.
+2. In the second phase, the kernel takes advantage of all of the existing RAM and sets up the page tables properly.
 
 ##### **Provisional kernel Page Tables**
 
