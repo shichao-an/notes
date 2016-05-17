@@ -871,7 +871,7 @@ type of translation table.</p>
 <li><u>If the entry of a Page Table or Page Directory needed to perform an address translation has the <code>Present</code> flag cleared, the paging unit stores the linear address in a control register named <code>cr2</code> and generates exception 14: the Page Fault exception.</u></li>
 </ul>
 </li>
-<li><code>Field</code> containing the 20 most significant bits of a page frame physical address.<ul>
+<li>Field containing the 20 most significant bits of a page frame physical address.<ul>
 <li><u>Because each page frame has a 4-KB capacity, its physical address must be a multiple of 4096, so the 12 least significant bits of the physical address are always equal to 0.</u></li>
 <li>If the field refers to a Page Directory, the page frame contains a Page Table; if it refers to a Page Table, the page frame contains a page of data.</li>
 </ul>
@@ -911,6 +911,8 @@ type of translation table.</p>
 </ul>
 </li>
 </ul>
+<p>The entries of Page Directories and Page Tables have the following structure:</p>
+<p><a href="../figure_u2-1.png" title="Structure of a Page Directory and Page Table entry"><img alt="Structure of a Page Directory and Page Table entry" src="../figure_u2-1_600.png" /></a></p>
 <h4 id="extended-paging">Extended Paging</h4>
 <p>Starting with the <a href="https://en.wikipedia.org/wiki/Pentium">Pentium</a> model, 80×86 microprocessors introduce <strong>extended paging</strong>, which allows page frames to be 4 MB instead of 4 KB in size, as show in the following figure:</p>
 <p><a href="../figure_2-8.png" title="Figure 2-8. Extended paging"><img alt="Figure 2-8. Extended paging" src="../figure_2-8_600.png" /></a></p>
@@ -1583,6 +1585,13 @@ Extended   XXXXXXXXXX0000000000000000000000
 <li>Conversely, the remaining entries should be the same for all processes and equal to the corresponding entries of the master kernel Page Global Directory (see the following section).</li>
 </ul>
 <h4 id="kernel-page-tables">Kernel Page Tables</h4>
+<p>The kernel maintains a set of page tables for its own use, rooted at a so-called <strong>master kernel Page Global Directory</strong>. After system initialization, this set of page tables is never directly used by any process or kernel thread; rather, the highest entries of the master kernel Page Global Directory are the reference model for the corresponding entries of the Page Global Directories of every regular process in the system.</p>
+<p>The kernel ensures that changes to the master kernel Page Global Directory are propagated to the Page Global Directories that are actually used by processes. [p69]</p>
+<p>The kernel initializes its own page tables in two phases. In fact, right after the kernel image is loaded into memory, the CPU is still running in real mode (see <a href="#segmentation-in-hardware">Segmentation in Hardware</a>); thus, paging is not enabled.</p>
+<ol>
+<li>In the first phase, the kernel creates a limited address space including the kernel's code and data segments, the initial Page Tables, and 128 KB for some dynamic data structures. This minimal address space is just large enough to install the kernel in RAM and to initialize its core data structures.</li>
+<li>In the second phase, the kernel takes advantage of all of the existing RAM and sets up the page tables properly.</li>
+</ol>
 <h5 id="provisional-kernel-page-tables"><strong>Provisional kernel Page Tables</strong></h5>
 <h5 id="final-kernel-page-table-when-ram-size-is-less-than-896-mb"><strong>Final kernel Page Table when RAM size is less than 896 MB</strong></h5>
 <h5 id="final-kernel-page-table-when-ram-size-is-between-896-mb-and-4096-mb"><strong>Final kernel Page Table when RAM size is between 896 MB and 4096 MB</strong></h5>
