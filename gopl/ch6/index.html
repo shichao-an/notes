@@ -980,6 +980,22 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 <li>In the third case, because the <code>IntSet</code> value does not have a <code>String</code> method, <code>fmt.Println</code> prints the representation of the struct instead. It's important not to forget the <code>&amp;</code> operator. Making <code>String</code> a method of <code>IntSet</code>, not <code>*IntSet</code>, might be a good idea, but this is a case-by-case judgment.</li>
 </ol>
 <h3 id="encapsulation">Encapsulation</h3>
+<p>A variable or method of an object is said to be <em>encapsulated</em> if it is inaccessible to clients of the object. <a href="https://en.wikipedia.org/wiki/Encapsulation_(computer_programming)">Encapsulation</a>, sometimes called <a href="https://en.wikipedia.org/wiki/Information_hiding"><em>information hiding</em></a>, is a key aspect of object-oriented programming.</p>
+<p>Go has only one mechanism to control the visibility of names: capitalized identifiers are exported from the package in which they are defined, and uncapitalized names are not. This mechanism not only limits access to members of a package, but also limits access to the fields of a struct or the methods of a type. As a consequence, to encapsulate an object, it must be made into a struct.</p>
+<p>That's the reason the <code>IntSet</code> type from the previous section was declared as a struct type, even though it has only a single field:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">IntSet</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">words</span> <span class="p">[]</span><span class="kt">uint64</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>IntSet</code> could be defined as a slice type as follows (we also have to replace each occurrence of <code>s.words</code> by <code>*s</code> in its methods):</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">IntSet</span> <span class="p">[]</span><span class="kt">uint64</span>
+</pre></div>
+
+
+<p>Although this version of <code>IntSet</code> would be essentially equivalent, it would allow clients from other packages to read and modify the slice directly. In other words, whereas the expression <code>*s</code> could be used in any package, <code>s.words</code> may appear only in the package that defines <code>IntSet</code>.</p>
+<p>Another consequence of this name-based mechanism is that the unit of encapsulation is the package, not the type as in many other languages. <u>The fields of a struct type are visible to all code within the same package.</u> Whether the code appears in a function or a method makes no difference.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p161-pointer-receiver"><strong>p161 pointer receiver</strong></h5>
