@@ -445,6 +445,8 @@
     
         <li class="main "><a href="#encapsulation">Encapsulation</a></li>
         
+            <li><a href="#benefits-of-encapsulation">Benefits of encapsulation *</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -996,6 +998,32 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 
 <p>Although this version of <code>IntSet</code> would be essentially equivalent, it would allow clients from other packages to read and modify the slice directly. In other words, whereas the expression <code>*s</code> could be used in any package, <code>s.words</code> may appear only in the package that defines <code>IntSet</code>.</p>
 <p>Another consequence of this name-based mechanism is that the unit of encapsulation is the package, not the type as in many other languages. <u>The fields of a struct type are visible to all code within the same package.</u> Whether the code appears in a function or a method makes no difference.</p>
+<h4 id="benefits-of-encapsulation">Benefits of encapsulation *</h4>
+<p>Encapsulation provides three benefits.</p>
+<p>First, because clients cannot directly modify the object's variables, one need inspect fewer statements to understand the possible values of those variables.</p>
+<p>Second, hiding implementation details prevents clients from depending on things that might change, which gives the designer greater freedom to evolve the implementation without breaking API compatibility.</p>
+<p>For example, the <code>bytes.Buffer</code> type is frequently used to accumulate very short strings. For optimization, it reserves a little extra space in the object to avoid memory allocation in this common case. Since <code>Buffer</code> is a struct type, this space takes the form of an extra field of type <code>[64]byte</code> with an uncapitalized name. When this field was added, because it was not exported, clients of <code>Buffer</code> outside the bytes package were unaware of any change except improved performance. <code>Buffer</code> and its <code>Grow</code> method are shown below (simplified for clarity):</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Buffer</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">buf</span> <span class="p">[]</span><span class="kt">byte</span>
+    <span class="nx">initial</span> <span class="p">[</span><span class="mi">64</span><span class="p">]</span><span class="kt">byte</span>
+    <span class="cm">/* ... */</span>
+<span class="p">}</span>
+
+<span class="c1">// Grow expands the buffer&#39;s capacity, if necessary,</span>
+<span class="c1">// to guarantee space for another n bytes. [...]</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">Buffer</span><span class="p">)</span> <span class="nx">Grow</span><span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">b</span><span class="p">.</span><span class="nx">buf</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">b</span><span class="p">.</span><span class="nx">buf</span> <span class="p">=</span> <span class="nx">b</span><span class="p">.</span><span class="nx">initial</span><span class="p">[:</span><span class="mi">0</span><span class="p">]</span> <span class="c1">// use preallocated space initially</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buf</span><span class="p">)</span><span class="o">+</span><span class="nx">n</span> <span class="p">&gt;</span> <span class="nb">cap</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buf</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">buf</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="nx">b</span><span class="p">.</span><span class="nx">Len</span><span class="p">(),</span> <span class="mi">2</span><span class="o">*</span><span class="nb">cap</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buf</span><span class="p">)</span> <span class="o">+</span> <span class="nx">n</span><span class="p">)</span>
+        <span class="nb">copy</span><span class="p">(</span><span class="nx">buf</span><span class="p">,</span> <span class="nx">b</span><span class="p">.</span><span class="nx">buf</span><span class="p">)</span>
+        <span class="nx">b</span><span class="p">.</span><span class="nx">buf</span> <span class="p">=</span> <span class="nx">buf</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p161-pointer-receiver"><strong>p161 pointer receiver</strong></h5>
@@ -1005,6 +1033,11 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 <p><span class="text-danger">Question</span>: What does it mean?</p>
 <p><span class="text-info">Solution</span>:</p>
 <p>The "will not be reflected in the caller" probably means "no effect" in the caller function. This is similar to setting an argument (within the callee function) to <code>nil</code> or making it refer to another object.</p>
+<h5 id="p168-pointer-receiver"><strong>p168 pointer receiver</strong></h5>
+<blockquote>
+<p>First, because clients cannot directly modify the object's variables, one need inspect fewer statements to understand the possible values of those variables.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: Not sure what it means.</p>
             </div>
         </div>
 

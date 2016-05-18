@@ -615,6 +615,38 @@ Although this version of `IntSet` would be essentially equivalent, it would allo
 
 Another consequence of this name-based mechanism is that the unit of encapsulation is the package, not the type as in many other languages. <u>The fields of a struct type are visible to all code within the same package.</u> Whether the code appears in a function or a method makes no difference.
 
+#### Benefits of encapsulation *
+
+Encapsulation provides three benefits.
+
+First, because clients cannot directly modify the object's variables, one need inspect fewer statements to understand the possible values of those variables.
+
+Second, hiding implementation details prevents clients from depending on things that might change, which gives the designer greater freedom to evolve the implementation without breaking API compatibility.
+
+For example, the `bytes.Buffer` type is frequently used to accumulate very short strings. For optimization, it reserves a little extra space in the object to avoid memory allocation in this common case. Since `Buffer` is a struct type, this space takes the form of an extra field of type `[64]byte` with an uncapitalized name. When this field was added, because it was not exported, clients of `Buffer` outside the bytes package were unaware of any change except improved performance. `Buffer` and its `Grow` method are shown below (simplified for clarity):
+
+```go
+type Buffer struct {
+	buf []byte
+	initial [64]byte
+	/* ... */
+}
+
+// Grow expands the buffer's capacity, if necessary,
+// to guarantee space for another n bytes. [...]
+func (b *Buffer) Grow(n int) {
+	if b.buf == nil {
+		b.buf = b.initial[:0] // use preallocated space initially
+	}
+	if len(b.buf)+n > cap(b.buf) {
+		buf := make([]byte, b.Len(), 2*cap(b.buf) + n)
+		copy(buf, b.buf)
+		b.buf = buf
+	}
+}
+```
+
+
 ### Doubts and Solution
 
 #### Verbatim
@@ -628,3 +660,9 @@ Another consequence of this name-based mechanism is that the unit of encapsulati
 <span class="text-info">Solution</span>:
 
 The "will not be reflected in the caller" probably means "no effect" in the caller function. This is similar to setting an argument (within the callee function) to `nil` or making it refer to another object.
+
+##### **p168 pointer receiver**
+
+> First, because clients cannot directly modify the object's variables, one need inspect fewer statements to understand the possible values of those variables.
+
+<span class="text-danger">Question</span>: Not sure what it means.
