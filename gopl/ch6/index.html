@@ -447,6 +447,8 @@
         
             <li><a href="#benefits-of-encapsulation">Benefits of encapsulation *</a></li>
         
+            <li><a href="#other-aspects-of-encapsulation">Other aspects of encapsulation *</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -1024,6 +1026,51 @@ receiver declaration. <u>To avoid ambiguities, method declarations are not permi
 </pre></div>
 
 
+<p>Third, encapsulation prevents clients from setting an object's variables arbitrarily. Because the object's variables can be set only by functions in the same package, the author of that package can ensure that all those functions maintain the object's <a href="https://en.wikipedia.org/wiki/Class_invariant">internal invariants</a>. For example, the <code>Counter</code> type below permits clients to increment the counter or to reset it to zero, but not to set it to some arbitrary value:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Counter</span> <span class="kd">struct</span> <span class="p">{</span> <span class="nx">n</span> <span class="kt">int</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Counter</span><span class="p">)</span> <span class="nx">N</span><span class="p">()</span> <span class="kt">int</span>     <span class="p">{</span> <span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">n</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Counter</span><span class="p">)</span> <span class="nx">Increment</span><span class="p">()</span> <span class="p">{</span> <span class="nx">c</span><span class="p">.</span><span class="nx">n</span><span class="o">++</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Counter</span><span class="p">)</span> <span class="nx">Reset</span><span class="p">()</span>     <span class="p">{</span> <span class="nx">c</span><span class="p">.</span><span class="nx">n</span> <span class="p">=</span> <span class="mi">0</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Functions that only access or modify internal values of a type, such as the methods of the <a href="https://golang.org/pkg/log/#Logger"><code>Logger</code></a> type from <a href="https://golang.org/pkg/log/"><code>log</code></a> package as shown below, are called <a href="https://en.wikipedia.org/wiki/Mutator_method"><em>getters</em> and <em>setters</em></a>. <u>However, when naming a getter method, we usually omit the <code>Get</code> prefix. This convention applies to all methods and to other redundant prefixes as well, such as <code>Fetch</code>, <code>Find</code>, and <code>Lookup</code>.</u></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">log</span>
+
+<span class="kd">type</span> <span class="nx">Logger</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">flags</span> <span class="kt">int</span>
+    <span class="nx">prefix</span> <span class="kt">string</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nx">Flags</span><span class="p">()</span> <span class="kt">int</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nx">SetFlags</span><span class="p">(</span><span class="nx">flag</span> <span class="kt">int</span><span class="p">)</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nx">Prefix</span><span class="p">()</span> <span class="kt">string</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nx">SetPrefix</span><span class="p">(</span><span class="nx">prefix</span> <span class="kt">string</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Go does not forbid exported fields; once exported, a field cannot be unexported without an incompatible change to the API. Therefore, the initial choice should be deliberate and should consider:</p>
+<ul>
+<li>The complexity of the invariants that must be maintained</li>
+<li>The likelihood of future changes</li>
+<li>The quantity of client code that would be affected by a change</li>
+</ul>
+<h4 id="other-aspects-of-encapsulation">Other aspects of encapsulation *</h4>
+<p>Encapsulation is not always desirable. For example, <code>time.Duration</code> reveals its representation as an <code>int64</code> number of nanoseconds, which enables us to use all the arithmetic and comparison operations, and even to define constants of this type:</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">day</span> <span class="p">=</span> <span class="mi">24</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Hour</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">day</span><span class="p">.</span><span class="nx">Seconds</span><span class="p">())</span> <span class="c1">// &quot;86400&quot;</span>
+</pre></div>
+
+
+<p>As another example, contrast the <a href="#example-bit-vector-type"><code>IntSet</code> example</a> with the <a href="#method-declarations"><code>geometry.Path</code> example</a>. <code>Path</code> was defined as a slice type, allowing its clients to construct instances using the
+slice literal syntax, to iterate over its points using a range loop, and so on, whereas these operations are denied to clients of <code>IntSet</code>.</p>
+<p>The crucial difference is:</p>
+<ul>
+<li><code>geometry.Path</code> is intrinsically a sequence of points. We don't foresee adding new fields to it, so it makes sense for the <code>geometry</code> package to reveal <code>Path</code> as a slice.</li>
+<li>In contrast, an <code>IntSet</code> merely happens to be represented as a <code>[]uint64</code> slice. It could have been represented using <code>[]uint</code>, or something completely different for sets that are sparse or very small. It might perhaps benefit from additional features like an extra field to record the number of elements in the set. For these reasons, it makes sense for <code>IntSet</code> to be opaque.</li>
+</ul>
+<p>Methods are crucial to object-oriented programming, but they're only half the picture; the other half, <em>interfaces</em>, is discussed in the next chapter.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p161-pointer-receiver"><strong>p161 pointer receiver</strong></h5>
