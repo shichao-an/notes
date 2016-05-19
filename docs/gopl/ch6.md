@@ -646,6 +646,56 @@ func (b *Buffer) Grow(n int) {
 }
 ```
 
+Third, encapsulation prevents clients from setting an object's variables arbitrarily. Because the object's variables can be set only by functions in the same package, the author of that package can ensure that all those functions maintain the object's [internal invariants](https://en.wikipedia.org/wiki/Class_invariant). For example, the `Counter` type below permits clients to increment the counter or to reset it to zero, but not to set it to some arbitrary value:
+
+```go
+type Counter struct { n int }
+func (c *Counter) N() int     { return c.n }
+func (c *Counter) Increment() { c.n++ }
+func (c *Counter) Reset()     { c.n = 0 }
+```
+
+Functions that only access or modify internal values of a type, such as the methods of the [`Logger`](https://golang.org/pkg/log/#Logger) type from [`log`](https://golang.org/pkg/log/) package as shown below, are called [*getters* and *setters*](https://en.wikipedia.org/wiki/Mutator_method). <u>However, when naming a getter method, we usually omit the `Get` prefix. This convention applies to all methods and to other redundant prefixes as well, such as `Fetch`, `Find`, and `Lookup`.</u>
+
+```go
+package log
+
+type Logger struct {
+	flags int
+	prefix string
+	// ...
+}
+
+func (l *Logger) Flags() int
+func (l *Logger) SetFlags(flag int)
+func (l *Logger) Prefix() string
+func (l *Logger) SetPrefix(prefix string)
+```
+
+Go does not forbid exported fields; once exported, a field cannot be unexported without an incompatible change to the API. Therefore, the initial choice should be deliberate and should consider:
+
+* The complexity of the invariants that must be maintained
+* The likelihood of future changes
+* The quantity of client code that would be affected by a change
+
+#### Other aspects of encapsulation *
+
+Encapsulation is not always desirable. For example, `time.Duration` reveals its representation as an `int64` number of nanoseconds, which enables us to use all the arithmetic and comparison operations, and even to define constants of this type:
+
+```go
+const day = 24 * time.Hour
+fmt.Println(day.Seconds()) // "86400"
+```
+
+As another example, contrast the [`IntSet` example](#example-bit-vector-type) with the [`geometry.Path` example](#method-declarations). `Path` was defined as a slice type, allowing its clients to construct instances using the
+slice literal syntax, to iterate over its points using a range loop, and so on, whereas these operations are denied to clients of `IntSet`.
+
+The crucial difference is:
+
+* `geometry.Path` is intrinsically a sequence of points. We don't foresee adding new fields to it, so it makes sense for the `geometry` package to reveal `Path` as a slice.
+* In contrast, an `IntSet` merely happens to be represented as a `[]uint64` slice. It could have been represented using `[]uint`, or something completely different for sets that are sparse or very small. It might perhaps benefit from additional features like an extra field to record the number of elements in the set. For these reasons, it makes sense for `IntSet` to be opaque.
+
+Methods are crucial to object-oriented programming, but they're only half the picture; the other half, *interfaces*, is discussed in the next chapter.
 
 ### Doubts and Solution
 
