@@ -23,7 +23,8 @@ Priority | Category | Primary Book | Secondary Book(s) | Key Results
 Book | Chapter/Part | #Pass | Start | End
 ---- | ------------ | ----- | ----- | ---
 GOPL | ch5 | 1 | 2016-04-11 | 2016-05-09
-GOPL | ch6 | 1 | 2016-05-11 |
+GOPL | ch6 | 1 | 2016-05-11 | 2016-05-18
+GOPL | ch6 | 1 | 2016-05-18 |
 CSN  | part1 | 1 | 2016-01-15 |
 LKD  | ch8 | 1 | 2016-04-15 |
 UTLK | ch2 | 1 | 2016-04-17 |

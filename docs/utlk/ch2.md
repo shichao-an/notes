@@ -795,6 +795,30 @@ The kernel initializes its own page tables in two phases. In fact, right after t
 
 ##### **Provisional kernel Page Tables**
 
+A provisional Page Global Directory is initialized statically during kernel compilation, while the provisional Page Tables are initialized by the [`startup_32()`](https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S#L57) assembly language function defined in [`arch/i386/kernel/head.S`](https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S). We won't mention the Page Upper Directories and Page Middle Directories anymore, because they are equated to Page Global Directory entries. PAE support is not enabled at this stage.
+
+The provisional Page Global Directory is contained in the `swapper_pg_dir` variable. The provisional Page Tables are stored starting from `pg0`, right after the end of the kernel's uninitialized data segments (symbol `_end` in [Figure 2-13](figure_2-13.png)). For simplicity, assume that the kernel's segments, the provisional Page Tables, and the 128 KB memory area fit in the first 8 MB of RAM. In order to map 8 MB of RAM, two Page Tables are required.
+
+The objective of this first phase of paging is to allow these 8 MB of RAM to be easily addressed both in real mode and protected mode. Therefore, the kernel must create a mapping from both the linear addresses `0x00000000` through `0x007fffff` and the linear addresses `0xc0000000` through `0xc07fffff` into the physical addresses `0x00000000` through `0x007fffff`. In other words, the kernel during its first phase of initialization can address the first 8 MB of RAM by either linear addresses identical to the physical ones or 8 MB worth of linear addresses, starting from `0xc0000000`.
+
+The kernel creates the desired mapping by filling all the `swapper_pg_dir` entries with zeroes, except for entries 0, 1, `0x300` (decimal 768), and `0x301` (decimal 769); the latter two entries span all linear addresses between `0xc0000000` and `0xc07fffff`. The 0, 1, `0x300`, and `0x301` entries are initialized as follows:
+
+* The address field of entries 0 and `0x300` is set to the physical address of `pg0`, while the address field of entries 1 and `0x301` is set to the physical address of the page frame following `pg0`.
+* The `Present`, `Read/Write`, and `User/Supervisor` flags are set in all four entries.
+* The `Accessed`, `Dirty`, `PCD`, `PWD`, and `Page Size` flags are cleared in all four entries.
+
+The `startup_32()` assembly language function also enables the paging unit. This is achieved by loading the physical address of `swapper_pg_dir` into the `cr3` control register and by setting the `PG` flag of the `cr0` control register, as shown in the following equivalent code fragment:
+
+<small>[arch/i386/kernel/head.S#L186](https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/kernel/head.S#L186)</small>
+
+```gas
+movl $swapper_pg_dir-0xc0000000,%eax
+movl %eax,%cr3 /* set the page table pointer.. */
+movl %cr0,%eax
+orl $0x80000000,%eax
+movl %eax,%cr0 /* ..and set paging (PG) bit */
+```
+
 ##### **Final kernel Page Table when RAM size is less than 896 MB**
 
 ##### **Final kernel Page Table when RAM size is between 896 MB and 4096 MB**
