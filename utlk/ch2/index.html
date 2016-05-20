@@ -1613,6 +1613,42 @@ Extended   XXXXXXXXXX0000000000000000000000
 
 
 <h5 id="final-kernel-page-table-when-ram-size-is-less-than-896-mb"><strong>Final kernel Page Table when RAM size is less than 896 MB</strong></h5>
+<p>The final mapping provided by the kernel page tables must transform linear addresses starting from <code>0xc0000000</code> into physical addresses starting from 0.</p>
+<ul>
+<li>The <code>__pa</code> macro is used to convert a linear address starting from <code>PAGE_OFFSET</code> to the corresponding physical address.</li>
+<li>The <code>__va</code> macro does the reverse of <code>__pa</code>.</li>
+</ul>
+<p>The master kernel Page Global Directory is still stored in <code>swapper_pg_dir</code>. It is initialized by the <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/mm/init.c#L499"><code>paging_init()</code></a> function, which does the following:</p>
+<ol>
+<li>Invokes <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/mm/init.c#L310"><code>pagetable_init()</code></a> to set up the Page Table entries properly.</li>
+<li>Writes the physical address of <code>swapper_pg_dir</code> in the <code>cr3</code> control register.</li>
+<li>If the CPU supports PAE and if the kernel is compiled with PAE support, sets the PAE flag in the <code>cr4</code> control register.</li>
+<li>Invokes <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/tlbflush.h"><code>__flush_tlb_all()</code></a> to invalidate all TLB entries.</li>
+</ol>
+<p>The actions performed by <code>pagetable_init()</code> depend on both the amount of RAM present and on the CPU model. In the simplest case, if the computer has less than 896 MB of RAM, 32-bit physical addresses are sufficient to address all the available RAM, and there is no need to activate the PAE mechanism. (See section <a href="#the-physical-address-extension-pae-paging-mechanism">The Physical Address Extension (PAE) Paging Mechanism</a>.)</p>
+<p><span class="text-muted">The highest 128 MB of linear addresses are left available for several kinds of mappings (see sections <a href="#fix-mapped-linear-addresses">Fix-Mapped Linear Addresses</a> later in this chapter and "Linear Addresses of Noncontiguous Memory Areas" in Chapter 8). The kernel address space left for mapping the RAM is thus 1 GB – 128 MB = 896 MB.</span></p>
+<p>The <code>swapper_pg_dir</code> Page Global Directory is reinitialized by a cycle equivalent to the following:</p>
+<div class="codehilite"><pre><span class="n">pgd</span> <span class="o">=</span> <span class="n">swapper_pg_dir</span> <span class="o">+</span> <span class="n">pgd_index</span><span class="p">(</span><span class="n">PAGE_OFFSET</span><span class="p">);</span> <span class="cm">/* 768 */</span>
+<span class="n">phys_addr</span> <span class="o">=</span> <span class="mh">0x00000000</span><span class="p">;</span>
+<span class="k">while</span> <span class="p">(</span><span class="n">phys_addr</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">max_low_pfn</span> <span class="o">*</span> <span class="n">PAGE_SIZE</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">pmd</span> <span class="o">=</span> <span class="n">one_md_table_init</span><span class="p">(</span><span class="n">pgd</span><span class="p">);</span> <span class="cm">/* returns pgd itself */</span>
+    <span class="n">set_pmd</span><span class="p">(</span><span class="n">pmd</span><span class="p">,</span> <span class="n">__pmd</span><span class="p">(</span><span class="n">phys_addr</span> <span class="o">|</span> <span class="n">pgprot_val</span><span class="p">(</span><span class="n">__pgprot</span><span class="p">(</span><span class="mh">0x1e3</span><span class="p">))));</span>
+    <span class="cm">/* 0x1e3 == Present, Accessed, Dirty, Read/Write,</span>
+<span class="cm">                Page Size, Global */</span>
+    <span class="n">phys_addr</span> <span class="o">+=</span> <span class="n">PTRS_PER_PTE</span> <span class="o">*</span> <span class="n">PAGE_SIZE</span><span class="p">;</span> <span class="cm">/* 0x400000 */</span>
+    <span class="o">++</span><span class="n">pgd</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/arch/i386/mm/init.c#L55"><code>one_md_table_init</code></a> function a Page Global Directory entry.</p>
+<p>We assume that the CPU is a recent 80×86 microprocessor supporting 4 MB pages and "global" TLB entries. Notice that:</p>
+<ul>
+<li>The <code>User/Supervisor</code> flags in all Page Global Directory entries referencing linear addresses above <code>0xc0000000</code> are cleared, thus denying processes in User Mode access to the kernel address space.</li>
+<li>The <code>Page Size</code> flag is set so that the kernel can address the RAM by making use of large pages (see section <a href="#extended-paging">Extended Paging</a>).</li>
+</ul>
+<p>The identity mapping of the first megabytes of physical memory (8 MB in our example) built by the <code>startup_32()</code> function is required to complete the initialization phase of the kernel. When this mapping is no longer necessary, the kernel clears the corresponding page table entries by invoking the <code>zap_low_mappings()</code> function.</p>
+<p>Actually, this description does not state the whole truth. The later section <a href="#fix-mapped-linear-addresses">Fix-Mapped Linear Addresses</a> will discuss that the kernel also adjusts the entries of Page Tables corresponding to the "fix-mapped linear addresses".</p>
 <h5 id="final-kernel-page-table-when-ram-size-is-between-896-mb-and-4096-mb"><strong>Final kernel Page Table when RAM size is between 896 MB and 4096 MB</strong></h5>
 <h5 id="final-kernel-page-table-when-ram-size-is-more-than-4096-mb"><strong>Final kernel Page Table when RAM size is more than 4096 MB</strong></h5>
 <h4 id="fix-mapped-linear-addresses">Fix-Mapped Linear Addresses</h4>
