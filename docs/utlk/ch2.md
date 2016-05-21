@@ -865,8 +865,117 @@ Actually, this description does not state the whole truth. The later section [Fi
 
 ##### **Final kernel Page Table when RAM size is between 896 MB and 4096 MB**
 
+In this case, the RAM cannot be mapped entirely into the kernel linear address space. The best Linux can do during the initialization phase is to map a RAM window of size 896 MB into the kernel linear address space. If a program needs to address other parts of the existing RAM, some other linear address interval must be mapped to the required RAM. This implies changing the value of some page table entries. This kind of dynamic remapping is discussed in Chapter 8. To initialize the Page Global Directory, the kernel uses the same code as in the previous case.
+
 ##### **Final kernel Page Table when RAM size is more than 4096 MB**
+
+The kernel Page Table initialization for computers with more than 4 GB deals with cases in which the following happens:
+
+* The CPU model supports Physical Address Extension (PAE).
+* The amount of RAM is larger than 4 GB.
+* The kernel is compiled with PAE support.
+
+Although PAE handles 36-bit physical addresses, linear addresses are still 32-bit addresses. As in the previous case, Linux maps a 896-MB RAM window into the kernel linear address space; the remaining RAM is left unmapped and handled by dynamic remapping, as described in Chapter 8. The main difference with the previous case is that a three-level paging model is used, so the Page Global Directory is initialized by a cycle equivalent to the following:
+
+```c
+pgd_idx = pgd_index(PAGE_OFFSET); /* 3 */
+for (i=0; i<pgd_idx; i++)
+    set_pgd(swapper_pg_dir + i, __pgd(__pa(empty_zero_page) + 0x001));
+    /* 0x001 == Present */
+pgd = swapper_pg_dir + pgd_idx;
+phys_addr = 0x00000000;
+for (; i<PTRS_PER_PGD; ++i, ++pgd) {
+    pmd = (pmd_t *) alloc_bootmem_low_pages(PAGE_SIZE);
+    set_pgd(pgd, __pgd(__pa(pmd) | 0x001)); /* 0x001 == Present */
+    if (phys_addr < max_low_pfn * PAGE_SIZE)
+        for (j=0; j < PTRS_PER_PMD /* 512 */
+                  && phys_addr < max_low_pfn*PAGE_SIZE; ++j) {
+            set_pmd(pmd, __pmd(phys_addr |
+                                pgprot_val(__pgprot(0x1e3))));
+            /* 0x1e3 == Present, Accessed, Dirty, Read/Write,
+                        Page Size, Global */
+            phys_addr += PTRS_PER_PTE * PAGE_SIZE; /* 0x200000 */
+        }
+}
+swapper_pg_dir[0] = swapper_pg_dir[pgd_idx];
+```
+
+The above code does the following:
+
+* The kernel initializes the first three entries in the Page Global Directory corresponding to the user linear address space with the address of an empty page (`empty_zero_page`).
+* The fourth entry is initialized with the address of a Page Middle Directory (`pmd`) allocated by invoking `alloc_bootmem_low_pages()`. The first 448 entries in the Page Middle Directory (there are 512 entries, but the last 64 are reserved for noncontiguous memory allocation; see the section "Noncontiguous Memory Area Management" in Chapter 8) are filled with the physical address of the first 896 MB of RAM.
+* The fourth Page Global Directory entry is then copied into the first entry, so as to mirror the mapping of the low physical memory in the first 896 MB of the linear address space. This mapping is required in order to complete the initialization of SMP systems: when it is no longer necessary, the kernel clears the corresponding page table entries by invoking the `zap_low_mappings()` function, as in the previous cases.
+
+Notice that:
+
+* All CPU models that support PAE also support large 2-MB pages and global pages.
+* As in the previous cases, whenever possible, Linux uses large pages to reduce the number of Page Tables.
 
 #### Fix-Mapped Linear Addresses
 
+The previous sections discussed that the initial part of the fourth gigabyte of kernel linear addresses maps the physical memory of the system. However, at least 128 MB of linear addresses are always left available because the kernel uses them to implement:
+
+* Noncontiguous memory allocation, which is just a special way to dynamically allocate and release pages of memory, and is described in the section "Linear Addresses of Noncontiguous Memory Areas" in Chapter 8.
+* Fix-mapped linear addresses, which is focused in this section.
+
+Basically, a *fix-mapped linear address* is a constant linear address like `0xffffc000` whose corresponding physical address does not have to be the linear address minus `0xc000000`, but rather a physical address set in an arbitrary way. Thus, each fix-mapped linear address maps one page frame of the physical memory. Later chapters discuss that the kernel uses fix-mapped linear addresses instead of pointer variables that never change their value.
+
+Fix-mapped linear addresses are conceptually similar to the linear addresses that map the first 896 MB of RAM. However, a fix-mapped linear address can map any physical address, while the mapping established by the linear addresses in the initial portion of the fourth gigabyte is linear (linear address *X* maps physical address *X* - `PAGE_OFFSET`).
+
+With respect to variable pointers, fix-mapped linear addresses are more efficient:
+
+* Dereferencing a variable pointer requires one memory access more than dereferencing an immediate constant address.
+* Checking the value of a variable pointer before dereferencing it is a good programming practice; conversely, the check is never required for a constant linear address.
+
+Each fix-mapped linear address is represented by a small integer index defined in the [`enum fixed_addresses`](https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/fixmap.h#L53) ([include/asm-i386/fixmap.h](https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/fixmap.h)) data structure:
+
+```c
+enum fixed_addresses {
+    FIX_HOLE,
+    FIX_VSYSCALL,
+    FIX_APIC_BASE,
+    FIX_IO_APIC_BASE_0,
+    [...]
+    __end_of_fixed_addresses
+};
+```
+
+Fix-mapped linear addresses are placed at the end of the fourth gigabyte of linear addresses. The [`fix_to_virt()`](https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/fixmap.h#L134) function computes the constant linear address starting from the index:
+
+```c
+inline unsigned long fix_to_virt(const unsigned int idx)
+{
+    if (idx >= __end_of_fixed_addresses)
+        __this_fixmap_does_not_exist();
+    return (0xfffff000UL - (idx << PAGE_SHIFT));
+}
+```
+
+Assume that some kernel function invokes `fix_to_virt(FIX_IO_APIC_BASE_0)`:
+
+* Because the function is declared as "inline", the C compiler does not generate a call to `fix_to_virt()`, but inserts its code in the calling function.
+* The check on the index value is never performed at runtime.
+    * `FIX_IO_APIC_BASE_0` is a constant equal to 3, so the compiler can cut away the `if` statement because its condition is false at compile time.
+    * Conversely, if the condition is true or the argument of `fix_to_virt()` is not a constant, the compiler issues an error during the linking phase because the symbol `__this_fixmap_does_not_exist` is not defined anywhere.
+* Eventually, the compiler computes `0xfffff000-(3<<PAGE_SHIFT)` and replaces the `fix_to_virt()` function call with the constant linear address `0xffffc000`.
+
+To associate a physical address with a fix-mapped linear address, the kernel uses the following two macros:
+
+* `set_fixmap(idx,phys)`
+* `set_fixmap_nocache(idx,phys)`
+
+Both of them initialize the Page Table entry corresponding to the `fix_to_virt(idx)` linear address with the physical address `phys`; however, the second function also sets the `PCD` flag of the Page Table entry, thus disabling the hardware cache when accessing the data in the page frame (see the section [Hardware Cache](#hardware-cache) earlier in this chapter).
+
+Conversely, `clear_fixmap(idx)` removes the linking between a fix-mapped linear address `idx` and the physical address.
+
 #### Handling the Hardware Cache and the TLB
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p72 on Final kernel Page Table when RAM size is more than 4096 MB**
+
+> The fourth Page Global Directory entry is then copied into the first entry, so as to mirror the mapping of the low physical memory in the first 896 MB of the linear address space. This mapping is required in order to complete the initialization of SMP systems
+
+<span class="text-danger">Question</span>: Why is that?
