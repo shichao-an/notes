@@ -485,6 +485,11 @@
             <li><a href="#handling-the-hardware-cache-and-the-tlb">Handling the Hardware Cache and the TLB</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1650,9 +1655,109 @@ Extended   XXXXXXXXXX0000000000000000000000
 <p>The identity mapping of the first megabytes of physical memory (8 MB in our example) built by the <code>startup_32()</code> function is required to complete the initialization phase of the kernel. When this mapping is no longer necessary, the kernel clears the corresponding page table entries by invoking the <code>zap_low_mappings()</code> function.</p>
 <p>Actually, this description does not state the whole truth. The later section <a href="#fix-mapped-linear-addresses">Fix-Mapped Linear Addresses</a> will discuss that the kernel also adjusts the entries of Page Tables corresponding to the "fix-mapped linear addresses".</p>
 <h5 id="final-kernel-page-table-when-ram-size-is-between-896-mb-and-4096-mb"><strong>Final kernel Page Table when RAM size is between 896 MB and 4096 MB</strong></h5>
+<p>In this case, the RAM cannot be mapped entirely into the kernel linear address space. The best Linux can do during the initialization phase is to map a RAM window of size 896 MB into the kernel linear address space. If a program needs to address other parts of the existing RAM, some other linear address interval must be mapped to the required RAM. This implies changing the value of some page table entries. This kind of dynamic remapping is discussed in Chapter 8. To initialize the Page Global Directory, the kernel uses the same code as in the previous case.</p>
 <h5 id="final-kernel-page-table-when-ram-size-is-more-than-4096-mb"><strong>Final kernel Page Table when RAM size is more than 4096 MB</strong></h5>
+<p>The kernel Page Table initialization for computers with more than 4 GB deals with cases in which the following happens:</p>
+<ul>
+<li>The CPU model supports Physical Address Extension (PAE).</li>
+<li>The amount of RAM is larger than 4 GB.</li>
+<li>The kernel is compiled with PAE support.</li>
+</ul>
+<p>Although PAE handles 36-bit physical addresses, linear addresses are still 32-bit addresses. As in the previous case, Linux maps a 896-MB RAM window into the kernel linear address space; the remaining RAM is left unmapped and handled by dynamic remapping, as described in Chapter 8. The main difference with the previous case is that a three-level paging model is used, so the Page Global Directory is initialized by a cycle equivalent to the following:</p>
+<div class="codehilite"><pre><span class="n">pgd_idx</span> <span class="o">=</span> <span class="n">pgd_index</span><span class="p">(</span><span class="n">PAGE_OFFSET</span><span class="p">);</span> <span class="cm">/* 3 */</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">pgd_idx</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+    <span class="n">set_pgd</span><span class="p">(</span><span class="n">swapper_pg_dir</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="n">__pgd</span><span class="p">(</span><span class="n">__pa</span><span class="p">(</span><span class="n">empty_zero_page</span><span class="p">)</span> <span class="o">+</span> <span class="mh">0x001</span><span class="p">));</span>
+    <span class="cm">/* 0x001 == Present */</span>
+<span class="n">pgd</span> <span class="o">=</span> <span class="n">swapper_pg_dir</span> <span class="o">+</span> <span class="n">pgd_idx</span><span class="p">;</span>
+<span class="n">phys_addr</span> <span class="o">=</span> <span class="mh">0x00000000</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">PTRS_PER_PGD</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">,</span> <span class="o">++</span><span class="n">pgd</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">pmd</span> <span class="o">=</span> <span class="p">(</span><span class="n">pmd_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">alloc_bootmem_low_pages</span><span class="p">(</span><span class="n">PAGE_SIZE</span><span class="p">);</span>
+    <span class="n">set_pgd</span><span class="p">(</span><span class="n">pgd</span><span class="p">,</span> <span class="n">__pgd</span><span class="p">(</span><span class="n">__pa</span><span class="p">(</span><span class="n">pmd</span><span class="p">)</span> <span class="o">|</span> <span class="mh">0x001</span><span class="p">));</span> <span class="cm">/* 0x001 == Present */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">phys_addr</span> <span class="o">&lt;</span> <span class="n">max_low_pfn</span> <span class="o">*</span> <span class="n">PAGE_SIZE</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">j</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">PTRS_PER_PMD</span> <span class="cm">/* 512 */</span>
+                  <span class="o">&amp;&amp;</span> <span class="n">phys_addr</span> <span class="o">&lt;</span> <span class="n">max_low_pfn</span><span class="o">*</span><span class="n">PAGE_SIZE</span><span class="p">;</span> <span class="o">++</span><span class="n">j</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">set_pmd</span><span class="p">(</span><span class="n">pmd</span><span class="p">,</span> <span class="n">__pmd</span><span class="p">(</span><span class="n">phys_addr</span> <span class="o">|</span>
+                                <span class="n">pgprot_val</span><span class="p">(</span><span class="n">__pgprot</span><span class="p">(</span><span class="mh">0x1e3</span><span class="p">))));</span>
+            <span class="cm">/* 0x1e3 == Present, Accessed, Dirty, Read/Write,</span>
+<span class="cm">                        Page Size, Global */</span>
+            <span class="n">phys_addr</span> <span class="o">+=</span> <span class="n">PTRS_PER_PTE</span> <span class="o">*</span> <span class="n">PAGE_SIZE</span><span class="p">;</span> <span class="cm">/* 0x200000 */</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">swapper_pg_dir</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">swapper_pg_dir</span><span class="p">[</span><span class="n">pgd_idx</span><span class="p">];</span>
+</pre></div>
+
+
+<p>The above code does the following:</p>
+<ul>
+<li>The kernel initializes the first three entries in the Page Global Directory corresponding to the user linear address space with the address of an empty page (<code>empty_zero_page</code>).</li>
+<li>The fourth entry is initialized with the address of a Page Middle Directory (<code>pmd</code>) allocated by invoking <code>alloc_bootmem_low_pages()</code>. The first 448 entries in the Page Middle Directory (there are 512 entries, but the last 64 are reserved for noncontiguous memory allocation; see the section "Noncontiguous Memory Area Management" in Chapter 8) are filled with the physical address of the first 896 MB of RAM.</li>
+<li>The fourth Page Global Directory entry is then copied into the first entry, so as to mirror the mapping of the low physical memory in the first 896 MB of the linear address space. This mapping is required in order to complete the initialization of SMP systems: when it is no longer necessary, the kernel clears the corresponding page table entries by invoking the <code>zap_low_mappings()</code> function, as in the previous cases.</li>
+</ul>
+<p>Notice that:</p>
+<ul>
+<li>All CPU models that support PAE also support large 2-MB pages and global pages.</li>
+<li>As in the previous cases, whenever possible, Linux uses large pages to reduce the number of Page Tables.</li>
+</ul>
 <h4 id="fix-mapped-linear-addresses">Fix-Mapped Linear Addresses</h4>
+<p>The previous sections discussed that the initial part of the fourth gigabyte of kernel linear addresses maps the physical memory of the system. However, at least 128 MB of linear addresses are always left available because the kernel uses them to implement:</p>
+<ul>
+<li>Noncontiguous memory allocation, which is just a special way to dynamically allocate and release pages of memory, and is described in the section "Linear Addresses of Noncontiguous Memory Areas" in Chapter 8.</li>
+<li>Fix-mapped linear addresses, which is focused in this section.</li>
+</ul>
+<p>Basically, a <em>fix-mapped linear address</em> is a constant linear address like <code>0xffffc000</code> whose corresponding physical address does not have to be the linear address minus <code>0xc000000</code>, but rather a physical address set in an arbitrary way. Thus, each fix-mapped linear address maps one page frame of the physical memory. Later chapters discuss that the kernel uses fix-mapped linear addresses instead of pointer variables that never change their value.</p>
+<p>Fix-mapped linear addresses are conceptually similar to the linear addresses that map the first 896 MB of RAM. However, a fix-mapped linear address can map any physical address, while the mapping established by the linear addresses in the initial portion of the fourth gigabyte is linear (linear address <em>X</em> maps physical address <em>X</em> - <code>PAGE_OFFSET</code>).</p>
+<p>With respect to variable pointers, fix-mapped linear addresses are more efficient:</p>
+<ul>
+<li>Dereferencing a variable pointer requires one memory access more than dereferencing an immediate constant address.</li>
+<li>Checking the value of a variable pointer before dereferencing it is a good programming practice; conversely, the check is never required for a constant linear address.</li>
+</ul>
+<p>Each fix-mapped linear address is represented by a small integer index defined in the <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/fixmap.h#L53"><code>enum fixed_addresses</code></a> (<a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/fixmap.h">include/asm-i386/fixmap.h</a>) data structure:</p>
+<div class="codehilite"><pre><span class="k">enum</span> <span class="n">fixed_addresses</span> <span class="p">{</span>
+    <span class="n">FIX_HOLE</span><span class="p">,</span>
+    <span class="n">FIX_VSYSCALL</span><span class="p">,</span>
+    <span class="n">FIX_APIC_BASE</span><span class="p">,</span>
+    <span class="n">FIX_IO_APIC_BASE_0</span><span class="p">,</span>
+    <span class="p">[...]</span>
+    <span class="n">__end_of_fixed_addresses</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Fix-mapped linear addresses are placed at the end of the fourth gigabyte of linear addresses. The <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/fixmap.h#L134"><code>fix_to_virt()</code></a> function computes the constant linear address starting from the index:</p>
+<div class="codehilite"><pre><span class="kr">inline</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="nf">fix_to_virt</span><span class="p">(</span><span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&gt;=</span> <span class="n">__end_of_fixed_addresses</span><span class="p">)</span>
+        <span class="n">__this_fixmap_does_not_exist</span><span class="p">();</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mh">0xfffff000UL</span> <span class="o">-</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;&lt;</span> <span class="n">PAGE_SHIFT</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Assume that some kernel function invokes <code>fix_to_virt(FIX_IO_APIC_BASE_0)</code>:</p>
+<ul>
+<li>Because the function is declared as "inline", the C compiler does not generate a call to <code>fix_to_virt()</code>, but inserts its code in the calling function.</li>
+<li>The check on the index value is never performed at runtime.<ul>
+<li><code>FIX_IO_APIC_BASE_0</code> is a constant equal to 3, so the compiler can cut away the <code>if</code> statement because its condition is false at compile time.</li>
+<li>Conversely, if the condition is true or the argument of <code>fix_to_virt()</code> is not a constant, the compiler issues an error during the linking phase because the symbol <code>__this_fixmap_does_not_exist</code> is not defined anywhere.</li>
+</ul>
+</li>
+<li>Eventually, the compiler computes <code>0xfffff000-(3&lt;&lt;PAGE_SHIFT)</code> and replaces the <code>fix_to_virt()</code> function call with the constant linear address <code>0xffffc000</code>.</li>
+</ul>
+<p>To associate a physical address with a fix-mapped linear address, the kernel uses the following two macros:</p>
+<ul>
+<li><code>set_fixmap(idx,phys)</code></li>
+<li><code>set_fixmap_nocache(idx,phys)</code></li>
+</ul>
+<p>Both of them initialize the Page Table entry corresponding to the <code>fix_to_virt(idx)</code> linear address with the physical address <code>phys</code>; however, the second function also sets the <code>PCD</code> flag of the Page Table entry, thus disabling the hardware cache when accessing the data in the page frame (see the section <a href="#hardware-cache">Hardware Cache</a> earlier in this chapter).</p>
+<p>Conversely, <code>clear_fixmap(idx)</code> removes the linking between a fix-mapped linear address <code>idx</code> and the physical address.</p>
 <h4 id="handling-the-hardware-cache-and-the-tlb">Handling the Hardware Cache and the TLB</h4>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p72-on-final-kernel-page-table-when-ram-size-is-more-than-4096-mb"><strong>p72 on Final kernel Page Table when RAM size is more than 4096 MB</strong></h5>
+<blockquote>
+<p>The fourth Page Global Directory entry is then copied into the first entry, so as to mirror the mapping of the low physical memory in the first 896 MB of the linear address space. This mapping is required in order to complete the initialization of SMP systems</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: Why is that?</p>
             </div>
         </div>
 
