@@ -424,6 +424,13 @@
         
             <li><a href="#concrete-type-and-interface-type">Concrete type and interface type *</a></li>
         
+            <li><a href="#the-iowriter-interface">The io.Writer interface *</a></li>
+        
+            <li><a href="#the-fmtstringer-interface">The fmt.Stringer interface *</a></li>
+        
+    
+        <li class="main "><a href="#interface-types">Interface Types</a></li>
+        
     
     </ul>
 </div></div>
@@ -441,8 +448,151 @@
 </ul>
 <h3 id="interfaces-as-contracts">Interfaces as Contracts</h3>
 <h4 id="concrete-type-and-interface-type">Concrete type and interface type *</h4>
-<p>All the types discussed so far are <em>concrete types</em>. A concrete type specifies the exact representation of its values and exposes the intrinsic operations of that representation, such as arithmetic for numbers, or indexing, <code>append</code>, and <code>range</code> for slices. A concrete type may also provide additional behaviors through its methods. When you have a value of a concrete type, you know exactly what it is and what you can do with it.</p>
-<p>There is another kind of type in Go called an <em>interface type</em>. An interface is an <em>abstract type</em>. It doesn't expose the representation or internal structure of its values, or the set of basic operations they support; it reveals only some of their methods. When you have a value of an interface type, you know nothing about what it is; you know only what it can do, or more precisely, what behaviors are provided by its methods.</p>
+<p>All the types discussed so far are <a href="https://en.wikipedia.org/wiki/Class_(computer_programming)#Abstract_and_Concrete"><strong>concrete types</strong></a>. A concrete type specifies the exact representation of its values and exposes the intrinsic operations of that representation, such as arithmetic for numbers, or indexing, <code>append</code>, and <code>range</code> for slices. A concrete type may also provide additional behaviors through its methods. When you have a value of a concrete type, you know exactly what it is and what you can do with it.</p>
+<p>There is another kind of type in Go called an <strong>interface type</strong>. An interface is an <a href="https://en.wikipedia.org/wiki/Abstract_type"><strong>abstract type</strong></a>. It doesn't expose the representation or internal structure of its values, or the set of basic operations they support; it reveals only some of their methods. When you have a value of an interface type, you know nothing about what it is; you know only what it can do, or more precisely, what behaviors are provided by its methods.</p>
+<h4 id="the-iowriter-interface">The <code>io.Writer</code> interface *</h4>
+<p>This book has used two similar functions for string formatting:</p>
+<ul>
+<li><code>fmt.Printf</code>, which writes the result to the standard output (a file)</li>
+<li><code>fmt.Sprintf</code>, which returns the result as a string</li>
+</ul>
+<p>Thanks to interfaces, both of these functions are in effect wrappers around a third function, <code>fmt.Fprintf</code>, which is agnostic about what happens to the result it computes:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">fmt</span>
+
+<span class="kd">func</span> <span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">,</span> <span class="nx">format</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">args</span> <span class="o">...</span><span class="kd">interface</span><span class="p">{})</span> <span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">Printf</span><span class="p">(</span><span class="nx">format</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">args</span> <span class="o">...</span><span class="kd">interface</span><span class="p">{})</span> <span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="nx">format</span><span class="p">,</span> <span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Sprintf</span><span class="p">(</span><span class="nx">format</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">args</span> <span class="o">...</span><span class="kd">interface</span><span class="p">{})</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">buf</span> <span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
+    <span class="nx">Fprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">buf</span><span class="p">,</span> <span class="nx">format</span><span class="p">,</span> <span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">buf</span><span class="p">.</span><span class="nx">String</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>F</code> prefix of <code>Fprintf</code> stands for <em>file</em> and indicates that the formatted output should be written to the file provided as the first argument.</p>
+<ul>
+<li>In the <code>Printf</code> case, the argument, <code>os.Stdout</code>, is an <a href="https://golang.org/pkg/os/#File"><code>*os.File</code></a>.</li>
+<li>In the <code>Sprintf</code> case, the argument is not a file but superficially resembles one: <code>&amp;buf</code> is a pointer to a memory buffer to which bytes can be written.</li>
+</ul>
+<p>The first parameter of <code>Fprintf</code> is not a file either. It's an <a href="https://golang.org/pkg/io/#Writer"><code>io.Writer</code></a>, which is an interface type with the following declaration:</p>
+<p><small><a href="https://github.com/golang/go/blob/master/src/io/io.go">go/src/io/io.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">io</span>
+
+<span class="c1">// Writer is the interface that wraps the basic Write method.</span>
+<span class="c1">//</span>
+<span class="c1">// Write writes len(p) bytes from p to the underlying data stream.</span>
+<span class="c1">// It returns the number of bytes written from p (0 &lt;= n &lt;= len(p))</span>
+<span class="c1">// and any error encountered that caused the write to stop early.</span>
+<span class="c1">// Write must return a non-nil error if it returns n &lt; len(p).</span>
+<span class="c1">// Write must not modify the slice data, even temporarily.</span>
+<span class="c1">//</span>
+<span class="c1">// Implementations must not retain p.</span>
+<span class="kd">type</span> <span class="nx">Writer</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Write</span><span class="p">(</span><span class="nx">p</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>io.Writer</code> interface defines the contract between <code>Fprintf</code> and its callers.</p>
+<ul>
+<li>The contract requires that the caller provide a value of a concrete type like <code>*os.File</code> or <code>*bytes.Buffer</code> that has a method called <code>Write</code> with the appropriate signature and behavior.</li>
+<li>The contract guarantees that <code>Fprintf</code> will do its job given any value that satisfies the <code>io.Writer</code> interface.</li>
+<li><code>Fprintf</code> may not assume that it is writing to a file or to memory, only that it can call <code>Write</code>.</li>
+</ul>
+<p>Because <code>fmt.Fprintf</code> assumes nothing about the representation of the value and relies only on the behaviors guaranteed by the <code>io.Writer</code> contract, we can safely pass a value of any concrete type that satisfies <code>io.Writer</code> as the first argument to <code>fmt.Fprintf</code>. This freedom to substitute one type for another that satisfies the same interface is called <em>substitutability</em>, and is a hallmark of object-oriented programming.</p>
+<p>The following example uses a new type. The <code>Write</code> method of the <code>*ByteCounter</code> type below merely counts the bytes written to it before discarding them. (The conversion is required to make the types of <code>len(p)</code> and <code>*c</code> match in the <code>+=</code> assignment statement.)</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/bytecounter/main.go">gopl.io/ch7/bytecounter/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">ByteCounter</span> <span class="kt">int</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">ByteCounter</span><span class="p">)</span> <span class="nx">Write</span><span class="p">(</span><span class="nx">p</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">*</span><span class="nx">c</span> <span class="o">+=</span> <span class="nx">ByteCounter</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">p</span><span class="p">))</span> <span class="c1">// convert int to ByteCounter</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nx">p</span><span class="p">),</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Since <code>*ByteCounter</code> satisfies the <code>io.Writer</code> contract, we can pass it to <code>Fprintf</code>; the <code>ByteCounter</code> correctly accumulates the length of the result.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">c</span> <span class="nx">ByteCounter</span>
+<span class="nx">c</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="c1">// &quot;5&quot;, = len(&quot;hello&quot;)</span>
+
+<span class="nx">c</span> <span class="p">=</span> <span class="mi">0</span> <span class="c1">// reset the counter</span>
+<span class="kd">var</span> <span class="nx">name</span> <span class="p">=</span> <span class="s">&quot;Dolly&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">c</span><span class="p">,</span> <span class="s">&quot;hello, %s&quot;</span><span class="p">,</span> <span class="nx">name</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="c1">// &quot;12&quot;, = len(&quot;hello, Dolly&quot;)</span>
+</pre></div>
+
+
+<h4 id="the-fmtstringer-interface">The <code>fmt.Stringer</code> interface *</h4>
+<p>Besides <code>io.Writer</code>, <code>fmt.Stringer</code> is another interface of great importance to the <code>fmt</code> package. <code>Fprintf</code> and <code>Fprintln</code> provide a way for types to control how their values are printed. For example:</p>
+<ul>
+<li>In <a href="../ch2/#type-declarations">Section 2.5</a>, we defined a <code>String</code> method for the <code>Celsius</code> type so that temperatures would print as "<code>100°C</code>.</li>
+<li>In <a href="../ch6/#example-bit-vector-type">Section 6.5</a>, we equipped <code>*IntSet</code> with a <code>String</code> method so that sets would be rendered using traditional set notation like "<code>{1 2 3}</code>".</li>
+</ul>
+<p>Declaring a <code>String</code> method makes a type satisfy <code>fmt.Stringer</code>, which is one of the most widely used interfaces of all:</p>
+<p><small><a href="https://github.com/golang/go/blob/master/src/fmt/print.go">go/src/fmt/print.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">fmt</span>
+
+<span class="c1">// The String method is used to print values passed</span>
+<span class="c1">// as an operand to any format that accepts a string</span>
+<span class="c1">// or to an unformatted printer such as Print.</span>
+<span class="kd">type</span> <span class="nx">Stringer</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><a href="#type-assertions">Section 7.10</a> will explain how the <code>fmt</code> package discovers which values satisfy this interface.</p>
+<h3 id="interface-types">Interface Types</h3>
+<p>An interface type specifies a set of methods that a concrete type must possess to be considered an instance of that interface.</p>
+<p>The <code>io.Writer</code> type is one of the most widely used interfaces because it provides an abstraction of all the types to which bytes can be written, such as files, memory buffers, network connections, HTTP clients, archivers and hashers. The <code>io</code> package defines many other useful interfaces. A <code>Reader</code> represents any type from which you can read bytes, and a <code>Closer</code> is any value that you can close, such as a file or a network connection. (Notice the naming convention for many of Go's single-method interfaces.)</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">io</span>
+
+<span class="kd">type</span> <span class="nx">Reader</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Read</span><span class="p">(</span><span class="nx">p</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Closer</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Close</span><span class="p">()</span> <span class="kt">error</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following are examples of new interface types as combinations of existing ones:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">ReadWriter</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Reader</span>
+    <span class="nx">Writer</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">ReadWriteCloser</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Reader</span>
+    <span class="nx">Writer</span>
+    <span class="nx">Closer</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The syntax used above, which resembles <a href="../ch4#struct-embedding-and-anonymous-fields">struct embedding</a>, enables us to name another interface as a shorthand for writing out all of its methods. This is called <em>embedding</em> an interface. We could have written <code>io.ReadWriter</code> without embedding like this:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">ReadWriter</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Read</span><span class="p">(</span><span class="nx">p</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+    <span class="nx">Write</span><span class="p">(</span><span class="nx">p</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We can even use a mixture of the two styles:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">ReadWriter</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Read</span><span class="p">(</span><span class="nx">p</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+    <span class="nx">Writer</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>All three declarations have the same effect. The order in which the methods appear is immaterial. All that matters is the set of methods.</p>
             </div>
         </div>
 
