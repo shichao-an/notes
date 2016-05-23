@@ -432,6 +432,11 @@
         <li class="main "><a href="#interface-types">Interface Types</a></li>
         
     
+        <li class="main "><a href="#interface-satisfaction">Interface Satisfaction</a></li>
+        
+            <li><a href="#empty-interface-interface">Empty interface: interface{} *</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -593,6 +598,80 @@
 
 
 <p>All three declarations have the same effect. The order in which the methods appear is immaterial. All that matters is the set of methods.</p>
+<h3 id="interface-satisfaction">Interface Satisfaction</h3>
+<p>A type <em>satisfies</em> an interface if it possesses all the methods the interface requires. For example:</p>
+<ul>
+<li>An <code>*os.File</code> satisfies <code>io.Reader</code>, <code>Writer</code>, <code>Closer</code>, and <code>ReadWriter</code>.</li>
+<li>A <code>*bytes.Buffer</code> satisfies <code>Reader</code>, <code>Writer</code>, and <code>ReadWriter</code>, but does not satisfy <code>Closer</code> because it does not have a <code>Close</code> method.</li>
+</ul>
+<p>As a shorthand, Go programmers often say that a concrete type "is a" particular interface type, meaning that it satisfies the interface. For example:</p>
+<ul>
+<li>A <code>*bytes.Buffer</code> is an <code>io.Writer</code>.</li>
+<li>An <code>*os.File</code> is an <code>io.ReadWriter</code>.</li>
+</ul>
+<p>The assignability rule (<a href="../ch2/##assignability">Section 2.4.2</a>) for interfaces is very simple: an expression may be assigned to an interface only if its type satisfies the interface. For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>           <span class="c1">// OK: *os.File has Write method</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>   <span class="c1">// OK: *bytes.Buffer has Write method</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span>         <span class="c1">// compile error: time.Duration lacks Write method</span>
+
+<span class="kd">var</span> <span class="nx">rwc</span> <span class="nx">io</span><span class="p">.</span><span class="nx">ReadWriteCloser</span>
+<span class="nx">rwc</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>         <span class="c1">// OK: *os.File has Read, Write, Close methods</span>
+<span class="nx">rwc</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="c1">// compile error: *bytes.Buffer lacks Close method</span>
+</pre></div>
+
+
+<p>This rule applies even when the right-hand side is itself an interface:</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="nx">rwc</span>     <span class="c1">// OK: io.ReadWriteCloser has Write method</span>
+<span class="nx">rwc</span> <span class="p">=</span> <span class="nx">w</span>     <span class="c1">// compile error: io.Writer lacks Close method</span>
+</pre></div>
+
+
+<p>We should explain one subtlety in what it means for a type to have a method. Recall from <a href="../ch6/#methods-with-a-pointer-receiver">Section 6.2</a> that for each named concrete type <code>T</code>, some of its methods have a receiver of type <code>T</code> itself whereas others require a <code>*T</code> pointer. Recall also that it is legal to call a <code>*T</code> method on an argument of type <code>T</code> as long as the argument is a variable; the compiler implicitly takes its address. However, this is mere syntactic sugar: a value of type <code>T</code> does not possess all the methods that a <code>*T</code> pointer does; as a result, <code>T</code> might satisfy fewer interfaces.</p>
+<p>For example, the <code>String</code> method of the <code>IntSet</code> type from <a href="../ch6/#example-bit-vector-type">Section 6.5</a> requires a pointer receiver, so we cannot call that method on a non-addressable <code>IntSet</code> value:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">IntSet</span> <span class="kd">struct</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="o">*</span><span class="nx">IntSet</span><span class="p">)</span> <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span>
+<span class="kd">var</span> <span class="nx">_</span> <span class="p">=</span> <span class="nx">IntSet</span><span class="p">{}.</span><span class="nx">String</span><span class="p">()</span> <span class="c1">// compile error: String requires *IntSet receiver</span>
+</pre></div>
+
+
+<p>But we can call it on an <code>IntSet</code> variable:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">s</span> <span class="nx">IntSet</span>
+<span class="kd">var</span> <span class="nx">_</span> <span class="p">=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">String</span><span class="p">()</span> <span class="c1">// OK: s is a variable and &amp;s has a String method</span>
+</pre></div>
+
+
+<p>However, since only <code>*IntSet</code> has a <code>String</code> method, only <code>*IntSet</code> satisfies the <code>fmt.Stringer</code> interface:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">_</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Stringer</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">s</span> <span class="c1">// OK</span>
+<span class="kd">var</span> <span class="nx">_</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Stringer</span> <span class="p">=</span> <span class="nx">s</span>  <span class="c1">// compile error: IntSet lacks String method</span>
+</pre></div>
+
+
+<p><a href="ch12.md#displaying-the-methods-of-a-type">Section 12.8</a> includes a program that prints the methods of an arbitrary value, and the <code>godoc -analysis=type</code> tool (<a href="../ch10/#documenting-packages">Section 10.7.4</a>) displays the methods of each type and the relationship between interfaces and concrete types.</p>
+<p>An interface wraps and conceals the concrete type and value that it holds. <u>Only the methods revealed by the interface type may be called, even if the concrete type has others</u>:</p>
+<div class="codehilite"><pre><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// OK: *os.File has Write method</span>
+<span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>                <span class="c1">// OK: *os.File has Close method</span>
+
+<span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// OK: io.Writer has Write method</span>
+<span class="nx">w</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>                <span class="c1">// compile error: io.Writer lacks Close method</span>
+</pre></div>
+
+
+<h4 id="empty-interface-interface">Empty interface: <code>interface{}</code> *</h4>
+<p>An interface with more methods, such as <code>io.ReadWriter</code>, tells us more about the values it contains, and places greater demands on the types that implement it, than does an interface with fewer methods such as <code>io.Reader</code>. Similarly, the type <code>interface{}</code>, which has no methods at all, tell us about nothing about the concrete types that satisfy it. This may seem useless, but in fact the type <code>interface{}</code>, which is called the <strong>empty interface</strong> type, is indispensable. Because the empty interface type places no demands on the types that satisfy it, we can assign any value to the empty interface.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">any</span> <span class="kd">interface</span><span class="p">{}</span>
+<span class="nx">any</span> <span class="p">=</span> <span class="kc">true</span>
+<span class="nx">any</span> <span class="p">=</span> <span class="mf">12.34</span>
+<span class="nx">any</span> <span class="p">=</span> <span class="s">&quot;hello&quot;</span>
+<span class="nx">any</span> <span class="p">=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">int</span><span class="p">{</span><span class="s">&quot;one&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<span class="nx">any</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The empty interface type has been used in the very first example in this book, because it is what allows functions like <code>fmt.Println</code>, or <code>errorf</code> in <a href="../ch5/#anonymous-functions">Section 5.7</a>, to accept arguments of any type.</p>
+<p>Having created an <code>interface{}</code> value containing a boolean, float, string, map, pointer, or any other type, we can do nothing directly to the value it holds since the interface has no methods. We need a way to get the value back out again, which can be done using a type assertion, discussed in <a href="#type-assertions">Section 7.10</a>.</p>
             </div>
         </div>
 

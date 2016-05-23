@@ -179,3 +179,90 @@ type ReadWriter interface {
 ```
 
 All three declarations have the same effect. The order in which the methods appear is immaterial. All that matters is the set of methods.
+
+### Interface Satisfaction
+
+A type *satisfies* an interface if it possesses all the methods the interface requires. For example:
+
+* An `*os.File` satisfies `io.Reader`, `Writer`, `Closer`, and `ReadWriter`.
+* A `*bytes.Buffer` satisfies `Reader`, `Writer`, and `ReadWriter`, but does not satisfy `Closer` because it does not have a `Close` method.
+
+As a shorthand, Go programmers often say that a concrete type "is a" particular interface type, meaning that it satisfies the interface. For example:
+
+* A `*bytes.Buffer` is an `io.Writer`.
+* An `*os.File` is an `io.ReadWriter`.
+
+The assignability rule ([Section 2.4.2](ch2.md##assignability)) for interfaces is very simple: an expression may be assigned to an interface only if its type satisfies the interface. For example:
+
+```go
+var w io.Writer
+w = os.Stdout           // OK: *os.File has Write method
+w = new(bytes.Buffer)   // OK: *bytes.Buffer has Write method
+w = time.Second         // compile error: time.Duration lacks Write method
+
+var rwc io.ReadWriteCloser
+rwc = os.Stdout         // OK: *os.File has Read, Write, Close methods
+rwc = new(bytes.Buffer) // compile error: *bytes.Buffer lacks Close method
+```
+
+This rule applies even when the right-hand side is itself an interface:
+
+```go
+w = rwc     // OK: io.ReadWriteCloser has Write method
+rwc = w     // compile error: io.Writer lacks Close method
+```
+
+We should explain one subtlety in what it means for a type to have a method. Recall from [Section 6.2](ch6.md#methods-with-a-pointer-receiver) that for each named concrete type `T`, some of its methods have a receiver of type `T` itself whereas others require a `*T` pointer. Recall also that it is legal to call a `*T` method on an argument of type `T` as long as the argument is a variable; the compiler implicitly takes its address. However, this is mere syntactic sugar: a value of type `T` does not possess all the methods that a `*T` pointer does; as a result, `T` might satisfy fewer interfaces.
+
+For example, the `String` method of the `IntSet` type from [Section 6.5](ch6.md#example-bit-vector-type) requires a pointer receiver, so we cannot call that method on a non-addressable `IntSet` value:
+
+```go
+type IntSet struct { /* ... */ }
+func (*IntSet) String() string
+var _ = IntSet{}.String() // compile error: String requires *IntSet receiver
+```
+
+But we can call it on an `IntSet` variable:
+
+```go
+var s IntSet
+var _ = s.String() // OK: s is a variable and &s has a String method
+```
+
+However, since only `*IntSet` has a `String` method, only `*IntSet` satisfies the `fmt.Stringer` interface:
+
+```go
+var _ fmt.Stringer = &s // OK
+var _ fmt.Stringer = s  // compile error: IntSet lacks String method
+```
+
+[Section 12.8](ch12.md#displaying-the-methods-of-a-type) includes a program that prints the methods of an arbitrary value, and the `godoc -analysis=type` tool ([Section 10.7.4](ch10.md#documenting-packages)) displays the methods of each type and the relationship between interfaces and concrete types.
+
+An interface wraps and conceals the concrete type and value that it holds. <u>Only the methods revealed by the interface type may be called, even if the concrete type has others</u>:
+
+```go
+os.Stdout.Write([]byte("hello")) // OK: *os.File has Write method
+os.Stdout.Close()                // OK: *os.File has Close method
+
+var w io.Writer
+w = os.Stdout
+w.Write([]byte("hello")) // OK: io.Writer has Write method
+w.Close()                // compile error: io.Writer lacks Close method
+```
+
+#### Empty interface: `interface{}` *
+
+An interface with more methods, such as `io.ReadWriter`, tells us more about the values it contains, and places greater demands on the types that implement it, than does an interface with fewer methods such as `io.Reader`. Similarly, the type `interface{}`, which has no methods at all, tell us about nothing about the concrete types that satisfy it. This may seem useless, but in fact the type `interface{}`, which is called the **empty interface** type, is indispensable. Because the empty interface type places no demands on the types that satisfy it, we can assign any value to the empty interface.
+
+```go
+var any interface{}
+any = true
+any = 12.34
+any = "hello"
+any = map[string]int{"one": 1}
+any = new(bytes.Buffer)
+```
+
+The empty interface type has been used in the very first example in this book, because it is what allows functions like `fmt.Println`, or `errorf` in [Section 5.7](ch5.md#anonymous-functions), to accept arguments of any type.
+
+Having created an `interface{}` value containing a boolean, float, string, map, pointer, or any other type, we can do nothing directly to the value it holds since the interface has no methods. We need a way to get the value back out again, which can be done using a type assertion, discussed in [Section 7.10](#type-assertions).
