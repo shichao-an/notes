@@ -266,3 +266,91 @@ any = new(bytes.Buffer)
 The empty interface type has been used in the very first example in this book, because it is what allows functions like `fmt.Println`, or `errorf` in [Section 5.7](ch5.md#anonymous-functions), to accept arguments of any type.
 
 Having created an `interface{}` value containing a boolean, float, string, map, pointer, or any other type, we can do nothing directly to the value it holds since the interface has no methods. We need a way to get the value back out again, which can be done using a type assertion, discussed in [Section 7.10](#type-assertions).
+
+Since interface satisfaction depends only on the methods of the two types involved, there is no need to declare the relationship between a concrete type and the interfaces it satisfies. However, it is occasionally useful to document and assert the relationship when it is intended but not otherwise enforced by the program. The declaration below asserts at compile time that a value of type `*bytes.Buffer` satisfies `io.Writer`:
+
+```go
+// *bytes.Buffer must satisfy io.Writer
+var w io.Writer = new(bytes.Buffer)
+```
+
+We needn't allocate a new variable since any value of type `*bytes.Buffer` will do, even `nil`, which we write as `(*bytes.Buffer)(nil)` using an explicit conversion. Since we never intend to refer to `w`, we can replace it with the blank identifier, which makes more frugal variant:
+
+```go
+// *bytes.Buffer must satisfy io.Writer
+var _ io.Writer = (*bytes.Buffer)(nil)
+```
+
+Non-empty interface types such as `io.Writer` are most often satisfied by a pointer type, particularly when one or more of the interface methods implies some kind of mutation to the receiver, as the `Write` method does. A pointer to a struct is an especially common method-bearing type.
+
+Pointer types are not the only types that satisfy interfaces, and even interfaces with mutator methods may be satisfied by other reference types. For example:
+
+* Slice types with methods (`geometry.Path`, [Section 6.1](ch6.md#method-declarations))
+* Map types with methods (`url.Values`, [Section 6.2.1](ch6.md#nil-is-a-valid-receiver-value)),
+* Function type with methods (`http.HandlerFunc`, [Section 7.7](#the-httphandler-interface)).
+* Even basic types may satisfy interfaces: in [Section 7.4](#parsing-flags-with-flagvalue), `time.Duration` satisfies `fmt.Stringer`.
+
+A concrete type may satisfy many unrelated interfaces. For example, a program that organizes or sells digitized cultural artifacts might define the following set of concrete types:
+
+```text
+Album
+Book
+Movie
+Magazine
+Podcast
+TVEpisode
+Track
+```
+
+Each abstraction of interest can be expressed as an interface. Some properties are common to all artifacts, such as a title, a creation date, and a list of creators (authors or artists).
+
+```go
+type Artifact interface {
+	Title() string
+	Creators() []string
+	Created() time.Time
+}
+```
+
+Other properties are restricted to certain types of artifacts. Properties of the printed word are relevant only to books and magazines, whereas only movies and TV episodes have a screen resolution.
+
+```go
+type Text interface {
+	Pages() int
+	Words() int
+	PageSize() int
+}
+
+type Audio interface {
+	Stream() (io.ReadCloser, error)
+	RunningTime() time.Duration
+	Format() string // e.g., "MP3", "WAV"
+}
+
+type Video interface {
+  Stream() (io.ReadCloser, error)
+  RunningTime() time.Duration
+  Format() string // e.g., "MP4", "WMV"
+  Resolution() (x, y int)
+}
+```
+
+These interfaces are not the only useful way to group related concrete types together and express the facets they share in common. We may discover other groupings later. For example, if we find we need to handle `Audio` and `Video` items in the same way, we can define a `Streamer` interface to represent their common aspects without changing any existing type declarations.
+
+```go
+type Streamer interface {
+	Stream() (io.ReadCloser, error)
+	RunningTime() time.Duration
+	Format() string
+}
+```
+
+Each grouping of concrete types based on their shared behaviors can be expressed as an interface type. Unlike class-based languages, in which the set of interfaces satisfied by a class is explicit, in Go we can define new abstractions or groupings of interest when we need them, without modifying the declaration of the concrete type. This is particularly useful when the concrete type comes from a package written by a different author. Of course, there do need to be underlying commonalities in the concrete types.
+
+### Parsing Flags with `flag.Value`
+
+### Interface Values
+
+### The `http.Handler` Interface
+
+### Sorting with `sort.Interface`
