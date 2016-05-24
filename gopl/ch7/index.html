@@ -437,6 +437,18 @@
             <li><a href="#empty-interface-interface">Empty interface: interface{} *</a></li>
         
     
+        <li class="main "><a href="#parsing-flags-with-flagvalue">Parsing Flags with flag.Value</a></li>
+        
+    
+        <li class="main "><a href="#interface-values">Interface Values</a></li>
+        
+    
+        <li class="main "><a href="#the-httphandler-interface">The http.Handler Interface</a></li>
+        
+    
+        <li class="main "><a href="#sorting-with-sortinterface">Sorting with sort.Interface</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -672,6 +684,82 @@
 
 <p>The empty interface type has been used in the very first example in this book, because it is what allows functions like <code>fmt.Println</code>, or <code>errorf</code> in <a href="../ch5/#anonymous-functions">Section 5.7</a>, to accept arguments of any type.</p>
 <p>Having created an <code>interface{}</code> value containing a boolean, float, string, map, pointer, or any other type, we can do nothing directly to the value it holds since the interface has no methods. We need a way to get the value back out again, which can be done using a type assertion, discussed in <a href="#type-assertions">Section 7.10</a>.</p>
+<p>Since interface satisfaction depends only on the methods of the two types involved, there is no need to declare the relationship between a concrete type and the interfaces it satisfies. However, it is occasionally useful to document and assert the relationship when it is intended but not otherwise enforced by the program. The declaration below asserts at compile time that a value of type <code>*bytes.Buffer</code> satisfies <code>io.Writer</code>:</p>
+<div class="codehilite"><pre><span class="c1">// *bytes.Buffer must satisfy io.Writer</span>
+<span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
+</pre></div>
+
+
+<p>We needn't allocate a new variable since any value of type <code>*bytes.Buffer</code> will do, even <code>nil</code>, which we write as <code>(*bytes.Buffer)(nil)</code> using an explicit conversion. Since we never intend to refer to <code>w</code>, we can replace it with the blank identifier, which makes more frugal variant:</p>
+<div class="codehilite"><pre><span class="c1">// *bytes.Buffer must satisfy io.Writer</span>
+<span class="kd">var</span> <span class="nx">_</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Non-empty interface types such as <code>io.Writer</code> are most often satisfied by a pointer type, particularly when one or more of the interface methods implies some kind of mutation to the receiver, as the <code>Write</code> method does. A pointer to a struct is an especially common method-bearing type.</p>
+<p>Pointer types are not the only types that satisfy interfaces, and even interfaces with mutator methods may be satisfied by other reference types. For example:</p>
+<ul>
+<li>Slice types with methods (<code>geometry.Path</code>, <a href="../ch6/#method-declarations">Section 6.1</a>)</li>
+<li>Map types with methods (<code>url.Values</code>, <a href="../ch6/#nil-is-a-valid-receiver-value">Section 6.2.1</a>),</li>
+<li>Function type with methods (<code>http.HandlerFunc</code>, <a href="#the-httphandler-interface">Section 7.7</a>).</li>
+<li>Even basic types may satisfy interfaces: in <a href="#parsing-flags-with-flagvalue">Section 7.4</a>, <code>time.Duration</code> satisfies <code>fmt.Stringer</code>.</li>
+</ul>
+<p>A concrete type may satisfy many unrelated interfaces. For example, a program that organizes or sells digitized cultural artifacts might define the following set of concrete types:</p>
+<div class="codehilite"><pre>Album
+Book
+Movie
+Magazine
+Podcast
+TVEpisode
+Track
+</pre></div>
+
+
+<p>Each abstraction of interest can be expressed as an interface. Some properties are common to all artifacts, such as a title, a creation date, and a list of creators (authors or artists).</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Artifact</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Title</span><span class="p">()</span> <span class="kt">string</span>
+    <span class="nx">Creators</span><span class="p">()</span> <span class="p">[]</span><span class="kt">string</span>
+    <span class="nx">Created</span><span class="p">()</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Other properties are restricted to certain types of artifacts. Properties of the printed word are relevant only to books and magazines, whereas only movies and TV episodes have a screen resolution.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Text</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Pages</span><span class="p">()</span> <span class="kt">int</span>
+    <span class="nx">Words</span><span class="p">()</span> <span class="kt">int</span>
+    <span class="nx">PageSize</span><span class="p">()</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Audio</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Stream</span><span class="p">()</span> <span class="p">(</span><span class="nx">io</span><span class="p">.</span><span class="nx">ReadCloser</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+    <span class="nx">RunningTime</span><span class="p">()</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
+    <span class="nx">Format</span><span class="p">()</span> <span class="kt">string</span> <span class="c1">// e.g., &quot;MP3&quot;, &quot;WAV&quot;</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Video</span> <span class="kd">interface</span> <span class="p">{</span>
+  <span class="nx">Stream</span><span class="p">()</span> <span class="p">(</span><span class="nx">io</span><span class="p">.</span><span class="nx">ReadCloser</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+  <span class="nx">RunningTime</span><span class="p">()</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
+  <span class="nx">Format</span><span class="p">()</span> <span class="kt">string</span> <span class="c1">// e.g., &quot;MP4&quot;, &quot;WMV&quot;</span>
+  <span class="nx">Resolution</span><span class="p">()</span> <span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>These interfaces are not the only useful way to group related concrete types together and express the facets they share in common. We may discover other groupings later. For example, if we find we need to handle <code>Audio</code> and <code>Video</code> items in the same way, we can define a <code>Streamer</code> interface to represent their common aspects without changing any existing type declarations.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Streamer</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Stream</span><span class="p">()</span> <span class="p">(</span><span class="nx">io</span><span class="p">.</span><span class="nx">ReadCloser</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+    <span class="nx">RunningTime</span><span class="p">()</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
+    <span class="nx">Format</span><span class="p">()</span> <span class="kt">string</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each grouping of concrete types based on their shared behaviors can be expressed as an interface type. Unlike class-based languages, in which the set of interfaces satisfied by a class is explicit, in Go we can define new abstractions or groupings of interest when we need them, without modifying the declaration of the concrete type. This is particularly useful when the concrete type comes from a package written by a different author. Of course, there do need to be underlying commonalities in the concrete types.</p>
+<h3 id="parsing-flags-with-flagvalue">Parsing Flags with <code>flag.Value</code></h3>
+<h3 id="interface-values">Interface Values</h3>
+<h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
+<h3 id="sorting-with-sortinterface">Sorting with <code>sort.Interface</code></h3>
             </div>
         </div>
 
