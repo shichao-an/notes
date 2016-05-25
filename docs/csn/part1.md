@@ -2144,7 +2144,7 @@ int main(int argc, char* argv[])
 }
 ```
 
-### Stringification Operator
+#### Stringification Operator
 
 Unary operator `#` will turn a macro parameter into a string. See also [stringification](https://gcc.gnu.org/onlinedocs/cpp/Stringification.html) and [replacing text macros](http://en.cppreference.com/w/c/preprocessor/replace).
 
