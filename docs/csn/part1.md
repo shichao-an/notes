@@ -2119,7 +2119,7 @@ int main(int argc, char* argv[])
 }
 ```
 
-### Variadic Macros
+#### Variadic Macros
 
 `__VA_ARGS__` can be used to represent variable number of arguments.
 
@@ -2141,6 +2141,207 @@ int main(int argc, char* argv[])
 {
     ({ printf("%s, %d" "\n", "string", 1234); });
     return 0;
+}
+```
+
+### Stringification Operator
+
+Unary operator `#` will turn a macro parameter into a string. See also [stringification](https://gcc.gnu.org/onlinedocs/cpp/Stringification.html) and [replacing text macros](http://en.cppreference.com/w/c/preprocessor/replace).
+
+The following code:
+
+```c
+#define test(name) ({ \
+    printf("%s\n", #name); })
+
+int main(int argc, char* argv[])
+{
+    test(main);
+    test("\"main");
+    return EXIT_SUCCESS;
+}
+```
+
+will expand to:
+
+```c
+int main(int argc, char* argv[])
+{
+    ({ printf("%s\n", "main"); });
+    ({ printf("%s\n", "\"\\\"main\""); });
+    return 0;
+}
+```
+
+The preprocessor adds backslashes to escape the quotes surrounding embedded string literals, and doubles the backslashes within the string as necessary.
+
+#### Token-pasting Operator
+
+Binary operator `#` concatenate left operand and right operand to form a single token.
+
+The following code:
+
+```c
+#define test(name, index) ({ \
+    int i, len = sizeof(name ## index) / sizeof(int); \
+    for (i = 0; i < len; i++) \
+    { \
+    printf("%d\n", name ## index[i]); \
+    }})
+
+int main(int argc, char* argv[])
+{
+    int x1[] = { 1, 2, 3 };
+    int x2[] = { 11, 22, 33, 44, 55 };
+    test(x, 1);
+    test(x, 2);
+    return EXIT_SUCCESS;
+}
+```
+
+will expand to:
+
+```
+int main(int argc, char* argv[])
+{
+    int x1[] = { 1, 2, 3 };
+    int x2[] = { 11, 22, 33, 44, 55 };
+    ({ int i, len = sizeof(x1) / sizeof(int); for (i = 0; i < len; i++) { printf("%d\n", x1[i]); }});
+    ({ int i, len = sizeof(x2) / sizeof(int); for (i = 0; i < len; i++) { printf("%d\n", x2[i]); }});
+    return 0;
+}
+```
+
+#### Conditional Compilation
+
+`#if ... #elif ... #else ... #endif`, `#define`, and `#undef` can be used to perform [conditional compilation](https://en.wikipedia.org/wiki/Conditional_compilation). See also [conditional inclusion](http://en.cppreference.com/w/c/preprocessor/conditional).
+
+The following code:
+
+```c
+#define V1
+
+#if defined(V1) || defined(V2)
+    printf("Old\n");
+#else
+    printf("New\n");
+#endif
+
+#undef V1
+```
+
+will expand to:
+
+```c
+int main(int argc, char* argv[])
+{
+    printf("Old\n");
+    return 0;
+}
+```
+
+`#ifdef`, `#ifndef` can replace `#if`.
+
+The following code:
+
+```c
+#define V1
+
+#ifdef V1
+    printf("Old\n");
+#else
+    printf("New\n");
+#endif
+
+#undef A
+```
+
+will expand to:
+
+```c
+int main(int argc, char* argv[])
+{
+    printf("Old\n");
+    return 0;
+}
+```
+
+#### `typeof`
+
+The GCC extension [`typeof`](https://gcc.gnu.org/onlinedocs/gcc/Typeof.html) can obtain the type of an argument.
+
+<small>[typeof.c](https://gist.github.com/shichao-an/962dc6f27da887a03efebced1f77f487#file-typeof-c)</small>
+
+```c
+#define test(x) ({ \
+    typeof(x) _x = (x); \
+    _x += 1; \
+    _x; \
+})
+
+int main(int argc, char* argv[])
+{
+    float f = 0.5F;
+    float f2 = test(f);
+    printf("%f\n", f2);
+    return EXIT_SUCCESS;
+}
+```
+
+#### Others
+
+Some commonly-used special constants ([Standard Predefined Macros](https://gcc.gnu.org/onlinedocs/cpp/Standard-Predefined-Macros.html)):
+
+* `#error "message"` : define compiler error message.
+* `__DATE__`: string for the compiling date.
+* `__TIME__`: string for the compiling time.
+* `__FILE__`: current file name.
+* `__LINE__`: current line number.
+* `__func__`: current function name.
+
+### Debugging
+
+Develop a habit of using the [`assert`](http://en.cppreference.com/w/c/error/assert) macro on function arguments and conditions, which saves yourself much trouble.
+
+```c
+#include <assert.h>
+
+void test(int x)
+{
+    assert(x > 0);
+    printf("%d\n", x);
+}
+
+int main(int argc, char* argv[])
+{
+    test(-1);
+    return EXIT_SUCCESS;
+}
+```
+
+The expansion result is:
+
+```c
+// $ gcc -E main.c
+
+void test(int x)
+{
+    ((x > 0) ? (void) (0) : __assert_fail ("x > 0", "main.c", 16, __PRETTY_FUNCTION__));
+    printf("%d\n", x);
+}
+```
+
+If the `assert` condition expression is not true, it outputs error and [aborts](http://en.cppreference.com/w/c/program/abort).
+
+However, when compiling a release version, remember to add `-DNDEBUG` argument to disable `assert`.
+
+```c
+// $ gcc -E -DNDEBUG main.c
+
+void test(int x)
+{
+    ((void) (0));
+    printf("%d\n", x);
 }
 ```
 
