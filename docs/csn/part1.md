@@ -1598,19 +1598,19 @@ Note that `[]` takes precedence over `&`, and `*` takes precedence over arithmet
 
 The `const` qualifier can be used to declare:
 
-* A constant of pointer type.
-* A pointer that points to a constant.
+* A [constant pointer](part2.md#constant-pointer): a constant of pointer type.
+* A [pointer to constant](part2.md#pointer-to-constant): a pointer that points to a constant.
 
 ```c
 int x[] = { 1, 2, 3 };
 
-// constant of pointer type: the pointer itself is a constant, which cannot
+// constant pointer: the pointer itself is a constant, which cannot
 // be modified, but the object it points to can be modified
 int* const p1 = x;
 *(p1 + 1) = 22;
 printf("%d\n", x[1]);
 
-// pointer that points to a constant: the object it points to is a constant,
+// pointer to constant: the object it points to is a constant,
 // which cannot be modified, but the pointer can be modified
 int const *p2 = x;  // equivalent to: const int *p2 = x;
 p2++;
