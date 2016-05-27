@@ -761,6 +761,126 @@ Track
 
 <p>Each grouping of concrete types based on their shared behaviors can be expressed as an interface type. Unlike class-based languages, in which the set of interfaces satisfied by a class is explicit, in Go we can define new abstractions or groupings of interest when we need them, without modifying the declaration of the concrete type. This is particularly useful when the concrete type comes from a package written by a different author. Of course, there do need to be underlying commonalities in the concrete types.</p>
 <h3 id="parsing-flags-with-flagvalue">Parsing Flags with <code>flag.Value</code></h3>
+<p>This section discusses another standard interface, <code>flag.Value</code>, which enables us to define new notations for command-line flags. For example, the following program sleeps for a specified period of time:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/sleep/sleep.go">gopl.io/ch7/sleep/sleep.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">period</span> <span class="p">=</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">Duration</span><span class="p">(</span><span class="s">&quot;period&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span> <span class="s">&quot;sleep period&quot;</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">flag</span><span class="p">.</span><span class="nx">Parse</span><span class="p">()</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Sleeping for %v...&quot;</span><span class="p">,</span> <span class="o">*</span><span class="nx">period</span><span class="p">)</span>
+    <span class="nx">time</span><span class="p">.</span><span class="nx">Sleep</span><span class="p">(</span><span class="o">*</span><span class="nx">period</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Before it goes to sleep it prints the time period. The <code>fmt</code> package calls the <code>time.Duration</code>'s <code>String</code> method to print the period in a user-friendly notation instead of <a href="../ch6/#other-aspects-of-encapsulation">a number of nanoseconds</a>:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch7/sleep
+<span class="gp">$</span> ./sleep
+<span class="go">Sleeping for 1s...</span>
+</pre></div>
+
+
+<ul>
+<li>By default, the sleep period is one second, but it can be controlled through the <code>-period</code> command-line flag.</li>
+<li>The <code>flag.Duratio</code> function creates a flag variable of type <code>time.Duration</code> and allows the user to specify the duration in a variety of user-friendly formats, including the same notation printed by the <code>String</code> method. This symmetry of design leads to a nice user interface.</li>
+</ul>
+<div class="codehilite"><pre><span class="gp">$</span> ./sleep -period 50ms
+<span class="go">Sleeping for 50ms...</span>
+<span class="gp">$</span> ./sleep -period 2m30s
+<span class="go">Sleeping for 2m30s...</span>
+<span class="gp">$</span> ./sleep -period 1.5h
+<span class="go">Sleeping for 1h30m0s...</span>
+<span class="gp">$</span> ./sleep -period <span class="s2">&quot;1 day&quot;</span>
+<span class="go">invalid value &quot;1 day&quot; for flag -period: time: invalid duration 1 day</span>
+</pre></div>
+
+
+<p>It's easy to define new flag notations for our own data types. We need only define a type that satisfies the <code>flag.Value</code> interface, whose declaration is:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">flag</span>
+
+<span class="c1">// Value is the interface to the value stored in a flag.</span>
+<span class="kd">type</span> <span class="nx">Value</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span>
+    <span class="nx">Set</span><span class="p">(</span><span class="kt">string</span><span class="p">)</span> <span class="kt">error</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>The <code>String</code> method formats the flags' value for use in command-line help messages; thus every <code>flag.Value</code> is also a <code>fmt.Stringer</code>.</li>
+<li>The <code>Set</code> method parses its string argument and updates the flag value. In effect, the <code>Set</code> method is the inverse of the <code>String</code> method, and it is good practice for them to use the same notation.</li>
+</ul>
+<p>The following example defines a <code>celsiusFlag</code> type that allows a temperature to be specified in Celsius, or in Fahrenheit with an appropriate conversion. Notice that <code>celsiusFlag</code> embeds a <code>Celsius</code> (<a href="../ch2/#type-declarations">Section 2.5</a>), thereby getting a <code>String</code> method for free. To satisfy <code>flag.Value</code>, we need only declare the Set method:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/tempconv/tempconv.go">gopl.io/ch7/tempconv/tempconv.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">celsiusFlag</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">Celsius</span> <span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">f</span> <span class="o">*</span><span class="nx">celsiusFlag</span><span class="p">)</span> <span class="nx">Set</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">unit</span> <span class="kt">string</span>
+    <span class="kd">var</span> <span class="nx">value</span> <span class="kt">float64</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sscanf</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="s">&quot;%f%s&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">value</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">unit</span><span class="p">)</span> <span class="c1">// no error check needed</span>
+    <span class="k">switch</span> <span class="nx">unit</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="s">&quot;C&quot;</span><span class="p">,</span> <span class="s">&quot;°C&quot;</span><span class="p">:</span>
+        <span class="nx">f</span><span class="p">.</span><span class="nx">Celsius</span> <span class="p">=</span> <span class="nx">Celsius</span><span class="p">(</span><span class="nx">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">nil</span>
+    <span class="k">case</span> <span class="s">&quot;F&quot;</span><span class="p">,</span> <span class="s">&quot;°F&quot;</span><span class="p">:</span>
+        <span class="nx">f</span><span class="p">.</span><span class="nx">Celsius</span> <span class="p">=</span> <span class="nx">FToC</span><span class="p">(</span><span class="nx">Fahrenheit</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">nil</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;invalid temperature %q&quot;</span><span class="p">,</span> <span class="nx">s</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The call to <a href="https://golang.org/pkg/fmt/#Sscanf"><code>fmt.Sscanf</code></a> parses a floating-point number (<code>value</code>) and a string (<code>unit</code>) from the input <code>s</code>. Although one must usually check <code>Sscanf</code>'s error result, in this case we don't need to because if there was a problem, no switch case will match.</p>
+<p>The <code>CelsiusFlag</code> function below wraps it all up.</p>
+<div class="codehilite"><pre><span class="c1">// CelsiusFlag defines a Celsius flag with the specified name,</span>
+<span class="c1">// default value, and usage, and returns the address of the flag variable.</span>
+<span class="c1">// The flag argument must have a quantity and a unit, e.g., &quot;100C&quot;.</span>
+<span class="kd">func</span> <span class="nx">CelsiusFlag</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">value</span> <span class="nx">Celsius</span><span class="p">,</span> <span class="nx">usage</span> <span class="kt">string</span><span class="p">)</span> <span class="o">*</span><span class="nx">Celsius</span> <span class="p">{</span>
+    <span class="nx">f</span> <span class="o">:=</span> <span class="nx">celsiusFlag</span><span class="p">{</span><span class="nx">value</span><span class="p">}</span>
+    <span class="nx">flag</span><span class="p">.</span><span class="nx">CommandLine</span><span class="p">.</span><span class="nx">Var</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">f</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">usage</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">f</span><span class="p">.</span><span class="nx">Celsius</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>To the caller, it returns a pointer to the <code>Celsius</code> field embedded within the <code>celsiusFlag</code> variable <code>f</code>. The <code>Celsius</code> field is the variable that will be updated by the <code>Set</code> method during flags processing.</li>
+<li>The call to <code>Var</code> adds the flag to the application's set of command-line flags, the global variable <code>flag.CommandLine</code>. Programs with complex command-line interfaces may have several variables of this type.</li>
+<li><u>The call to <code>Var</code> assigns a <code>*celsiusFlag</code> argument to a <code>flag.Value</code> parameter, causing the compiler to check that <code>*celsiusFlag</code> has the necessary methods.</u> (See <a href="#interface-satisfaction">Section 7.3</a>)</li>
+</ul>
+<p>The following program uses <code>CelsiusFlag</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/tempflag/tempflag.go">gopl.io/ch7/tempflag/tempflag.go</a></small></p>
+<div class="codehilite"><pre>var temp = tempconv.CelsiusFlag(&quot;temp&quot;, 20.0, &quot;the temperature&quot;)
+
+func main() {
+    flag.Parse()
+    fmt.Println(*temp)
+}
+</pre></div>
+
+
+<p>Run this program:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch7/tempflag
+<span class="gp">$</span> ./tempflag
+<span class="go">20°C</span>
+<span class="gp">$</span> ./tempflag -temp -18C
+<span class="go">-18°C</span>
+<span class="gp">$</span> ./tempflag -temp 212°F
+<span class="go">100°C</span>
+<span class="gp">$</span> ./tempflag -temp 273.15K
+<span class="go">invalid value &quot;273.15K&quot; for flag -temp: invalid temperature &quot;273.15K&quot;</span>
+<span class="go">Usage of ./tempflag:</span>
+<span class="go">-temp value</span>
+<span class="go">the temperature (default 20°C)</span>
+<span class="gp">$</span> ./tempflag -help
+<span class="go">Usage of ./tempflag:</span>
+<span class="go">-temp value</span>
+<span class="go">the temperature (default 20°C)</span>
+</pre></div>
+
+
 <h3 id="interface-values">Interface Values</h3>
 <h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
 <h3 id="sorting-with-sortinterface">Sorting with <code>sort.Interface</code></h3>
