@@ -200,7 +200,7 @@ Note that `outline` "pushes" an element on stack, but there is no corresponding 
 
 The following is the outline of `https://golang.org`:
 
-```text
+```shell-session
 $ go build gopl.io/ch5/outline
 $ ./fetch https://golang.org | ./outline
 [html]
@@ -671,7 +671,7 @@ forEachNode(doc, startElement, endElement)
 
 This will output:
 
-```text
+```shell-session
 $ go build gopl.io/ch5/outline2
 $ ./outline2 http://gopl.io
 <html>
@@ -941,7 +941,7 @@ func main() {
 
 Crawl the web starting from `https://golang.org`:
 
-```text
+```shell-session
 $ go build gopl.io/ch5/findlinks3
 $ ./findlinks3 https://golang.org
 https://golang.org/
@@ -1123,7 +1123,7 @@ func title(url string) error {
 }
 ```
 
-```text
+```shell-session
 $ go build gopl.io/ch5/title1
 $ ./title1 http://gopl.io
 The Go Programming Language
