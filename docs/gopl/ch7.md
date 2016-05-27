@@ -349,6 +349,135 @@ Each grouping of concrete types based on their shared behaviors can be expressed
 
 ### Parsing Flags with `flag.Value`
 
+This section discusses another standard interface, `flag.Value`, which enables us to define new notations for command-line flags. For example, the following program sleeps for a specified period of time:
+
+<small>[gopl.io/ch7/sleep/sleep.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/sleep/sleep.go)</small>
+
+```go
+var period = flag.Duration("period", 1*time.Second, "sleep period")
+
+func main() {
+	flag.Parse()
+	fmt.Printf("Sleeping for %v...", *period)
+	time.Sleep(*period)
+	fmt.Println()
+}
+```
+
+Before it goes to sleep it prints the time period. The `fmt` package calls the `time.Duration`'s `String` method to print the period in a user-friendly notation instead of [a number of nanoseconds](ch6.md#other-aspects-of-encapsulation):
+
+```shell-session
+$ go build gopl.io/ch7/sleep
+$ ./sleep
+Sleeping for 1s...
+```
+
+* By default, the sleep period is one second, but it can be controlled through the `-period` command-line flag.
+* The `flag.Duratio` function creates a flag variable of type `time.Duration` and allows the user to specify the duration in a variety of user-friendly formats, including the same notation printed by the `String` method. This symmetry of design leads to a nice user interface.
+
+```shell-session
+$ ./sleep -period 50ms
+Sleeping for 50ms...
+$ ./sleep -period 2m30s
+Sleeping for 2m30s...
+$ ./sleep -period 1.5h
+Sleeping for 1h30m0s...
+$ ./sleep -period "1 day"
+invalid value "1 day" for flag -period: time: invalid duration 1 day
+```
+
+It's easy to define new flag notations for our own data types. We need only define a type that satisfies the `flag.Value` interface, whose declaration is:
+
+```go
+package flag
+
+// Value is the interface to the value stored in a flag.
+type Value interface {
+	String() string
+	Set(string) error
+}
+```
+
+* The `String` method formats the flags' value for use in command-line help messages; thus every `flag.Value` is also a `fmt.Stringer`.
+* The `Set` method parses its string argument and updates the flag value. In effect, the `Set` method is the inverse of the `String` method, and it is good practice for them to use the same notation.
+
+The following example defines a `celsiusFlag` type that allows a temperature to be specified in Celsius, or in Fahrenheit with an appropriate conversion. Notice that `celsiusFlag` embeds a `Celsius` ([Section 2.5](ch2.md#type-declarations)), thereby getting a `String` method for free. To satisfy `flag.Value`, we need only declare the Set method:
+
+<small>[gopl.io/ch7/tempconv/tempconv.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/tempconv/tempconv.go)</small>
+
+```go
+type celsiusFlag struct{ Celsius }
+
+func (f *celsiusFlag) Set(s string) error {
+	var unit string
+	var value float64
+	fmt.Sscanf(s, "%f%s", &value, &unit) // no error check needed
+	switch unit {
+	case "C", "°C":
+		f.Celsius = Celsius(value)
+		return nil
+	case "F", "°F":
+		f.Celsius = FToC(Fahrenheit(value))
+		return nil
+	}
+	return fmt.Errorf("invalid temperature %q", s)
+}
+```
+
+The call to [`fmt.Sscanf`](https://golang.org/pkg/fmt/#Sscanf) parses a floating-point number (`value`) and a string (`unit`) from the input `s`. Although one must usually check `Sscanf`'s error result, in this case we don't need to because if there was a problem, no switch case will match.
+
+The `CelsiusFlag` function below wraps it all up.
+
+```go
+// CelsiusFlag defines a Celsius flag with the specified name,
+// default value, and usage, and returns the address of the flag variable.
+// The flag argument must have a quantity and a unit, e.g., "100C".
+func CelsiusFlag(name string, value Celsius, usage string) *Celsius {
+	f := celsiusFlag{value}
+	flag.CommandLine.Var(&f, name, usage)
+	return &f.Celsius
+}
+```
+
+* To the caller, it returns a pointer to the `Celsius` field embedded within the `celsiusFlag` variable `f`. The `Celsius` field is the variable that will be updated by the `Set` method during flags processing.
+* The call to `Var` adds the flag to the application's set of command-line flags, the global variable `flag.CommandLine`. Programs with complex command-line interfaces may have several variables of this type.
+* <u>The call to `Var` assigns a `*celsiusFlag` argument to a `flag.Value` parameter, causing the compiler to check that `*celsiusFlag` has the necessary methods.</u> (See [Section 7.3](#interface-satisfaction))
+
+The following program uses `CelsiusFlag`:
+
+<small>[gopl.io/ch7/tempflag/tempflag.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/tempflag/tempflag.go)</small>
+
+```
+var temp = tempconv.CelsiusFlag("temp", 20.0, "the temperature")
+
+func main() {
+	flag.Parse()
+	fmt.Println(*temp)
+}
+```
+
+Run this program:
+
+```shell-session
+$ go build gopl.io/ch7/tempflag
+$ ./tempflag
+20°C
+$ ./tempflag -temp -18C
+-18°C
+$ ./tempflag -temp 212°F
+100°C
+$ ./tempflag -temp 273.15K
+invalid value "273.15K" for flag -temp: invalid temperature "273.15K"
+Usage of ./tempflag:
+-temp value
+the temperature (default 20°C)
+$ ./tempflag -help
+Usage of ./tempflag:
+-temp value
+the temperature (default 20°C)
+```
+
+
 ### Interface Values
 
 ### The `http.Handler` Interface
