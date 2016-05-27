@@ -479,7 +479,7 @@
 </tbody>
 </table>
 <h4 id="constant-pointer">Constant Pointer</h4>
-<p>A constant pointer (or <code>const</code> pointer) is "a constant whose type is pointer" or "a constant of pointer type", which cannot be modified after initialization and points to a fixed memory address. We cannot modify the value of the pointer itself, but we can modify the content of the pointed-to object.</p>
+<p>A <strong>constant pointer</strong> (or <code>const</code> pointer) is "a constant whose type is pointer" or "a constant of pointer type", which cannot be modified after initialization and points to a fixed memory address. We cannot modify the value of the pointer itself, but we can modify the content of the pointed-to object.</p>
 <div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
 <span class="kt">int</span><span class="o">*</span> <span class="k">const</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
 
@@ -495,6 +495,57 @@
 
 <p>In the above example, pointer <code>p</code> always points to the first element of array <code>x</code>, equivalent to the array name <code>x</code>. Because the pointer itself is a constant, operations such as <code>++p</code> and <code>p++</code> are not allowed, and will lead to a compilation error.</p>
 <h4 id="pointer-to-constant">Pointer to Constant</h4>
+<p>A <strong>pointer to constant</strong> is "a pointer that points to constant data (object)". The pointed-to object is treated as a constant (though the original object is not necessarily a constant). Assignment is not allowed through the pointer. Since the pointer itself is not a constant, it can point to other locations.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="k">const</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+<span class="c1">//*p = 100; ! ! // Compile Error!</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">y</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+
+<span class="c1">//*p = 100; ! ! // Compile Error!</span>
+</pre></div>
+
+
+<p>It is recommended to place <code>const</code> in the front for better recognition.</p>
+<p>Some special cases are:</p>
+<p>(1) It is said that the following code won't compile with Visual C++, but can compile with GCC:</p>
+<div class="codehilite"><pre><span class="k">const</span> <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+
+<span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1234</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+</pre></div>
+
+
+<p>(2) It perfectly makes sense for <code>const int* p</code> to point to <code>const int</code>, but modification (of the pointed-to value) through the pointer is not allowed.</p>
+<div class="codehilite"><pre><span class="k">const</span> <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+
+<span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1234</span><span class="p">;</span> <span class="o">!</span> <span class="o">!</span> <span class="o">!</span> <span class="c1">// Compile Error!</span>
+</pre></div>
+
+
+<p>(3) Declaring "a constant pointer to constant" is rare, but understandable.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span><span class="o">*</span> <span class="k">const</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">i</span><span class="p">;</span>
+
+<span class="n">p</span><span class="o">++</span><span class="p">;</span> <span class="o">!</span> <span class="o">!</span> <span class="o">!</span> <span class="o">!</span> <span class="c1">// Compile Error!</span>
+<span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span> <span class="o">!</span> <span class="o">!</span> <span class="o">!</span> <span class="c1">// Compile Error!</span>
+</pre></div>
+
+
+<p>It's easy to differentiate between a constant pointer and a pointer to constant by investigating what <code>const</code> qualifies, that is, whether <code>*</code> is left to or right to <code>const</code>. See also <a href="#constants-and-pointers">constants and pointers</a>.</p>
+<ul>
+<li><code>int* const p</code>: <code>const</code> qualifies the pointer variable <code>p</code>, so the pointer is a constant.</li>
+<li><code>int const *p</code>: <code>const</code> qualifies the pointed-to object <code>*p</code>, so it's a pointer to constant. It can also be written as <code>const int *p</code>.</li>
+<li><code>const int* const p</code>: a constant pointer to constant. The right <code>const</code> qualifies <code>p</code> as constant, and the left <code>const</code> means that <code>*p</code> is a constant.</li>
+</ul>
             </div>
         </div>
 
