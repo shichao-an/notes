@@ -1755,6 +1755,74 @@ Extended   XXXXXXXXXX0000000000000000000000
 <p>Both of them initialize the Page Table entry corresponding to the <code>fix_to_virt(idx)</code> linear address with the physical address <code>phys</code>; however, the second function also sets the <code>PCD</code> flag of the Page Table entry, thus disabling the hardware cache when accessing the data in the page frame (see the section <a href="#hardware-cache">Hardware Cache</a> earlier in this chapter).</p>
 <p>Conversely, <code>clear_fixmap(idx)</code> removes the linking between a fix-mapped linear address <code>idx</code> and the physical address.</p>
 <h4 id="handling-the-hardware-cache-and-the-tlb">Handling the Hardware Cache and the TLB</h4>
+<p>The last topic of memory addressing is how the kernel makes an optimal use of the hardware caches. Hardware caches and Translation Lookaside Buffers play a crucial role in boosting the performance of modern computer architectures. Several techniques are used by kernel developers to reduce the number of cache and TLB misses.</p>
+<h5 id="handling-the-hardware-cache"><strong>Handling the hardware cache</strong></h5>
+<p>As <a href="#hardware-cache">mentioned earlier in this chapter</a>, hardware caches are addressed by cache lines.</p>
+<p>The <code>L1_CACHE_BYTES</code> macro yields the size of a cache line in bytes:</p>
+<ul>
+<li>On Intel models earlier than the Pentium 4, this macro yields the value 32</li>
+<li>On a Pentium 4, this macro it yields the value 128.</li>
+</ul>
+<p>To optimize the cache hit rate, the kernel considers the architecture in making the following decisions:</p>
+<ul>
+<li>The most frequently used fields of a data structure are placed at the low offset within the data structure, so they can be cached in the same line.</li>
+<li>When allocating a large set of data structures, the kernel tries to store each of them in memory in such a way that all cache lines are used uniformly.</li>
+</ul>
+<p>Cache synchronization is performed automatically by the 80×86 microprocessors, thus the Linux kernel for this kind of processor does not perform any hardware cache flushing. The kernel does provide, however, cache flushing interfaces for processors that do not synchronize caches.</p>
+<h5 id="handling-the-tlb"><strong>Handling the TLB</strong></h5>
+<p>Processors cannot synchronize their own TLB cache automatically because it is the kernel (not the hardware) that decides when a mapping between a linear and a physical address is no longer valid.</p>
+<p>Linux 2.6 offers several TLB flush methods that should be applied appropriately, depending on the type of page table change. The following table shows architecture-independent TLB-invalidating methods:</p>
+<table>
+<thead>
+<tr>
+<th>Method name</th>
+<th>Description</th>
+<th>Typically used when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>flush_tlb_all</code></td>
+<td>Flushes all TLB entries (including those that refer to global pages, that is, pages whose <code>Global</code> flag is set)</td>
+<td>Changing the kernel page table entries</td>
+</tr>
+<tr>
+<td><code>flush_tlb_kernel_range</code></td>
+<td>Flushes all TLB entries in a given range of linear addresses (including those that refer to global pages)</td>
+<td>Changing a range of kernel page table entries</td>
+</tr>
+<tr>
+<td><code>flush_tlb</code></td>
+<td>Flushes all TLB entries of the non-global pages owned by the current process</td>
+<td>Performing a process switch</td>
+</tr>
+<tr>
+<td><code>flush_tlb_mm</code></td>
+<td>Flushes all TLB entries of the non-global pages owned by a given process</td>
+<td>Forking a new process</td>
+</tr>
+<tr>
+<td><code>flush_tlb_range</code></td>
+<td>Flushes the TLB entries corresponding to a linear address interval of a given process</td>
+<td>Releasing a linear address interval of a process</td>
+</tr>
+<tr>
+<td><code>flush_tlb_pgtables</code></td>
+<td>Flushes the TLB entries of a given contiguous subset of page tables of a given process</td>
+<td>Releasing some page tables of a process</td>
+</tr>
+<tr>
+<td><code>flush_tlb_page</code></td>
+<td>Flushes the TLB of a single Page Table entry of a given process</td>
+<td>Processing a Page Fault</td>
+</tr>
+</tbody>
+</table>
+<p>Although the generic Linux kernel offers a rich set of TLB methods, every microprocessor usually offers a far more restricted set of TLB-invalidating assembly language instructions, such as the more flexible hardware platforms, Sun's <a href="https://en.wikipedia.org/wiki/UltraSPARC">UltraSPARC</a>. In contrast, Intel microprocessors offers only two TLB-invalidating techniques:</p>
+<ul>
+<li>All Pentium models automatically flush the TLB entries relative to non-global pages when a value is loaded into the <code>cr3</code> register.</li>
+<li>In Pentium Pro and later models, the <code>invlpg</code> assembly language instruction invalidates a single TLB entry mapping a given linear address.</li>
+</ul>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p72-on-final-kernel-page-table-when-ram-size-is-more-than-4096-mb"><strong>p72 on Final kernel Page Table when RAM size is more than 4096 MB</strong></h5>
