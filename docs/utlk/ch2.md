@@ -1009,6 +1009,34 @@ Although the generic Linux kernel offers a rich set of TLB methods, every microp
 * All Pentium models automatically flush the TLB entries relative to non-global pages when a value is loaded into the `cr3` register.
 * In Pentium Pro and later models, the `invlpg` assembly language instruction invalidates a single TLB entry mapping a given linear address.
 
+The following table lists the Linux TLB-invalidating macros for the Intel Pentium Pro and later processor, which exploit the hardware techniques mentioned above. These macros are the basic ingredients to implement the architecture-independent methods listed in the previous table.
+
+Macro name | Description | Used by
+---------- | ----------- | -------
+`__flush_tlb()` | Rewrites `cr3` register back into itself | `flush_tlb`, `flush_tlb_mm`, `flush_tlb_range`
+`__flush_tlb_global()` | Disables global pages by clearing the `PGE` flag of `cr4`, rewrites `cr3` register back into itself, and sets again the `PGE` flag | `flush_tlb_all`, `flush_tlb_kernel_range`
+`__flush_tlb_single(addr)` | Executes `invlpg` assembly language instruction with parameter `addr` | `flush_tlb_page`
+
+Notice that the `flush_tlb_pgtables` method is missing from the above table: in the 80×86 architecture nothing has to be done when a page table is unlinked from its parent table, thus the function implementing this method is empty.
+
+The architecture-independent TLB-invalidating methods are extended quite simply to multiprocessor systems. The function running on a CPU sends an [Interprocessor Interrupt](https://en.wikipedia.org/wiki/Inter-processor_interrupt) (see "Interprocessor Interrupt Handling" in [Chapter 4](ch4.md)) to the other CPUs that forces them to execute the proper TLB-invalidating function.
+
+As a general rule, <u>any process switch implies changing the set of active page tables. Local TLB entries relative to the old page tables must be flushed; this is done automatically when the kernel writes the address of the new Page Global Directory into the `cr3` control register.</u> However, the kernel succeeds in avoiding TLB flushes in the following cases:
+
+* When performing a process switch between two regular processes that use the same set of page tables (see the section [The `schedule()` Function](ch7.md#the-schedule-function) in [Chapter 7](ch7.md)).
+* When performing a process switch between a regular process and a kernel thread. <u>In fact, kernel threads do not have their own set of page tables; they use the set of page tables owned by the regular process that was scheduled last for execution on the CPU.</u> This is discussed in section [Memory Descriptor of Kernel Threads](ch9.md#memory-descriptor-of-kernel-threads) in [Chapter 9](ch9.md.).
+
+Besides process switches, there are other cases in which the kernel needs to flush some entries in a TLB. For instance:
+
+* When the kernel assigns a page frame to a User Mode process and stores its physical address into a Page Table entry, it must flush any local TLB entry that refers to the corresponding linear address.
+* On multiprocessor systems, the kernel also must flush the same TLB entry on the CPUs that are using the same set of page tables, if any.
+
+To avoid useless TLB flushing in multiprocessor systems, the kernel uses a technique called *lazy TLB mode*. The basic idea is the following: if several CPUs are using the same page tables and a TLB entry must be flushed on all of them, then TLB flushing may, in some cases, be delayed on CPUs running kernel threads.
+
+In fact, each kernel thread does not have its own set of page tables; rather, it makes use of the set of page tables belonging to a regular process. However, there is no need to invalidate a TLB entry that refers to a User Mode linear address, because no kernel thread accesses the User Mode address space.
+
+By the way, the `flush_tlb_all` method does not use the lazy TLB mode mechanism; it is usually invoked whenever the kernel modifies a Page Table entry relative to the Kernel Mode address space.
+
 ### Doubts and Solution
 
 #### Verbatim
