@@ -1823,6 +1823,48 @@ Extended   XXXXXXXXXX0000000000000000000000
 <li>All Pentium models automatically flush the TLB entries relative to non-global pages when a value is loaded into the <code>cr3</code> register.</li>
 <li>In Pentium Pro and later models, the <code>invlpg</code> assembly language instruction invalidates a single TLB entry mapping a given linear address.</li>
 </ul>
+<p>The following table lists the Linux TLB-invalidating macros for the Intel Pentium Pro and later processor, which exploit the hardware techniques mentioned above. These macros are the basic ingredients to implement the architecture-independent methods listed in the previous table.</p>
+<table>
+<thead>
+<tr>
+<th>Macro name</th>
+<th>Description</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__flush_tlb()</code></td>
+<td>Rewrites <code>cr3</code> register back into itself</td>
+<td><code>flush_tlb</code>, <code>flush_tlb_mm</code>, <code>flush_tlb_range</code></td>
+</tr>
+<tr>
+<td><code>__flush_tlb_global()</code></td>
+<td>Disables global pages by clearing the <code>PGE</code> flag of <code>cr4</code>, rewrites <code>cr3</code> register back into itself, and sets again the <code>PGE</code> flag</td>
+<td><code>flush_tlb_all</code>, <code>flush_tlb_kernel_range</code></td>
+</tr>
+<tr>
+<td><code>__flush_tlb_single(addr)</code></td>
+<td>Executes <code>invlpg</code> assembly language instruction with parameter <code>addr</code></td>
+<td><code>flush_tlb_page</code></td>
+</tr>
+</tbody>
+</table>
+<p>Notice that the <code>flush_tlb_pgtables</code> method is missing from the above table: in the 80×86 architecture nothing has to be done when a page table is unlinked from its parent table, thus the function implementing this method is empty.</p>
+<p>The architecture-independent TLB-invalidating methods are extended quite simply to multiprocessor systems. The function running on a CPU sends an <a href="https://en.wikipedia.org/wiki/Inter-processor_interrupt">Interprocessor Interrupt</a> (see "Interprocessor Interrupt Handling" in <a href="ch4.md">Chapter 4</a>) to the other CPUs that forces them to execute the proper TLB-invalidating function.</p>
+<p>As a general rule, <u>any process switch implies changing the set of active page tables. Local TLB entries relative to the old page tables must be flushed; this is done automatically when the kernel writes the address of the new Page Global Directory into the <code>cr3</code> control register.</u> However, the kernel succeeds in avoiding TLB flushes in the following cases:</p>
+<ul>
+<li>When performing a process switch between two regular processes that use the same set of page tables (see the section <a href="ch7.md#the-schedule-function">The <code>schedule()</code> Function</a> in <a href="ch7.md">Chapter 7</a>).</li>
+<li>When performing a process switch between a regular process and a kernel thread. <u>In fact, kernel threads do not have their own set of page tables; they use the set of page tables owned by the regular process that was scheduled last for execution on the CPU.</u> This is discussed in section <a href="ch9.md#memory-descriptor-of-kernel-threads">Memory Descriptor of Kernel Threads</a> in <a href="../ch9.md.">Chapter 9</a>.</li>
+</ul>
+<p>Besides process switches, there are other cases in which the kernel needs to flush some entries in a TLB. For instance:</p>
+<ul>
+<li>When the kernel assigns a page frame to a User Mode process and stores its physical address into a Page Table entry, it must flush any local TLB entry that refers to the corresponding linear address.</li>
+<li>On multiprocessor systems, the kernel also must flush the same TLB entry on the CPUs that are using the same set of page tables, if any.</li>
+</ul>
+<p>To avoid useless TLB flushing in multiprocessor systems, the kernel uses a technique called <em>lazy TLB mode</em>. The basic idea is the following: if several CPUs are using the same page tables and a TLB entry must be flushed on all of them, then TLB flushing may, in some cases, be delayed on CPUs running kernel threads.</p>
+<p>In fact, each kernel thread does not have its own set of page tables; rather, it makes use of the set of page tables belonging to a regular process. However, there is no need to invalidate a TLB entry that refers to a User Mode linear address, because no kernel thread accesses the User Mode address space.</p>
+<p>By the way, the <code>flush_tlb_all</code> method does not use the lazy TLB mode mechanism; it is usually invoked whenever the kernel modifies a Page Table entry relative to the Kernel Mode address space.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p72-on-final-kernel-page-table-when-ram-size-is-more-than-4096-mb"><strong>p72 on Final kernel Page Table when RAM size is more than 4096 MB</strong></h5>
