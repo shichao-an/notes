@@ -477,8 +477,87 @@ Usage of ./tempflag:
 the temperature (default 20°C)
 ```
 
-
 ### Interface Values
+
+Conceptually, an **interface value** (a value of an interface type) has two components:
+
+* A concrete type, called the interface's *dynamic type*
+* A value of that type, called the interface's *dynamic value*
+
+For a statically typed language like Go, types are a compile-time concept, so a type is not a value. In our conceptual model, a set of values called *type descriptors* provide information about each type, such as its name and methods. In an interface value, the type component is represented by the appropriate type descriptor.
+
+In the four statements below, the variable `w` takes on three different values. (The initial and final values are the same.)
+
+```go
+var w io.Writer
+w = os.Stdout
+w = new(bytes.Buffer)
+w = nil
+```
+
+The first statement declares `w`:
+
+```go
+var w io.Writer
+```
+
+In Go, variables are always initialized to a well-defined value, and interfaces are no exception.  The zero value for an interface has both its type and value components set to `nil` (see the figure below).
+
+[![Figure 7.1. A nil interface value.](figure_7.1.png)](figure_7.1.png "Figure 7.1. A nil interface value.")
+
+An interface value is described as nil or non-nil based on its dynamic type, so this is a nil interface value. You can test whether an interface value is nil using `w == nil` or `w != nil`. Calling any method of a nil interface value causes a panic:
+
+```go
+w.Write([]byte("hello")) // panic: nil pointer dereference
+```
+
+The second statement assigns a value of type `*os.File` to `w`:
+
+```go
+w = os.Stdout
+```
+
+This assignment involves an implicit conversion from a concrete type to an interface type, and is equivalent to the explicit conversion `io.Writer(os.Stdout)`. Such conversion, whether explicit or implicit, captures the type and the value of its operand. The interface value's dynamic type is set to the type descriptor for the pointer type `*os.File`, and its dynamic value holds a copy of `os.Stdout`, which is a pointer to the `os.File` variable representing the standard output of the process (see the figure below).
+
+[![Figure 7.2. An interface value containing an *os.File pointer.](figure_7.2.png)](figure_7.2.png "Figure 7.2. An interface value containing an *os.File pointer.")
+
+Calling the `Write` method on an interface value containing an `*os.File` pointer causes the `(*os.File).Write` method to be called, which prints "hello".
+
+```go
+w.Write([]byte("hello")) // "hello"
+```
+
+In general, we cannot know at compile time what the dynamic type of an interface value will be, so a call through an interface must use [*dynamic dispatch*](https://en.wikipedia.org/wiki/Dynamic_dispatch). Instead of a direct call, the compiler must generate code to obtain the address of the method named `Write` from the type descriptor, then make an indirect call to that address. The receiver argument for the call is a copy of the interface's dynamic value,` os.Stdout`. The effect is as if we had made this call directly:
+
+```go
+os.Stdout.Write([]byte("hello")) // "hello"
+```
+
+The third statement assigns a value of type `*bytes.Buffer` to the interface value:
+
+```go
+w = new(bytes.Buffer)
+```
+
+The dynamic type is now `*bytes.Buffer` and the dynamic value is a pointer to the newly allocated buffer (see figure below).
+
+[![Figure 7.3. An interface value containing a *bytes.Buffer pointer.](figure_7.3.png)](figure_7.3.png "Figure 7.3. An interface value containing a *bytes.Buffer pointer.")
+
+A call to the `Write` method uses the same mechanism as before:
+
+```go
+w.Write([]byte("hello")) // writes "hello" to the bytes.Buffer
+```
+
+This time, the type descriptor is `*bytes.Buffer`, so the `(*bytes.Buffer).Write` method is called, with the address of the buffer as the value of the receiver parameter. The call appends "`hello`" to the buffer.
+
+Finally, the fourth statement assigns `nil` to the interface value:
+
+```go
+w = nil
+```
+
+This resets both its components to `nil`, restoring `w` to the same state as when it was declared, as shown in [Figure 7.1](figure_7.1.png).
 
 ### The `http.Handler` Interface
 
