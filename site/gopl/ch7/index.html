@@ -882,6 +882,68 @@ func main() {
 
 
 <h3 id="interface-values">Interface Values</h3>
+<p>Conceptually, an <strong>interface value</strong> (a value of an interface type) has two components:</p>
+<ul>
+<li>A concrete type, called the interface's <em>dynamic type</em></li>
+<li>A value of that type, called the interface's <em>dynamic value</em></li>
+</ul>
+<p>For a statically typed language like Go, types are a compile-time concept, so a type is not a value. In our conceptual model, a set of values called <em>type descriptors</em> provide information about each type, such as its name and methods. In an interface value, the type component is represented by the appropriate type descriptor.</p>
+<p>In the four statements below, the variable <code>w</code> takes on three different values. (The initial and final values are the same.)</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="kc">nil</span>
+</pre></div>
+
+
+<p>The first statement declares <code>w</code>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+</pre></div>
+
+
+<p>In Go, variables are always initialized to a well-defined value, and interfaces are no exception.  The zero value for an interface has both its type and value components set to <code>nil</code> (see the figure below).</p>
+<p><a href="../figure_7.1.png" title="Figure 7.1. A nil interface value."><img alt="Figure 7.1. A nil interface value." src="../figure_7.1.png" /></a></p>
+<p>An interface value is described as nil or non-nil based on its dynamic type, so this is a nil interface value. You can test whether an interface value is nil using <code>w == nil</code> or <code>w != nil</code>. Calling any method of a nil interface value causes a panic:</p>
+<div class="codehilite"><pre><span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// panic: nil pointer dereference</span>
+</pre></div>
+
+
+<p>The second statement assigns a value of type <code>*os.File</code> to <code>w</code>:</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</pre></div>
+
+
+<p>This assignment involves an implicit conversion from a concrete type to an interface type, and is equivalent to the explicit conversion <code>io.Writer(os.Stdout)</code>. Such conversion, whether explicit or implicit, captures the type and the value of its operand. The interface value's dynamic type is set to the type descriptor for the pointer type <code>*os.File</code>, and its dynamic value holds a copy of <code>os.Stdout</code>, which is a pointer to the <code>os.File</code> variable representing the standard output of the process (see the figure below).</p>
+<p><a href="../figure_7.2.png" title="Figure 7.2. An interface value containing an *os.File pointer."><img alt="Figure 7.2. An interface value containing an *os.File pointer." src="../figure_7.2.png" /></a></p>
+<p>Calling the <code>Write</code> method on an interface value containing an <code>*os.File</code> pointer causes the <code>(*os.File).Write</code> method to be called, which prints "hello".</p>
+<div class="codehilite"><pre><span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// &quot;hello&quot;</span>
+</pre></div>
+
+
+<p>In general, we cannot know at compile time what the dynamic type of an interface value will be, so a call through an interface must use <a href="https://en.wikipedia.org/wiki/Dynamic_dispatch"><em>dynamic dispatch</em></a>. Instead of a direct call, the compiler must generate code to obtain the address of the method named <code>Write</code> from the type descriptor, then make an indirect call to that address. The receiver argument for the call is a copy of the interface's dynamic value,<code>os.Stdout</code>. The effect is as if we had made this call directly:</p>
+<div class="codehilite"><pre><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// &quot;hello&quot;</span>
+</pre></div>
+
+
+<p>The third statement assigns a value of type <code>*bytes.Buffer</code> to the interface value:</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The dynamic type is now <code>*bytes.Buffer</code> and the dynamic value is a pointer to the newly allocated buffer (see figure below).</p>
+<p><a href="../figure_7.3.png" title="Figure 7.3. An interface value containing a *bytes.Buffer pointer."><img alt="Figure 7.3. An interface value containing a *bytes.Buffer pointer." src="../figure_7.3.png" /></a></p>
+<p>A call to the <code>Write</code> method uses the same mechanism as before:</p>
+<div class="codehilite"><pre><span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// writes &quot;hello&quot; to the bytes.Buffer</span>
+</pre></div>
+
+
+<p>This time, the type descriptor is <code>*bytes.Buffer</code>, so the <code>(*bytes.Buffer).Write</code> method is called, with the address of the buffer as the value of the receiver parameter. The call appends "<code>hello</code>" to the buffer.</p>
+<p>Finally, the fourth statement assigns <code>nil</code> to the interface value:</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="kc">nil</span>
+</pre></div>
+
+
+<p>This resets both its components to <code>nil</code>, restoring <code>w</code> to the same state as when it was declared, as shown in <a href="../figure_7.1.png">Figure 7.1</a>.</p>
 <h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
 <h3 id="sorting-with-sortinterface">Sorting with <code>sort.Interface</code></h3>
             </div>

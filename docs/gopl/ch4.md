@@ -506,7 +506,7 @@ To remove an element from the middle of a slice, preserving the order of the rem
 
 ```go
 func remove(slice []int, i int) []int {
-  copy(slice[i:], slice[i+1:])
+	copy(slice[i:], slice[i+1:])
 	return slice[:len(slice)-1]
 }
 
