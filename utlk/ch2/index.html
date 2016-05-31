@@ -1862,9 +1862,32 @@ Extended   XXXXXXXXXX0000000000000000000000
 <li>When the kernel assigns a page frame to a User Mode process and stores its physical address into a Page Table entry, it must flush any local TLB entry that refers to the corresponding linear address.</li>
 <li>On multiprocessor systems, the kernel also must flush the same TLB entry on the CPUs that are using the same set of page tables, if any.</li>
 </ul>
+<h5 id="lazy-tlb-mode"><strong>Lazy TLB mode</strong> *</h5>
 <p>To avoid useless TLB flushing in multiprocessor systems, the kernel uses a technique called <em>lazy TLB mode</em>. The basic idea is the following: if several CPUs are using the same page tables and a TLB entry must be flushed on all of them, then TLB flushing may, in some cases, be delayed on CPUs running kernel threads.</p>
 <p>In fact, each kernel thread does not have its own set of page tables; rather, it makes use of the set of page tables belonging to a regular process. However, there is no need to invalidate a TLB entry that refers to a User Mode linear address, because no kernel thread accesses the User Mode address space.</p>
 <p>By the way, the <code>flush_tlb_all</code> method does not use the lazy TLB mode mechanism; it is usually invoked whenever the kernel modifies a Page Table entry relative to the Kernel Mode address space.</p>
+<p>When some CPUs start running a kernel thread, the kernel sets it into lazy TLB mode. When requests are issued to clear some TLB entries, each CPU in lazy TLB mode does not flush the corresponding entries; however, the CPU remembers that its current process is running on a set of page tables whose TLB entries for the User Mode addresses are invalid.</p>
+<ul>
+<li>As soon as the CPU in lazy TLB mode switches to a regular process with a different set of page tables, the hardware automatically flushes the TLB entries, and the kernel sets the CPU back in non-lazy TLB mode.</li>
+<li>However, if a CPU in lazy TLB mode switches to a regular process that owns the same set of page tables used by the previously running kernel thread, then any deferred TLB invalidation must be effectively applied by the kernel. This "lazy" invalidation is effectively achieved by flushing all non-global TLB entries of the CPU.</li>
+</ul>
+<p>Some extra data structures are needed to implement the lazy TLB mode:</p>
+<ul>
+<li>The <code>cpu_tlbstate</code> variable is a static array of <code>NR_CPUS</code> (number) <code>tlb_state</code> structures. (See <a href="https://github.com/shichao-an/linux-2.6.11.12/blob/master/include/asm-i386/tlbflush.h#L128">include/asm-i386/tlbflush.h</a>)</li>
+<li>The default value for <code>NR_CPUS</code> macro is 32, which denotes the maximum number of CPUs in the system</li>
+<li>Each <code>tlb_state</code> structure consists of:<ul>
+<li>An <code>active_mm</code> field pointing to the memory descriptor of the current process (see <a href="ch9.md">Chapter 9</a>)</li>
+<li>A <code>state</code> flag that can assume only two values: <code>TLBSTATE_OK</code> (non-lazy TLB mode) or <code>TLBSTATE_LAZY</code> (lazy TLB mode).</li>
+</ul>
+</li>
+<li>Furthermore, each memory descriptor includes a <code>cpu_vm_mask</code> field that stores the indices of the CPUs that should receive Interprocessor Interrupts related to TLB flushing. This field is meaningful only when the memory descriptor belongs to a process currently in execution.</li>
+</ul>
+<p>When a CPU starts executing a kernel thread, the kernel sets the <code>state</code> field of its <code>cpu_tlbstate</code> element to <code>TLBSTATE_LAZY</code>; moreover, the <code>cpu_vm_mask</code> field of the active memory descriptor stores the indices of all CPUs in the system, including the one that is entering in lazy TLB mode. When another CPU wants to invalidate the TLB entries of all CPUs relative to a given set of page tables, it delivers an Interprocessor Interrupt to all CPUs whose indices are included in the <code>cpu_vm_mask</code> field of the corresponding memory descriptor.</p>
+<p>When a CPU receives an Interprocessor Interrupt related to TLB flushing and verifies that it affects the set of page tables of its current process, it checks whether the <code>state</code> field of its <code>cpu_tlbstate</code> element is equal to <code>TLBSTATE_LAZY</code>. In this case, the kernel refuses to invalidate the TLB entries and removes the CPU index from the <code>cpu_vm_mask</code> field of the memory descriptor. This has two consequences:</p>
+<ul>
+<li>As long as the CPU remains in lazy TLB mode, it will not receive other Interprocessor Interrupts related to TLB flushing.</li>
+<li>If the CPU switches to another process that is using the same set of page tables as the kernel thread that is being replaced, the kernel invokes <code>__flush_tlb()</code> to invalidate all non-global TLB entries of the CPU.</li>
+</ul>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p72-on-final-kernel-page-table-when-ram-size-is-more-than-4096-mb"><strong>p72 on Final kernel Page Table when RAM size is more than 4096 MB</strong></h5>
