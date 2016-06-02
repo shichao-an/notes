@@ -944,6 +944,45 @@ func main() {
 
 
 <p>This resets both its components to <code>nil</code>, restoring <code>w</code> to the same state as when it was declared, as shown in <a href="../figure_7.1.png">Figure 7.1</a>.</p>
+<p>An interface value can hold arbitrarily large dynamic values. For example, the <code>time.Time</code>
+type is a struct type with several unexported fields.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+</pre></div>
+
+
+<p>This interface value is like the following figure:</p>
+<p><a href="../figure_7.4.png" title="Figure 7.4. An interface value holding a time.Time struct."><img alt="Figure 7.4. An interface value holding a time.Time struct." src="../figure_7.4.png" /></a></p>
+<p>Conceptually, the dynamic value always fits inside the interface value, no matter how large its type. Note that this is only a conceptual model; a realistic implementation is quite different.</p>
+<p>Interface values may be compared using <code>==</code> and <code>!=</code>. Two interface values are equal if either of the following occurs:</p>
+<ul>
+<li>Both of them are nil.</li>
+<li>Their dynamic types are identical and their dynamic values are equal according to the usual behavior of <code>==</code> for that type.</li>
+</ul>
+<p>Because interface values are comparable, they may be used as the keys of a map or as the operand of a switch statement. However, if two interface values are compared and have the same dynamic type, but that type is not comparable (e.g. slice), then the comparison fails with a panic:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span> <span class="o">==</span> <span class="nx">x</span><span class="p">)</span> <span class="c1">// panic: comparing uncomparable type []int</span>
+</pre></div>
+
+
+<p>Therefore, interface types are unusual: interface values are comparable, but may panic, while other types are either safely comparable or not comparable at all:</p>
+<ul>
+<li>Safely comparable, such as basic types and pointers</li>
+<li>Not comparable, such as slices, maps, and functions</li>
+</ul>
+<p>When comparing interface values or aggregate types that contain interface values, we must be aware of the potential for a panic. A similar risk exists when using interfaces as map keys or switch operands. <u>Only compare interface values if you are certain that they contain dynamic values of comparable types.</u></p>
+<p>When handling errors, or during debugging, it is often helpful to report the dynamic type of an interface value, using the <code>fmt</code> package's <code>%T</code> verb:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span> <span class="c1">// &quot;&lt;nil&gt;&quot;</span>
+
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span> <span class="c1">// &quot;*os.File&quot;</span>
+
+<span class="nx">w</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span> <span class="c1">// &quot;*bytes.Buffer&quot;</span>
+</pre></div>
+
+
+<p>Internally, <code>fmt</code> uses reflection (<a href="ch12.md">Chapter 12</a>) to obtain the name of the interface's dynamic type.</p>
 <h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
 <h3 id="sorting-with-sortinterface">Sorting with <code>sort.Interface</code></h3>
             </div>
