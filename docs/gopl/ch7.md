@@ -559,6 +559,54 @@ w = nil
 
 This resets both its components to `nil`, restoring `w` to the same state as when it was declared, as shown in [Figure 7.1](figure_7.1.png).
 
+An interface value can hold arbitrarily large dynamic values. For example, the `time.Time`
+type is a struct type with several unexported fields.
+
+```go
+var x interface{} = time.Now()
+```
+
+This interface value is like the following figure:
+
+[![Figure 7.4. An interface value holding a time.Time struct.](figure_7.4.png)](figure_7.4.png "Figure 7.4. An interface value holding a time.Time struct.")
+
+Conceptually, the dynamic value always fits inside the interface value, no matter how large its type. Note that this is only a conceptual model; a realistic implementation is quite different.
+
+Interface values may be compared using `==` and `!=`. Two interface values are equal if either of the following occurs:
+
+* Both of them are nil.
+* Their dynamic types are identical and their dynamic values are equal according to the usual behavior of `==` for that type.
+
+Because interface values are comparable, they may be used as the keys of a map or as the operand of a switch statement. However, if two interface values are compared and have the same dynamic type, but that type is not comparable (e.g. slice), then the comparison fails with a panic:
+
+```go
+var x interface{} = []int{1, 2, 3}
+fmt.Println(x == x) // panic: comparing uncomparable type []int
+```
+
+Therefore, interface types are unusual: interface values are comparable, but may panic, while other types are either safely comparable or not comparable at all:
+
+* Safely comparable, such as basic types and pointers
+* Not comparable, such as slices, maps, and functions
+
+When comparing interface values or aggregate types that contain interface values, we must be aware of the potential for a panic. A similar risk exists when using interfaces as map keys or switch operands. <u>Only compare interface values if you are certain that they contain dynamic values of comparable types.</u>
+
+When handling errors, or during debugging, it is often helpful to report the dynamic type of an interface value, using the `fmt` package's `%T` verb:
+
+```go
+var w io.Writer
+fmt.Printf("%T\n", w) // "<nil>"
+
+w = os.Stdout
+fmt.Printf("%T\n", w) // "*os.File"
+
+w = new(bytes.Buffer)
+fmt.Printf("%T\n", w) // "*bytes.Buffer"
+```
+
+Internally, `fmt` uses reflection ([Chapter 12](ch12.md)) to obtain the name of the interface's dynamic type.
+
+
 ### The `http.Handler` Interface
 
 ### Sorting with `sort.Interface`
