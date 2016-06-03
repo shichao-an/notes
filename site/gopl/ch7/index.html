@@ -446,6 +446,8 @@
     
         <li class="main "><a href="#interface-values">Interface Values</a></li>
         
+            <li><a href="#caveat-an-interface-containing-a-nil-pointer-is-non-nil">Caveat: An Interface Containing a Nil Pointer Is Non-Nil</a></li>
+        
     
         <li class="main "><a href="#the-httphandler-interface">The http.Handler Interface</a></li>
         
@@ -983,6 +985,51 @@ type is a struct type with several unexported fields.</p>
 
 
 <p>Internally, <code>fmt</code> uses reflection (<a href="ch12.md">Chapter 12</a>) to obtain the name of the interface's dynamic type.</p>
+<h4 id="caveat-an-interface-containing-a-nil-pointer-is-non-nil">Caveat: An Interface Containing a Nil Pointer Is Non-Nil</h4>
+<p>A nil interface value, which contains no value at all, is not the same as an interface value containing a pointer that happens to be nil.</p>
+<p>In the program below, when <code>debug</code> is set to <code>true</code>, the function collects the output of the function <code>f</code> in a <code>bytes.Buffer</code>.</p>
+<div class="codehilite"><pre><span class="kd">const</span> <span class="nx">debug</span> <span class="p">=</span> <span class="kc">true</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">buf</span> <span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
+    <span class="k">if</span> <span class="nx">debug</span> <span class="p">{</span>
+        <span class="nx">buf</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="c1">// enable collection of output</span>
+    <span class="p">}</span>
+    <span class="nx">f</span><span class="p">(</span><span class="nx">buf</span><span class="p">)</span> <span class="c1">// NOTE: subtly incorrect!</span>
+    <span class="k">if</span> <span class="nx">debug</span> <span class="p">{</span>
+        <span class="c1">// ...use buf...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// If out is non-nil, output will be written to it.</span>
+<span class="kd">func</span> <span class="nx">f</span><span class="p">(</span><span class="nx">out</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ...do something...</span>
+    <span class="k">if</span> <span class="nx">out</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">out</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;done!\n&quot;</span><span class="p">))</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We might expect that changing <code>debug</code> to <code>false</code> would disable the collection of the output, but in fact it causes the program to panic during the <code>out.Write</code> call:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">out</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">out</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;done!\n&quot;</span><span class="p">))</span> <span class="c1">// panic: nil pointer dereference</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When <code>main</code> calls <code>f</code>, it assigns a nil pointer of type <code>*bytes.Buffer</code> to the <code>out</code> parameter, so the dynamic value of <code>out</code> is <code>nil</code>. However, its dynamic type is <code>*bytes.Buffer</code>, meaning that <code>out</code> is a non-nil interface containing a nil pointer value (see figure below), so the defensive check <code>out != nil</code> is still true.</p>
+<p><a href="../figure_7.5.png" title="Figure 7.5. A non-nil interface containing a nil pointer."><img alt="Figure 7.5. A non-nil interface containing a nil pointer." src="../figure_7.5.png" /></a></p>
+<p>The dynamic dispatch mechanism determines that <code>(*bytes.Buffer).Write</code> must be called but this time with a receiver value that is nil. For some types, such as <code>*os.File</code>, nil is a valid receiver (<a href="../ch6/#nil-is-a-valid-receiver-value">Section 6.2.1</a>), but <code>*bytes.Buffer</code> is not among them. The method is called, but it panics as it tries to access the buffer.</p>
+<p>The problem is that although a nil <code>*bytes.Buffer</code> pointer has the methods needed to satisfy the interface, it doesn't satisfy the <em>behavioral</em> requirements of the interface. In particular, the call violates the implicit precondition of <code>(*bytes.Buffer).Write</code> that its receiver is not nil, so assigning the nil pointer to the interface was a mistake. The solution is to change the type of <code>buf</code> in <code>main</code> to <code>io.Writer</code>, thereby avoiding the assignment of the dysfunctional value to the interface in the first place:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">buf</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="k">if</span> <span class="nx">debug</span> <span class="p">{</span>
+    <span class="nx">buf</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="c1">// enable collection of output</span>
+<span class="p">}</span>
+<span class="nx">f</span><span class="p">(</span><span class="nx">buf</span><span class="p">)</span> <span class="c1">// OK</span>
+</pre></div>
+
+
 <h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
 <h3 id="sorting-with-sortinterface">Sorting with <code>sort.Interface</code></h3>
             </div>
