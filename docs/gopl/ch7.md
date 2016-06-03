@@ -606,6 +606,59 @@ fmt.Printf("%T\n", w) // "*bytes.Buffer"
 
 Internally, `fmt` uses reflection ([Chapter 12](ch12.md)) to obtain the name of the interface's dynamic type.
 
+#### Caveat: An Interface Containing a Nil Pointer Is Non-Nil
+
+A nil interface value, which contains no value at all, is not the same as an interface value containing a pointer that happens to be nil.
+
+In the program below, when `debug` is set to `true`, the function collects the output of the function `f` in a `bytes.Buffer`.
+
+```go
+const debug = true
+
+func main() {
+	var buf *bytes.Buffer
+	if debug {
+		buf = new(bytes.Buffer) // enable collection of output
+	}
+	f(buf) // NOTE: subtly incorrect!
+	if debug {
+		// ...use buf...
+	}
+}
+
+// If out is non-nil, output will be written to it.
+func f(out io.Writer) {
+	// ...do something...
+	if out != nil {
+		out.Write([]byte("done!\n"))
+	}
+}
+```
+
+We might expect that changing `debug` to `false` would disable the collection of the output, but in fact it causes the program to panic during the `out.Write` call:
+
+```go
+if out != nil {
+	out.Write([]byte("done!\n")) // panic: nil pointer dereference
+}
+```
+
+When `main` calls `f`, it assigns a nil pointer of type `*bytes.Buffer` to the `out` parameter, so the dynamic value of `out` is `nil`. However, its dynamic type is `*bytes.Buffer`, meaning that `out` is a non-nil interface containing a nil pointer value (see figure below), so the defensive check `out != nil` is still true.
+
+[![Figure 7.5. A non-nil interface containing a nil pointer.](figure_7.5.png)](figure_7.5.png "Figure 7.5. A non-nil interface containing a nil pointer.")
+
+The dynamic dispatch mechanism determines that `(*bytes.Buffer).Write` must be called but this time with a receiver value that is nil. For some types, such as `*os.File`, nil is a valid receiver ([Section 6.2.1](ch6.md#nil-is-a-valid-receiver-value)), but `*bytes.Buffer` is not among them. The method is called, but it panics as it tries to access the buffer.
+
+The problem is that although a nil `*bytes.Buffer` pointer has the methods needed to satisfy the interface, it doesn't satisfy the *behavioral* requirements of the interface. In particular, the call violates the implicit precondition of `(*bytes.Buffer).Write` that its receiver is not nil, so assigning the nil pointer to the interface was a mistake. The solution is to change the type of `buf` in `main` to `io.Writer`, thereby avoiding the assignment of the dysfunctional value to the interface in the first place:
+
+```go
+var buf io.Writer
+if debug {
+	buf = new(bytes.Buffer) // enable collection of output
+}
+f(buf) // OK
+```
+
 
 ### The `http.Handler` Interface
 
