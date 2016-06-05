@@ -433,9 +433,7 @@
     
         <li class="main "><a href="#softirqs">Softirqs</a></li>
         
-            <li><a href="#the-softirq-handler">The Softirq Handler</a></li>
-        
-            <li><a href="#executing-softirqs">Executing Softirqs</a></li>
+            <li><a href="#implementing-softirqs">Implementing Softirqs</a></li>
         
     
     </ul>
@@ -524,8 +522,10 @@
 <p>The <em>softirqs</em> and <em>tasklets</em> were introduced during the 2.3 development series, to completely replace the BH interface.</p>
 <ul>
 <li>Softirqs are a set of statically defined bottom halves that can run simultaneously on any processor; even two of the same type can run concurrently.</li>
-<li>Tasklets are flexible, dynamically created bottom halves built on top of softirqs.</li>
+<li>Tasklets are flexible, dynamically created bottom halves built on top of softirqs.<ul>
 <li>Two different tasklets can run concurrently on different processors, but two of the same type of tasklet cannot run simultaneously.</li>
+</ul>
+</li>
 </ul>
 <p>Tasklets are a good trade-off between performance and ease of use. For most bottom-half processing, the tasklet is sufficient. Softirqs are useful when performance is critical, such as with networking. Using softirqs requires more care, however, because two of the same softirq can run at the same time. In addition, softirqs must be registered statically at compile time. Conversely, code can dynamically register tasklets.</p>
 <p>While developing the 2.5 kernel, all BH users were converted to the other bottom-half interfaces. Additionally, the task queue interface was replaced by the work queue interface. Work queues are a simple yet useful method of queuing work to later be performed in process context.</p>
@@ -541,7 +541,7 @@
 <h5 id="dispelling-the-confusion"><strong>Dispelling the Confusion</strong></h5>
 <p><em>Bottom half</em> is a generic operating system term referring to the deferred portion of interrupt processing. All the kernel's mechanisms for deferring work are "bottom halves". Some people also confusingly call all bottom halves "softirqs".</p>
 <p>Bottom half also refers to the original deferred work mechanism in Linux. This mechanism is also known as a BH, so we call it by that name now and leave the former as a generic description. The BH mechanism was deprecated a while back and fully removed in the 2.5 development kernel series.</p>
-<p>In the current three methods exist for deferring work, tasklets are built on softirqs and work queues are their own subsystem. The following table presents a history of bottom halves.</p>
+<p>In the current three methods that exist for deferring work, tasklets are built on softirqs and work queues are their own subsystem. The following table presents a history of bottom halves.</p>
 <table>
 <thead>
 <tr>
@@ -574,6 +574,7 @@
 </table>
 <h3 id="softirqs">Softirqs</h3>
 <p>Softirqs are rarely used directly; tasklets, which are built on softirqs are a much more common form of bottom half. The softirq code lives in the file <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c">kernel/softirq.c</a> in the kernel source tree.</p>
+<h4 id="implementing-softirqs">Implementing Softirqs</h4>
 <p>Softirqs are statically allocated at compile time. Unlike tasklets, you cannot dynamically register and destroy softirqs. Softirqs are represented by the <code>softirq_action</code> structure, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h"><code>&lt;linux/interrupt.h&gt;</code></a>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L366">include/linux/interrupt.h#L366</a></small></p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">softirq_action</span>
