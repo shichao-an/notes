@@ -221,3 +221,84 @@ It checks for, and executes, any pending softirqs. It specifically does the foll
 7. The pointer `h` now points to the second entry in the array, and the pending bitmask now has the second bit as the first. Repeat the previous steps.
 8. Continue repeating until pending is zero, at which point there are no more pending softirqs and the work is done.
     * This check is sufficient to ensure `h` always points to a valid entry in `softirq_vec` because `pending` has at most 32 set bits and thus this loop executes at most 32 times.
+
+#### Using Softirqs
+
+Softirqs are reserved for the most timing-critical and important bottom-half processing on the system.
+
+Currently, only two subsystems directly use softirqs:
+
+* Networking devices
+* Block devices
+
+Additionally, kernel timers and tasklets are built on top of softirqs.
+
+If you add a new softirq, you normally want to ask yourself why using a tasklet is insufficient. Tasklets are dynamically created and are simpler to use because of their weaker locking requirements, and they still perform quite well. Nonetheless, for timing-critical applications that can do their own locking in an efficient way, softirqs might be the correct solution.
+
+##### **Assigning an Index**
+
+Softirqs are declared statically at compile time via an [`enum`](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L341) in `<linux/interrupt.h>`. The kernel uses this index, which starts at zero, as a relative priority. Softirqs with the lowest numerical priority execute before those with a higher numerical priority.
+
+Creating a new softirq includes adding a new entry to this `enum`. When adding a new softirq, you might not want to simply add your entry to the end of the list; instead, you need to insert the new entry depending on the priority you want to give it. By convention, `HI_SOFTIRQ` is always the first and `RCU_SOFTIRQ` is always the last entry. A new entry likely belongs in between `BLOCK_SOFTIRQ` and `TASKLET_SOFTIRQ`.
+
+The following table contains a list of the existing softirq types.
+
+Tasklet | Priority | Softirq Description
+------- | -------- | -------------------
+`HI_SOFTIRQ` | 0 | High-priority tasklets
+`TIMER_SOFTIRQ` | 1 | Timers
+`NET_TX_SOFTIRQ` | 2 | Send network packets
+`NET_RX_SOFTIRQ` | 3 | Receive network packets
+`BLOCK_SOFTIRQ` | 4 | Block devices
+`TASKLET_SOFTIRQ` | 5 | Normal priority tasklets
+`SCHED_SOFTIRQ` | 6 | Scheduler
+`HRTIMER_SOFTIRQ` | 7 | High-resolution timers
+`RCU_SOFTIRQ` | 8 | RCU locking
+
+##### **Registering Your Handler**
+
+Next, the softirq handler is registered at run-time via `open_softirq()`, which takes two parameters: the softirq's index and its handler function. For example, the networking subsystem registers its softirqs like this, in [net/core/dev.c](https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c):
+
+<small>[net/core/dev.c#L6017](https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c#L6017)</small>
+
+```c
+open_softirq(NET_TX_SOFTIRQ, net_tx_action);
+open_softirq(NET_RX_SOFTIRQ, net_rx_action);
+```
+
+* The softirq handlers run with interrupts enabled and cannot sleep.
+* While a handler runs, softirqs on the current processor are disabled. However, another processor can execute other softirqs.
+* If the same softirq is raised again while it is executing, another processor can run it simultaneously. This means that any shared data, even global data used only within the softirq handler, needs proper locking (as discussed in the next two chapters).
+
+Here, locking is an important point, and it is the reason tasklets are usually preferred. Simply preventing your softirqs from running concurrently is not ideal. If a softirq obtained a lock to prevent another instance of itself from running simultaneously, there would be no reason to use a softirq. Consequently, most softirq handlers resort to per-processor data (data unique to each processor and thus not requiring locking) and other tricks to avoid explicit locking and provide excellent scalability.
+
+The reason for using softirqs is scalability. If you do not need to scale to infinitely many processors, then use a tasklet. Tasklets are essentially softirqs in which multiple instances of the same handler cannot run concurrently on multiple processors.
+
+##### **Raising Your Softirq**
+
+After a handler is added to the `enum` list and registered via `open_softirq()`, it is ready to run. To mark it pending, so it is run at the next invocation of `do_softirq()`, call `raise_softirq()`. For example, the networking subsystem would call:
+
+```c
+raise_softirq(NET_TX_SOFTIRQ);
+```
+
+This raises the `NET_TX_SOFTIRQ` softirq. Its handler, [`net_tx_action()`](https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c#L2252), runs the next time the kernel executes softirqs. This function (`raise_softirq()`) disables interrupts prior to actually raising the softirq and then restores them to their previous state. If interrupts are already off, the function `raise_softirq_irqoff()` can be used as a small optimization. For example:
+
+```c
+/*
+ * interrupts must already be off!
+ */
+raise_softirq_irqoff(NET_TX_SOFTIRQ);
+```
+
+Softirqs are most often raised from within interrupt handlers. In the case of interrupt handlers, the interrupt handler performs the basic hardware-related work, raises the softirq, and then exits. When processing interrupts, the kernel invokes `do_softirq()`. The softirq then runs and picks up where the interrupt handler left off. In this example, the "top half" and "bottom half" naming should make sense.
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p141 on softirq**
+
+> This function (`raise_softirq()`) disables interrupts prior to actually raising the softirq and then restores them to their previous state.
+
+<span class="text-danger">Question</span>: Why would `raise_softirq()` disable interrupt?
