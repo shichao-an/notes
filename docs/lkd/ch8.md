@@ -99,7 +99,7 @@ The *softirqs* and *tasklets* were introduced during the 2.3 development series,
 
 * Softirqs are a set of statically defined bottom halves that can run simultaneously on any processor; even two of the same type can run concurrently.
 * Tasklets are flexible, dynamically created bottom halves built on top of softirqs.
-  * Two different tasklets can run concurrently on different processors, but two of the same type of tasklet cannot run simultaneously.
+    * Two different tasklets can run concurrently on different processors, but two of the same type of tasklet cannot run simultaneously.
 
 Tasklets are a good trade-off between performance and ease of use. For most bottom-half processing, the tasklet is sufficient. Softirqs are useful when performance is critical, such as with networking. Using softirqs requires more care, however, because two of the same softirq can run at the same time. In addition, softirqs must be registered statically at compile time. Conversely, code can dynamically register tasklets.
 
@@ -123,7 +123,7 @@ Therefore, timers have different uses than the general mechanisms discussed in t
 
 Bottom half also refers to the original deferred work mechanism in Linux. This mechanism is also known as a BH, so we call it by that name now and leave the former as a generic description. The BH mechanism was deprecated a while back and fully removed in the 2.5 development kernel series.
 
-In the current three methods exist for deferring work, tasklets are built on softirqs and work queues are their own subsystem. The following table presents a history of bottom halves.
+In the current three methods that exist for deferring work, tasklets are built on softirqs and work queues are their own subsystem. The following table presents a history of bottom halves.
 
 Bottom Half | Status
 ----------- | ------
@@ -136,6 +136,8 @@ Work queues | Available since 2.5
 ### Softirqs
 
 Softirqs are rarely used directly; tasklets, which are built on softirqs are a much more common form of bottom half. The softirq code lives in the file [kernel/softirq.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c) in the kernel source tree.
+
+#### Implementing Softirqs
 
 Softirqs are statically allocated at compile time. Unlike tasklets, you cannot dynamically register and destroy softirqs. Softirqs are represented by the `softirq_action` structure, which is defined in [`<linux/interrupt.h>`](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h):
 
