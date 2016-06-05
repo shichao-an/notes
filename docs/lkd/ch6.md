@@ -53,7 +53,7 @@ The following figure shows doubly linked list:
 
 Normally, the last element in a linked list has no next element, so it is set to point to a special value, such as `NULL`. In a **circular linked list**, last element does not point to a special value, but points back to the first value.
 
-<u>Circular linked lists can come in both doubly and singly linked versions. In a circular doubly linked list, the first node’s "previous" pointer points at the last node.</u>
+<u>Circular linked lists can come in both doubly and singly linked versions. In a circular doubly linked list, the first node's "previous" pointer points at the last node.</u>
 
 The following two figures are singly and doubly circular linked lists, respectively:
 
@@ -74,9 +74,9 @@ In linked list implementations:
 
 [p87-88]
 
-#### The Linux Kernel’s Implementation
+#### The Linux Kernel's Implementation
 
-The Linux kernel’s implementation is unique, in comparison to most linked list implementations including those described in the previous sections.
+The Linux kernel's implementation is unique, in comparison to most linked list implementations including those described in the previous sections.
 
 The common pattern for storing this structure in a linked list is to embed the list pointer in the structure. For example, to describe that member of the [*Canidae*](https://en.wikipedia.org/wiki/Canidae) family:
 
@@ -173,7 +173,7 @@ struct fox red_fox = {
 
 ##### **List Heads**
 
-But before we can use kernel’s linked list routines to manage our structure, we need a canonical pointer to refer to the list as a whole: a *head* pointer.
+But before we can use kernel's linked list routines to manage our structure, we need a canonical pointer to refer to the list as a whole: a *head* pointer.
 
 Since each contains a `list_head`, and we can iterate from any one node to the next. We need a special pointer that refers to your linked list, without being a list node itself. This special node is in fact a normal `list_head`: [p90]
 
@@ -315,7 +315,6 @@ list_splice_init(struct list_head *list, struct list_head *head)
 This function works the same as `list_splice()`, except that the emptied list pointed to by `list` is reinitialized.
 
 If you already have the `next` and `prev` pointers available, you can save a couple cycles (specifically, the dereferences to get the pointers) by calling the internal list functions directly. For example, rather than call `list_del(list)`, you can call `__list_del(prev, next)`. [p92]
-
 
 ### Queues
 

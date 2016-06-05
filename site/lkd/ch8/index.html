@@ -435,6 +435,13 @@
         
             <li><a href="#implementing-softirqs">Implementing Softirqs</a></li>
         
+            <li><a href="#using-softirqs">Using Softirqs</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -652,6 +659,112 @@
 </ul>
 </li>
 </ol>
+<h4 id="using-softirqs">Using Softirqs</h4>
+<p>Softirqs are reserved for the most timing-critical and important bottom-half processing on the system.</p>
+<p>Currently, only two subsystems directly use softirqs:</p>
+<ul>
+<li>Networking devices</li>
+<li>Block devices</li>
+</ul>
+<p>Additionally, kernel timers and tasklets are built on top of softirqs.</p>
+<p>If you add a new softirq, you normally want to ask yourself why using a tasklet is insufficient. Tasklets are dynamically created and are simpler to use because of their weaker locking requirements, and they still perform quite well. Nonetheless, for timing-critical applications that can do their own locking in an efficient way, softirqs might be the correct solution.</p>
+<h5 id="assigning-an-index"><strong>Assigning an Index</strong></h5>
+<p>Softirqs are declared statically at compile time via an <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L341"><code>enum</code></a> in <code>&lt;linux/interrupt.h&gt;</code>. The kernel uses this index, which starts at zero, as a relative priority. Softirqs with the lowest numerical priority execute before those with a higher numerical priority.</p>
+<p>Creating a new softirq includes adding a new entry to this <code>enum</code>. When adding a new softirq, you might not want to simply add your entry to the end of the list; instead, you need to insert the new entry depending on the priority you want to give it. By convention, <code>HI_SOFTIRQ</code> is always the first and <code>RCU_SOFTIRQ</code> is always the last entry. A new entry likely belongs in between <code>BLOCK_SOFTIRQ</code> and <code>TASKLET_SOFTIRQ</code>.</p>
+<p>The following table contains a list of the existing softirq types.</p>
+<table>
+<thead>
+<tr>
+<th>Tasklet</th>
+<th>Priority</th>
+<th>Softirq Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HI_SOFTIRQ</code></td>
+<td>0</td>
+<td>High-priority tasklets</td>
+</tr>
+<tr>
+<td><code>TIMER_SOFTIRQ</code></td>
+<td>1</td>
+<td>Timers</td>
+</tr>
+<tr>
+<td><code>NET_TX_SOFTIRQ</code></td>
+<td>2</td>
+<td>Send network packets</td>
+</tr>
+<tr>
+<td><code>NET_RX_SOFTIRQ</code></td>
+<td>3</td>
+<td>Receive network packets</td>
+</tr>
+<tr>
+<td><code>BLOCK_SOFTIRQ</code></td>
+<td>4</td>
+<td>Block devices</td>
+</tr>
+<tr>
+<td><code>TASKLET_SOFTIRQ</code></td>
+<td>5</td>
+<td>Normal priority tasklets</td>
+</tr>
+<tr>
+<td><code>SCHED_SOFTIRQ</code></td>
+<td>6</td>
+<td>Scheduler</td>
+</tr>
+<tr>
+<td><code>HRTIMER_SOFTIRQ</code></td>
+<td>7</td>
+<td>High-resolution timers</td>
+</tr>
+<tr>
+<td><code>RCU_SOFTIRQ</code></td>
+<td>8</td>
+<td>RCU locking</td>
+</tr>
+</tbody>
+</table>
+<h5 id="registering-your-handler"><strong>Registering Your Handler</strong></h5>
+<p>Next, the softirq handler is registered at run-time via <code>open_softirq()</code>, which takes two parameters: the softirq's index and its handler function. For example, the networking subsystem registers its softirqs like this, in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c">net/core/dev.c</a>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c#L6017">net/core/dev.c#L6017</a></small></p>
+<div class="codehilite"><pre><span class="n">open_softirq</span><span class="p">(</span><span class="n">NET_TX_SOFTIRQ</span><span class="p">,</span> <span class="n">net_tx_action</span><span class="p">);</span>
+<span class="n">open_softirq</span><span class="p">(</span><span class="n">NET_RX_SOFTIRQ</span><span class="p">,</span> <span class="n">net_rx_action</span><span class="p">);</span>
+</pre></div>
+
+
+<ul>
+<li>The softirq handlers run with interrupts enabled and cannot sleep.</li>
+<li>While a handler runs, softirqs on the current processor are disabled. However, another processor can execute other softirqs.</li>
+<li>If the same softirq is raised again while it is executing, another processor can run it simultaneously. This means that any shared data, even global data used only within the softirq handler, needs proper locking (as discussed in the next two chapters).</li>
+</ul>
+<p>Here, locking is an important point, and it is the reason tasklets are usually preferred. Simply preventing your softirqs from running concurrently is not ideal. If a softirq obtained a lock to prevent another instance of itself from running simultaneously, there would be no reason to use a softirq. Consequently, most softirq handlers resort to per-processor data (data unique to each processor and thus not requiring locking) and other tricks to avoid explicit locking and provide excellent scalability.</p>
+<p>The reason for using softirqs is scalability. If you do not need to scale to infinitely many processors, then use a tasklet. Tasklets are essentially softirqs in which multiple instances of the same handler cannot run concurrently on multiple processors.</p>
+<h5 id="raising-your-softirq"><strong>Raising Your Softirq</strong></h5>
+<p>After a handler is added to the <code>enum</code> list and registered via <code>open_softirq()</code>, it is ready to run. To mark it pending, so it is run at the next invocation of <code>do_softirq()</code>, call <code>raise_softirq()</code>. For example, the networking subsystem would call:</p>
+<div class="codehilite"><pre><span class="n">raise_softirq</span><span class="p">(</span><span class="n">NET_TX_SOFTIRQ</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This raises the <code>NET_TX_SOFTIRQ</code> softirq. Its handler, <a href="https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c#L2252"><code>net_tx_action()</code></a>, runs the next time the kernel executes softirqs. This function (<code>raise_softirq()</code>) disables interrupts prior to actually raising the softirq and then restores them to their previous state. If interrupts are already off, the function <code>raise_softirq_irqoff()</code> can be used as a small optimization. For example:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * interrupts must already be off!</span>
+<span class="cm"> */</span>
+<span class="n">raise_softirq_irqoff</span><span class="p">(</span><span class="n">NET_TX_SOFTIRQ</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Softirqs are most often raised from within interrupt handlers. In the case of interrupt handlers, the interrupt handler performs the basic hardware-related work, raises the softirq, and then exits. When processing interrupts, the kernel invokes <code>do_softirq()</code>. The softirq then runs and picks up where the interrupt handler left off. In this example, the "top half" and "bottom half" naming should make sense.</p>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
+<blockquote>
+<p>This function (<code>raise_softirq()</code>) disables interrupts prior to actually raising the softirq and then restores them to their previous state.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: Why would <code>raise_softirq()</code> disable interrupt?</p>
             </div>
         </div>
 
