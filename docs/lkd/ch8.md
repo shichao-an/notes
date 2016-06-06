@@ -293,6 +293,95 @@ raise_softirq_irqoff(NET_TX_SOFTIRQ);
 
 Softirqs are most often raised from within interrupt handlers. In the case of interrupt handlers, the interrupt handler performs the basic hardware-related work, raises the softirq, and then exits. When processing interrupts, the kernel invokes `do_softirq()`. The softirq then runs and picks up where the interrupt handler left off. In this example, the "top half" and "bottom half" naming should make sense.
 
+### Tasklets
+
+Tasklets are a bottom-half mechanism built on top of softirqs. As mentioned, they have nothing to do with tasks. Tasklets are similar in nature and behavior to softirqs, but have a simpler interface and relaxed locking rules.
+
+When writing a device driver, you almost always want to use tasklets. Softirqs are required only for high-frequency and highly threaded uses. Tasklets, on the other hand, work fine for the vast majority of cases and are very easy to use.
+
+#### Implementing Tasklets
+
+Because tasklets are implemented on top of softirqs, they are softirqs. As discussed, tasklets are represented by two softirqs:
+
+* `HI_SOFTIRQ`
+* `TASKLET_SOFTIRQ`.
+
+The only difference in these types is that the `HI_SOFTIRQ`-based tasklets run prior to the `TASKLET_SOFTIRQ`-based tasklets.
+
+##### **The Tasklet Structure**
+
+Tasklets are represented by the `tasklet_struct` structure. Each structure represents a unique tasklet. The structure is declared in `<linux/interrupt.h>`:
+
+<small>[include/linux/interrupt.h#L420](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L420)</small>
+
+```c
+struct tasklet_struct {
+    struct tasklet_struct *next;  /* next tasklet in the list */
+    unsigned long state;          /* state of the tasklet */
+    atomic_t count;               /* reference counter */
+    void (*func)(unsigned long);  /* tasklet handler function */
+    unsigned long data;           /* argument to the tasklet function */
+};
+```
+
+* The `func` member is the tasklet handler (the equivalent of `action` to a softirq) and receives `data` as its sole argument.
+* The `state` member can be zero, `TASKLET_STATE_SCHED`, or `TASKLET_STATE_RUN`.
+    * `TASKLET_STATE_SCHED` denotes a tasklet that is scheduled to run.
+    * `TASKLET_STATE_RUN` denotes a tasklet that is running. As an optimization, `TASKLET_STATE_RUN` is used only on multiprocessor machines because a uniprocessor machine always knows whether the tasklet is running: it is either the currently executing code or not.
+* The `count` field is used as a reference count for the tasklet.
+    * If it is nonzero, the tasklet is disabled and cannot run.
+    * If it is zero, the tasklet is enabled and can run if marked pending.
+
+##### **Scheduling Tasklets**
+
+Scheduled tasklets (the equivalent of raised softirqs) are stored in two per-processor structures:
+
+* `tasklet_vec` (for regular tasklets)
+* `tasklet_hi_vec` (for high-priority tasklets).
+
+Both of these structures are linked lists of `tasklet_struct` structures. Each `tasklet_struct` structure in the list represents a different tasklet.
+
+Tasklets are scheduled via the following functions:
+
+* `tasklet_schedule()`
+* `tasklet_hi_schedule()`
+
+Either of them receives a pointer to the tasklet's `tasklet_struct` as its lone argument. Each function ensures that the provided tasklet is not yet scheduled and then calls `__tasklet_schedule()` and `__tasklet_hi_schedule()` as appropriate. The two functions are similar. The difference is that one uses `TASKLET_SOFTIRQ` and one uses `HI_SOFTIRQ`.
+
+`tasklet_schedule()` undertakes the following steps:
+
+1. Check whether the tasklet's state is `TASKLET_STATE_SCHED`. If it is, the tasklet is already scheduled to run and the function can immediately return.
+2. Call `__tasklet_schedule()`.
+3. Save the state of the interrupt system, and then disable local interrupts. This ensures that nothing on this processor will mess with the tasklet code while `tasklet_schedule()` is manipulating the tasklets.
+4. Add the tasklet to be scheduled to the head of the `tasklet_vec` or `tasklet_hi_vec` linked list, which is unique to each processor in the system.
+5. Raise the `TASKLET_SOFTIRQ` or `HI_SOFTIRQ` softirq, so `do_softirq()` executes this tasklet in the near future.
+6. Restore interrupts to their previous state and return.
+
+`do_softirq()` is run at the next earliest convenience, (as discussed in the previous section). Because most tasklets and softirqs are marked pending in interrupt handlers, `do_softirq()` most likely runs when the last interrupt returns. Because `TASKLET_SOFTIRQ` or `HI_SOFTIRQ` is now raised, `do_softirq()` executes the associated handlers. These handlers, [`tasklet_action()`](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c#L399) and [`tasklet_hi_action()`](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c#L434), are the heart of tasklet processing; they perform the following steps:
+
+1. Disable local interrupt delivery (there is no need to first save their state because the code here is always called as a softirq handler and interrupts are always enabled) and retrieve the `tasklet_vec` or `tasklet_hi_vec` list for this processor.
+2. Clear the list for this processor by setting it equal to `NULL`.
+3. Enable local interrupt delivery. Again, there is no need to restore them to their previous state because this function knows that they were always originally enabled.
+4. Loop over each pending tasklet in the retrieved list.
+5. If this is a multiprocessing machine, check whether the tasklet is running on another processor by checking the `TASKLET_STATE_RUN` flag. If it is currently running, do not execute it now and skip to the next pending tasklet. Recall that only one tasklet of a given type may run concurrently.
+6. If the tasklet is not currently running, set the `TASKLET_STATE_RUN` flag, so another processor will not run it.
+7. Check for a zero `count` value, to ensure that the tasklet is not disabled. If the tasklet is disabled, skip it and go to the next pending tasklet.
+8. Run the tasklet handler after ensuring the following:
+    * The tasklet is not running elsewhere
+    * The tasklet is marked as running so it will not start running elsewhere
+    * The tasklet has a zero `count` value.
+9. After the tasklet runs, clear the `TASKLET_STATE_RUN` flag in the tasklet's `state` field.
+10. Repeat for the next pending tasklet, until there are no more scheduled tasklets waiting to run.
+
+The implementation of tasklets is simple, but rather clever:
+
+1. All tasklets are multiplexed on top of two softirqs, `HI_SOFTIRQ` and `TASKLET_SOFTIRQ`.
+2. When a tasklet is scheduled, the kernel raises one of these softirqs.
+3. These softirqs, in turn, are handled by special functions that then run any scheduled tasklets.
+4. The special functions ensure that only one tasklet of a given type runs at the same time. However, other tasklets can run simultaneously.
+
+All this complexity is then hidden behind a clean and simple interface.
+
 ### Doubts and Solution
 
 #### Verbatim
