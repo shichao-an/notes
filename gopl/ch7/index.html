@@ -449,10 +449,10 @@
             <li><a href="#caveat-an-interface-containing-a-nil-pointer-is-non-nil">Caveat: An Interface Containing a Nil Pointer Is Non-Nil</a></li>
         
     
-        <li class="main "><a href="#the-httphandler-interface">The http.Handler Interface</a></li>
+        <li class="main "><a href="#sorting-with-sortinterface">Sorting with sort.Interface</a></li>
         
     
-        <li class="main "><a href="#sorting-with-sortinterface">Sorting with sort.Interface</a></li>
+        <li class="main "><a href="#the-httphandler-interface">The http.Handler Interface</a></li>
         
     
     </ul>
@@ -1030,8 +1030,52 @@ type is a struct type with several unexported fields.</p>
 </pre></div>
 
 
-<h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
 <h3 id="sorting-with-sortinterface">Sorting with <code>sort.Interface</code></h3>
+<p>Sorting is a frequently used operation in many programs. [p186]</p>
+<p>In many languages, the sorting algorithm is associated with the sequence data type, while the ordering function is associated with the type of the elements.</p>
+<p>In Go, the <a href="https://golang.org/pkg/sort/"><code>sort</code></a> package provides in-place sorting of any sequence according to any ordering function. However, its design is rather unusual:</p>
+<ul>
+<li><code>sort.Sort</code> function assumes nothing about the representation of either the sequence or its elements. Instead, it uses an interface, <code>sort.Interface</code>, to specify the contract between the generic sort algorithm and each sequence type that may be sorted.</li>
+<li>An implementation of this interface determines both the concrete representation of the sequence, which is often a slice, and the desired ordering of its elements.</li>
+</ul>
+<p>An in-place sort algorithm needs three things:</p>
+<ul>
+<li>The length of the sequence</li>
+<li>A means of comparing two elements</li>
+<li>A way to swap two elements</li>
+</ul>
+<p>They are the three methods of <code>sort.Interface</code>:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">sort</span>
+
+<span class="kd">type</span> <span class="nx">Interface</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Len</span><span class="p">()</span> <span class="kt">int</span>
+    <span class="nx">Less</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="c1">// i, j are indices of sequence elements</span>
+    <span class="nx">Swap</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To sort any sequence, we need to define a type that implements these three methods, then apply <code>sort.Sort</code> to an instance of that type. For example, consider sorting a slice of strings. The new type <code>StringSlice</code> and its <code>Len</code>, <code>Less</code>, and <code>Swap</code> methods are shown below:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">StringSlice</span> <span class="p">[]</span><span class="kt">string</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">StringSlice</span><span class="p">)</span> <span class="nx">Len</span><span class="p">()</span> <span class="kt">int</span>           <span class="p">{</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">StringSlice</span><span class="p">)</span> <span class="nx">Less</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">p</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">&lt;</span> <span class="nx">p</span><span class="p">[</span><span class="nx">j</span><span class="p">]</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="nx">StringSlice</span><span class="p">)</span> <span class="nx">Swap</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span>      <span class="p">{</span> <span class="nx">p</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="nx">p</span><span class="p">[</span><span class="nx">j</span><span class="p">]</span> <span class="p">=</span> <span class="nx">p</span><span class="p">[</span><span class="nx">j</span><span class="p">],</span> <span class="nx">p</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Now we can sort a slice of strings, <code>names</code>, by converting the slice to a <code>StringSlice</code> like this:</p>
+<div class="codehilite"><pre><span class="nx">sort</span><span class="p">.</span><span class="nx">Sort</span><span class="p">(</span><span class="nx">StringSlice</span><span class="p">(</span><span class="nx">names</span><span class="p">))</span>
+</pre></div>
+
+
+<p>The conversion yields a slice value with the same length, capacity, and underlying array as <code>names</code> but with a type that has the three methods required for sorting.</p>
+<p>Sorting a slice of strings is so common that the sort package provides the <code>StringSlice</code> type and a function called <code>Strings</code>. The call above can be simplified as:</p>
+<div class="codehilite"><pre><span class="nx">sort</span><span class="p">.</span><span class="nx">Strings</span><span class="p">(</span><span class="nx">names</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This technique can be easily adapted to other sort orders, for instance, to ignore capitalization or special characters. For more complicated sorting, we use the same idea, but with more complicated data structures or more complicated implementations of the <code>sort.Interface</code> methods.</p>
+<h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
             </div>
         </div>
 
