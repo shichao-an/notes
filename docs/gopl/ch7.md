@@ -659,7 +659,59 @@ if debug {
 f(buf) // OK
 ```
 
+### Sorting with `sort.Interface`
+
+Sorting is a frequently used operation in many programs. [p186]
+
+In many languages, the sorting algorithm is associated with the sequence data type, while the ordering function is associated with the type of the elements.
+
+In Go, the [`sort`](https://golang.org/pkg/sort/) package provides in-place sorting of any sequence according to any ordering function. However, its design is rather unusual:
+
+* `sort.Sort` function assumes nothing about the representation of either the sequence or its elements. Instead, it uses an interface, `sort.Interface`, to specify the contract between the generic sort algorithm and each sequence type that may be sorted.
+* An implementation of this interface determines both the concrete representation of the sequence, which is often a slice, and the desired ordering of its elements.
+
+An in-place sort algorithm needs three things:
+
+* The length of the sequence
+* A means of comparing two elements
+* A way to swap two elements
+
+They are the three methods of `sort.Interface`:
+
+```go
+package sort
+
+type Interface interface {
+	Len() int
+	Less(i, j int) bool // i, j are indices of sequence elements
+	Swap(i, j int)
+}
+```
+
+To sort any sequence, we need to define a type that implements these three methods, then apply `sort.Sort` to an instance of that type. For example, consider sorting a slice of strings. The new type `StringSlice` and its `Len`, `Less`, and `Swap` methods are shown below:
+
+```go
+type StringSlice []string
+func (p StringSlice) Len() int           { return len(p) }
+func (p StringSlice) Less(i, j int) bool { return p[i] < p[j] }
+func (p StringSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+```
+
+Now we can sort a slice of strings, `names`, by converting the slice to a `StringSlice` like this:
+
+```go
+sort.Sort(StringSlice(names))
+```
+
+The conversion yields a slice value with the same length, capacity, and underlying array as `names` but with a type that has the three methods required for sorting.
+
+Sorting a slice of strings is so common that the sort package provides the `StringSlice` type and a function called `Strings`. The call above can be simplified as:
+
+```go
+sort.Strings(names)
+```
+
+This technique can be easily adapted to other sort orders, for instance, to ignore capitalization or special characters. For more complicated sorting, we use the same idea, but with more complicated data structures or more complicated implementations of the `sort.Interface` methods.
 
 ### The `http.Handler` Interface
 
-### Sorting with `sort.Interface`
