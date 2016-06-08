@@ -90,3 +90,59 @@ It's easy to differentiate between a constant pointer and a pointer to constant 
 * `int* const p`: `const` qualifies the pointer variable `p`, so the pointer is a constant.
 * `int const *p`: `const` qualifies the pointed-to object `*p`, so it's a pointer to constant. It can also be written as `const int *p`.
 * `const int* const p`: a constant pointer to constant. The right `const` qualifies `p` as constant, and the left `const` means that `*p` is a constant.
+
+#### Pointer to Pointer
+
+The pointer itself is a variable of data in a memory region. It can be pointed to by other pointers.
+
+```c
+int x = 10;
+int* p = &x;
+int** p2 = &p;
+
+printf("p = %p, *p = %d\n", p, *p);
+printf("p2 = %p, *p2 = %x\n", p2, *p2);
+printf("x = %d, %d\n",*p, **p2);
+```
+
+will output:
+
+```
+p = 0xbfba3e5c, *p = 10
+p2 = 0xbfba3e58, *p2 = bfba3e5c
+x = 10, 10
+```
+
+We can see that `p2` stores the address of pointer `p`; that's what makes "pointer to pointer".
+
+#### Pointer to Array
+
+By default, the name of an array is a constant pointer to this array's first element.
+
+```c
+int x[] = { 1, 2, 3, 4 };
+int* p = x;
+
+for (int i = 0; i < 4; i++)
+{
+    printf("%d, %d, %d\n", x[i], *(x + i), *p++);
+}
+```
+
+We can access array elements with `*(x + 1)`, but cannot do `x++` or `x--` operations.
+
+A "pointer to array" does not have the same type as the array name. The pointer to array views the entire array as an object, not an element within.
+
+```c
+int x[] = { 1, 2, 3, 4 };
+
+int* p = x;
+int (*p2)[] = &x;          // pointer to array
+
+for(int i = 0; i < 4; i++)
+{
+    printf("%d, %d\n", *p++, (*p2)[i]);
+}
+```
+
+See [Pointer to Array](part1.md#pointer-to-array) for details.
