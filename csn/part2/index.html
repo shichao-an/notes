@@ -432,6 +432,10 @@
         
             <li><a href="#pointer-to-constant">Pointer to Constant</a></li>
         
+            <li><a href="#pointer-to-pointer">Pointer to Pointer</a></li>
+        
+            <li><a href="#pointer-to-array">Pointer to Array</a></li>
+        
     
     </ul>
 </div></div>
@@ -546,6 +550,53 @@
 <li><code>int const *p</code>: <code>const</code> qualifies the pointed-to object <code>*p</code>, so it's a pointer to constant. It can also be written as <code>const int *p</code>.</li>
 <li><code>const int* const p</code>: a constant pointer to constant. The right <code>const</code> qualifies <code>p</code> as constant, and the left <code>const</code> means that <code>*p</code> is a constant.</li>
 </ul>
+<h4 id="pointer-to-pointer">Pointer to Pointer</h4>
+<p>The pointer itself is a variable of data in a memory region. It can be pointed to by other pointers.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>
+<span class="kt">int</span><span class="o">**</span> <span class="n">p2</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">p</span><span class="p">;</span>
+
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;p = %p, *p = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;p2 = %p, *p2 = %x</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="o">*</span><span class="n">p2</span><span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;x = %d, %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="o">*</span><span class="n">p</span><span class="p">,</span> <span class="o">**</span><span class="n">p2</span><span class="p">);</span>
+</pre></div>
+
+
+<p>will output:</p>
+<div class="codehilite"><pre>p = 0xbfba3e5c, *p = 10
+p2 = 0xbfba3e58, *p2 = bfba3e5c
+x = 10, 10
+</pre></div>
+
+
+<p>We can see that <code>p2</code> stores the address of pointer <code>p</code>; that's what makes "pointer to pointer".</p>
+<h4 id="pointer-to-array">Pointer to Array</h4>
+<p>By default, the name of an array is a constant pointer to this array's first element.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d, %d, %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="o">*</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">i</span><span class="p">),</span> <span class="o">*</span><span class="n">p</span><span class="o">++</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We can access array elements with <code>*(x + 1)</code>, but cannot do <code>x++</code> or <code>x--</code> operations.</p>
+<p>A "pointer to array" does not have the same type as the array name. The pointer to array views the entire array as an object, not an element within.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">x</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+
+<span class="kt">int</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">p2</span><span class="p">)[]</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">;</span>          <span class="c1">// pointer to array</span>
+
+<span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d, %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="o">++</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">p2</span><span class="p">)[</span><span class="n">i</span><span class="p">]);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>See <a href="../part1/#pointer-to-array">Pointer to Array</a> for details.</p>
             </div>
         </div>
 
