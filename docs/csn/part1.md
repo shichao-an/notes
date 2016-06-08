@@ -1622,9 +1622,9 @@ o
 
 A pointer with a [`restrict`](http://en.cppreference.com/w/c/language/restrict) qualifier is called a restrict-qualified pointer (or restrict pointer). It suggests to the compiler that during the `lifetime` of the pointer it is only allowed to modify the object through this pointer, but the complier can decide on its own whether to adopt this suggestion.
 
-#### Array Pointer
+#### Pointer to Array
 
-An array pointer is a pointer to the array, not a pointer to the first element.
+A "pointer to array" is a pointer to an array, not a pointer to the first element of this array.
 
 ```c
 int x[] = { 1, 2, 3 };
