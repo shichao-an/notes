@@ -429,6 +429,16 @@
             <li><a href="#multithreaded-applications">Multithreaded Applications *</a></li>
         
     
+        <li class="main "><a href="#process-descriptor">Process Descriptor</a></li>
+        
+            <li><a href="#process-state">Process State</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -492,6 +502,52 @@
 <li>IBM's Next Generation Posix Threading Package (NGPT)</li>
 </ul>
 <p>POSIX-compliant multithreaded applications are best handled by kernels that support "thread groups". In Linux, a <em>thread group</em> is basically a set of lightweight processes that implement a multithreaded application and act as a whole with regards to some system calls such as <code>getpid()</code>, <code>kill()</code>, and <code>_exit()</code>.</p>
+<h3 id="process-descriptor">Process Descriptor</h3>
+<p>To manage processes, the kernel must have a clear picture of what each process is doing, such as:</p>
+<ul>
+<li>The process's priority</li>
+<li>Whether it is running on a CPU or blocked on an event</li>
+<li>What address space has been assigned to it</li>
+<li>Which files it is allowed to address</li>
+</ul>
+<p>This is the role of the process descriptor: a <code>task_struct</code> type structure whose fields contain all the information related to a single process. The kernel also defines the <code>task_t</code> data type to be equivalent to <code>struct task_struct</code>.</p>
+<p>The process descriptor is rather complex. In addition to a large number of fields containing process attributes, the process descriptor contains several pointers to other data structures that, in turn, contain pointers to other structures. The following figure describes the Linux process descriptor schematically.</p>
+<p><a href="../figure_3-1.png" title="Figure 3-1. The Linux process descriptor"><img alt="Figure 3-1. The Linux process descriptor" src="../figure_3-1_600.png" /></a></p>
+<p>The six data structures on the right side of the figure refer to specific resources owned by the process. Most of these resources will be covered in future chapters. This chapter focuses on two types of fields that refer to the process state and to process parent/child relationships.</p>
+<h4 id="process-state">Process State</h4>
+<p>The <code>state</code> field of the process descriptor describes what is currently happening to the process. It consists of an array of flags, each of which describes a possible process state. In the current Linux version, these states are mutually exclusive: exactly one flag of state always is set and the remaining flags are cleared.</p>
+<p>The following are the possible process states:</p>
+<ul>
+<li><code>TASK_RUNNING</code>. The process is either executing on a CPU or waiting to be executed.</li>
+<li><code>TASK_INTERRUPTIBLE</code>. The process is suspended (sleeping) until some condition becomes true. For example, conditions that might wake up the process (put its state back to <code>TASK_RUNNING</code>) can be:<ul>
+<li>Raising a hardware interrupt</li>
+<li>Releasing a system resource the process is waiting for</li>
+<li>Delivering a signal are examples of conditions that might wake up the process.</li>
+</ul>
+</li>
+<li><code>TASK_UNINTERRUPTIBLE</code>. Like <code>TASK_INTERRUPTIBLE</code>, except that delivering a signal to the sleeping process leaves its state unchanged. This process state is seldom used, but is valuable under certain specific conditions in which a process must wait until a given event occurs without being interrupted. For instance, this state may be used when a process opens a device file and the corresponding device driver starts probing for a corresponding hardware device. The device driver must not be interrupted until the probing is complete, or the hardware device could be left in an unpredictable state.</li>
+<li><code>TASK_STOPPED</code>. Process execution has been stopped; the process enters this state after receiving a <code>SIGSTOP</code>, <code>SIGTSTP</code>, <code>SIGTTIN</code>, or <code>SIGTTOU</code> signal.</li>
+<li><code>TASK_TRACED</code>. Process execution has been stopped by a debugger. When a process is being monitored by another (such as when a debugger executes a <a href="http://man7.org/linux/man-pages/man2/ptrace.2.html"><code>ptrace()</code></a> system call to monitor a test program), each signal may put the process in the <code>TASK_TRACED</code> state.</li>
+</ul>
+<p>Two additional states of the process can be stored both in the <code>state</code> field and in the <code>exit_state</code> field of the process descriptor; as the field name suggests, a process reaches one of these two states only when its execution is terminated:</p>
+<ul>
+<li><code>EXIT_ZOMBIE</code>. Process execution is terminated, but the parent process has not yet issued a <code>wait4()</code> or <code>waitpid()</code> system call to return information about the dead process.* Before the <code>wait()</code>-like call is issued, the kernel cannot discard the data contained in the dead process descriptor because the parent might need it. (See the section <a href="#process-removal">Process Removal</a> near the end of this chapter.)</li>
+<li><code>EXIT_DEAD</code>. The final state: the process is being removed by the system because the parent process has just issued a <code>wait4()</code> or <code>waitpid()</code> system call for it. Changing its state from <code>EXIT_ZOMBIE</code> to <code>EXIT_DEAD</code> avoids race conditions due to other threads of execution that execute <code>wait()</code>-like calls on the same process (see <a href="ch5.md">Chapter 5</a>).</li>
+</ul>
+<p>Note that there are other <code>wait()</code>-like library functions, such as <code>wait3()</code> and <code>wait()</code>, but in Linux they are implemented by means of the <code>wait4()</code> and <code>waitpid()</code> system calls.</p>
+<p>The value of the <code>state</code> field is usually set with a simple assignment. For instance:</p>
+<div class="codehilite"><pre><span class="n">p</span><span class="o">-&gt;</span><span class="n">state</span> <span class="o">=</span> <span class="n">TASK_RUNNING</span><span class="p">;</span>
+</pre></div>
+
+
+<p>The kernel also uses the <code>set_task_state</code> and <code>set_current_state</code> macros: they set the state of a specified process and of the process currently executed, respectively. Moreover, these macros ensure that the assignment operation is not mixed with other instructions by the compiler or the CPU control unit. Mixing the instruction order may sometimes lead to catastrophic results (see <a href="ch5.md">Chapter 5</a>).</p>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p83-on-process-state"><strong>p83 on process state</strong></h5>
+<blockquote>
+<p>Moreover, these macros ensure that the assignment operation is not mixed with other instructions by the compiler or the CPU control unit.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does this mean?</p>
             </div>
         </div>
 
