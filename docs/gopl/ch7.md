@@ -713,5 +713,104 @@ sort.Strings(names)
 
 This technique can be easily adapted to other sort orders, for instance, to ignore capitalization or special characters. For more complicated sorting, we use the same idea, but with more complicated data structures or more complicated implementations of the `sort.Interface` methods.
 
+#### Example: sorting a playlist *
+
+The following example is a music playlist, displayed as a table. Each track is a single row, and each column is an attribute of that track. The playlist can be sorted by any attribute in the columns.
+
+The variable `tracks` below contains a playlist. Each element is indirect, a pointer to a `Track`. Although the code below would work if we stored the `Track`s directly, the `sort` function will swap many pairs of elements, so it will run faster if each element is a pointer, which is a single machine word, instead of an entire `Track`.
+
+<small>[gopl.io/ch7/sorting/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/sorting/main.go)</small>
+
+```go
+type Track struct {
+	Title  string
+	Artist string
+	Album  string
+	Year   int
+	Length time.Duration
+}
+
+var tracks = []*Track{
+	{"Go", "Delilah", "From the Roots Up", 2012, length("3m38s")},
+	{"Go", "Moby", "Moby", 1992, length("3m37s")},
+	{"Go Ahead", "Alicia Keys", "As I Am", 2007, length("4m36s")},
+	{"Ready 2 Go", "Martin Solveig", "Smash", 2011, length("4m24s")},
+}
+
+func length(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		panic(s)
+	}
+	return d
+}
+```
+
+The `printTracks` function prints the playlist as a table. It uses the [`text/tabwriter`](https://golang.org/pkg/text/tabwriter/) package to produce a table whose columns are neatly aligned and padded.
+
+* `*tabwriter.Writer` satisfies `io.Writer`.
+* It collects each piece of data written to it.
+* Its `Flush` method formats the entire table and writes it to `os.Stdout`.
+
+```go
+func printTracks(tracks []*Track) {
+	const format = "%v\t%v\t%v\t%v\t%v\t\n"
+	tw := new(tabwriter.Writer).Init(os.Stdout, 0, 8, 2, ' ', 0)
+	fmt.Fprintf(tw, format, "Title", "Artist", "Album", "Year", "Length")
+	fmt.Fprintf(tw, format, "-----", "------", "-----", "----", "------")
+	for _, t := range tracks {
+		fmt.Fprintf(tw, format, t.Title, t.Artist, t.Album, t.Year, t.Length)
+	}
+	tw.Flush() // calculate column widths and print table
+}
+```
+
+To sort the playlist by the `Artist` field, we define a new slice type with the necessary `Len`, `Less`, and `Swap` methods, similar to the `StringSlice` example.
+
+```go
+type byArtist []*Track
+
+func (x byArtist) Len() int           { return len(x) }
+func (x byArtist) Less(i, j int) bool { return x[i].Artist < x[j].Artist }
+func (x byArtist) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+```
+
+To call the generic `sort` routine, we must first convert tracks to the new type, `byArtist`, that defines the order:
+
+```go
+sort.Sort(byArtist(tracks))
+```
+
+After sorting the slice by artist, the output from `printTracks` is:
+
+```text
+Title       Artist          Album              Year  Length
+-----       ------          -----              ----  ------
+Go Ahead    Alicia Keys     As I Am            2007  4m36s
+Go          Delilah         From the Roots Up  2012  3m38s
+Ready 2 Go  Martin Solveig  Smash              2011  4m24s
+Go          Moby            Moby               1992  3m37s
+```
+
+To sort by artist in reverse order, we needn't define a new type `byReverseArtist` with an inverted `Less` method. The `sort` package provides a [`Reverse`](https://golang.org/pkg/sort/#Reverse) function that transforms any sort order to its inverse.
+
+```go
+sort.Sort(sort.Reverse(byArtist(tracks)))
+```
+
+The `sort.Reverse` function uses composition ([Section 6.3](ch6.md#composing-types-by-struct-embedding)), which is an important idea. The `sort` package defines an unexported type `reverse`, which is a struct that embeds a `sort.Interface`. The `Less` method for `reverse` calls the `Less` method of the embedded `sort.Interface` value, but with the indices flipped, reversing the order of the sort results.
+
+```go
+package sort
+type reverse struct{ Interface } // that is, sort.Interface
+func (r reverse) Less(i, j int) bool { return r.Interface.Less(j, i) }
+func Reverse(data Interface) Interface { return reverse{data} }
+```
+
+`Len` and `Swap`, the other two methods of `reverse`, are implicitly provided by the original `sort.Interface` value because it is an embedded field. The exported function `Reverse` returns an instance of the reverse type that contains the original `sort.Interface` value.
+
+
+
+
 ### The `http.Handler` Interface
 

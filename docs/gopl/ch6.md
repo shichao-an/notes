@@ -308,7 +308,7 @@ fmt.Println(p.Distance(q.Point)) // "10"
 
 The methods of `Point` have been *promoted* to `ColoredPoint`. In this way, <u>embedding allows complex types with many methods to be built up by the *composition* of several fields, each providing a few methods.</u>
 
-Note that it is a mistake to view `Point` as a base class and `ColoredPoint` as a subclass or derived class, or to interpret the relationship between these types as if a `ColoredPoint` "is a" Point, from a object-oriented language perspective. Notice the calls to `Distance` above. `Distance` has a parameter of type `Point`, and `q` is not a `Point`, so although `q` does have an embedded field of that type, we must explicitly select it. Attempting to pass `q` would be an error:
+Note that it is a mistake to view `Point` as a base class and `ColoredPoint` as a subclass or derived class, or to interpret the relationship between these types as if a `ColoredPoint` "is a" `Point`, from a object-oriented language perspective. Notice the calls to `Distance` above. `Distance` has a parameter of type `Point`, and `q` is not a `Point`, so although `q` does have an embedded field of that type, we must explicitly select it. Attempting to pass `q` would be an error:
 
 ```go
 p.Distance(q) // compile error: cannot use q (ColoredPoint) as Point
