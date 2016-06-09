@@ -124,7 +124,7 @@ On the other hand, Unix-like operating systems allow users to identify processes
 
 * PIDs are numbered sequentially: the PID of a newly created process is normally the PID of the previously created process increased by one.
 * There is an upper limit on the PID values; when the kernel reaches such limit, it must start recycling the lower, unused PIDs.
-    * By default, the maximum PID number is 32,767 (`PID_MAX_DEFAULT` - 1), which equals to 2<sup>12</sup> - 1; the system administrator may reduce this limit by writing a smaller value into the `/proc/sys/kernel/pid_max` file ([`/proc`](http://man7.org/linux/man-pages/man5/proc.5.html) is the mount point of a special filesystem, see the section [Special Filesystems](ch12.md#special-filesystems) in Chapter 12).
+    * By default, the maximum PID number is 32,767 (`PID_MAX_DEFAULT` - 1), which equals to 2<sup>12</sup> × 8 - 1 ; the system administrator may reduce this limit by writing a smaller value into the `/proc/sys/kernel/pid_max` file ([`/proc`](http://man7.org/linux/man-pages/man5/proc.5.html) is the mount point of a special filesystem, see the section [Special Filesystems](ch12.md#special-filesystems) in Chapter 12).
     * In 64-bit architectures, the system administrator can enlarge the maximum PID number up to 4,194,303.
 
 When recycling PID numbers, the kernel must manage a `pidmap_array` bitmap that denotes which are the PIDs currently assigned and which are the free ones. Because a page frame contains 32,768 bits, in 32-bit architectures the `pidmap_array` bitmap is stored in a single page. In 64-bit architectures, however, additional pages can be added to the bitmap when the kernel assigns a PID number too large for the current bitmap size. These pages are never released.
