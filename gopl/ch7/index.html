@@ -451,6 +451,8 @@
     
         <li class="main "><a href="#sorting-with-sortinterface">Sorting with sort.Interface</a></li>
         
+            <li><a href="#example-sorting-a-playlist">Example: sorting a playlist *</a></li>
+        
     
         <li class="main "><a href="#the-httphandler-interface">The http.Handler Interface</a></li>
         
@@ -1075,6 +1077,92 @@ type is a struct type with several unexported fields.</p>
 
 
 <p>This technique can be easily adapted to other sort orders, for instance, to ignore capitalization or special characters. For more complicated sorting, we use the same idea, but with more complicated data structures or more complicated implementations of the <code>sort.Interface</code> methods.</p>
+<h4 id="example-sorting-a-playlist">Example: sorting a playlist *</h4>
+<p>The following example is a music playlist, displayed as a table. Each track is a single row, and each column is an attribute of that track. The playlist can be sorted by any attribute in the columns.</p>
+<p>The variable <code>tracks</code> below contains a playlist. Each element is indirect, a pointer to a <code>Track</code>. Although the code below would work if we stored the <code>Track</code>s directly, the <code>sort</code> function will swap many pairs of elements, so it will run faster if each element is a pointer, which is a single machine word, instead of an entire <code>Track</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/sorting/main.go">gopl.io/ch7/sorting/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Track</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Title</span>  <span class="kt">string</span>
+    <span class="nx">Artist</span> <span class="kt">string</span>
+    <span class="nx">Album</span>  <span class="kt">string</span>
+    <span class="nx">Year</span>   <span class="kt">int</span>
+    <span class="nx">Length</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">tracks</span> <span class="p">=</span> <span class="p">[]</span><span class="o">*</span><span class="nx">Track</span><span class="p">{</span>
+    <span class="p">{</span><span class="s">&quot;Go&quot;</span><span class="p">,</span> <span class="s">&quot;Delilah&quot;</span><span class="p">,</span> <span class="s">&quot;From the Roots Up&quot;</span><span class="p">,</span> <span class="mi">2012</span><span class="p">,</span> <span class="nx">length</span><span class="p">(</span><span class="s">&quot;3m38s&quot;</span><span class="p">)},</span>
+    <span class="p">{</span><span class="s">&quot;Go&quot;</span><span class="p">,</span> <span class="s">&quot;Moby&quot;</span><span class="p">,</span> <span class="s">&quot;Moby&quot;</span><span class="p">,</span> <span class="mi">1992</span><span class="p">,</span> <span class="nx">length</span><span class="p">(</span><span class="s">&quot;3m37s&quot;</span><span class="p">)},</span>
+    <span class="p">{</span><span class="s">&quot;Go Ahead&quot;</span><span class="p">,</span> <span class="s">&quot;Alicia Keys&quot;</span><span class="p">,</span> <span class="s">&quot;As I Am&quot;</span><span class="p">,</span> <span class="mi">2007</span><span class="p">,</span> <span class="nx">length</span><span class="p">(</span><span class="s">&quot;4m36s&quot;</span><span class="p">)},</span>
+    <span class="p">{</span><span class="s">&quot;Ready 2 Go&quot;</span><span class="p">,</span> <span class="s">&quot;Martin Solveig&quot;</span><span class="p">,</span> <span class="s">&quot;Smash&quot;</span><span class="p">,</span> <span class="mi">2011</span><span class="p">,</span> <span class="nx">length</span><span class="p">(</span><span class="s">&quot;4m24s&quot;</span><span class="p">)},</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">length</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span> <span class="p">{</span>
+    <span class="nx">d</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">ParseDuration</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nb">panic</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">d</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>printTracks</code> function prints the playlist as a table. It uses the <a href="https://golang.org/pkg/text/tabwriter/"><code>text/tabwriter</code></a> package to produce a table whose columns are neatly aligned and padded.</p>
+<ul>
+<li><code>*tabwriter.Writer</code> satisfies <code>io.Writer</code>.</li>
+<li>It collects each piece of data written to it.</li>
+<li>Its <code>Flush</code> method formats the entire table and writes it to <code>os.Stdout</code>.</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">printTracks</span><span class="p">(</span><span class="nx">tracks</span> <span class="p">[]</span><span class="o">*</span><span class="nx">Track</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">format</span> <span class="p">=</span> <span class="s">&quot;%v\t%v\t%v\t%v\t%v\t\n&quot;</span>
+    <span class="nx">tw</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">tabwriter</span><span class="p">.</span><span class="nx">Writer</span><span class="p">).</span><span class="nx">Init</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="sc">&#39; &#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">tw</span><span class="p">,</span> <span class="nx">format</span><span class="p">,</span> <span class="s">&quot;Title&quot;</span><span class="p">,</span> <span class="s">&quot;Artist&quot;</span><span class="p">,</span> <span class="s">&quot;Album&quot;</span><span class="p">,</span> <span class="s">&quot;Year&quot;</span><span class="p">,</span> <span class="s">&quot;Length&quot;</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">tw</span><span class="p">,</span> <span class="nx">format</span><span class="p">,</span> <span class="s">&quot;-----&quot;</span><span class="p">,</span> <span class="s">&quot;------&quot;</span><span class="p">,</span> <span class="s">&quot;-----&quot;</span><span class="p">,</span> <span class="s">&quot;----&quot;</span><span class="p">,</span> <span class="s">&quot;------&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">t</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tracks</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">tw</span><span class="p">,</span> <span class="nx">format</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Title</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Artist</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Album</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Year</span><span class="p">,</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Length</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">tw</span><span class="p">.</span><span class="nx">Flush</span><span class="p">()</span> <span class="c1">// calculate column widths and print table</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To sort the playlist by the <code>Artist</code> field, we define a new slice type with the necessary <code>Len</code>, <code>Less</code>, and <code>Swap</code> methods, similar to the <code>StringSlice</code> example.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">byArtist</span> <span class="p">[]</span><span class="o">*</span><span class="nx">Track</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">x</span> <span class="nx">byArtist</span><span class="p">)</span> <span class="nx">Len</span><span class="p">()</span> <span class="kt">int</span>           <span class="p">{</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">x</span> <span class="nx">byArtist</span><span class="p">)</span> <span class="nx">Less</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">x</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Artist</span> <span class="p">&lt;</span> <span class="nx">x</span><span class="p">[</span><span class="nx">j</span><span class="p">].</span><span class="nx">Artist</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">x</span> <span class="nx">byArtist</span><span class="p">)</span> <span class="nx">Swap</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span>      <span class="p">{</span> <span class="nx">x</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="nx">x</span><span class="p">[</span><span class="nx">j</span><span class="p">]</span> <span class="p">=</span> <span class="nx">x</span><span class="p">[</span><span class="nx">j</span><span class="p">],</span> <span class="nx">x</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>To call the generic <code>sort</code> routine, we must first convert tracks to the new type, <code>byArtist</code>, that defines the order:</p>
+<div class="codehilite"><pre><span class="nx">sort</span><span class="p">.</span><span class="nx">Sort</span><span class="p">(</span><span class="nx">byArtist</span><span class="p">(</span><span class="nx">tracks</span><span class="p">))</span>
+</pre></div>
+
+
+<p>After sorting the slice by artist, the output from <code>printTracks</code> is:</p>
+<div class="codehilite"><pre>Title       Artist          Album              Year  Length
+-----       ------          -----              ----  ------
+Go Ahead    Alicia Keys     As I Am            2007  4m36s
+Go          Delilah         From the Roots Up  2012  3m38s
+Ready 2 Go  Martin Solveig  Smash              2011  4m24s
+Go          Moby            Moby               1992  3m37s
+</pre></div>
+
+
+<p>To sort by artist in reverse order, we needn't define a new type <code>byReverseArtist</code> with an inverted <code>Less</code> method. The <code>sort</code> package provides a <a href="https://golang.org/pkg/sort/#Reverse"><code>Reverse</code></a> function that transforms any sort order to its inverse.</p>
+<div class="codehilite"><pre><span class="nx">sort</span><span class="p">.</span><span class="nx">Sort</span><span class="p">(</span><span class="nx">sort</span><span class="p">.</span><span class="nx">Reverse</span><span class="p">(</span><span class="nx">byArtist</span><span class="p">(</span><span class="nx">tracks</span><span class="p">)))</span>
+</pre></div>
+
+
+<p>The <code>sort.Reverse</code> function uses composition (<a href="../ch6/#composing-types-by-struct-embedding">Section 6.3</a>), which is an important idea. The <code>sort</code> package defines an unexported type <code>reverse</code>, which is a struct that embeds a <code>sort.Interface</code>. The <code>Less</code> method for <code>reverse</code> calls the <code>Less</code> method of the embedded <code>sort.Interface</code> value, but with the indices flipped, reversing the order of the sort results.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">sort</span>
+<span class="kd">type</span> <span class="nx">reverse</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">Interface</span> <span class="p">}</span> <span class="c1">// that is, sort.Interface</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">r</span> <span class="nx">reverse</span><span class="p">)</span> <span class="nx">Less</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Interface</span><span class="p">.</span><span class="nx">Less</span><span class="p">(</span><span class="nx">j</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">Reverse</span><span class="p">(</span><span class="nx">data</span> <span class="nx">Interface</span><span class="p">)</span> <span class="nx">Interface</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">reverse</span><span class="p">{</span><span class="nx">data</span><span class="p">}</span> <span class="p">}</span>
+</pre></div>
+
+
+<p><code>Len</code> and <code>Swap</code>, the other two methods of <code>reverse</code>, are implicitly provided by the original <code>sort.Interface</code> value because it is an embedded field. The exported function <code>Reverse</code> returns an instance of the reverse type that contains the original <code>sort.Interface</code> value.</p>
 <h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
             </div>
         </div>
