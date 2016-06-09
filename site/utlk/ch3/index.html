@@ -433,6 +433,8 @@
         
             <li><a href="#process-state">Process State</a></li>
         
+            <li><a href="#identifying-a-process">Identifying a Process</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -453,7 +455,7 @@
 </ul>
 </li>
 </ul>
-<p>This chapter discuses:</p>
+<p>This chapter discusses:</p>
 <ul>
 <li>Static properties of processes</li>
 <li>How process switching is performed by the kernel</li>
@@ -541,6 +543,32 @@
 
 
 <p>The kernel also uses the <code>set_task_state</code> and <code>set_current_state</code> macros: they set the state of a specified process and of the process currently executed, respectively. Moreover, these macros ensure that the assignment operation is not mixed with other instructions by the compiler or the CPU control unit. Mixing the instruction order may sometimes lead to catastrophic results (see <a href="ch5.md">Chapter 5</a>).</p>
+<h4 id="identifying-a-process">Identifying a Process</h4>
+<p>Each execution context that can be independently scheduled must have its own process descriptor. Even lightweight processes, which share a large portion of their kernel data structures, have their own <code>task_struct</code> structures.</p>
+<h5 id="process-descriptor-pointers"><strong>Process descriptor pointers</strong> *</h5>
+<p>The strict one-to-one correspondence between the process and process descriptor makes the 32-bit address of the <code>task_struct</code> structure a useful means for the kernel to identify processes. These addresses are referred to as <em>process descriptor pointers</em>. Most of the references to processes that the kernel makes are through process descriptor pointers.</p>
+<h5 id="process-id"><strong>Process ID</strong> *</h5>
+<p>On the other hand, Unix-like operating systems allow users to identify processes by means of a number called the <strong>Process ID</strong> (or <strong>PID</strong>), which is stored in the <code>pid</code> field of the process descriptor.</p>
+<ul>
+<li>PIDs are numbered sequentially: the PID of a newly created process is normally the PID of the previously created process increased by one.</li>
+<li>There is an upper limit on the PID values; when the kernel reaches such limit, it must start recycling the lower, unused PIDs.<ul>
+<li>By default, the maximum PID number is 32,767 (<code>PID_MAX_DEFAULT</code> - 1), which equals to 2<sup>12</sup> - 1; the system administrator may reduce this limit by writing a smaller value into the <code>/proc/sys/kernel/pid_max</code> file (<a href="http://man7.org/linux/man-pages/man5/proc.5.html"><code>/proc</code></a> is the mount point of a special filesystem, see the section <a href="ch12.md#special-filesystems">Special Filesystems</a> in Chapter 12).</li>
+<li>In 64-bit architectures, the system administrator can enlarge the maximum PID number up to 4,194,303.</li>
+</ul>
+</li>
+</ul>
+<p>When recycling PID numbers, the kernel must manage a <code>pidmap_array</code> bitmap that denotes which are the PIDs currently assigned and which are the free ones. Because a page frame contains 32,768 bits, in 32-bit architectures the <code>pidmap_array</code> bitmap is stored in a single page. In 64-bit architectures, however, additional pages can be added to the bitmap when the kernel assigns a PID number too large for the current bitmap size. These pages are never released.</p>
+<h5 id="thread-groups-and-pid"><strong>Thread groups and PID</strong> *</h5>
+<p>Linux associates a different PID with each process or lightweight process in the system. There is a tiny exception on multiprocessor systems, which is disussed later this chapter. This approach allows the maximum flexibility, because every execution context in the system can be uniquely identified.</p>
+<p>On the other hand, Unix programmers expect threads in the same group to have a common PID. For instance, it should be possible to a send a signal specifying a PID that affects all threads in the group. In fact, the POSIX 1003.1c standard states that all threads of a multithreaded application must have the same PID.</p>
+<p>To comply with this standard, Linux makes use of thread groups. The identifier shared by the threads is the PID of the <em>thread group leader</em>:</p>
+<ul>
+<li>The thread group leader is the first lightweight process in the group.</li>
+<li>This identifier is stored in the <code>tgid</code> field of the process descriptors.</li>
+</ul>
+<p>The <a href="http://man7.org/linux/man-pages/man2/getpid.2.html"><code>getpid()</code></a> system call returns the value of <code>tgid</code> relative to the current process instead of the value of <code>pid</code>, so all the threads of a multithreaded application share the same identifier.</p>
+<p>Most processes belong to a thread group which consists of a single member; as thread group leaders, they have the <code>tgid</code> field equal to the <code>pid</code> field, thus the <code>getpid()</code> system call works as usual for this kind of process.</p>
+<p>Later this section shows how it is possible to derive a true process descriptor pointer efficiently from its respective PID. Efficiency is important because many system calls such as <code>kill()</code> use the PID to denote the affected process.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p83-on-process-state"><strong>p83 on process state</strong></h5>
