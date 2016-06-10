@@ -809,8 +809,67 @@ func Reverse(data Interface) Interface { return reverse{data} }
 
 `Len` and `Swap`, the other two methods of `reverse`, are implicitly provided by the original `sort.Interface` value because it is an embedded field. The exported function `Reverse` returns an instance of the reverse type that contains the original `sort.Interface` value.
 
+To sort by a different column, we must define a new type, such as `byYear`:
 
+```go
+type byYear []*Track
 
+func (x byYear) Len() int           { return len(x) }
+func (x byYear) Less(i, j int) bool { return x[i].Year < x[j].Year }
+func (x byYear) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+```
+
+Similarly, sort `tracks` by year using `sort.Sort(byYear(tracks))`.
+
+For every slice element type and every ordering function we need, we declare a new implementation of `sort.Interface`; the `Len` and `Swap` methods have identical definitions for all slice types.
+
+In the following example, the concrete type `customSort` combines a slice with a function, so we can define a new sort order by writing only the comparison function. Incidentally, the concrete types that implement `sort.Interface` are not always slices; `customSort` is a struct type.
+
+```go
+type customSort struct {
+	t    []*Track
+	less func(x, y *Track) bool
+}
+
+func (x customSort) Len() int           { return len(x.t) }
+func (x customSort) Less(i, j int) bool { return x.less(x.t[i], x.t[j]) }
+func (x customSort) Swap(i, j int)      { x.t[i], x.t[j] = x.t[j], x.t[i] }
+```
+
+The following code defines a multi-tier ordering function whose primary sort key is the `Title`, secondary key is the `Year`, and tertiary key is the running time, `Length`. This is the call to `Sort` using an anonymous ordering function:
+
+```go
+sort.Sort(customSort{tracks, func(x, y *Track) bool {
+	if x.Title != y.Title {
+		return x.Title < y.Title
+	}
+	if x.Year != y.Year {
+		return x.Year < y.Year
+	}
+	if x.Length != y.Length {
+		return x.Length < y.Length
+	}
+	return false
+}})
+```
+
+[p190]
+
+Although sorting a sequence of length *n* requires O(*n* log *n*) comparison operations, testing whether a sequence is already sorted requires at most *n*−1 comparisons. The [`IsSorted`](https://golang.org/pkg/sort/#IsSorted) function from the `sort` package checks this for us. Like `sort.Sort`, it abstracts both the sequence and its ordering function using `sort.Interface`, but it never calls the `Swap` method.
+
+The following code demonstrates the [`IntsAreSorted`](https://golang.org/pkg/sort/#IntsAreSorted) and [`Ints`](https://golang.org/pkg/sort/#Ints) functions and the [`IntSlice`](https://golang.org/pkg/sort/#IntSlice) type from the `sort` package:
+
+```go
+values := []int{3, 1, 4, 1}
+fmt.Println(sort.IntsAreSorted(values)) // "false"
+sort.Ints(values)
+fmt.Println(values)                     // "[1 1 3 4]"
+fmt.Println(sort.IntsAreSorted(values)) // "true"
+sort.Sort(sort.Reverse(sort.IntSlice(values)))
+fmt.Println(values)                     // "[4 3 1 1]"
+fmt.Println(sort.IntsAreSorted(values)) // "false"
+```
+
+For convenience, the `sort` package provides versions of its functions and types specialized for `[]int`, `[]string`, and `[]float64` using their natural orderings. For other types, such as `[]int64` or `[]uint`, we need to write types on our own, though the path is short.
 
 ### The `http.Handler` Interface
-
