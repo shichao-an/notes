@@ -873,3 +873,116 @@ fmt.Println(sort.IntsAreSorted(values)) // "false"
 For convenience, the `sort` package provides versions of its functions and types specialized for `[]int`, `[]string`, and `[]float64` using their natural orderings. For other types, such as `[]int64` or `[]uint`, we need to write types on our own, though the path is short.
 
 ### The `http.Handler` Interface
+
+Chapter 1 discusses how to use the [`net/http`](https://golang.org/pkg/net/http/) package to implement web clients ([Section 1.5](ch1.md#fetching-a-url)) and servers ([Section 1.7](ch1.md#a-web-server)). This section focuses on server API, whose foundation is the `http.Handler` interface:
+
+```go
+package http
+
+type Handler interface {
+	ServeHTTP(w ResponseWriter, r *Request)
+}
+
+func ListenAndServe(address string, h Handler) error
+```
+
+The `ListenAndServe` function requires two arguments:
+
+* A server address, such as "localhost:8000"
+* An instance of the `Handler` interface, to which all requests should be dispatched.
+
+This function runs forever, or until the server fails or fails to start; when it fails, it always returns an non-nil error.
+
+The program of the following example shows the simplest implementation of an e-commerce site with a database mapping the items for sale to their prices in dollars. It models the inventory as a map type, `database`, to which we've attached a `ServeHTTP` method so that it satisfies the `http.Handler` interface. The handler ranges over the map and prints the items.
+
+<small>[gopl.io/ch7/http1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/http1/main.go)</small>
+
+```go
+func main() {
+	db := database{"shoes": 50, "socks": 5}
+	log.Fatal(http.ListenAndServe("localhost:8000", db))
+}
+
+type dollars float32
+
+func (d dollars) String() string { return fmt.Sprintf("$%.2f", d) }
+
+type database map[string]dollars
+
+func (db database) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	for item, price := range db {
+		fmt.Fprintf(w, "%s: %s\n", item, price)
+	}
+}
+```
+
+If we start the server:
+
+```shell-session
+$ go build gopl.io/ch7/http1
+$ ./http1 &
+```
+
+Then connect to it with the `fetch` program from [Section 1.5](ch1.md#fetching-a-url) (or a web browser if you prefer), we get the following output:
+
+```text
+$ go build gopl.io/ch1/fetch
+$ ./fetch http://localhost:8000
+shoes: $50.00
+socks: $5.00
+```
+
+The following program shows a more realistic server that defines multiple different URLs, each triggering a different behavior. It names the existing one `/list` and adds another one called `/price` that reports the price of a single item, specified as a request parameter like `/price?item=socks`.
+
+<small>[gopl.io/ch7/http2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/http2/main.go)</small>
+
+```go
+func (db database) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	switch req.URL.Path {
+	case "/list":
+		for item, price := range db {
+			fmt.Fprintf(w, "%s: %s\n", item, price)
+		}
+	case "/price":
+		item := req.URL.Query().Get("item")
+		price, ok := db[item]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound) // 404
+			fmt.Fprintf(w, "no such item: %q\n", item)
+			return
+		}
+		fmt.Fprintf(w, "%s\n", price)
+	default:
+		w.WriteHeader(http.StatusNotFound) // 404
+		fmt.Fprintf(w, "no such page: %s\n", req.URL)
+	}
+}
+```
+
+The handler above decides what logic to execute based on the path component of the URL, `req.URL.Path`. If the handler doesn't recognize the path, it reports an HTTP error to the client by calling `w.WriteHeader(http.StatusNotFound)`; this must be done before writing any text to `w`. `http.ResponseWriter` is another interface, which augments `io.Writer` with methods for sending HTTP response headers. Equivalently, we could use the `http.Error` utility function:
+
+```go
+msg := fmt.Sprintf("no such page: %s\n", req.URL)
+http.Error(w, msg, http.StatusNotFound) // 404
+```
+
+The case for `/price` calls the URL's `Query` method to parse the HTTP request parameters as a map, or more precisely, a multimap of type `url.Values` ([Section 6.2.1](ch6.md#nil-is-a-valid-receiver-value)) from the `net/url` package. It then finds the first item parameter and looks up its price. If the item wasn't found, it reports an error.
+
+The following is an example session with the new server:
+
+```text
+$ go build gopl.io/ch7/http2
+$ go build gopl.io/ch1/fetch
+$ ./http2 &
+$ ./fetch http://localhost:8000/list
+shoes: $50.00
+socks: $5.00
+$ ./fetch http://localhost:8000/price?item=socks
+$5.00
+$ ./fetch http://localhost:8000/price?item=shoes
+$50.00
+$ ./fetch http://localhost:8000/price?item=hat
+no such item: "hat"
+$ ./fetch http://localhost:8000/help
+no such page: /help
+```
