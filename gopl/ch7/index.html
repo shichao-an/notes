@@ -1218,6 +1218,106 @@ Go          Moby            Moby               1992  3m37s
 
 <p>For convenience, the <code>sort</code> package provides versions of its functions and types specialized for <code>[]int</code>, <code>[]string</code>, and <code>[]float64</code> using their natural orderings. For other types, such as <code>[]int64</code> or <code>[]uint</code>, we need to write types on our own, though the path is short.</p>
 <h3 id="the-httphandler-interface">The <code>http.Handler</code> Interface</h3>
+<p>Chapter 1 discusses how to use the <a href="https://golang.org/pkg/net/http/"><code>net/http</code></a> package to implement web clients (<a href="../ch1/#fetching-a-url">Section 1.5</a>) and servers (<a href="../ch1/#a-web-server">Section 1.7</a>). This section focuses on server API, whose foundation is the <code>http.Handler</code> interface:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">http</span>
+
+<span class="kd">type</span> <span class="nx">Handler</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">ServeHTTP</span><span class="p">(</span><span class="nx">w</span> <span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">Request</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">ListenAndServe</span><span class="p">(</span><span class="nx">address</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">h</span> <span class="nx">Handler</span><span class="p">)</span> <span class="kt">error</span>
+</pre></div>
+
+
+<p>The <code>ListenAndServe</code> function requires two arguments:</p>
+<ul>
+<li>A server address, such as "localhost:8000"</li>
+<li>An instance of the <code>Handler</code> interface, to which all requests should be dispatched.</li>
+</ul>
+<p>This function runs forever, or until the server fails or fails to start; when it fails, it always returns an non-nil error.</p>
+<p>The program of the following example shows the simplest implementation of an e-commerce site with a database mapping the items for sale to their prices in dollars. It models the inventory as a map type, <code>database</code>, to which we've attached a <code>ServeHTTP</code> method so that it satisfies the <code>http.Handler</code> interface. The handler ranges over the map and prints the items.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/http1/main.go">gopl.io/ch7/http1/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">db</span> <span class="o">:=</span> <span class="nx">database</span><span class="p">{</span><span class="s">&quot;shoes&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s">&quot;socks&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">ListenAndServe</span><span class="p">(</span><span class="s">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="nx">db</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">dollars</span> <span class="kt">float32</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">d</span> <span class="nx">dollars</span><span class="p">)</span> <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;$%.2f&quot;</span><span class="p">,</span> <span class="nx">d</span><span class="p">)</span> <span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">database</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">dollars</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">db</span> <span class="nx">database</span><span class="p">)</span> <span class="nx">ServeHTTP</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">item</span><span class="p">,</span> <span class="nx">price</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">db</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;%s: %s\n&quot;</span><span class="p">,</span> <span class="nx">item</span><span class="p">,</span> <span class="nx">price</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If we start the server:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch7/http1
+<span class="gp">$</span> ./http1 <span class="p">&amp;</span>
+</pre></div>
+
+
+<p>Then connect to it with the <code>fetch</code> program from <a href="../ch1/#fetching-a-url">Section 1.5</a> (or a web browser if you prefer), we get the following output:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch1/fetch
+$ ./fetch http://localhost:8000
+shoes: $50.00
+socks: $5.00
+</pre></div>
+
+
+<p>The following program shows a more realistic server that defines multiple different URLs, each triggering a different behavior. It names the existing one <code>/list</code> and adds another one called <code>/price</code> that reports the price of a single item, specified as a request parameter like <code>/price?item=socks</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/http2/main.go">gopl.io/ch7/http2/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="p">(</span><span class="nx">db</span> <span class="nx">database</span><span class="p">)</span> <span class="nx">ServeHTTP</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="nx">req</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Path</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="s">&quot;/list&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="nx">item</span><span class="p">,</span> <span class="nx">price</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">db</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;%s: %s\n&quot;</span><span class="p">,</span> <span class="nx">item</span><span class="p">,</span> <span class="nx">price</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="s">&quot;/price&quot;</span><span class="p">:</span>
+        <span class="nx">item</span> <span class="o">:=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Query</span><span class="p">().</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">)</span>
+        <span class="nx">price</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">db</span><span class="p">[</span><span class="nx">item</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+            <span class="nx">w</span><span class="p">.</span><span class="nx">WriteHeader</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusNotFound</span><span class="p">)</span> <span class="c1">// 404</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;no such item: %q\n&quot;</span><span class="p">,</span> <span class="nx">item</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="p">}</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;%s\n&quot;</span><span class="p">,</span> <span class="nx">price</span><span class="p">)</span>
+    <span class="k">default</span><span class="p">:</span>
+        <span class="nx">w</span><span class="p">.</span><span class="nx">WriteHeader</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusNotFound</span><span class="p">)</span> <span class="c1">// 404</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;no such page: %s\n&quot;</span><span class="p">,</span> <span class="nx">req</span><span class="p">.</span><span class="nx">URL</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The handler above decides what logic to execute based on the path component of the URL, <code>req.URL.Path</code>. If the handler doesn't recognize the path, it reports an HTTP error to the client by calling <code>w.WriteHeader(http.StatusNotFound)</code>; this must be done before writing any text to <code>w</code>. <code>http.ResponseWriter</code> is another interface, which augments <code>io.Writer</code> with methods for sending HTTP response headers. Equivalently, we could use the <code>http.Error</code> utility function:</p>
+<div class="codehilite"><pre><span class="nx">msg</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;no such page: %s\n&quot;</span><span class="p">,</span> <span class="nx">req</span><span class="p">.</span><span class="nx">URL</span><span class="p">)</span>
+<span class="nx">http</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">msg</span><span class="p">,</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusNotFound</span><span class="p">)</span> <span class="c1">// 404</span>
+</pre></div>
+
+
+<p>The case for <code>/price</code> calls the URL's <code>Query</code> method to parse the HTTP request parameters as a map, or more precisely, a multimap of type <code>url.Values</code> (<a href="../ch6/#nil-is-a-valid-receiver-value">Section 6.2.1</a>) from the <code>net/url</code> package. It then finds the first item parameter and looks up its price. If the item wasn't found, it reports an error.</p>
+<p>The following is an example session with the new server:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch7/http2
+$ go build gopl.io/ch1/fetch
+$ ./http2 &amp;
+$ ./fetch http://localhost:8000/list
+shoes: $50.00
+socks: $5.00
+$ ./fetch http://localhost:8000/price?item=socks
+$5.00
+$ ./fetch http://localhost:8000/price?item=shoes
+$50.00
+$ ./fetch http://localhost:8000/price?item=hat
+no such item: &quot;hat&quot;
+$ ./fetch http://localhost:8000/help
+no such page: /help
+</pre></div>
             </div>
         </div>
 
