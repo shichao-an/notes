@@ -2,7 +2,7 @@
 
 <small>Back to [Roadmap](index.md).</small>
 
-### OKR-1: July 31, 2016
+### OKR-1: August 31, 2016
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
