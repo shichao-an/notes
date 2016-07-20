@@ -986,3 +986,95 @@ no such item: "hat"
 $ ./fetch http://localhost:8000/help
 no such page: /help
 ```
+
+In a realistic application:
+
+1. It's convenient to define the logic for each case in a separate function or method.
+2. Related URLs may need similar logic. For instance, several image files may have URLs of the form `/images/*.png`.
+
+For these reasons, `net/http` provides [`ServeMux`](https://golang.org/pkg/net/http/#ServeMux), a *request multiplexer*, to simplify the association between URLs and handlers. A `ServeMux` aggregates a collection of `http.Handler`s into a single `http.Handler`. We see that different types satisfying the same interface are *substitutable*: the web server can dispatch requests to any `http.Handler`, regardless of which concrete type is behind it.
+
+For a more complex application, several `ServeMux`es may be composed to handle more intricate dispatching requirements. [p193]
+
+The program below does the following:
+
+1. It creates a `ServeMux` and use it to associate the URLs with the corresponding handlers for the `/list` and `/price` operations, which have been split into separate methods.
+2. It then uses the `ServeMux` as the main handler in the call to `ListenAndServe`.
+
+<small>[gopl.io/ch7/http3/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/http3/main.go)</small>
+
+```go
+func main() {
+	db := database{"shoes": 50, "socks": 5}
+	mux := http.NewServeMux()
+	mux.Handle("/list", http.HandlerFunc(db.list))
+	mux.Handle("/price", http.HandlerFunc(db.price))
+	log.Fatal(http.ListenAndServe("localhost:8000", mux))
+}
+
+type database map[string]dollars
+
+func (db database) list(w http.ResponseWriter, req *http.Request) {
+	for item, price := range db {
+		fmt.Fprintf(w, "%s: %s\n", item, price)
+	}
+}
+
+func (db database) price(w http.ResponseWriter, req *http.Request) {
+	item := req.URL.Query().Get("item")
+	price, ok := db[item]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound) // 404
+		fmt.Fprintf(w, "no such item: %q\n", item)
+		return
+	}
+	fmt.Fprintf(w, "%s\n", price)
+}
+```
+
+The two calls to `mux.Handle` register the handlers. In the first one, `db.list` is a method value ([Section 6.4](ch6.md#method-values-and-expressions)), which is a value of the following type:
+
+```go
+func(w http.ResponseWriter, req *http.Request)
+```
+
+When `db.list` is called, it invokes the `database.list` method with the receiver value `db`. So `db.list` is a function that implements handler-like behavior, but since it has no methods, it doesn't satisfy the `http.Handler` interface and can't be passed directly to `mux.Handle`. The expression `http.HandlerFunc(db.list)` is a conversion, not a function call, since [`http.HandlerFunc`](https://golang.org/pkg/net/http/#HandlerFunc) is a type. It has the following definition:
+
+```go
+package http
+
+type HandlerFunc func(w ResponseWriter, r *Request)
+func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
+	f(w, r)
+}
+```
+
+As a demonstration of some unusual features of Go's interface mechanism, <u>`HandlerFunc` is a function type that has methods and satisfies an interface, `http.Handler`. The behavior of its `ServeHTTP` method is to call the underlying function. `HandlerFunc` is thus an adapter that lets a function value satisfy an interface, where the function and the interface's sole method have the same signature.</u> In effect, this trick enables a single type such as `database` to satisfy the `http.Handler` interface in several different ways: once through its `list` method, once through its `price` method, and so on.
+
+Because registering a handler this way is so common, `ServeMux` has a convenience method `HandleFunc` simplify the handler registration code:
+
+<small>[gopl.io/ch7/http3a/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/http3a/main.go)</small>
+
+```
+mux.HandleFunc("/list", db.list)
+mux.HandleFunc("/price", db.price)
+```
+
+We could also construct a program in which there are two different web servers, listening on different ports, defining different URLs, and dispatching to different handlers. This can be done by constructing another `ServeMux` and make another call to `ListenAndServe` perhaps concurrently. [p195]
+
+For convenience, `net/http` provides a global `ServeMux` instance called `DefaultServeMux` and package-level functions called `http.Handle` and `http.HandleFunc`. To use `DefaultServeMux` as the server's main handler, we needn't pass it to `ListenAndServe`; `nil` will do.
+
+The server's main function can then be simplified to:
+
+<small>[gopl.io/ch7/http4/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/http4/main.go)</small>
+
+```go
+func main() {
+	db := database{"shoes": 50, "socks": 5}
+	http.HandleFunc("/list", db.list)
+	http.HandleFunc("/price", db.price)
+	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+```
+
+As we mentioned in [Section 1.7](ch1.md#a-web-server), the web server invokes each handler in a new goroutine, so handlers must take precautions such as *locking* when accessing variables that other goroutines, including other requests to the same handler, may be accessing. Concurrency is discussed in the next two chapters.
