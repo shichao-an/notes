@@ -1318,6 +1318,87 @@ no such item: &quot;hat&quot;
 $ ./fetch http://localhost:8000/help
 no such page: /help
 </pre></div>
+
+
+<p>In a realistic application:</p>
+<ol>
+<li>It's convenient to define the logic for each case in a separate function or method.</li>
+<li>Related URLs may need similar logic. For instance, several image files may have URLs of the form <code>/images/*.png</code>.</li>
+</ol>
+<p>For these reasons, <code>net/http</code> provides <a href="https://golang.org/pkg/net/http/#ServeMux"><code>ServeMux</code></a>, a <em>request multiplexer</em>, to simplify the association between URLs and handlers. A <code>ServeMux</code> aggregates a collection of <code>http.Handler</code>s into a single <code>http.Handler</code>. We see that different types satisfying the same interface are <em>substitutable</em>: the web server can dispatch requests to any <code>http.Handler</code>, regardless of which concrete type is behind it.</p>
+<p>For a more complex application, several <code>ServeMux</code>es may be composed to handle more intricate dispatching requirements. [p193]</p>
+<p>The program below does the following:</p>
+<ol>
+<li>It creates a <code>ServeMux</code> and use it to associate the URLs with the corresponding handlers for the <code>/list</code> and <code>/price</code> operations, which have been split into separate methods.</li>
+<li>It then uses the <code>ServeMux</code> as the main handler in the call to <code>ListenAndServe</code>.</li>
+</ol>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/http3/main.go">gopl.io/ch7/http3/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">db</span> <span class="o">:=</span> <span class="nx">database</span><span class="p">{</span><span class="s">&quot;shoes&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s">&quot;socks&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+    <span class="nx">mux</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">NewServeMux</span><span class="p">()</span>
+    <span class="nx">mux</span><span class="p">.</span><span class="nx">Handle</span><span class="p">(</span><span class="s">&quot;/list&quot;</span><span class="p">,</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span><span class="p">(</span><span class="nx">db</span><span class="p">.</span><span class="nx">list</span><span class="p">))</span>
+    <span class="nx">mux</span><span class="p">.</span><span class="nx">Handle</span><span class="p">(</span><span class="s">&quot;/price&quot;</span><span class="p">,</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span><span class="p">(</span><span class="nx">db</span><span class="p">.</span><span class="nx">price</span><span class="p">))</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">ListenAndServe</span><span class="p">(</span><span class="s">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="nx">mux</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">database</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">dollars</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">db</span> <span class="nx">database</span><span class="p">)</span> <span class="nx">list</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">item</span><span class="p">,</span> <span class="nx">price</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">db</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;%s: %s\n&quot;</span><span class="p">,</span> <span class="nx">item</span><span class="p">,</span> <span class="nx">price</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">db</span> <span class="nx">database</span><span class="p">)</span> <span class="nx">price</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">item</span> <span class="o">:=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Query</span><span class="p">().</span><span class="nx">Get</span><span class="p">(</span><span class="s">&quot;item&quot;</span><span class="p">)</span>
+    <span class="nx">price</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">db</span><span class="p">[</span><span class="nx">item</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+        <span class="nx">w</span><span class="p">.</span><span class="nx">WriteHeader</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusNotFound</span><span class="p">)</span> <span class="c1">// 404</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;no such item: %q\n&quot;</span><span class="p">,</span> <span class="nx">item</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;%s\n&quot;</span><span class="p">,</span> <span class="nx">price</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The two calls to <code>mux.Handle</code> register the handlers. In the first one, <code>db.list</code> is a method value (<a href="../ch6/#method-values-and-expressions">Section 6.4</a>), which is a value of the following type:</p>
+<div class="codehilite"><pre><span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span>
+</pre></div>
+
+
+<p>When <code>db.list</code> is called, it invokes the <code>database.list</code> method with the receiver value <code>db</code>. So <code>db.list</code> is a function that implements handler-like behavior, but since it has no methods, it doesn't satisfy the <code>http.Handler</code> interface and can't be passed directly to <code>mux.Handle</code>. The expression <code>http.HandlerFunc(db.list)</code> is a conversion, not a function call, since <a href="https://golang.org/pkg/net/http/#HandlerFunc"><code>http.HandlerFunc</code></a> is a type. It has the following definition:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">http</span>
+
+<span class="kd">type</span> <span class="nx">HandlerFunc</span> <span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">Request</span><span class="p">)</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">f</span> <span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">ServeHTTP</span><span class="p">(</span><span class="nx">w</span> <span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">f</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">r</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>As a demonstration of some unusual features of Go's interface mechanism, <u><code>HandlerFunc</code> is a function type that has methods and satisfies an interface, <code>http.Handler</code>. The behavior of its <code>ServeHTTP</code> method is to call the underlying function. <code>HandlerFunc</code> is thus an adapter that lets a function value satisfy an interface, where the function and the interface's sole method have the same signature.</u> In effect, this trick enables a single type such as <code>database</code> to satisfy the <code>http.Handler</code> interface in several different ways: once through its <code>list</code> method, once through its <code>price</code> method, and so on.</p>
+<p>Because registering a handler this way is so common, <code>ServeMux</code> has a convenience method <code>HandleFunc</code> simplify the handler registration code:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/http3a/main.go">gopl.io/ch7/http3a/main.go</a></small></p>
+<div class="codehilite"><pre>mux.HandleFunc(&quot;/list&quot;, db.list)
+mux.HandleFunc(&quot;/price&quot;, db.price)
+</pre></div>
+
+
+<p>We could also construct a program in which there are two different web servers, listening on different ports, defining different URLs, and dispatching to different handlers. This can be done by constructing another <code>ServeMux</code> and make another call to <code>ListenAndServe</code> perhaps concurrently. [p195]</p>
+<p>For convenience, <code>net/http</code> provides a global <code>ServeMux</code> instance called <code>DefaultServeMux</code> and package-level functions called <code>http.Handle</code> and <code>http.HandleFunc</code>. To use <code>DefaultServeMux</code> as the server's main handler, we needn't pass it to <code>ListenAndServe</code>; <code>nil</code> will do.</p>
+<p>The server's main function can then be simplified to:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/http4/main.go">gopl.io/ch7/http4/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">db</span> <span class="o">:=</span> <span class="nx">database</span><span class="p">{</span><span class="s">&quot;shoes&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s">&quot;socks&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+    <span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/list&quot;</span><span class="p">,</span> <span class="nx">db</span><span class="p">.</span><span class="nx">list</span><span class="p">)</span>
+    <span class="nx">http</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/price&quot;</span><span class="p">,</span> <span class="nx">db</span><span class="p">.</span><span class="nx">price</span><span class="p">)</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">ListenAndServe</span><span class="p">(</span><span class="s">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="kc">nil</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>As we mentioned in <a href="../ch1/#a-web-server">Section 1.7</a>, the web server invokes each handler in a new goroutine, so handlers must take precautions such as <em>locking</em> when accessing variables that other goroutines, including other requests to the same handler, may be accessing. Concurrency is discussed in the next two chapters.</p>
             </div>
         </div>
 
