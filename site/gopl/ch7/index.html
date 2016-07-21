@@ -457,6 +457,9 @@
         <li class="main "><a href="#the-httphandler-interface">The http.Handler Interface</a></li>
         
     
+        <li class="main "><a href="#the-error-interface">The error Interface</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1399,6 +1402,39 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
 
 
 <p>As we mentioned in <a href="../ch1/#a-web-server">Section 1.7</a>, the web server invokes each handler in a new goroutine, so handlers must take precautions such as <em>locking</em> when accessing variables that other goroutines, including other requests to the same handler, may be accessing. Concurrency is discussed in the next two chapters.</p>
+<h3 id="the-error-interface">The <code>error</code> Interface</h3>
+<p>The predeclared <code>error</code> type is just an interface type with a single method that returns an error message:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="kt">error</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">Error</span><span class="p">()</span> <span class="kt">string</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The simplest way to create an <code>error</code> is by calling <code>errors.New</code>, which returns a new <code>error</code> for a given error message. The entire <code>errors</code> package is only four lines long:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">errors</span>
+
+<span class="kd">func</span> <span class="nx">New</span><span class="p">(</span><span class="nx">text</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="nx">errorString</span><span class="p">{</span><span class="nx">text</span><span class="p">}</span> <span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">errorString</span> <span class="kd">struct</span> <span class="p">{</span> <span class="nx">text</span> <span class="kt">string</span> <span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">errorString</span><span class="p">)</span> <span class="nx">Error</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">e</span><span class="p">.</span><span class="nx">text</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The underlying type of <code>errorString</code> is a struct, not a string, to protect its representation from inadvertent (or premeditated) updates. The pointer type <code>*errorString</code> is used to satisfy the <code>error</code> interface rather than <code>errorString</code> alone so that every call to <code>New</code> allocates a distinct error instance that is not equal to each other. We would not want a distinguished error such as <code>io.EOF</code> to compare equal to one that may happen to have the same message.</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;EOF&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;EOF&quot;</span><span class="p">))</span> <span class="c1">// &quot;false&quot;</span>
+</pre></div>
+
+
+<p>Calls to <code>errors.New</code> are infrequent because there's a convenient wrapper function, <a href="https://golang.org/pkg/fmt/#Errorf"><code>fmt.Errorf</code></a> that does string formatting. It is used in <a href="../ch5/">Chapter 5</a>.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">fmt</span>
+
+<span class="kn">import</span> <span class="s">&quot;errors&quot;</span>
+
+<span class="kd">func</span> <span class="nx">Errorf</span><span class="p">(</span><span class="nx">format</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">args</span> <span class="o">...</span><span class="kd">interface</span><span class="p">{})</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">Sprintf</span><span class="p">(</span><span class="nx">format</span><span class="p">,</span> <span class="nx">args</span><span class="o">...</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
             </div>
         </div>
 
