@@ -1078,3 +1078,43 @@ func main() {
 ```
 
 As we mentioned in [Section 1.7](ch1.md#a-web-server), the web server invokes each handler in a new goroutine, so handlers must take precautions such as *locking* when accessing variables that other goroutines, including other requests to the same handler, may be accessing. Concurrency is discussed in the next two chapters.
+
+### The `error` Interface
+
+The predeclared `error` type is just an interface type with a single method that returns an error message:
+
+```go
+type error interface {
+	Error() string
+}
+```
+
+The simplest way to create an `error` is by calling `errors.New`, which returns a new `error` for a given error message. The entire `errors` package is only four lines long:
+
+```go
+package errors
+
+func New(text string) error { return &errorString{text} }
+
+type errorString struct { text string }
+
+func (e *errorString) Error() string { return e.text }
+```
+
+The underlying type of `errorString` is a struct, not a string, to protect its representation from inadvertent (or premeditated) updates. The pointer type `*errorString` is used to satisfy the `error` interface rather than `errorString` alone so that every call to `New` allocates a distinct error instance that is not equal to each other. We would not want a distinguished error such as `io.EOF` to compare equal to one that may happen to have the same message.
+
+```go
+fmt.Println(errors.New("EOF") == errors.New("EOF")) // "false"
+```
+
+Calls to `errors.New` are infrequent because there's a convenient wrapper function, [`fmt.Errorf`](https://golang.org/pkg/fmt/#Errorf) that does string formatting. It is used in [Chapter 5](ch5.md).
+
+```go
+package fmt
+
+import "errors"
+
+func Errorf(format string, args ...interface{}) error {
+	return errors.New(Sprintf(format, args...))
+}
+```
