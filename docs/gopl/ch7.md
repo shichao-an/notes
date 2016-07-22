@@ -1118,3 +1118,53 @@ func Errorf(format string, args ...interface{}) error {
 	return errors.New(Sprintf(format, args...))
 }
 ```
+
+Although `*errorString` may be the simplest type of `error` but not the only one. For example, the `syscall` package provides Go's low-level system call API. On many platforms, it defines a numeric type `Errno` that satisfies `error`, and on Unix platforms, `Errno`'s `Error` method does a lookup in a table of strings, as shown below:
+
+```go
+package syscall
+
+type Errno uintptr // operating system error code
+
+var errors = [...]string{
+	1: "operation not permitted", // EPERM
+	2: "no such file or directory", // ENOENT
+	3: "no such process", // ESRCH
+	// ...
+}
+
+func (e Errno) Error() string {
+	if 0 <= int(e) && int(e) < len(errors) {
+		return errors[e]
+	}
+	return fmt.Sprintf("errno %d", e)
+}
+```
+
+The following statement creates an interface value holding the `Errno` value 2, signifying the POSIX `ENOENT` condition:
+
+```go
+var err error = syscall.Errno(2)
+fmt.Println(err.Error()) // "no such file or directory"
+fmt.Println(err)         // "no such file or directory"
+```
+
+The value of `err` is shown graphically the following figure:
+
+[![Figure 7.6. An interface value holding a syscall.Errno integer.](figure_7.6.png)](figure_7.6.png "Figure 7.6. An interface value holding a syscall.Errno integer.")
+
+`Errno` is an efficient representation of system call errors drawn from a finite set, and it satisfies the standard `error` interface. Other types that satisfy this interface will be discussed in [Section 7.11](#discriminating-errors-with-type-assertions).
+
+### Example: Expression Evaluator
+
+### Type Assertions
+
+### Discriminating Errors with Type Assertions
+
+### Querying Behaviors with Interface Type Assertions
+
+### Type Switches
+
+### Example: Token-Based XML Decoding
+
+### A Few Words of Advice
