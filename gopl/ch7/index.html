@@ -460,6 +460,27 @@
         <li class="main "><a href="#the-error-interface">The error Interface</a></li>
         
     
+        <li class="main "><a href="#example-expression-evaluator">Example: Expression Evaluator</a></li>
+        
+    
+        <li class="main "><a href="#type-assertions">Type Assertions</a></li>
+        
+    
+        <li class="main "><a href="#discriminating-errors-with-type-assertions">Discriminating Errors with Type Assertions</a></li>
+        
+    
+        <li class="main "><a href="#querying-behaviors-with-interface-type-assertions">Querying Behaviors with Interface Type Assertions</a></li>
+        
+    
+        <li class="main "><a href="#type-switches">Type Switches</a></li>
+        
+    
+        <li class="main "><a href="#example-token-based-xml-decoding">Example: Token-Based XML Decoding</a></li>
+        
+    
+        <li class="main "><a href="#a-few-words-of-advice">A Few Words of Advice</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1435,6 +1456,46 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
     <span class="k">return</span> <span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">Sprintf</span><span class="p">(</span><span class="nx">format</span><span class="p">,</span> <span class="nx">args</span><span class="o">...</span><span class="p">))</span>
 <span class="p">}</span>
 </pre></div>
+
+
+<p>Although <code>*errorString</code> may be the simplest type of <code>error</code> but not the only one. For example, the <code>syscall</code> package provides Go's low-level system call API. On many platforms, it defines a numeric type <code>Errno</code> that satisfies <code>error</code>, and on Unix platforms, <code>Errno</code>'s <code>Error</code> method does a lookup in a table of strings, as shown below:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">syscall</span>
+
+<span class="kd">type</span> <span class="nx">Errno</span> <span class="kt">uintptr</span> <span class="c1">// operating system error code</span>
+
+<span class="kd">var</span> <span class="nx">errors</span> <span class="p">=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="s">&quot;operation not permitted&quot;</span><span class="p">,</span> <span class="c1">// EPERM</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="s">&quot;no such file or directory&quot;</span><span class="p">,</span> <span class="c1">// ENOENT</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="s">&quot;no such process&quot;</span><span class="p">,</span> <span class="c1">// ESRCH</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="nx">Errno</span><span class="p">)</span> <span class="nx">Error</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nb">int</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">errors</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">errors</span><span class="p">[</span><span class="nx">e</span><span class="p">]</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;errno %d&quot;</span><span class="p">,</span> <span class="nx">e</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following statement creates an interface value holding the <code>Errno</code> value 2, signifying the POSIX <code>ENOENT</code> condition:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">err</span> <span class="kt">error</span> <span class="p">=</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">Errno</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span> <span class="c1">// &quot;no such file or directory&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>         <span class="c1">// &quot;no such file or directory&quot;</span>
+</pre></div>
+
+
+<p>The value of <code>err</code> is shown graphically the following figure:</p>
+<p><a href="../figure_7.6.png" title="Figure 7.6. An interface value holding a syscall.Errno integer."><img alt="Figure 7.6. An interface value holding a syscall.Errno integer." src="../figure_7.6.png" /></a></p>
+<p><code>Errno</code> is an efficient representation of system call errors drawn from a finite set, and it satisfies the standard <code>error</code> interface. Other types that satisfy this interface will be discussed in <a href="#discriminating-errors-with-type-assertions">Section 7.11</a>.</p>
+<h3 id="example-expression-evaluator">Example: Expression Evaluator</h3>
+<h3 id="type-assertions">Type Assertions</h3>
+<h3 id="discriminating-errors-with-type-assertions">Discriminating Errors with Type Assertions</h3>
+<h3 id="querying-behaviors-with-interface-type-assertions">Querying Behaviors with Interface Type Assertions</h3>
+<h3 id="type-switches">Type Switches</h3>
+<h3 id="example-token-based-xml-decoding">Example: Token-Based XML Decoding</h3>
+<h3 id="a-few-words-of-advice">A Few Words of Advice</h3>
             </div>
         </div>
 
