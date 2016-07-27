@@ -1490,7 +1490,56 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
 <p><a href="../figure_7.6.png" title="Figure 7.6. An interface value holding a syscall.Errno integer."><img alt="Figure 7.6. An interface value holding a syscall.Errno integer." src="../figure_7.6.png" /></a></p>
 <p><code>Errno</code> is an efficient representation of system call errors drawn from a finite set, and it satisfies the standard <code>error</code> interface. Other types that satisfy this interface will be discussed in <a href="#discriminating-errors-with-type-assertions">Section 7.11</a>.</p>
 <h3 id="example-expression-evaluator">Example: Expression Evaluator</h3>
+<p>[skipped]</p>
 <h3 id="type-assertions">Type Assertions</h3>
+<p>A <a href="https://golang.org/ref/spec#Type_assertions"><strong>type assertion</strong></a> is an operation applied to an interface value. Syntactically, it looks like <code>x.(T)</code>, where <code>x</code> is an expression of an interface type and <code>T</code> is a type, called the "asserted" type. A type assertion checks that the dynamic type of its operand matches the asserted type, which has two possibilities as discussed below.</p>
+<p>If the asserted type <code>T</code> is a concrete type, then the type assertion checks whether <code>x</code>'s dynamic type is identical to <code>T</code>. If this check succeeds, the result of the type assertion is <code>x</code>'s dynamic value, whose type is of course <code>T</code>. <u>In other words, a type assertion to a concrete type extracts the concrete value from its operand.</u> If the check fails, then the operation panics. For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">f</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="o">*</span><span class="nx">os</span><span class="p">.</span><span class="nx">File</span><span class="p">)</span>      <span class="c1">// success: f == os.Stdout</span>
+<span class="nx">c</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="c1">// panic: interface holds *os.File, not *bytes.Buffer</span>
+</pre></div>
+
+
+<p>If the asserted type <code>T</code> is an interface type, then the type assertion checks whether <code>x</code>'s dynamic type <em>satisfies</em> <code>T</code>. If this check succeeds, the dynamic value is not extracted; the result is still an interface value with the same type and value components, but the result has the interface type <code>T</code>. In other words, a type assertion to an interface type changes the type of the expression, making a different (and usually larger) set of methods accessible, but it preserves the dynamic type and value components inside the interface value.</p>
+<p>After the first type assertion below, both <code>w</code> and <code>rw</code> hold <code>os.Stdout</code> so each has a dynamic type of <code>*os.File</code>, but <code>w</code>, an <code>io.Writer</code>, exposes only the file's <code>Write</code> method, whereas <code>rw</code> also exposes its <code>Read</code> method.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">rw</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="nx">io</span><span class="p">.</span><span class="nx">ReadWriter</span><span class="p">)</span> <span class="c1">// success: *os.File has both Read and Write</span>
+
+<span class="nx">w</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">ByteCounter</span><span class="p">)</span>
+<span class="nx">rw</span> <span class="p">=</span> <span class="nx">w</span><span class="p">.(</span><span class="nx">io</span><span class="p">.</span><span class="nx">ReadWriter</span><span class="p">)</span>  <span class="c1">// panic: *ByteCounter has no Read method</span>
+</pre></div>
+
+
+<p>If the operand is a nil interface value, the type assertion always fails. A type assertion to a less restrictive interface type (one with fewer methods) is rarely needed, as it behaves just like an assignment, except in the nil case.</p>
+<div class="codehilite"><pre><span class="nx">w</span> <span class="p">=</span> <span class="nx">rw</span> <span class="c1">// io.ReadWriter is assignable to io.Writer</span>
+<span class="nx">w</span> <span class="p">=</span> <span class="nx">rw</span><span class="p">.(</span><span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">)</span> <span class="c1">// fails only if rw == nil</span>
+</pre></div>
+
+
+<p>When we're not sure of the dynamic type of an interface value, we can test whether it is some particular type. If the type assertion appears in an assignment in which two results are expected, such as the following declarations, the operation does not panic on failure but instead returns an additional second result, a boolean indicating success:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">f</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="o">*</span><span class="nx">os</span><span class="p">.</span><span class="nx">File</span><span class="p">)</span>      <span class="c1">// success: ok, f == os.Stdout</span>
+<span class="nx">b</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="c1">// failure: !ok, b == nil</span>
+</pre></div>
+
+
+<p>The second result is conventionally assigned to a variable named <code>ok</code>. If the operation failed, <code>ok</code> is false, and the first result is equal to the zero value of the asserted type, which in this example is a nil <code>*bytes.Buffer</code>.</p>
+<p>The <code>ok</code> result is often immediately used to decide what to do next, as written in an <code>if</code> statement of the following form:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="o">*</span><span class="nx">os</span><span class="p">.</span><span class="nx">File</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+    <span class="c1">// ...use f...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When the operand of a type assertion is a variable, rather than invent another name for the new local variable, you'll sometimes see the original name reused, shadowing the original, like this:</p>
+<div class="codehilite"><pre><span class="k">if</span> <span class="nx">w</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="o">*</span><span class="nx">os</span><span class="p">.</span><span class="nx">File</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+    <span class="c1">// ...use w...</span>
+<span class="p">}</span>
+</pre></div>
+
+
 <h3 id="discriminating-errors-with-type-assertions">Discriminating Errors with Type Assertions</h3>
 <h3 id="querying-behaviors-with-interface-type-assertions">Querying Behaviors with Interface Type Assertions</h3>
 <h3 id="type-switches">Type Switches</h3>
