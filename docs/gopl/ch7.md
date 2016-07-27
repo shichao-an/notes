@@ -1157,7 +1157,66 @@ The value of `err` is shown graphically the following figure:
 
 ### Example: Expression Evaluator
 
+[skipped]
+
 ### Type Assertions
+
+A [**type assertion**](https://golang.org/ref/spec#Type_assertions) is an operation applied to an interface value. Syntactically, it looks like `x.(T)`, where `x` is an expression of an interface type and `T` is a type, called the "asserted" type. A type assertion checks that the dynamic type of its operand matches the asserted type, which has two possibilities as discussed below.
+
+If the asserted type `T` is a concrete type, then the type assertion checks whether `x`'s dynamic type is identical to `T`. If this check succeeds, the result of the type assertion is `x`'s dynamic value, whose type is of course `T`. <u>In other words, a type assertion to a concrete type extracts the concrete value from its operand.</u> If the check fails, then the operation panics. For example:
+
+```go
+var w io.Writer
+w = os.Stdout
+f := w.(*os.File)      // success: f == os.Stdout
+c := w.(*bytes.Buffer) // panic: interface holds *os.File, not *bytes.Buffer
+```
+
+If the asserted type `T` is an interface type, then the type assertion checks whether `x`'s dynamic type *satisfies* `T`. If this check succeeds, the dynamic value is not extracted; the result is still an interface value with the same type and value components, but the result has the interface type `T`. In other words, a type assertion to an interface type changes the type of the expression, making a different (and usually larger) set of methods accessible, but it preserves the dynamic type and value components inside the interface value.
+
+After the first type assertion below, both `w` and `rw` hold `os.Stdout` so each has a dynamic type of `*os.File`, but `w`, an `io.Writer`, exposes only the file's `Write` method, whereas `rw` also exposes its `Read` method.
+
+```go
+var w io.Writer
+w = os.Stdout
+rw := w.(io.ReadWriter) // success: *os.File has both Read and Write
+
+w = new(ByteCounter)
+rw = w.(io.ReadWriter)  // panic: *ByteCounter has no Read method
+```
+
+If the operand is a nil interface value, the type assertion always fails. A type assertion to a less restrictive interface type (one with fewer methods) is rarely needed, as it behaves just like an assignment, except in the nil case.
+
+```go
+w = rw // io.ReadWriter is assignable to io.Writer
+w = rw.(io.Writer) // fails only if rw == nil
+```
+
+When we're not sure of the dynamic type of an interface value, we can test whether it is some particular type. If the type assertion appears in an assignment in which two results are expected, such as the following declarations, the operation does not panic on failure but instead returns an additional second result, a boolean indicating success:
+
+```go
+var w io.Writer = os.Stdout
+f, ok := w.(*os.File)      // success: ok, f == os.Stdout
+b, ok := w.(*bytes.Buffer) // failure: !ok, b == nil
+```
+
+The second result is conventionally assigned to a variable named `ok`. If the operation failed, `ok` is false, and the first result is equal to the zero value of the asserted type, which in this example is a nil `*bytes.Buffer`.
+
+The `ok` result is often immediately used to decide what to do next, as written in an `if` statement of the following form:
+
+```go
+if f, ok := w.(*os.File); ok {
+	// ...use f...
+}
+```
+
+When the operand of a type assertion is a variable, rather than invent another name for the new local variable, you'll sometimes see the original name reused, shadowing the original, like this:
+
+```go
+if w, ok := w.(*os.File); ok {
+	// ...use w...
+}
+```
 
 ### Discriminating Errors with Type Assertions
 
