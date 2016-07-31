@@ -1541,6 +1541,87 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
 
 
 <h3 id="discriminating-errors-with-type-assertions">Discriminating Errors with Type Assertions</h3>
+<p>Consider the set of errors returned by file operations in the <code>os</code> package. I/O can fail for any number of reasons, but three kinds of failure often must be handled differently:</p>
+<ul>
+<li>file already exists (for create operations)</li>
+<li>file not found (for read operations)</li>
+<li>permission denied</li>
+</ul>
+<p>The <code>os</code> package provides three helper functions to classify the failure indicated by a given <code>error</code> value:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">os</span>
+
+<span class="kd">func</span> <span class="nx">IsExist</span><span class="p">(</span><span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="kt">bool</span>
+<span class="kd">func</span> <span class="nx">IsNotExist</span><span class="p">(</span><span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="kt">bool</span>
+<span class="kd">func</span> <span class="nx">IsPermission</span><span class="p">(</span><span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="kt">bool</span>
+</pre></div>
+
+
+<p>A naïve implementation might check that the error message contains a certain substring:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">IsNotExist</span><span class="p">(</span><span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="c1">// NOTE: not robust!</span>
+    <span class="k">return</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">Contains</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">(),</span> <span class="s">&quot;file does not exist&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Because the logic for handling I/O errors can vary from one platform to another, this approach is not robust and the same failure may be reported with a variety of different error messages.</p>
+<p>A more reliable approach is to represent structured error values using a dedicated type. The <code>os</code> package defines these types:</p>
+<ul>
+<li><code>PathError</code>, which describes failures involving an operation on a file path, like <code>Open</code> or <code>Delete</code></li>
+<li>A variant <code>LinkError</code>, which describes failures of operations involving two file paths, like <code>Symlink</code> and <code>Rename</code></li>
+</ul>
+<p>The following is <code>os.PathError</code>:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">os</span>
+
+<span class="c1">// PathError records an error and the operation and file path that caused it.</span>
+<span class="kd">type</span> <span class="nx">PathError</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Op</span> <span class="kt">string</span>
+    <span class="nx">Path</span> <span class="kt">string</span>
+    <span class="nx">Err</span> <span class="kt">error</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">PathError</span><span class="p">)</span> <span class="nx">Error</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Op</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Path</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Err</span><span class="p">.</span><span class="nx">Error</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Although <code>PathError</code>'s <code>Error</code> method forms a message by simply concatenating the fields, <code>PathError</code>'s structure preserves the underlying components of the error. Clients can use a <a href="#type-assertions">type assertion</a> to detect the specific type of the error; the specific type provides more detail than a simple string.</p>
+<div class="codehilite"><pre><span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;/no/such/file&quot;</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="c1">// &quot;open /no/such/file: No such file or directory&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%#v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// &amp;os.PathError{Op:&quot;open&quot;, Path:&quot;/no/such/file&quot;, Err:0x2}</span>
+</pre></div>
+
+
+<p>That is how the three helper functions work. For example, <code>IsNotExist</code>, shown below, reports whether an error is equal to <code>syscall.ENOENT</code> (<a href="#the-error-interface">Section 7.8</a>) or to the distinguished error <code>os.ErrNotExist</code> (see <code>io.EOF</code> in <a href="../ch5/#end-of-file-eof">Section 5.4.2</a>), or is a <code>*PathError</code> whose underlying error is one of those two.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;errors&quot;</span>
+    <span class="s">&quot;syscall&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">var</span> <span class="nx">ErrNotExist</span> <span class="p">=</span> <span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;file does not exist&quot;</span><span class="p">)</span>
+
+<span class="c1">// IsNotExist returns a boolean indicating whether the error is known to</span>
+<span class="c1">// report that a file or directory does not exist. It is satisfied by</span>
+<span class="c1">// ErrNotExist as well as some syscall errors.</span>
+<span class="kd">func</span> <span class="nx">IsNotExist</span><span class="p">(</span><span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">pe</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">err</span><span class="p">.(</span><span class="o">*</span><span class="nx">PathError</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="nx">err</span> <span class="p">=</span> <span class="nx">pe</span><span class="p">.</span><span class="nx">Err</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">err</span> <span class="o">==</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">ENOENT</span> <span class="o">||</span> <span class="nx">err</span> <span class="o">==</span> <span class="nx">ErrNotExist</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This is how it is used:</p>
+<div class="codehilite"><pre><span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;/no/such/file&quot;</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">IsNotExist</span><span class="p">(</span><span class="nx">err</span><span class="p">))</span> <span class="c1">// &quot;true&quot;</span>
+</pre></div>
+
+
+<p><code>PathError</code>'s structure is lost if the error message is combined into a larger string, for instance by a call to <code>fmt.Errorf</code>. Error discrimination must usually be done immediately after the failing operation, before an error is propagated to the caller.</p>
 <h3 id="querying-behaviors-with-interface-type-assertions">Querying Behaviors with Interface Type Assertions</h3>
 <h3 id="type-switches">Type Switches</h3>
 <h3 id="example-token-based-xml-decoding">Example: Token-Based XML Decoding</h3>
