@@ -1220,6 +1220,95 @@ if w, ok := w.(*os.File); ok {
 
 ### Discriminating Errors with Type Assertions
 
+Consider the set of errors returned by file operations in the `os` package. I/O can fail for any number of reasons, but three kinds of failure often must be handled differently:
+
+* file already exists (for create operations)
+* file not found (for read operations)
+* permission denied
+
+The `os` package provides three helper functions to classify the failure indicated by a given `error` value:
+
+```go
+package os
+
+func IsExist(err error) bool
+func IsNotExist(err error) bool
+func IsPermission(err error) bool
+```
+
+A naïve implementation might check that the error message contains a certain substring:
+
+```go
+func IsNotExist(err error) bool {
+	// NOTE: not robust!
+	return strings.Contains(err.Error(), "file does not exist")
+}
+```
+
+Because the logic for handling I/O errors can vary from one platform to another, this approach is not robust and the same failure may be reported with a variety of different error messages.
+
+A more reliable approach is to represent structured error values using a dedicated type. The `os` package defines these types:
+
+* `PathError`, which describes failures involving an operation on a file path, like `Open` or `Delete`
+* A variant `LinkError`, which describes failures of operations involving two file paths, like `Symlink` and `Rename`
+
+The following is `os.PathError`:
+
+```go
+package os
+
+// PathError records an error and the operation and file path that caused it.
+type PathError struct {
+	Op string
+	Path string
+	Err error
+}
+
+func (e *PathError) Error() string {
+	return e.Op + " " + e.Path + ": " + e.Err.Error()
+}
+```
+
+Although `PathError`'s `Error` method forms a message by simply concatenating the fields, `PathError`'s structure preserves the underlying components of the error. Clients can use a [type assertion](#type-assertions) to detect the specific type of the error; the specific type provides more detail than a simple string.
+
+```go
+_, err := os.Open("/no/such/file")
+fmt.Println(err) // "open /no/such/file: No such file or directory"
+fmt.Printf("%#v\n", err)
+// Output:
+// &os.PathError{Op:"open", Path:"/no/such/file", Err:0x2}
+```
+
+That is how the three helper functions work. For example, `IsNotExist`, shown below, reports whether an error is equal to `syscall.ENOENT` ([Section 7.8](#the-error-interface)) or to the distinguished error `os.ErrNotExist` (see `io.EOF` in [Section 5.4.2](ch5.md#end-of-file-eof)), or is a `*PathError` whose underlying error is one of those two.
+
+```go
+import (
+	"errors"
+	"syscall"
+)
+
+var ErrNotExist = errors.New("file does not exist")
+
+// IsNotExist returns a boolean indicating whether the error is known to
+// report that a file or directory does not exist. It is satisfied by
+// ErrNotExist as well as some syscall errors.
+func IsNotExist(err error) bool {
+	if pe, ok := err.(*PathError); ok {
+		err = pe.Err
+	}
+	return err == syscall.ENOENT || err == ErrNotExist
+}
+```
+
+This is how it is used:
+
+```go
+_, err := os.Open("/no/such/file")
+fmt.Println(os.IsNotExist(err)) // "true"
+```
+
+`PathError`'s structure is lost if the error message is combined into a larger string, for instance by a call to `fmt.Errorf`. Error discrimination must usually be done immediately after the failing operation, before an error is propagated to the caller.
+
 ### Querying Behaviors with Interface Type Assertions
 
 ### Type Switches
