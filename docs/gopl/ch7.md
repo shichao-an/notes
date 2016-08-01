@@ -1311,8 +1311,102 @@ fmt.Println(os.IsNotExist(err)) // "true"
 
 ### Querying Behaviors with Interface Type Assertions
 
+The code below is similar to the part of the [`net/http`](https://golang.org/pkg/net/http/) web server responsible for writing HTTP header fields. The `io.Writer w` represents the HTTP response; the bytes written to it are sent to the web browser.
+
+```go
+func writeHeader(w io.Writer, contentType string) error {
+if _, err := w.Write([]byte("Content-Type: ")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(contentType)); err != nil {
+		return err
+	}
+	// ...
+}
+```
+
+Because the `Write` method requires a byte slice, a `[]byte(...)` conversion from a string is required. This conversion allocates memory and makes a copy, but the copy is discarded almost immediately after. Can we avoid allocating memory here?
+
+The [`io.Writer`](https://golang.org/pkg/io/#Writer) interface tells us only one fact about the concrete type that `w` holds: that bytes may be written to it. If we look behind the curtains of the `net/http` package, we see that the dynamic type that `w` holds in this program also has a `WriteString` method that allows strings to be efficiently written to it, avoiding the need to allocate a temporary copy. A number of important types that satisfy `io.Writer` also have a `WriteString` method, including `*bytes.Buffer`, `*os.File` and `*bufio.Writer`.
+
+We cannot assume that an arbitrary `io.Writer w` also has the `WriteString` method. But we can define a new interface that has just this method and use a type assertion to test whether the dynamic type of `w` satisfies this new interface.
+
+```go
+// writeString writes s to w.
+// If w has a WriteString method, it is invoked instead of w.Write.
+func writeString(w io.Writer, s string) (n int, err error) {
+	type stringWriter interface {
+		WriteString(string) (n int, err error)
+	}
+	if sw, ok := w.(stringWriter); ok {
+		return sw.WriteString(s) // avoid a copy
+	}
+	return w.Write([]byte(s)) // allocate temporary copy
+}
+
+func writeHeader(w io.Writer, contentType string) error {
+	if _, err := writeString(w, "Content-Type: "); err != nil {
+		return err
+	}
+	if _, err := writeString(w, contentType); err != nil {
+		return err
+	}
+	// ...
+}
+```
+
+The standard library provides it as [`io.WriteString`](https://golang.org/pkg/io/#WriteString); it is the recommended way to write a string to an `io.Writer`.
+
+From this example, we realize that:
+
+* There is no standard interface that defines the `WriteString` method and specifies its required behavior.
+* Whether or not a concrete type satisfies the `stringWriter` interface is determined only by its methods, not by any declared relationship between it and the interface type.
+
+What this means is that the technique above relies on the assumption that if a type satisfies the interface below, then `WriteString(s)` must have the same effect as `Write([]byte(s))`.
+
+```go
+interface {
+	io.Writer
+	WriteString(s string) (n int, err error)
+}
+```
+
+Although `io.WriteString` documents its assumption, few functions that call it are likely to document that they make the same assumption. Defining a method of a particular type is taken as an implicit assent for a certain behavioral contract. This lack of explicit intention seems unsettling, but it is rarely a problem in practice. With the exception of the empty interface `interface{}`, interface types are seldom satisfied by unintended coincidence.
+
+The `writeString` function above uses a type assertion to see whether a value of a general interface type also satisfies a more specific interface type, and if so, it uses the behaviors of the specific interface. This technique can be put to good use whether or not the queried interface is standard like `io.ReadWriter` or user-defined like `stringWriter`.
+
+It's also how `fmt.Fprintf` distinguishes values that satisfy `error` or `fmt.Stringer` from all other values. Within `fmt.Fprintf`, there is a step that converts a single operand to a string, something like this:
+
+```go
+package fmt
+
+func formatOneValue(x interface{}) string {
+	if err, ok := x.(error); ok {
+		return err.Error()
+	}
+	if str, ok := x.(Stringer); ok {
+		return str.String()
+	}
+	// ...all other types...
+}
+```
+
+If `x` satisfies either of the two interfaces, that determines the formatting of the value. If not, the default case handles all other types more or less uniformly using [reflection](https://blog.golang.org/laws-of-reflection), which is discussed in [Chapter 12](ch12.md).
+
+Again, this makes the assumption that any type with a `String` method satisfies the behavioral contract of `fmt.Stringer`, which is to return a string suitable for printing.
+
 ### Type Switches
 
 ### Example: Token-Based XML Decoding
 
 ### A Few Words of Advice
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p210 on assumption of `WriteString`**
+
+> Although `io.WriteString` documents its assumption, few functions that call it are likely to document that they make the same assumption. Defining a method of a particular type is taken as an implicit assent for a certain behavioral contract.
+
+<span class="text-danger">Question</span>: What does it mean?
