@@ -481,6 +481,11 @@
         <li class="main "><a href="#a-few-words-of-advice">A Few Words of Advice</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1623,9 +1628,89 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
 
 <p><code>PathError</code>'s structure is lost if the error message is combined into a larger string, for instance by a call to <code>fmt.Errorf</code>. Error discrimination must usually be done immediately after the failing operation, before an error is propagated to the caller.</p>
 <h3 id="querying-behaviors-with-interface-type-assertions">Querying Behaviors with Interface Type Assertions</h3>
+<p>The code below is similar to the part of the <a href="https://golang.org/pkg/net/http/"><code>net/http</code></a> web server responsible for writing HTTP header fields. The <code>io.Writer w</code> represents the HTTP response; the bytes written to it are sent to the web browser.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">writeHeader</span><span class="p">(</span><span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">,</span> <span class="nx">contentType</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;Content-Type: &quot;</span><span class="p">));</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">contentType</span><span class="p">));</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Because the <code>Write</code> method requires a byte slice, a <code>[]byte(...)</code> conversion from a string is required. This conversion allocates memory and makes a copy, but the copy is discarded almost immediately after. Can we avoid allocating memory here?</p>
+<p>The <a href="https://golang.org/pkg/io/#Writer"><code>io.Writer</code></a> interface tells us only one fact about the concrete type that <code>w</code> holds: that bytes may be written to it. If we look behind the curtains of the <code>net/http</code> package, we see that the dynamic type that <code>w</code> holds in this program also has a <code>WriteString</code> method that allows strings to be efficiently written to it, avoiding the need to allocate a temporary copy. A number of important types that satisfy <code>io.Writer</code> also have a <code>WriteString</code> method, including <code>*bytes.Buffer</code>, <code>*os.File</code> and <code>*bufio.Writer</code>.</p>
+<p>We cannot assume that an arbitrary <code>io.Writer w</code> also has the <code>WriteString</code> method. But we can define a new interface that has just this method and use a type assertion to test whether the dynamic type of <code>w</code> satisfies this new interface.</p>
+<div class="codehilite"><pre><span class="c1">// writeString writes s to w.</span>
+<span class="c1">// If w has a WriteString method, it is invoked instead of w.Write.</span>
+<span class="kd">func</span> <span class="nx">writeString</span><span class="p">(</span><span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">,</span> <span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">type</span> <span class="nx">stringWriter</span> <span class="kd">interface</span> <span class="p">{</span>
+        <span class="nx">WriteString</span><span class="p">(</span><span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">sw</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.(</span><span class="nx">stringWriter</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">sw</span><span class="p">.</span><span class="nx">WriteString</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="c1">// avoid a copy</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">w</span><span class="p">.</span><span class="nx">Write</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">s</span><span class="p">))</span> <span class="c1">// allocate temporary copy</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">writeHeader</span><span class="p">(</span><span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">,</span> <span class="nx">contentType</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">writeString</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="s">&quot;Content-Type: &quot;</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">writeString</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">contentType</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The standard library provides it as <a href="https://golang.org/pkg/io/#WriteString"><code>io.WriteString</code></a>; it is the recommended way to write a string to an <code>io.Writer</code>.</p>
+<p>From this example, we realize that:</p>
+<ul>
+<li>There is no standard interface that defines the <code>WriteString</code> method and specifies its required behavior.</li>
+<li>Whether or not a concrete type satisfies the <code>stringWriter</code> interface is determined only by its methods, not by any declared relationship between it and the interface type.</li>
+</ul>
+<p>What this means is that the technique above relies on the assumption that if a type satisfies the interface below, then <code>WriteString(s)</code> must have the same effect as <code>Write([]byte(s))</code>.</p>
+<div class="codehilite"><pre><span class="kd">interface</span> <span class="p">{</span>
+    <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span>
+    <span class="nx">WriteString</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Although <code>io.WriteString</code> documents its assumption, few functions that call it are likely to document that they make the same assumption. Defining a method of a particular type is taken as an implicit assent for a certain behavioral contract. This lack of explicit intention seems unsettling, but it is rarely a problem in practice. With the exception of the empty interface <code>interface{}</code>, interface types are seldom satisfied by unintended coincidence.</p>
+<p>The <code>writeString</code> function above uses a type assertion to see whether a value of a general interface type also satisfies a more specific interface type, and if so, it uses the behaviors of the specific interface. This technique can be put to good use whether or not the queried interface is standard like <code>io.ReadWriter</code> or user-defined like <code>stringWriter</code>.</p>
+<p>It's also how <code>fmt.Fprintf</code> distinguishes values that satisfy <code>error</code> or <code>fmt.Stringer</code> from all other values. Within <code>fmt.Fprintf</code>, there is a step that converts a single operand to a string, something like this:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">fmt</span>
+
+<span class="kd">func</span> <span class="nx">formatOneValue</span><span class="p">(</span><span class="nx">x</span> <span class="kd">interface</span><span class="p">{})</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kt">error</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">str</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="nx">Stringer</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">str</span><span class="p">.</span><span class="nx">String</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="c1">// ...all other types...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If <code>x</code> satisfies either of the two interfaces, that determines the formatting of the value. If not, the default case handles all other types more or less uniformly using <a href="https://blog.golang.org/laws-of-reflection">reflection</a>, which is discussed in <a href="ch12.md">Chapter 12</a>.</p>
+<p>Again, this makes the assumption that any type with a <code>String</code> method satisfies the behavioral contract of <code>fmt.Stringer</code>, which is to return a string suitable for printing.</p>
 <h3 id="type-switches">Type Switches</h3>
 <h3 id="example-token-based-xml-decoding">Example: Token-Based XML Decoding</h3>
 <h3 id="a-few-words-of-advice">A Few Words of Advice</h3>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p210-on-assumption-of-writestring"><strong>p210 on assumption of <code>WriteString</code></strong></h5>
+<blockquote>
+<p>Although <code>io.WriteString</code> documents its assumption, few functions that call it are likely to document that they make the same assumption. Defining a method of a particular type is taken as an implicit assent for a certain behavioral contract.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean?</p>
             </div>
         </div>
 

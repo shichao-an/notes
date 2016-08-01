@@ -701,7 +701,7 @@ Methods are crucial to object-oriented programming, but they're only half the pi
 
 #### Verbatim
 
-##### **p161 pointer receiver**
+##### **p161 on pointer receiver**
 
 > Any changes a method makes to the reference itself, like setting it to `nil` or making it refer to a different map data structure, will not be reflected in the caller.
 
@@ -711,7 +711,7 @@ Methods are crucial to object-oriented programming, but they're only half the pi
 
 The "will not be reflected in the caller" probably means "no effect" in the caller function. This is similar to setting an argument (within the callee function) to `nil` or making it refer to another object.
 
-##### **p168 pointer receiver**
+##### **p168 on pointer receiver**
 
 > First, because clients cannot directly modify the object's variables, one need inspect fewer statements to understand the possible values of those variables.
 
