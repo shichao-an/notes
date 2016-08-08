@@ -1397,6 +1397,120 @@ Again, this makes the assumption that any type with a `String` method satisfies 
 
 ### Type Switches
 
+Interfaces are used in two distinct styles.
+
+1. The first style is exemplified by interfaces such as `io.Reader`, `io.Writer`, `fmt.Stringer`, `sort.Interface`, `http.Handler`, and `error`.
+    * In this style, an interface's methods express the similarities of the concrete types that satisfy the interface but hide the representation details and intrinsic operations of those concrete types.
+    * The emphasis is on the methods, not on the concrete types.
+2. The second style exploits the ability of an interface value to hold values of a variety of concrete types and considers the interface to be the *union* of those types.
+    * Type assertions are used to discriminate among these types dynamically and treat each case differently.
+    * The emphasis is on the concrete types that satisfy the interface, not on the interface's methods, and there is no hiding of information.
+    * The interfaces used this way are described as [discriminated unions](https://en.wikipedia.org/wiki/Tagged_union).
+
+In object-oriented programming, these two styles may be recognized as [subtype polymorphism](https://en.wikipedia.org/wiki/Subtyping) and [ad hoc polymorphism](https://en.wikipedia.org/wiki/Ad_hoc_polymorphism).
+
+Go's API for querying an SQL database separates the fixed part of a query from the variable parts. In the following example:
+
+```go
+import "database/sql"
+func listTracks(db sql.DB, artist string, minYear, maxYear int) {
+	result, err := db.Exec(
+		"SELECT * FROM tracks WHERE artist = ? AND ? <= year AND year <= ?",
+		artist, minYear, maxYear)
+	// ...
+}
+```
+
+The `Exec` method replaces each '`?`' in the query string with an SQL literal denoting the corresponding argument value. Constructing queries this way helps avoid SQL injection attacks, in which an adversary takes control of the query by exploiting improper quotation of input data.
+
+Within `Exec`, we might find a function like the one below, which converts each argument value to its literal SQL notation.
+
+```go
+func sqlQuote(x interface{}) string {
+	if x == nil {
+		return "NULL"
+	} else if _, ok := x.(int); ok {
+		return fmt.Sprintf("%d", x)
+	} else if _, ok := x.(uint); ok {
+		return fmt.Sprintf("%d", x)
+	} else if b, ok := x.(bool); ok {
+		if b {
+			return "TRUE"
+		}
+		return "FALSE"
+	} else if s, ok := x.(string); ok {
+		return sqlQuoteString(s) // (not shown)
+	} else {
+		panic(fmt.Sprintf("unexpected type %T: %v", x, x))
+	}
+}
+```
+
+A `switch` statement simplifies an `if`-`else` chain that performs a series of value equality tests. An analogous [type switch](https://golang.org/doc/effective_go.html#type_switch) statement simplifies an `if`-`else` chain of type assertions.
+
+In its simplest form:
+
+* A type switch looks like an ordinary `switch` statement in which the operand is `x.(type)` (that's literally the keyword `type`) and each case has one or more types.
+* A type switch enables a multi-way branch based on the interface value's dynamic type. The `nil` case matches if `x == nil`, and the `default` case matches if no other case does.
+
+A type switch for `sqlQuote` would have these cases:
+
+```go
+switch x.(type) {
+case nil:       // ...
+case int, uint: // ...
+case bool:      // ...
+case string:    // ...
+default:        // ...
+}
+```
+
+As with an ordinary `switch` statement ([Section 1.8](ch1.md#loose-ends)):
+
+* Cases are considered in order. When a match is found, the case's body is executed.
+* Case order becomes significant when one or more case types are interfaces, since then there is a possibility of two cases matching.
+* The position of the `default` case relative to the others is immaterial.
+* No `fallthrough` is allowed.
+
+In the original function, the logic for the `bool` and `string` cases needs access to the value extracted by the type assertion. The type switch statement has an extended form that binds the extracted value to a new variable within each case:
+
+```go
+switch x := x.(type) { /* ... */ }
+```
+
+The new variables is called `x`, since reuse of variable names is common, as with type assertions. Like a `switch` statement, a type switch implicitly creates a lexical block, so the declaration of the new variable called `x` does not conflict with a variable `x` in an outer block. Each case also implicitly creates a separate lexical block.
+
+`sqlQuote` can be rewritten to use the extended form of type switch:
+
+```go
+func sqlQuote(x interface{}) string {
+	switch x := x.(type) {
+	case nil:
+		return "NULL"
+	case int, uint:
+		return fmt.Sprintf("%d", x) // x has type interface{} here.
+	case bool:
+		if x {
+			return "TRUE"
+		}
+		return "FALSE"
+	case string:
+		return sqlQuoteString(x) // (not shown)
+	default:
+		panic(fmt.Sprintf("unexpected type %T: %v", x, x))
+	}
+}
+```
+
+In the above code:
+
+* Within the block of each single-type case, the variable `x` has the same type as the case.
+    * For instance, `x` has type `bool` within the `bool` case and `string` within the `string` case.
+* In all other cases, `x` has the (interface) type of the `switch` operand, which is `interface{}`.
+* When the same action is required for multiple cases, like `int` and `uint`, the type switch makes it easy to combine them.
+
+Although `sqlQuote` accepts an argument of any type, the function runs to completion only if the argument's type matches one of the cases in the type switch; otherwise it panics with an "unexpected type" message. Although the type of `x` is `interface{}`, we consider it a discriminated union of `int`, `uint`, `bool`, `string`, and `nil`.
+
 ### Example: Token-Based XML Decoding
 
 ### A Few Words of Advice

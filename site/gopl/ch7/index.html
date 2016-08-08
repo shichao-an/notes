@@ -1702,6 +1702,116 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
 <p>If <code>x</code> satisfies either of the two interfaces, that determines the formatting of the value. If not, the default case handles all other types more or less uniformly using <a href="https://blog.golang.org/laws-of-reflection">reflection</a>, which is discussed in <a href="ch12.md">Chapter 12</a>.</p>
 <p>Again, this makes the assumption that any type with a <code>String</code> method satisfies the behavioral contract of <code>fmt.Stringer</code>, which is to return a string suitable for printing.</p>
 <h3 id="type-switches">Type Switches</h3>
+<p>Interfaces are used in two distinct styles.</p>
+<ol>
+<li>The first style is exemplified by interfaces such as <code>io.Reader</code>, <code>io.Writer</code>, <code>fmt.Stringer</code>, <code>sort.Interface</code>, <code>http.Handler</code>, and <code>error</code>.<ul>
+<li>In this style, an interface's methods express the similarities of the concrete types that satisfy the interface but hide the representation details and intrinsic operations of those concrete types.</li>
+<li>The emphasis is on the methods, not on the concrete types.</li>
+</ul>
+</li>
+<li>The second style exploits the ability of an interface value to hold values of a variety of concrete types and considers the interface to be the <em>union</em> of those types.<ul>
+<li>Type assertions are used to discriminate among these types dynamically and treat each case differently.</li>
+<li>The emphasis is on the concrete types that satisfy the interface, not on the interface's methods, and there is no hiding of information.</li>
+<li>The interfaces used this way are described as <a href="https://en.wikipedia.org/wiki/Tagged_union">discriminated unions</a>.</li>
+</ul>
+</li>
+</ol>
+<p>In object-oriented programming, these two styles may be recognized as <a href="https://en.wikipedia.org/wiki/Subtyping">subtype polymorphism</a> and <a href="https://en.wikipedia.org/wiki/Ad_hoc_polymorphism">ad hoc polymorphism</a>.</p>
+<p>Go's API for querying an SQL database separates the fixed part of a query from the variable parts. In the following example:</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;database/sql&quot;</span>
+<span class="kd">func</span> <span class="nx">listTracks</span><span class="p">(</span><span class="nx">db</span> <span class="nx">sql</span><span class="p">.</span><span class="nx">DB</span><span class="p">,</span> <span class="nx">artist</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">minYear</span><span class="p">,</span> <span class="nx">maxYear</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">result</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">db</span><span class="p">.</span><span class="nx">Exec</span><span class="p">(</span>
+        <span class="s">&quot;SELECT * FROM tracks WHERE artist = ? AND ? &lt;= year AND year &lt;= ?&quot;</span><span class="p">,</span>
+        <span class="nx">artist</span><span class="p">,</span> <span class="nx">minYear</span><span class="p">,</span> <span class="nx">maxYear</span><span class="p">)</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>Exec</code> method replaces each '<code>?</code>' in the query string with an SQL literal denoting the corresponding argument value. Constructing queries this way helps avoid SQL injection attacks, in which an adversary takes control of the query by exploiting improper quotation of input data.</p>
+<p>Within <code>Exec</code>, we might find a function like the one below, which converts each argument value to its literal SQL notation.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">sqlQuote</span><span class="p">(</span><span class="nx">x</span> <span class="kd">interface</span><span class="p">{})</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">x</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="s">&quot;NULL&quot;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kt">int</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kt">uint</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">b</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kt">bool</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">b</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="s">&quot;TRUE&quot;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="s">&quot;FALSE&quot;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">s</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kt">string</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">sqlQuoteString</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="c1">// (not shown)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nb">panic</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;unexpected type %T: %v&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">x</span><span class="p">))</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A <code>switch</code> statement simplifies an <code>if</code>-<code>else</code> chain that performs a series of value equality tests. An analogous <a href="https://golang.org/doc/effective_go.html#type_switch">type switch</a> statement simplifies an <code>if</code>-<code>else</code> chain of type assertions.</p>
+<p>In its simplest form:</p>
+<ul>
+<li>A type switch looks like an ordinary <code>switch</code> statement in which the operand is <code>x.(type)</code> (that's literally the keyword <code>type</code>) and each case has one or more types.</li>
+<li>A type switch enables a multi-way branch based on the interface value's dynamic type. The <code>nil</code> case matches if <code>x == nil</code>, and the <code>default</code> case matches if no other case does.</li>
+</ul>
+<p>A type switch for <code>sqlQuote</code> would have these cases:</p>
+<div class="codehilite"><pre><span class="k">switch</span> <span class="nx">x</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span>
+<span class="k">case</span> <span class="kc">nil</span><span class="p">:</span>       <span class="c1">// ...</span>
+<span class="k">case</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">uint</span><span class="p">:</span> <span class="c1">// ...</span>
+<span class="k">case</span> <span class="kt">bool</span><span class="p">:</span>      <span class="c1">// ...</span>
+<span class="k">case</span> <span class="kt">string</span><span class="p">:</span>    <span class="c1">// ...</span>
+<span class="k">default</span><span class="p">:</span>        <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>As with an ordinary <code>switch</code> statement (<a href="../ch1/#loose-ends">Section 1.8</a>):</p>
+<ul>
+<li>Cases are considered in order. When a match is found, the case's body is executed.</li>
+<li>Case order becomes significant when one or more case types are interfaces, since then there is a possibility of two cases matching.</li>
+<li>The position of the <code>default</code> case relative to the others is immaterial.</li>
+<li>No <code>fallthrough</code> is allowed.</li>
+</ul>
+<p>In the original function, the logic for the <code>bool</code> and <code>string</code> cases needs access to the value extracted by the type assertion. The type switch statement has an extended form that binds the extracted value to a new variable within each case:</p>
+<div class="codehilite"><pre><span class="k">switch</span> <span class="nx">x</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The new variables is called <code>x</code>, since reuse of variable names is common, as with type assertions. Like a <code>switch</code> statement, a type switch implicitly creates a lexical block, so the declaration of the new variable called <code>x</code> does not conflict with a variable <code>x</code> in an outer block. Each case also implicitly creates a separate lexical block.</p>
+<p><code>sqlQuote</code> can be rewritten to use the extended form of type switch:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">sqlQuote</span><span class="p">(</span><span class="nx">x</span> <span class="kd">interface</span><span class="p">{})</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="nx">x</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="kc">nil</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;NULL&quot;</span>
+    <span class="k">case</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">uint</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="c1">// x has type interface{} here.</span>
+    <span class="k">case</span> <span class="kt">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nx">x</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="s">&quot;TRUE&quot;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="s">&quot;FALSE&quot;</span>
+    <span class="k">case</span> <span class="kt">string</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">sqlQuoteString</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="c1">// (not shown)</span>
+    <span class="k">default</span><span class="p">:</span>
+        <span class="nb">panic</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;unexpected type %T: %v&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">x</span><span class="p">))</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In the above code:</p>
+<ul>
+<li>Within the block of each single-type case, the variable <code>x</code> has the same type as the case.<ul>
+<li>For instance, <code>x</code> has type <code>bool</code> within the <code>bool</code> case and <code>string</code> within the <code>string</code> case.</li>
+</ul>
+</li>
+<li>In all other cases, <code>x</code> has the (interface) type of the <code>switch</code> operand, which is <code>interface{}</code>.</li>
+<li>When the same action is required for multiple cases, like <code>int</code> and <code>uint</code>, the type switch makes it easy to combine them.</li>
+</ul>
+<p>Although <code>sqlQuote</code> accepts an argument of any type, the function runs to completion only if the argument's type matches one of the cases in the type switch; otherwise it panics with an "unexpected type" message. Although the type of <code>x</code> is <code>interface{}</code>, we consider it a discriminated union of <code>int</code>, <code>uint</code>, <code>bool</code>, <code>string</code>, and <code>nil</code>.</p>
 <h3 id="example-token-based-xml-decoding">Example: Token-Based XML Decoding</h3>
 <h3 id="a-few-words-of-advice">A Few Words of Advice</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
