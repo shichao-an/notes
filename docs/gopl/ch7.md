@@ -1513,6 +1513,127 @@ Although `sqlQuote` accepts an argument of any type, the function runs to comple
 
 ### Example: Token-Based XML Decoding
 
+[Section 4.5](ch4.md#json) showed how to decode JSON documents into Go data structures with the `Marshal` and `Unmarshal` functions from the `encoding/json` package. The `encoding/xml` package provides a similar API.
+
+This approach is convenient when we want to construct a representation of the document tree, but that's unnecessary for many programs. The `encoding/xml` package also provides a lower-level token-based API for decoding XML. In the token-based style, the parser consumes the input and produces a stream of tokens, primarily of four kinds:
+
+* `StartElement`
+* `EndElement`
+* `CharData`
+* `Comment`
+
+Each of them is a concrete type in the `encoding/xml` package. Each call to `(*xml.Decoder).Token` returns a token. The relevant parts of the API are shown here:
+
+```go
+package xml
+
+type Name struct {
+	Local string // e.g., "Title" or "id"
+}
+
+type Attr struct { // e.g., name="value"
+	Name Name
+	Value string
+}
+
+// A Token includes StartElement, EndElement, CharData,
+// and Comment, plus a few esoteric types (not shown).
+type Token interface{}
+type StartElement struct { // e.g., <name>
+	Name Name
+	Attr []Attr
+}
+type EndElement struct { Name Name } // e.g., </name>
+type CharData []byte                 // e.g., <p>CharData</p>
+type Comment []byte                  // e.g., <!-- Comment -->
+
+type Decoder struct{ /* ... */ }
+func NewDecoder(io.Reader) *Decoder
+func (*Decoder) Token() (Token, error) // returns next Token in sequence
+```
+
+The `Token` interface, which has no methods, is also an example of a discriminated union.
+
+* The purpose of a traditional interface like `io.Reader` is to hide details of the concrete types that satisfy it so that new implementations can be created; each concrete type is treated uniformly.
+* By contrast, the set of concrete types that satisfy a discriminated union is fixed by the design and exposed, not hidden. Discriminated union types have few methods; functions that operate on them are expressed as a set of cases using a type switch, with different logic in each case.
+
+The `xmlselect` program below extracts and prints the text found beneath certain elements in an XML document tree. Using the API above, it can do its job in a single pass over the input without ever materializing the tree.
+
+<small>[gopl.io/ch7/xmlselect/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch7/xmlselect/main.go)</small>
+
+```go
+// Xmlselect prints the text of selected elements of an XML document.
+package main
+
+import (
+	"encoding/xml"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+)
+
+func main() {
+	dec := xml.NewDecoder(os.Stdin)
+	var stack []string // stack of element names
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "xmlselect: %v\n", err)
+			os.Exit(1)
+		}
+		switch tok := tok.(type) {
+		case xml.StartElement:
+			stack = append(stack, tok.Name.Local) // push
+		case xml.EndElement:
+			stack = stack[:len(stack)-1] // pop
+		case xml.CharData:
+			if containsAll(stack, os.Args[1:]) {
+				fmt.Printf("%s: %s\n", strings.Join(stack, " "), tok)
+			}
+		}
+	}
+}
+
+// containsAll reports whether x contains the elements of y, in order.
+func containsAll(x, y []string) bool {
+	for len(y) <= len(x) {
+		if len(y) == 0 {
+			return true
+		}
+		if x[0] == y[0] {
+			y = y[1:]
+		}
+		x = x[1:]
+	}
+	return false
+}
+```
+
+* Each time the loop in main encounters a `StartElement`, it pushes the elements' name onto a stack, and for each `EndElement` it pops the name from the stack.
+* The API guarantees that the sequence of `StartElement` and `EndElement` tokens will be properly matched, even in illformed documents.
+* `Comments` are ignored.
+* When `xmlselect` encounters a `CharData`, it prints the text only if the stack contains all the elements named by the command-line arguments, in order.
+
+The command below prints the text of any `h2` elements appearing beneath two levels of `div` elements.
+
+```text
+$ go build gopl.io/ch1/fetch
+$ ./fetch http://www.w3.org/TR/2006/REC-xml11-20060816 |
+    ./xmlselect div div h2
+html body div div h2: 1 Introduction
+html body div div h2: 2 Documents
+html body div div h2: 3 Logical Structures
+html body div div h2: 4 Physical Structures
+html body div div h2: 5 Conformance
+html body div div h2: 6 Notation
+html body div div h2: A References
+html body div div h2: B Definitions for Character Normalization
+...
+```
+
 ### A Few Words of Advice
 
 ### Doubts and Solution
