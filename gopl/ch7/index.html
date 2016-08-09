@@ -1813,6 +1813,123 @@ mux.HandleFunc(&quot;/price&quot;, db.price)
 </ul>
 <p>Although <code>sqlQuote</code> accepts an argument of any type, the function runs to completion only if the argument's type matches one of the cases in the type switch; otherwise it panics with an "unexpected type" message. Although the type of <code>x</code> is <code>interface{}</code>, we consider it a discriminated union of <code>int</code>, <code>uint</code>, <code>bool</code>, <code>string</code>, and <code>nil</code>.</p>
 <h3 id="example-token-based-xml-decoding">Example: Token-Based XML Decoding</h3>
+<p><a href="../ch4/#json">Section 4.5</a> showed how to decode JSON documents into Go data structures with the <code>Marshal</code> and <code>Unmarshal</code> functions from the <code>encoding/json</code> package. The <code>encoding/xml</code> package provides a similar API.</p>
+<p>This approach is convenient when we want to construct a representation of the document tree, but that's unnecessary for many programs. The <code>encoding/xml</code> package also provides a lower-level token-based API for decoding XML. In the token-based style, the parser consumes the input and produces a stream of tokens, primarily of four kinds:</p>
+<ul>
+<li><code>StartElement</code></li>
+<li><code>EndElement</code></li>
+<li><code>CharData</code></li>
+<li><code>Comment</code></li>
+</ul>
+<p>Each of them is a concrete type in the <code>encoding/xml</code> package. Each call to <code>(*xml.Decoder).Token</code> returns a token. The relevant parts of the API are shown here:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">xml</span>
+
+<span class="kd">type</span> <span class="nx">Name</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Local</span> <span class="kt">string</span> <span class="c1">// e.g., &quot;Title&quot; or &quot;id&quot;</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Attr</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// e.g., name=&quot;value&quot;</span>
+    <span class="nx">Name</span> <span class="nx">Name</span>
+    <span class="nx">Value</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="c1">// A Token includes StartElement, EndElement, CharData,</span>
+<span class="c1">// and Comment, plus a few esoteric types (not shown).</span>
+<span class="kd">type</span> <span class="nx">Token</span> <span class="kd">interface</span><span class="p">{}</span>
+<span class="kd">type</span> <span class="nx">StartElement</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// e.g., &lt;name&gt;</span>
+    <span class="nx">Name</span> <span class="nx">Name</span>
+    <span class="nx">Attr</span> <span class="p">[]</span><span class="nx">Attr</span>
+<span class="p">}</span>
+<span class="kd">type</span> <span class="nx">EndElement</span> <span class="kd">struct</span> <span class="p">{</span> <span class="nx">Name</span> <span class="nx">Name</span> <span class="p">}</span> <span class="c1">// e.g., &lt;/name&gt;</span>
+<span class="kd">type</span> <span class="nx">CharData</span> <span class="p">[]</span><span class="kt">byte</span>                 <span class="c1">// e.g., &lt;p&gt;CharData&lt;/p&gt;</span>
+<span class="kd">type</span> <span class="nx">Comment</span> <span class="p">[]</span><span class="kt">byte</span>                  <span class="c1">// e.g., &lt;!-- Comment --&gt;</span>
+
+<span class="kd">type</span> <span class="nx">Decoder</span> <span class="kd">struct</span><span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">NewDecoder</span><span class="p">(</span><span class="nx">io</span><span class="p">.</span><span class="nx">Reader</span><span class="p">)</span> <span class="o">*</span><span class="nx">Decoder</span>
+<span class="kd">func</span> <span class="p">(</span><span class="o">*</span><span class="nx">Decoder</span><span class="p">)</span> <span class="nx">Token</span><span class="p">()</span> <span class="p">(</span><span class="nx">Token</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="c1">// returns next Token in sequence</span>
+</pre></div>
+
+
+<p>The <code>Token</code> interface, which has no methods, is also an example of a discriminated union.</p>
+<ul>
+<li>The purpose of a traditional interface like <code>io.Reader</code> is to hide details of the concrete types that satisfy it so that new implementations can be created; each concrete type is treated uniformly.</li>
+<li>By contrast, the set of concrete types that satisfy a discriminated union is fixed by the design and exposed, not hidden. Discriminated union types have few methods; functions that operate on them are expressed as a set of cases using a type switch, with different logic in each case.</li>
+</ul>
+<p>The <code>xmlselect</code> program below extracts and prints the text found beneath certain elements in an XML document tree. Using the API above, it can do its job in a single pass over the input without ever materializing the tree.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/xmlselect/main.go">gopl.io/ch7/xmlselect/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Xmlselect prints the text of selected elements of an XML document.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;encoding/xml&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;io&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+    <span class="s">&quot;strings&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">dec</span> <span class="o">:=</span> <span class="nx">xml</span><span class="p">.</span><span class="nx">NewDecoder</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+    <span class="kd">var</span> <span class="nx">stack</span> <span class="p">[]</span><span class="kt">string</span> <span class="c1">// stack of element names</span>
+    <span class="k">for</span> <span class="p">{</span>
+        <span class="nx">tok</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">dec</span><span class="p">.</span><span class="nx">Token</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">==</span> <span class="nx">io</span><span class="p">.</span><span class="nx">EOF</span> <span class="p">{</span>
+            <span class="k">break</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;xmlselect: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+            <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">switch</span> <span class="nx">tok</span> <span class="o">:=</span> <span class="nx">tok</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="nx">xml</span><span class="p">.</span><span class="nx">StartElement</span><span class="p">:</span>
+            <span class="nx">stack</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">stack</span><span class="p">,</span> <span class="nx">tok</span><span class="p">.</span><span class="nx">Name</span><span class="p">.</span><span class="nx">Local</span><span class="p">)</span> <span class="c1">// push</span>
+        <span class="k">case</span> <span class="nx">xml</span><span class="p">.</span><span class="nx">EndElement</span><span class="p">:</span>
+            <span class="nx">stack</span> <span class="p">=</span> <span class="nx">stack</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="nx">stack</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1">// pop</span>
+        <span class="k">case</span> <span class="nx">xml</span><span class="p">.</span><span class="nx">CharData</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nx">containsAll</span><span class="p">(</span><span class="nx">stack</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="p">{</span>
+                <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s: %s\n&quot;</span><span class="p">,</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">stack</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">),</span> <span class="nx">tok</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// containsAll reports whether x contains the elements of y, in order.</span>
+<span class="kd">func</span> <span class="nx">containsAll</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nb">len</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">true</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="nx">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nx">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">{</span>
+            <span class="nx">y</span> <span class="p">=</span> <span class="nx">y</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="p">}</span>
+        <span class="nx">x</span> <span class="p">=</span> <span class="nx">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">false</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>Each time the loop in main encounters a <code>StartElement</code>, it pushes the elements' name onto a stack, and for each <code>EndElement</code> it pops the name from the stack.</li>
+<li>The API guarantees that the sequence of <code>StartElement</code> and <code>EndElement</code> tokens will be properly matched, even in illformed documents.</li>
+<li><code>Comments</code> are ignored.</li>
+<li>When <code>xmlselect</code> encounters a <code>CharData</code>, it prints the text only if the stack contains all the elements named by the command-line arguments, in order.</li>
+</ul>
+<p>The command below prints the text of any <code>h2</code> elements appearing beneath two levels of <code>div</code> elements.</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch1/fetch
+$ ./fetch http://www.w3.org/TR/2006/REC-xml11-20060816 |
+    ./xmlselect div div h2
+html body div div h2: 1 Introduction
+html body div div h2: 2 Documents
+html body div div h2: 3 Logical Structures
+html body div div h2: 4 Physical Structures
+html body div div h2: 5 Conformance
+html body div div h2: 6 Notation
+html body div div h2: A References
+html body div div h2: B Definitions for Character Normalization
+...
+</pre></div>
+
+
 <h3 id="a-few-words-of-advice">A Few Words of Advice</h3>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
