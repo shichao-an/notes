@@ -1636,6 +1636,20 @@ html body div div h2: B Definitions for Character Normalization
 
 ### A Few Words of Advice
 
+When designing a new package, novice Go programmers often start by creating a set of interfaces and only later define the concrete types that satisfy them. This approach is not recommended, because:
+
+* It results in many interfaces, each of which has only a single implementation. These interfaces are unnecessary abstractions.
+* These interfaces also have a run-time cost.
+
+You can restrict which methods of a type or fields of a struct are visible outside a package using the export mechanism ([Section 6.6](ch6.md#encapsulation)). Interfaces are only needed when there are two or more concrete types that must be dealt with in a uniform way.
+
+An exception to this rule is: when an interface is satisfied by a single concrete type but that type cannot live in the same package as the interface because of its dependencies. In that case, an interface is a good way to decouple two packages.
+
+Because interfaces are used only when they are satisfied by two or more types, they necessarily abstract away from the details of any particular implementation. The result is smaller interfaces with fewer, simpler methods, often just one as with `io.Writer` or `fmt.Stringer.` Small interfaces are easier to satisfy when new types come along. A good rule of thumb for interface design is *ask only for what you need*.
+
+With methods and interfaces, Go has great support for the object-oriented style of programming, but this does not mean you need to use it exclusively. Not everything need be an object; standalone functions have their place, as do unencapsulated data types.
+
+
 ### Doubts and Solution
 
 #### Verbatim
