@@ -434,6 +434,9 @@
         <li class="main "><a href="#example-concurrent-clock-server">Example: Concurrent Clock Server</a></li>
         
     
+        <li class="main "><a href="#example-concurrent-echo-server">Example: Concurrent Echo Server</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -635,6 +638,107 @@ $ ./netcat1
 ^C                           14:03:02
                              ^C
 </pre></div>
+
+
+<h3 id="example-concurrent-echo-server">Example: Concurrent Echo Server</h3>
+<p>The clock server used one goroutine per connection. In this section, we’ll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of handleConn:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="c1">// NOTE: ignoring errors</span>
+    <span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This version of echo server simulates the reverberations of a real echo, with the response loud at first ("HELLO!"), then moderate ("Hello!") after a delay, then quiet ("hello!") before fading to nothing:</p>
+<p><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb1/reverb.go">gopl.io/ch8/reverb1/reverb.go</a></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">echo</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">,</span> <span class="nx">shout</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">delay</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="s">&quot;\t&quot;</span><span class="p">,</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">ToUpper</span><span class="p">(</span><span class="nx">shout</span><span class="p">))</span>
+    <span class="nx">time</span><span class="p">.</span><span class="nx">Sleep</span><span class="p">(</span><span class="nx">delay</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="s">&quot;\t&quot;</span><span class="p">,</span> <span class="nx">shout</span><span class="p">)</span>
+    <span class="nx">time</span><span class="p">.</span><span class="nx">Sleep</span><span class="p">(</span><span class="nx">delay</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="s">&quot;\t&quot;</span><span class="p">,</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">ToLower</span><span class="p">(</span><span class="nx">shout</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Scan</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">echo</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">(),</span> <span class="mi">1</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="c1">// NOTE: ignoring potential errors from input.Err()</span>
+    <span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following client program sends terminal input to the server while also copying the server response to the output:</p>
+<p><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go">gopl.io/ch8/netcat2/netcat.go</a></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">conn</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Dial</span><span class="p">(</span><span class="s">&quot;tcp&quot;</span><span class="p">,</span> <span class="s">&quot;localhost:8000&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">conn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">go</span> <span class="nx">mustCopy</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="nx">conn</span><span class="p">)</span>
+    <span class="nx">mustCopy</span><span class="p">(</span><span class="nx">conn</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>While the main goroutine reads the standard input and sends it to the server, a second goroutine reads and prints the server's response. When the main goroutine encounters the end of the input (for example, after the user types Control-D (<code>^D</code>)) at the terminal, the program stops, even if the other goroutine still has work to do. (<a href="#unbuffered-channels">Section 8.4.1</a> discusses how to make the program wait for both sides to finish)</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch8/reverb1
+$ ./reverb1 &amp;
+$ go build gopl.io/ch8/netcat2
+$ ./netcat2
+Hello?
+    HELLO?
+    Hello?
+    hello?
+Is there anybody there?
+    IS THERE ANYBODY THERE?
+Yooo-hooo!
+    Is there anybody there?
+    is there anybody there?
+    YOOO-HOOO!
+    Yooo-hooo!
+    yooo-hooo!
+^D
+$ killall reverb1
+</pre></div>
+
+
+<p>Notice that the third shout from the client is not dealt with until the second shout has petered out, which is not very realistic. A real echo would consist of the <em>composition</em> of the three independent shouts. To simulate it, more goroutines are needed; all we need to do is add the <code>go</code> keyword, this time to the call to <code>echo</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb2/reverb.go">gopl.io/ch8/reverb2/reverb.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Scan</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="nx">echo</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">(),</span> <span class="mi">1</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="c1">// NOTE: ignoring potential errors from input.Err()</span>
+    <span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The arguments to the function started by <code>go</code> are evaluated when the <code>go</code> statement itself is executed; thus <code>input.Text()</code> is evaluated in the main goroutine.</p>
+<p>Now the echoes are concurrent and overlap in time:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch8/reverb2
+$ ./reverb2 &amp;
+$ ./netcat2
+Is there anybody there?
+    IS THERE ANYBODY THERE?
+Yooo-hooo!
+    Is there anybody there?
+    YOOO-HOOO!
+    is there anybody there?
+    Yooo-hooo!
+    yooo-hooo!
+^D
+$ killall reverb2
+</pre></div>
+
+
+<p><u>All that was required to make the server use concurrency, not just to handle connections from multiple clients but even within a single connection, was the insertion of two <code>go</code> keywords.</u></p>
+<p>However in adding these keywords, we had to consider carefully that it is safe to call methods of <code>net.Conn</code> concurrently, which is not true for most types. The next chapter discusses the crucial concept of concurrency safety in the.</p>
             </div>
         </div>
 
