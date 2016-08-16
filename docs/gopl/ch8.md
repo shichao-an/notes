@@ -211,3 +211,115 @@ $ ./netcat1
 ^C                           14:03:02
                              ^C
 ```
+
+### Example: Concurrent Echo Server
+
+The clock server used one goroutine per connection. In this section, we’ll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of handleConn:
+
+```go
+func handleConn(c net.Conn) {
+	io.Copy(c, c) // NOTE: ignoring errors
+	c.Close()
+}
+```
+
+This version of echo server simulates the reverberations of a real echo, with the response loud at first ("HELLO!"), then moderate ("Hello!") after a delay, then quiet ("hello!") before fading to nothing:
+
+[gopl.io/ch8/reverb1/reverb.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb1/reverb.go)
+
+```go
+func echo(c net.Conn, shout string, delay time.Duration) {
+	fmt.Fprintln(c, "\t", strings.ToUpper(shout))
+	time.Sleep(delay)
+	fmt.Fprintln(c, "\t", shout)
+	time.Sleep(delay)
+	fmt.Fprintln(c, "\t", strings.ToLower(shout))
+}
+
+func handleConn(c net.Conn) {
+	input := bufio.NewScanner(c)
+	for input.Scan() {
+		echo(c, input.Text(), 1*time.Second)
+	}
+	// NOTE: ignoring potential errors from input.Err()
+	c.Close()
+}
+```
+
+The following client program sends terminal input to the server while also copying the server response to the output:
+
+[gopl.io/ch8/netcat2/netcat.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go)
+
+```go
+func main() {
+	conn, err := net.Dial("tcp", "localhost:8000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+	go mustCopy(os.Stdout, conn)
+	mustCopy(conn, os.Stdin)
+}
+```
+
+While the main goroutine reads the standard input and sends it to the server, a second goroutine reads and prints the server's response. When the main goroutine encounters the end of the input (for example, after the user types Control-D (`^D`)) at the terminal, the program stops, even if the other goroutine still has work to do. ([Section 8.4.1](#unbuffered-channels) discusses how to make the program wait for both sides to finish)
+
+```text
+$ go build gopl.io/ch8/reverb1
+$ ./reverb1 &
+$ go build gopl.io/ch8/netcat2
+$ ./netcat2
+Hello?
+    HELLO?
+    Hello?
+    hello?
+Is there anybody there?
+    IS THERE ANYBODY THERE?
+Yooo-hooo!
+    Is there anybody there?
+    is there anybody there?
+    YOOO-HOOO!
+    Yooo-hooo!
+    yooo-hooo!
+^D
+$ killall reverb1
+```
+
+Notice that the third shout from the client is not dealt with until the second shout has petered out, which is not very realistic. A real echo would consist of the *composition* of the three independent shouts. To simulate it, more goroutines are needed; all we need to do is add the `go` keyword, this time to the call to `echo`:
+
+<small>[gopl.io/ch8/reverb2/reverb.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb2/reverb.go)</small>
+
+```go
+func handleConn(c net.Conn) {
+	input := bufio.NewScanner(c)
+	for input.Scan() {
+		go echo(c, input.Text(), 1*time.Second)
+	}
+	// NOTE: ignoring potential errors from input.Err()
+	c.Close()
+}
+```
+
+The arguments to the function started by `go` are evaluated when the `go` statement itself is executed; thus `input.Text()` is evaluated in the main goroutine.
+
+Now the echoes are concurrent and overlap in time:
+
+```text
+$ go build gopl.io/ch8/reverb2
+$ ./reverb2 &
+$ ./netcat2
+Is there anybody there?
+    IS THERE ANYBODY THERE?
+Yooo-hooo!
+    Is there anybody there?
+    YOOO-HOOO!
+    is there anybody there?
+    Yooo-hooo!
+    yooo-hooo!
+^D
+$ killall reverb2
+```
+
+<u>All that was required to make the server use concurrency, not just to handle connections from multiple clients but even within a single connection, was the insertion of two `go` keywords.</u>
+
+However in adding these keywords, we had to consider carefully that it is safe to call methods of `net.Conn` concurrently, which is not true for most types. The next chapter discusses the crucial concept of concurrency safety in the.
