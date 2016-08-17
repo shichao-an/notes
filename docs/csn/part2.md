@@ -146,3 +146,49 @@ for(int i = 0; i < 4; i++)
 ```
 
 See [Pointer to Array](part1.md#pointer-to-array) for details.
+
+#### Array of Pointers
+
+An array whose element type is pointer is an array of pointers.
+
+```c
+int x[] = { 1, 2, 3, 4 };
+int* ps[] = { x, x + 1, x + 2, x + 3 };
+
+for (int i = 0; i < 4; i++)
+{
+    printf("%d\n", *(ps[i]));
+}
+```
+
+In the above code, `x` by default is a pointer to the array's first element, so `x + n` is the pointer to the subsequent element.
+
+The array of pointers is usually used to represent a [jagged array](https://en.wikipedia.org/wiki/Jagged_array) (also called array of arrays; it is not a 2-dimensional array), the most commonly seen of which is an array of strings.
+
+```c
+void test(const char** x, int len)
+
+    for (int i = 0; i < len; i++)
+    {
+        printf("test: %d = %s\n", i, *(x + i));
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    char* a = "aaa";
+    char* b = "bbb";
+    char* ss[] = { a, b };
+
+    for (int i = 0; i < 2; i++)
+    {
+        printf("%d = %s\n", i, ss[i]);
+    }
+
+    test(ss, 2);
+
+    return EXIT_SUCCESS;
+}
+```
+
+See [Array of Pointers](part1.md#array-of-pointers) for details.
