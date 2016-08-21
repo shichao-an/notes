@@ -323,3 +323,59 @@ $ killall reverb2
 <u>All that was required to make the server use concurrency, not just to handle connections from multiple clients but even within a single connection, was the insertion of two `go` keywords.</u>
 
 However in adding these keywords, we had to consider carefully that it is safe to call methods of `net.Conn` concurrently, which is not true for most types. The next chapter discusses the crucial concept of concurrency safety in the.
+
+### Channels
+
+If goroutines are the activities of a concurrent Go program, channels are the connections between them.
+
+* A channel is a communication mechanism that enables one goroutine to send values to another goroutine.
+* Each channel is a conduit for values of a particular type, called the channel's *element type*. The type of a channel whose elements have type int is written `chan int`.
+
+To create a channel, use the built-in `make` function:
+
+```go
+ch := make(chan int) // ch has type 'chan int'
+```
+
+A channel is a reference to the data structure created by `make`.
+
+* When we copy a channel or pass one as an argument to a function, we are copying a reference, so caller and callee refer to the same data structure.
+* As with other reference types, the zero value of a channel is `nil`.
+* Two channels of the same type may be compared using `==`. The comparison is true if both are references to the same channel data structure. A channel may also be compared to `nil`.
+
+A channel has two principal operations, *send* and *receive*, collectively known as *communications*. A send statement transmits a value from one goroutine, through the channel, to another goroutine executing a corresponding receive expression.
+
+Both operations are written using the `<-` operator.
+
+* In a send statement, the `<-` separates the channel and value operands.
+* In a receive expression, `<-` precedes the channel operand. A receive expression whose result is not used is a valid statement.
+
+```go
+ch <- x // a send statement
+
+x=<-ch  // a receive expression in an assignment statement
+<-ch    // a receive statement; result is discarded
+```
+
+Channels support a third operation, *close*, which sets a flag indicating that no more values will ever be sent on this channel.
+
+* Send operations on a closed channel will panic.
+* Receive operations on a closed channel yield the values that have been sent until no more values are left; any receive operations thereafter complete immediately and yield the zero value of the channel's element type.
+
+To close a channel, call the built-in `close` function:
+
+```go
+close(ch)
+```
+
+A channel created with a simple call to `make` is called an *unbuffered* channel. `make` accepts an optional second argument, an integer called the channel's *capacity*. If the capacity is nonzero, `make` creates a `buffered` channel.
+
+```go
+ch = make(chan int)    // unbuffered channel
+ch = make(chan int, 0) // unbuffered channel
+ch = make(chan int, 3) // buffered channel with capacity 3
+```
+
+Unbuffered channels are discussed in [Section 8.4.1](#unbuffered-channels) and buffered channels in [Section 8.4.4](#buffered-channels).
+
+#### Unbuffered Channels
