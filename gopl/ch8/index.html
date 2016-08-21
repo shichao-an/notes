@@ -437,6 +437,11 @@
         <li class="main "><a href="#example-concurrent-echo-server">Example: Concurrent Echo Server</a></li>
         
     
+        <li class="main "><a href="#channels">Channels</a></li>
+        
+            <li><a href="#unbuffered-channels">Unbuffered Channels</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -739,6 +744,55 @@ $ killall reverb2
 
 <p><u>All that was required to make the server use concurrency, not just to handle connections from multiple clients but even within a single connection, was the insertion of two <code>go</code> keywords.</u></p>
 <p>However in adding these keywords, we had to consider carefully that it is safe to call methods of <code>net.Conn</code> concurrently, which is not true for most types. The next chapter discusses the crucial concept of concurrency safety in the.</p>
+<h3 id="channels">Channels</h3>
+<p>If goroutines are the activities of a concurrent Go program, channels are the connections between them.</p>
+<ul>
+<li>A channel is a communication mechanism that enables one goroutine to send values to another goroutine.</li>
+<li>Each channel is a conduit for values of a particular type, called the channel's <em>element type</em>. The type of a channel whose elements have type int is written <code>chan int</code>.</li>
+</ul>
+<p>To create a channel, use the built-in <code>make</code> function:</p>
+<div class="codehilite"><pre><span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span> <span class="c1">// ch has type &#39;chan int&#39;</span>
+</pre></div>
+
+
+<p>A channel is a reference to the data structure created by <code>make</code>.</p>
+<ul>
+<li>When we copy a channel or pass one as an argument to a function, we are copying a reference, so caller and callee refer to the same data structure.</li>
+<li>As with other reference types, the zero value of a channel is <code>nil</code>.</li>
+<li>Two channels of the same type may be compared using <code>==</code>. The comparison is true if both are references to the same channel data structure. A channel may also be compared to <code>nil</code>.</li>
+</ul>
+<p>A channel has two principal operations, <em>send</em> and <em>receive</em>, collectively known as <em>communications</em>. A send statement transmits a value from one goroutine, through the channel, to another goroutine executing a corresponding receive expression.</p>
+<p>Both operations are written using the <code>&lt;-</code> operator.</p>
+<ul>
+<li>In a send statement, the <code>&lt;-</code> separates the channel and value operands.</li>
+<li>In a receive expression, <code>&lt;-</code> precedes the channel operand. A receive expression whose result is not used is a valid statement.</li>
+</ul>
+<div class="codehilite"><pre><span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">x</span> <span class="c1">// a send statement</span>
+
+<span class="nx">x</span><span class="p">=</span><span class="o">&lt;-</span><span class="nx">ch</span>  <span class="c1">// a receive expression in an assignment statement</span>
+<span class="o">&lt;-</span><span class="nx">ch</span>    <span class="c1">// a receive statement; result is discarded</span>
+</pre></div>
+
+
+<p>Channels support a third operation, <em>close</em>, which sets a flag indicating that no more values will ever be sent on this channel.</p>
+<ul>
+<li>Send operations on a closed channel will panic.</li>
+<li>Receive operations on a closed channel yield the values that have been sent until no more values are left; any receive operations thereafter complete immediately and yield the zero value of the channel's element type.</li>
+</ul>
+<p>To close a channel, call the built-in <code>close</code> function:</p>
+<div class="codehilite"><pre><span class="nb">close</span><span class="p">(</span><span class="nx">ch</span><span class="p">)</span>
+</pre></div>
+
+
+<p>A channel created with a simple call to <code>make</code> is called an <em>unbuffered</em> channel. <code>make</code> accepts an optional second argument, an integer called the channel's <em>capacity</em>. If the capacity is nonzero, <code>make</code> creates a <code>buffered</code> channel.</p>
+<div class="codehilite"><pre><span class="nx">ch</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>    <span class="c1">// unbuffered channel</span>
+<span class="nx">ch</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1">// unbuffered channel</span>
+<span class="nx">ch</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="c1">// buffered channel with capacity 3</span>
+</pre></div>
+
+
+<p>Unbuffered channels are discussed in <a href="#unbuffered-channels">Section 8.4.1</a> and buffered channels in <a href="#buffered-channels">Section 8.4.4</a>.</p>
+<h4 id="unbuffered-channels">Unbuffered Channels</h4>
             </div>
         </div>
 
