@@ -569,6 +569,7 @@
 
 
 <p>The client displays the time sent by the server each second until we interrupt the client with Control-C, which on Unix systems is echoed as <code>^C</code> by the shell. We can also use <code>telnet</code>, or the following simple Go version of <code>netcat</code> that uses <code>net.Dial</code> to connect to a TCP server:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go">gopl.io/ch8/netcat1/netcat.go</a></small></p>
 <div class="codehilite"><pre><span class="c1">// Netcat1 is a read-only TCP client.</span>
 <span class="kn">package</span> <span class="nx">main</span>
 
@@ -596,9 +597,7 @@
 </pre></div>
 
 
-<p>This program reads data from the connection and writes it to the standard output until an
-end-of-file condition or an error occurs. The <code>mustCopy</code> function is a utility used in several
-examples in this section.</p>
+<p>This program reads data from the connection and writes it to the standard output until an end-of-file condition or an error occurs. The <code>mustCopy</code> function is a utility used in several examples in this section.</p>
 <p>We run two clients at the same time on different terminals, one shown to the left and one to the right:</p>
 <div class="codehilite"><pre>$ go build gopl.io/ch8/netcat1
 $ ./netcat1
@@ -646,7 +645,7 @@ $ ./netcat1
 
 
 <h3 id="example-concurrent-echo-server">Example: Concurrent Echo Server</h3>
-<p>The clock server used one goroutine per connection. In this section, we’ll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of handleConn:</p>
+<p>The clock server used one goroutine per connection. In this section, we'll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of <code>handleConn</code>:</p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">)</span> <span class="p">{</span>
     <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="c1">// NOTE: ignoring errors</span>
     <span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
@@ -655,7 +654,7 @@ $ ./netcat1
 
 
 <p>This version of echo server simulates the reverberations of a real echo, with the response loud at first ("HELLO!"), then moderate ("Hello!") after a delay, then quiet ("hello!") before fading to nothing:</p>
-<p><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb1/reverb.go">gopl.io/ch8/reverb1/reverb.go</a></p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb1/reverb.go">gopl.io/ch8/reverb1/reverb.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">echo</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">,</span> <span class="nx">shout</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">delay</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">)</span> <span class="p">{</span>
     <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="s">&quot;\t&quot;</span><span class="p">,</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">ToUpper</span><span class="p">(</span><span class="nx">shout</span><span class="p">))</span>
     <span class="nx">time</span><span class="p">.</span><span class="nx">Sleep</span><span class="p">(</span><span class="nx">delay</span><span class="p">)</span>
@@ -676,7 +675,7 @@ $ ./netcat1
 
 
 <p>The following client program sends terminal input to the server while also copying the server response to the output:</p>
-<p><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go">gopl.io/ch8/netcat2/netcat.go</a></p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go">gopl.io/ch8/netcat2/netcat.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="nx">conn</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Dial</span><span class="p">(</span><span class="s">&quot;tcp&quot;</span><span class="p">,</span> <span class="s">&quot;localhost:8000&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
@@ -793,6 +792,47 @@ $ killall reverb2
 
 <p>Unbuffered channels are discussed in <a href="#unbuffered-channels">Section 8.4.1</a> and buffered channels in <a href="#buffered-channels">Section 8.4.4</a>.</p>
 <h4 id="unbuffered-channels">Unbuffered Channels</h4>
+<ul>
+<li>A send operation on an unbuffered channel blocks the sending goroutine until another goroutine executes a corresponding receive on the same channel, at which point the value is transmitted and both goroutines may continue.</li>
+<li>Conversely, if the receive operation was attempted first, the receiving goroutine is blocked until another goroutine performs a send on the same channel.</li>
+</ul>
+<p>Communication over an unbuffered channel causes the sending and receiving goroutines to <em>synchronize</em>. Because of this, unbuffered channels are sometimes called <em>synchronous</em> channels. When a value is sent on an unbuffered channel, the receipt of the value happens <em>before</em> the reawakening of the sending goroutine.</p>
+<p>In discussions of concurrency:</p>
+<ul>
+<li>When we say <em>x happens before y</em>, we don't mean merely that <em>x</em> occurs earlier in time than <em>y</em>. We mean that it is guaranteed to do so and that all its prior effects (e.g. updates to variables) are complete and that you may rely on them.</li>
+<li>When we say <em>x is concurrent with y</em>, we mean <em>x</em> neither happens before <em>y</em> nor after <em>y</em>.<ul>
+<li>This doesn't mean that <em>x</em> and <em>y</em> are necessarily simultaneous; it merely means that we cannot assume anything about their ordering.</li>
+<li>As discussed in the next chapter, it's necessary to order certain events during the program's execution to avoid the problems that arise when two goroutines access the same variable concurrently.</li>
+</ul>
+</li>
+</ul>
+<p>The client program in <a href="#example-concurrent-echo-server">Section 8.3</a> copies input to the server in its main goroutine, so the client program terminates as soon as the input stream closes, even if the background goroutine is still working. To make the program wait for the background goroutine to complete before exiting, we use a channel to synchronize the two goroutines:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat3/netcat.go">gopl.io/ch8/netcat3/netcat.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">conn</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Dial</span><span class="p">(</span><span class="s">&quot;tcp&quot;</span><span class="p">,</span> <span class="s">&quot;localhost:8000&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">done</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="nx">conn</span><span class="p">)</span> <span class="c1">// NOTE: ignoring errors</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;done&quot;</span><span class="p">)</span>
+        <span class="nx">done</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span> <span class="c1">// signal the main goroutine</span>
+    <span class="p">}()</span>
+    <span class="nx">mustCopy</span><span class="p">(</span><span class="nx">conn</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">)</span>
+    <span class="nx">conn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="o">&lt;-</span><span class="nx">done</span> <span class="c1">// wait for background goroutine to finish</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>When the user closes the standard input stream, <code>mustCopy</code> returns and the main goroutine calls <code>conn.Close()</code>, closing both halves of the network connection:</p>
+<ul>
+<li>Closing the write half of the connection causes the server to see an end-of-file condition.</li>
+<li>Closing the read half causes the background goroutine's call to <code>io.Copy</code> to return a "read from closed connection" error, which is why we've removed the error logging. Notice that the go statement calls a literal function, a common construction.</li>
+</ul>
+<p>Before it returns, the background goroutine logs a message, then sends a value on the done channel. The main goroutine waits until it has received this value before returning. As a result, the program always logs the "<code>done</code>" message before exiting.</p>
+<p>Messages sent over channels have two important aspects. Each message has a value, but sometimes the fact of communication and the moment at which it occurs are important. We call messages <em>events</em> when we wish to stress this aspect. When the event carries no additional information, that is, its sole purpose is synchronization, we'll emphasize this by using a channel whose element type is <code>struct{}</code>, though it's common to use a channel of <code>bool</code> or <code>int</code> for the same purpose since <code>done &lt;- 1</code> is shorter than <code>done &lt;- struct{}{}</code>.</p>
             </div>
         </div>
 
