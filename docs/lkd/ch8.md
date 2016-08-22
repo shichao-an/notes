@@ -382,6 +382,80 @@ The implementation of tasklets is simple, but rather clever:
 
 All this complexity is then hidden behind a clean and simple interface.
 
+#### Using Tasklets
+
+In most cases, tasklets are the preferred mechanism with which to implement your bottom half for a normal hardware device. Tasklets are dynamically created, easy to use, and quick.
+
+##### **Declaring Your Tasklet**
+
+You can create tasklets statically or dynamically, depending on whether you have (or want) a direct or indirect reference to the tasklet. If you are going to statically create the tasklet (and thus have a direct reference to it), use one of two macros in `<linux/interrupt.h>`:
+
+```c
+DECLARE_TASKLET(name, func, data)
+DECLARE_TASKLET_DISABLED(name, func, data);
+```
+
+Both these macros statically create a `struct tasklet_struct` with the given name. When the tasklet is scheduled, the given function `func` is executed and passed the argument `data`. The difference between the two macros is the initial reference count. The first macro creates the tasklet with a count of zero, and the tasklet is enabled. The second macro sets count to one, and the tasklet is disabled.
+
+For example:
+
+```c
+DECLARE_TASKLET(my_tasklet, my_tasklet_handler, dev);
+```
+
+This line is equivalent to
+
+```c
+struct tasklet_struct my_tasklet = { NULL, 0, ATOMIC_INIT(0),
+                                     my_tasklet_handler, dev };
+```
+
+This creates a tasklet named `my_tasklet` enabled with `my_tasklet_handler` as its handler. The value of `dev` is passed to the handler when it is executed.
+
+To initialize a tasklet given an indirect reference (a pointer) to a dynamically created `struct tasklet_struct` named `t`, call `tasklet_init()` like this:
+
+```c
+tasklet_init(t, tasklet_handler, dev); /* dynamically as opposed to statically */
+```
+
+##### **Writing Your Tasklet Handler**
+
+The tasklet handler must match the correct prototype:
+
+```c
+void tasklet_handler(unsigned long data)
+```
+
+* As with softirqs, tasklets cannot sleep. You cannot use semaphores or other blocking functions in a tasklet.
+* Tasklets also run with all interrupts enabled, so you must take precautions (for example, disable interrupts and obtain a lock) if your tasklet shares data with an interrupt handler.
+* Unlike softirqs, two of the same tasklets never run concurrently, though two different tasklets can run at the same time on two different processors. If your tasklet shares data with another tasklet or softirq, you need to use proper locking (see [Chapter 9. An Introduction to Kernel Synchronization](ch9.md) and [Chapter 10. Kernel Synchronization Methods](ch10.md)).
+
+##### **Scheduling Your Tasklet**
+
+To schedule a tasklet for execution, `tasklet_schedule()` is called and passed a pointer to the relevant `tasklet_struct`:
+
+```c
+tasklet_schedule(&my_tasklet); /* mark my_tasklet as pending */
+```
+
+After a tasklet is scheduled, it runs once at some time in the near future. If the same tasklet is scheduled again, before it has had a chance to run, it still runs only once. If it is already running, for example on another processor, the tasklet is rescheduled and runs again. As an optimization, a tasklet always runs on the processor that scheduled it, making better use of the processor's cache.
+
+* You can disable a tasklet via a call to `tasklet_disable()`, which disables the given tasklet. If the tasklet is currently running, the function will not return until it finishes executing.
+    * Alternatively, you can use `tasklet_disable_nosync()`, which disables the given tasklet but does not wait for the tasklet to complete prior to returning. This is usually not safe because you cannot assume the tasklet is not still running.
+* A call to `tasklet_enable()` enables the tasklet. This function also must be called before a tasklet created with `DECLARE_TASKLET_DISABLED()` is usable.
+
+For example:
+
+```c
+tasklet_disable(&my_tasklet); /* tasklet is now disabled */
+
+/* we can now do stuff knowing that the tasklet cannot run .. */
+
+tasklet_enable(&my_tasklet); /* tasklet is now enabled */
+```
+
+You can remove a tasklet from the pending queue via `tasklet_kill()`. This function receives a pointer as a lone argument to the tasklet's `tasklet_struct`. Removing a scheduled tasklet from the queue is useful when dealing with a tasklet that often reschedules itself. This function first waits for the tasklet to finish executing and then it removes the tasklet from the queue. Nothing stops some other code from rescheduling the tasklet. This function must not be used from interrupt context because it sleeps.
+
 ### Doubts and Solution
 
 #### Verbatim
@@ -391,3 +465,9 @@ All this complexity is then hidden behind a clean and simple interface.
 > This function (`raise_softirq()`) disables interrupts prior to actually raising the softirq and then restores them to their previous state.
 
 <span class="text-danger">Question</span>: Why would `raise_softirq()` disable interrupt?
+
+##### **p145 on scheduling tasklets**
+
+> After a tasklet is scheduled, it runs once at some time in the near future. If the same tasklet is scheduled again, before it has had a chance to run, it still runs only once. If it is already running, for example on another processor, the tasklet is rescheduled and runs again
+
+<span class="text-danger">Question</span>: I'm confused. What does it mean?
