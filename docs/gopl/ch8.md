@@ -131,6 +131,8 @@ $ nc localhost 8000
 
 The client displays the time sent by the server each second until we interrupt the client with Control-C, which on Unix systems is echoed as `^C` by the shell. We can also use `telnet`, or the following simple Go version of `netcat` that uses `net.Dial` to connect to a TCP server:
 
+<small>[gopl.io/ch8/netcat1/netcat.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go)</small>
+
 ```go
 // Netcat1 is a read-only TCP client.
 package main
@@ -158,9 +160,7 @@ func mustCopy(dst io.Writer, src io.Reader) {
 }
 ```
 
-This program reads data from the connection and writes it to the standard output until an
-end-of-file condition or an error occurs. The `mustCopy` function is a utility used in several
-examples in this section.
+This program reads data from the connection and writes it to the standard output until an end-of-file condition or an error occurs. The `mustCopy` function is a utility used in several examples in this section.
 
 We run two clients at the same time on different terminals, one shown to the left and one to the right:
 
@@ -214,7 +214,7 @@ $ ./netcat1
 
 ### Example: Concurrent Echo Server
 
-The clock server used one goroutine per connection. In this section, we’ll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of handleConn:
+The clock server used one goroutine per connection. In this section, we'll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of `handleConn`:
 
 ```go
 func handleConn(c net.Conn) {
@@ -225,7 +225,7 @@ func handleConn(c net.Conn) {
 
 This version of echo server simulates the reverberations of a real echo, with the response loud at first ("HELLO!"), then moderate ("Hello!") after a delay, then quiet ("hello!") before fading to nothing:
 
-[gopl.io/ch8/reverb1/reverb.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb1/reverb.go)
+<small>[gopl.io/ch8/reverb1/reverb.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/reverb1/reverb.go)</small>
 
 ```go
 func echo(c net.Conn, shout string, delay time.Duration) {
@@ -248,7 +248,7 @@ func handleConn(c net.Conn) {
 
 The following client program sends terminal input to the server while also copying the server response to the output:
 
-[gopl.io/ch8/netcat2/netcat.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go)
+<small>[gopl.io/ch8/netcat2/netcat.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat2/netcat.go)</small>
 
 ```go
 func main() {
@@ -379,3 +379,48 @@ ch = make(chan int, 3) // buffered channel with capacity 3
 Unbuffered channels are discussed in [Section 8.4.1](#unbuffered-channels) and buffered channels in [Section 8.4.4](#buffered-channels).
 
 #### Unbuffered Channels
+
+* A send operation on an unbuffered channel blocks the sending goroutine until another goroutine executes a corresponding receive on the same channel, at which point the value is transmitted and both goroutines may continue.
+* Conversely, if the receive operation was attempted first, the receiving goroutine is blocked until another goroutine performs a send on the same channel.
+
+Communication over an unbuffered channel causes the sending and receiving goroutines to *synchronize*. Because of this, unbuffered channels are sometimes called *synchronous* channels. When a value is sent on an unbuffered channel, the receipt of the value happens *before* the reawakening of the sending goroutine.
+
+In discussions of concurrency:
+
+* When we say *x happens before y*, we don't mean merely that *x* occurs earlier in time than *y*. We mean that it is guaranteed to do so and that all its prior effects (e.g. updates to variables) are complete and that you may rely on them.
+* When we say *x is concurrent with y*, we mean *x* neither happens before *y* nor after *y*.
+    * This doesn't mean that *x* and *y* are necessarily simultaneous; it merely means that we cannot assume anything about their ordering.
+    * As discussed in the next chapter, it's necessary to order certain events during the program's execution to avoid the problems that arise when two goroutines access the same variable concurrently.
+
+The client program in [Section 8.3](#example-concurrent-echo-server) copies input to the server in its main goroutine, so the client program terminates as soon as the input stream closes, even if the background goroutine is still working. To make the program wait for the background goroutine to complete before exiting, we use a channel to synchronize the two goroutines:
+
+<small>[gopl.io/ch8/netcat3/netcat.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/netcat3/netcat.go)</small>
+
+```go
+func main() {
+	conn, err := net.Dial("tcp", "localhost:8000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() {
+		io.Copy(os.Stdout, conn) // NOTE: ignoring errors
+		log.Println("done")
+		done <- struct{}{} // signal the main goroutine
+	}()
+	mustCopy(conn, os.Stdin)
+	conn.Close()
+	<-done // wait for background goroutine to finish
+}
+```
+
+When the user closes the standard input stream, `mustCopy` returns and the main goroutine calls `conn.Close()`, closing both halves of the network connection:
+
+* Closing the write half of the connection causes the server to see an end-of-file condition.
+* Closing the read half causes the background goroutine's call to `io.Copy` to return a "read from closed connection" error, which is why we've removed the error logging. Notice that the go statement calls a literal function, a common construction.
+
+Before it returns, the background goroutine logs a message, then sends a value on the done channel. The main goroutine waits until it has received this value before returning. As a result, the program always logs the "`done`" message before exiting.
+
+Messages sent over channels have two important aspects. Each message has a value, but sometimes the fact of communication and the moment at which it occurs are important. We call messages *events* when we wish to stress this aspect. When the event carries no additional information, that is, its sole purpose is synchronization, we'll emphasize this by using a channel whose element type is `struct{}`, though it's common to use a channel of `bool` or `int` for the same purpose since `done <- 1` is shorter than `done <- struct{}{}`.
+
+

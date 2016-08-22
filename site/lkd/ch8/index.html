@@ -446,6 +446,8 @@
         
             <li><a href="#implementing-tasklets">Implementing Tasklets</a></li>
         
+            <li><a href="#using-tasklets">Using Tasklets</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -851,6 +853,68 @@
 <li>The special functions ensure that only one tasklet of a given type runs at the same time. However, other tasklets can run simultaneously.</li>
 </ol>
 <p>All this complexity is then hidden behind a clean and simple interface.</p>
+<h4 id="using-tasklets">Using Tasklets</h4>
+<p>In most cases, tasklets are the preferred mechanism with which to implement your bottom half for a normal hardware device. Tasklets are dynamically created, easy to use, and quick.</p>
+<h5 id="declaring-your-tasklet"><strong>Declaring Your Tasklet</strong></h5>
+<p>You can create tasklets statically or dynamically, depending on whether you have (or want) a direct or indirect reference to the tasklet. If you are going to statically create the tasklet (and thus have a direct reference to it), use one of two macros in <code>&lt;linux/interrupt.h&gt;</code>:</p>
+<div class="codehilite"><pre><span class="n">DECLARE_TASKLET</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+<span class="n">DECLARE_TASKLET_DISABLED</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+</pre></div>
+
+
+<p>Both these macros statically create a <code>struct tasklet_struct</code> with the given name. When the tasklet is scheduled, the given function <code>func</code> is executed and passed the argument <code>data</code>. The difference between the two macros is the initial reference count. The first macro creates the tasklet with a count of zero, and the tasklet is enabled. The second macro sets count to one, and the tasklet is disabled.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="n">DECLARE_TASKLET</span><span class="p">(</span><span class="n">my_tasklet</span><span class="p">,</span> <span class="n">my_tasklet_handler</span><span class="p">,</span> <span class="n">dev</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This line is equivalent to</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">tasklet_struct</span> <span class="n">my_tasklet</span> <span class="o">=</span> <span class="p">{</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ATOMIC_INIT</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                                     <span class="n">my_tasklet_handler</span><span class="p">,</span> <span class="n">dev</span> <span class="p">};</span>
+</pre></div>
+
+
+<p>This creates a tasklet named <code>my_tasklet</code> enabled with <code>my_tasklet_handler</code> as its handler. The value of <code>dev</code> is passed to the handler when it is executed.</p>
+<p>To initialize a tasklet given an indirect reference (a pointer) to a dynamically created <code>struct tasklet_struct</code> named <code>t</code>, call <code>tasklet_init()</code> like this:</p>
+<div class="codehilite"><pre><span class="n">tasklet_init</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">tasklet_handler</span><span class="p">,</span> <span class="n">dev</span><span class="p">);</span> <span class="cm">/* dynamically as opposed to statically */</span>
+</pre></div>
+
+
+<h5 id="writing-your-tasklet-handler"><strong>Writing Your Tasklet Handler</strong></h5>
+<p>The tasklet handler must match the correct prototype:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">tasklet_handler</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">data</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>As with softirqs, tasklets cannot sleep. You cannot use semaphores or other blocking functions in a tasklet.</li>
+<li>Tasklets also run with all interrupts enabled, so you must take precautions (for example, disable interrupts and obtain a lock) if your tasklet shares data with an interrupt handler.</li>
+<li>Unlike softirqs, two of the same tasklets never run concurrently, though two different tasklets can run at the same time on two different processors. If your tasklet shares data with another tasklet or softirq, you need to use proper locking (see <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a> and <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>).</li>
+</ul>
+<h5 id="scheduling-your-tasklet"><strong>Scheduling Your Tasklet</strong></h5>
+<p>To schedule a tasklet for execution, <code>tasklet_schedule()</code> is called and passed a pointer to the relevant <code>tasklet_struct</code>:</p>
+<div class="codehilite"><pre><span class="n">tasklet_schedule</span><span class="p">(</span><span class="o">&amp;</span><span class="n">my_tasklet</span><span class="p">);</span> <span class="cm">/* mark my_tasklet as pending */</span>
+</pre></div>
+
+
+<p>After a tasklet is scheduled, it runs once at some time in the near future. If the same tasklet is scheduled again, before it has had a chance to run, it still runs only once. If it is already running, for example on another processor, the tasklet is rescheduled and runs again. As an optimization, a tasklet always runs on the processor that scheduled it, making better use of the processor's cache.</p>
+<ul>
+<li>You can disable a tasklet via a call to <code>tasklet_disable()</code>, which disables the given tasklet. If the tasklet is currently running, the function will not return until it finishes executing.<ul>
+<li>Alternatively, you can use <code>tasklet_disable_nosync()</code>, which disables the given tasklet but does not wait for the tasklet to complete prior to returning. This is usually not safe because you cannot assume the tasklet is not still running.</li>
+</ul>
+</li>
+<li>A call to <code>tasklet_enable()</code> enables the tasklet. This function also must be called before a tasklet created with <code>DECLARE_TASKLET_DISABLED()</code> is usable.</li>
+</ul>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="n">tasklet_disable</span><span class="p">(</span><span class="o">&amp;</span><span class="n">my_tasklet</span><span class="p">);</span> <span class="cm">/* tasklet is now disabled */</span>
+
+<span class="cm">/* we can now do stuff knowing that the tasklet cannot run .. */</span>
+
+<span class="n">tasklet_enable</span><span class="p">(</span><span class="o">&amp;</span><span class="n">my_tasklet</span><span class="p">);</span> <span class="cm">/* tasklet is now enabled */</span>
+</pre></div>
+
+
+<p>You can remove a tasklet from the pending queue via <code>tasklet_kill()</code>. This function receives a pointer as a lone argument to the tasklet's <code>tasklet_struct</code>. Removing a scheduled tasklet from the queue is useful when dealing with a tasklet that often reschedules itself. This function first waits for the tasklet to finish executing and then it removes the tasklet from the queue. Nothing stops some other code from rescheduling the tasklet. This function must not be used from interrupt context because it sleeps.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
@@ -858,6 +922,11 @@
 <p>This function (<code>raise_softirq()</code>) disables interrupts prior to actually raising the softirq and then restores them to their previous state.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: Why would <code>raise_softirq()</code> disable interrupt?</p>
+<h5 id="p145-on-scheduling-tasklets"><strong>p145 on scheduling tasklets</strong></h5>
+<blockquote>
+<p>After a tasklet is scheduled, it runs once at some time in the near future. If the same tasklet is scheduled again, before it has had a chance to run, it still runs only once. If it is already running, for example on another processor, the tasklet is rescheduled and runs again</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: I'm confused. What does it mean?</p>
             </div>
         </div>
 
