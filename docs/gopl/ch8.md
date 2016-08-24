@@ -341,7 +341,7 @@ A channel is a reference to the data structure created by `make`.
 
 * When we copy a channel or pass one as an argument to a function, we are copying a reference, so caller and callee refer to the same data structure.
 * As with other reference types, the zero value of a channel is `nil`.
-* Two channels of the same type may be compared using `==`. The comparison is true if both are references to the same channel data structure. A channel may also be compared to `nil`.
+* Two channels of the same type may be compared using `==`. The comparison is `true` if both are references to the same channel data structure. A channel may also be compared to `nil`.
 
 A channel has two principal operations, *send* and *receive*, collectively known as *communications*. A send statement transmits a value from one goroutine, through the channel, to another goroutine executing a corresponding receive expression.
 
@@ -423,4 +423,97 @@ Before it returns, the background goroutine logs a message, then sends a value o
 
 Messages sent over channels have two important aspects. Each message has a value, but sometimes the fact of communication and the moment at which it occurs are important. We call messages *events* when we wish to stress this aspect. When the event carries no additional information, that is, its sole purpose is synchronization, we'll emphasize this by using a channel whose element type is `struct{}`, though it's common to use a channel of `bool` or `int` for the same purpose since `done <- 1` is shorter than `done <- struct{}{}`.
 
+#### Pipelines
 
+Channels can be used to connect goroutines together so that the output of one is the input to another. This is called a *pipeline*. The program below consists of three goroutines connected by two channels, as shown the following figure.
+
+[![Figure 8.1. A three-stage pipeline.](figure_8.1_600.png)](figure_8.1.png "Figure 8.1. A three-stage pipeline.")
+
+<small>[gopl.io/ch8/pipeline1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline1/main.go)</small>
+
+```go
+func main() {
+	naturals := make(chan int)
+	squares := make(chan int)
+
+	// Counter
+	go func() {
+		for x := 0; ; x++ {
+			naturals <- x
+		}
+	}()
+
+	// Squarer
+	go func() {
+		for {
+			x := <-naturals
+			squares <- x * x
+		}
+	}()
+
+	// Printer (in main goroutine)
+	for {
+		fmt.Println(<-squares)
+	}
+}
+```
+
+The first goroutine, `counter`, generates the integers 0, 1, 2, ..., and sends them over a channel to the second goroutine, `squarer`, which receives each value, squares it, and sends the result over another channel to the third goroutine, `printer`, which receives the squared values and prints them.
+
+This program prints the infinite series of squares 0, 1, 4, 9, and so on. Pipelines like this may be found in long-running server programs where channels are used for lifelong communication between goroutines containing infinite loops.  If the sender knows that no further values will ever be sent on a channel, it is useful to communicate this fact to the receiver goroutines so that they can stop waiting. This is accomplished by closing the channel using the built-in `close` function:
+
+```go
+close(naturals)
+```
+
+After a channel has been closed, any further send operations on it will panic. After the closed channel has been *drained* (that is, after the last sent element has been received), all subsequent receive operations will proceed without blocking but will yield a zero value. Closing the `naturals` channel above would cause the `squarer`'s loop to spin as it receives a never-ending stream of zero values, and to send these zeros to the `printer`.
+
+There is no way to test directly whether a channel has been closed, but there is a variant of the receive operation that produces two results: the received channel element, plus a boolean value, conventionally called `ok`, which is `true` for a successful receive and `false` for a receive on a closed and drained channel. Using this feature, we can modify the `squarer`'s loop to stop when the `naturals` channel is drained and close the `squares` channel in turn.
+
+```go
+// Squarer
+go func() {
+	for {
+		x, ok := <-naturals
+		if !ok {
+			break // channel was closed and drained
+		}
+		squares <- x * x
+	}
+	close(squares)
+}()
+```
+
+Since this pattern is common, the language enables us to use a `range` loop to iterate over channels. This is a more convenient syntax for receiving all the values sent on a channel and terminating the loop after the last one. In the pipeline below, when the `counter` goroutine finishes its loop after 100 elements, it closes the `naturals` channel, causing the `squarer` to finish its loop and close the `squares` channel. Finally, the main goroutine finishes its loop and the program exits. In a more complex program, it might make sense for the `counter` and `squarer` functions to defer the calls to `close` at the outset.
+
+<small>[gopl.io/ch8/pipeline2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline1/main.go)</small>
+
+```go
+func main() {
+	naturals := make(chan int)
+	squares := make(chan int)
+
+	// Counter
+	go func() {
+		for x := 0; x < 100; x++ {
+			naturals <- x
+		}
+		close(naturals)
+	}()
+
+	// Squarer
+	go func() {
+		for x := range naturals {
+			squares <- x * x
+		}
+		close(squares)
+	}()
+
+	// Printer (in main goroutine)
+	for x := range squares {
+		fmt.Println(x)
+	}
+}
+```
+
+Not every channel needs closing. It's only necessary to close a channel when it is important to tell the receiving goroutines that all data have been sent. A channel that the garbage collector determines to be unreachable will have its resources reclaimed whether or not it is closed. (Don't confuse this with the `close` operation for open files. It is important to call the `Close` method on every file when you've finished with it.) Attempting to close an already-closed channel causes a panic, as does closing a `nil` channel. Closing channels has another use as a broadcast mechanism ([Section 8.9](#cancellation)).
