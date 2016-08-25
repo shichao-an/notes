@@ -443,6 +443,8 @@
         
             <li><a href="#pipelines">Pipelines</a></li>
         
+            <li><a href="#unidirectional-channel-types">Unidirectional Channel Types</a></li>
+        
     
     </ul>
 </div></div>
@@ -889,7 +891,7 @@ $ killall reverb2
 
 
 <p>Since this pattern is common, the language enables us to use a <code>range</code> loop to iterate over channels. This is a more convenient syntax for receiving all the values sent on a channel and terminating the loop after the last one. In the pipeline below, when the <code>counter</code> goroutine finishes its loop after 100 elements, it closes the <code>naturals</code> channel, causing the <code>squarer</code> to finish its loop and close the <code>squares</code> channel. Finally, the main goroutine finishes its loop and the program exits. In a more complex program, it might make sense for the <code>counter</code> and <code>squarer</code> functions to defer the calls to <code>close</code> at the outset.</p>
-<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline1/main.go">gopl.io/ch8/pipeline2/main.go</a></small></p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline2/main.go">gopl.io/ch8/pipeline2/main.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="nx">naturals</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
     <span class="nx">squares</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
@@ -919,6 +921,61 @@ $ killall reverb2
 
 
 <p>Not every channel needs closing. It's only necessary to close a channel when it is important to tell the receiving goroutines that all data have been sent. A channel that the garbage collector determines to be unreachable will have its resources reclaimed whether or not it is closed. (Don't confuse this with the <code>close</code> operation for open files. It is important to call the <code>Close</code> method on every file when you've finished with it.) Attempting to close an already-closed channel causes a panic, as does closing a <code>nil</code> channel. Closing channels has another use as a broadcast mechanism (<a href="#cancellation">Section 8.9</a>).</p>
+<h4 id="unidirectional-channel-types">Unidirectional Channel Types</h4>
+<p>As programs grow, it is natural to break up large functions into smaller pieces. The previous example program naturally divides into three functions:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">out</span> <span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nx">squarer</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="nx">in</span> <span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nx">printer</span><span class="p">(</span><span class="nx">in</span> <span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>squarer</code> function takes two parameters, the input channel and the output channel: <code>in</code> is only to be received from, and <code>out</code> is only to be sent to. The names <code>in</code> and <code>out</code> convey this intention, but nothing prevents squarer from sending to in or receiving from out.</p>
+<p>This arrangement is typical. When a channel is supplied as a function parameter, it is nearly always with the intent that it be used exclusively for sending or exclusively for receiving.</p>
+<p>To document this intent and prevent misuse, the Go type system provides <em>unidirectional</em> channel types that expose only one of the send and receive operations:</p>
+<ul>
+<li>The type <code>chan&lt;- int</code>, a send-only channel of <code>int</code>, allows sends but not receives.</li>
+<li>The type <code>&lt;-chan int</code>, a receive-only channel of <code>int</code>, allows receives but not sends.</li>
+</ul>
+<p>Violations of this discipline are detected at compile time.</p>
+<p>Since the <code>close</code> operation asserts that no more sends will occur on a channel, only the sending goroutine is in a position to call it, and for this reason it is a compile-time error to attempt to close a receive-only channel.</p>
+<p>The following program is the squaring pipeline with unidirectional channel types:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline3/main.go">gopl.io/ch8/pipeline3/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">out</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">x</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">x</span> <span class="p">&lt;</span> <span class="mi">100</span><span class="p">;</span> <span class="nx">x</span><span class="o">++</span> <span class="p">{</span>
+        <span class="nx">out</span> <span class="o">&lt;-</span> <span class="nx">x</span>
+    <span class="p">}</span>
+    <span class="nb">close</span><span class="p">(</span><span class="nx">out</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">squarer</span><span class="p">(</span><span class="nx">out</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">in</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">in</span> <span class="p">{</span>
+        <span class="nx">out</span> <span class="o">&lt;-</span> <span class="nx">v</span> <span class="o">*</span> <span class="nx">v</span>
+    <span class="p">}</span>
+    <span class="nb">close</span><span class="p">(</span><span class="nx">out</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">printer</span><span class="p">(</span><span class="nx">in</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">in</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">naturals</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
+    <span class="nx">squares</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
+
+    <span class="k">go</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">naturals</span><span class="p">)</span>
+    <span class="k">go</span> <span class="nx">squarer</span><span class="p">(</span><span class="nx">squares</span><span class="p">,</span> <span class="nx">naturals</span><span class="p">)</span>
+    <span class="nx">printer</span><span class="p">(</span><span class="nx">squares</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>The call <code>counter(naturals)</code> implicitly converts naturals, a value of type <code>chan int</code>, to the type of the parameter, <code>chan&lt;- int</code>.</li>
+<li>The <code>printer(squares)</code> call does a similar implicit conversion to <code>&lt;-chan int</code>.</li>
+</ul>
+<p>Conversions from bidirectional to unidirectional channel types are permitted in any assignment, but not backward. Once you have a value of a unidirectional type such as <code>chan&lt;- int</code>, there is no way to obtain from it a value of type <code>chan int</code> that refers to the same channel data structure.</p>
             </div>
         </div>
 
