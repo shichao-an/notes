@@ -486,7 +486,7 @@ go func() {
 
 Since this pattern is common, the language enables us to use a `range` loop to iterate over channels. This is a more convenient syntax for receiving all the values sent on a channel and terminating the loop after the last one. In the pipeline below, when the `counter` goroutine finishes its loop after 100 elements, it closes the `naturals` channel, causing the `squarer` to finish its loop and close the `squares` channel. Finally, the main goroutine finishes its loop and the program exits. In a more complex program, it might make sense for the `counter` and `squarer` functions to defer the calls to `close` at the outset.
 
-<small>[gopl.io/ch8/pipeline2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline1/main.go)</small>
+<small>[gopl.io/ch8/pipeline2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline2/main.go)</small>
 
 ```go
 func main() {
@@ -517,3 +517,66 @@ func main() {
 ```
 
 Not every channel needs closing. It's only necessary to close a channel when it is important to tell the receiving goroutines that all data have been sent. A channel that the garbage collector determines to be unreachable will have its resources reclaimed whether or not it is closed. (Don't confuse this with the `close` operation for open files. It is important to call the `Close` method on every file when you've finished with it.) Attempting to close an already-closed channel causes a panic, as does closing a `nil` channel. Closing channels has another use as a broadcast mechanism ([Section 8.9](#cancellation)).
+
+#### Unidirectional Channel Types
+
+As programs grow, it is natural to break up large functions into smaller pieces. The previous example program naturally divides into three functions:
+
+```go
+func counter(out chan int)
+func squarer(out, in chan int)
+func printer(in chan int)
+```
+
+The `squarer` function takes two parameters, the input channel and the output channel: `in` is only to be received from, and `out` is only to be sent to. The names `in` and `out` convey this intention, but nothing prevents squarer from sending to in or receiving from out.
+
+This arrangement is typical. When a channel is supplied as a function parameter, it is nearly always with the intent that it be used exclusively for sending or exclusively for receiving.
+
+To document this intent and prevent misuse, the Go type system provides *unidirectional* channel types that expose only one of the send and receive operations:
+
+* The type `chan<- int`, a send-only channel of `int`, allows sends but not receives.
+* The type `<-chan int`, a receive-only channel of `int`, allows receives but not sends.
+
+Violations of this discipline are detected at compile time.
+
+Since the `close` operation asserts that no more sends will occur on a channel, only the sending goroutine is in a position to call it, and for this reason it is a compile-time error to attempt to close a receive-only channel.
+
+The following program is the squaring pipeline with unidirectional channel types:
+
+<small>[gopl.io/ch8/pipeline3/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline3/main.go)</small>
+
+```go
+func counter(out chan<- int) {
+	for x := 0; x < 100; x++ {
+		out <- x
+	}
+	close(out)
+}
+
+func squarer(out chan<- int, in <-chan int) {
+	for v := range in {
+		out <- v * v
+	}
+	close(out)
+}
+
+func printer(in <-chan int) {
+	for v := range in {
+		fmt.Println(v)
+	}
+}
+
+func main() {
+	naturals := make(chan int)
+	squares := make(chan int)
+
+	go counter(naturals)
+	go squarer(squares, naturals)
+	printer(squares)
+}
+```
+
+* The call `counter(naturals)` implicitly converts naturals, a value of type `chan int`, to the type of the parameter, `chan<- int`.
+* The `printer(squares)` call does a similar implicit conversion to `<-chan int`.
+
+Conversions from bidirectional to unidirectional channel types are permitted in any assignment, but not backward. Once you have a value of a unidirectional type such as `chan<- int`, there is no way to obtain from it a value of type `chan int` that refers to the same channel data structure.
