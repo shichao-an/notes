@@ -580,3 +580,43 @@ func main() {
 * The `printer(squares)` call does a similar implicit conversion to `<-chan int`.
 
 Conversions from bidirectional to unidirectional channel types are permitted in any assignment, but not backward. Once you have a value of a unidirectional type such as `chan<- int`, there is no way to obtain from it a value of type `chan int` that refers to the same channel data structure.
+
+#### Buffered Channels
+
+A buffered channel has a queue of elements. The queue's maximum size is determined  by the capacity argument to `make` when it is created. The statement below creates a buffered channel capable of holding three string values.
+
+```go
+ch = make(chan string, 3)
+```
+
+The following figure a graphical representation of `ch` and the channel to which it refers.
+
+[![Figure 8.2. An empty buffered channel.](figure_8.2.png)](figure_8.2.png "Figure 8.2. An empty buffered channel.")
+
+A send operation on a buffered channel inserts an element at the back of the queue, and a receive operation removes an element from the front.
+
+* If the channel is full, the send operation blocks its goroutine until space is made available by another goroutine's receive.
+* If the channel is empty, a receive operation blocks until a value is sent by another goroutine.
+
+We can send up to three values on this channel without the goroutine blocking:
+
+```go
+ch <- "A"
+ch <- "B"
+ch <- "C"
+```
+
+At this point, the channel is full, as shown below; a fourth send statement would block.
+
+[![Figure 8.3. A full buffered channel.](figure_8.3.png)](figure_8.3.png "Figure 8.3. A full buffered channel.")
+
+If we receive one value like this:
+
+```go
+fmt.Println(<-ch) // "A"
+```
+
+The channel is neither full nor empty (as shown in the figure below), so either a send operation or a receive operation could proceed without blocking. In this way, <u>the channel's buffer decouples the sending and receiving goroutines.</u>
+
+[![Figure 8.4. A partially full buffered channel.](figure_8.4.png)](figure_8.4.png "Figure 8.4. A partially full buffered channel.")
+
