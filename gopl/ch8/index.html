@@ -445,6 +445,8 @@
         
             <li><a href="#unidirectional-channel-types">Unidirectional Channel Types</a></li>
         
+            <li><a href="#buffered-channels">Buffered Channels</a></li>
+        
     
     </ul>
 </div></div>
@@ -976,6 +978,35 @@ $ killall reverb2
 <li>The <code>printer(squares)</code> call does a similar implicit conversion to <code>&lt;-chan int</code>.</li>
 </ul>
 <p>Conversions from bidirectional to unidirectional channel types are permitted in any assignment, but not backward. Once you have a value of a unidirectional type such as <code>chan&lt;- int</code>, there is no way to obtain from it a value of type <code>chan int</code> that refers to the same channel data structure.</p>
+<h4 id="buffered-channels">Buffered Channels</h4>
+<p>A buffered channel has a queue of elements. The queue's maximum size is determined  by the capacity argument to <code>make</code> when it is created. The statement below creates a buffered channel capable of holding three string values.</p>
+<div class="codehilite"><pre><span class="nx">ch</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The following figure a graphical representation of <code>ch</code> and the channel to which it refers.</p>
+<p><a href="../figure_8.2.png" title="Figure 8.2. An empty buffered channel."><img alt="Figure 8.2. An empty buffered channel." src="../figure_8.2.png" /></a></p>
+<p>A send operation on a buffered channel inserts an element at the back of the queue, and a receive operation removes an element from the front.</p>
+<ul>
+<li>If the channel is full, the send operation blocks its goroutine until space is made available by another goroutine's receive.</li>
+<li>If the channel is empty, a receive operation blocks until a value is sent by another goroutine.</li>
+</ul>
+<p>We can send up to three values on this channel without the goroutine blocking:</p>
+<div class="codehilite"><pre><span class="nx">ch</span> <span class="o">&lt;-</span> <span class="s">&quot;A&quot;</span>
+<span class="nx">ch</span> <span class="o">&lt;-</span> <span class="s">&quot;B&quot;</span>
+<span class="nx">ch</span> <span class="o">&lt;-</span> <span class="s">&quot;C&quot;</span>
+</pre></div>
+
+
+<p>At this point, the channel is full, as shown below; a fourth send statement would block.</p>
+<p><a href="../figure_8.3.png" title="Figure 8.3. A full buffered channel."><img alt="Figure 8.3. A full buffered channel." src="../figure_8.3.png" /></a></p>
+<p>If we receive one value like this:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="o">&lt;-</span><span class="nx">ch</span><span class="p">)</span> <span class="c1">// &quot;A&quot;</span>
+</pre></div>
+
+
+<p>The channel is neither full nor empty (as shown in the figure below), so either a send operation or a receive operation could proceed without blocking. In this way, <u>the channel's buffer decouples the sending and receiving goroutines.</u></p>
+<p><a href="../figure_8.4.png" title="Figure 8.4. A partially full buffered channel."><img alt="Figure 8.4. A partially full buffered channel." src="../figure_8.4.png" /></a></p>
             </div>
         </div>
 
