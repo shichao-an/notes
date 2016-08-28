@@ -448,6 +448,9 @@
             <li><a href="#buffered-channels">Buffered Channels</a></li>
         
     
+        <li class="main "><a href="#looping-in-parallel">Looping in Parallel</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1062,6 +1065,63 @@ $ killall reverb2
 </ul>
 <p>If the second stage is more elaborate, a single cook may not be able to keep up with the supply from the first cook or meet the demand from the third. To solve the problem, we could hire another cook to help the second, performing the same task but working independently. This is analogous to creating another goroutine communicating over the same channels.</p>
 <p>The <a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/cake/cake.go">gopl.io/ch8/cake</a> package simulates this cake shop, with several parameters.</p>
+<h3 id="looping-in-parallel">Looping in Parallel</h3>
+<p>This section explores some common concurrency patterns for executing all the iterations of a loop in parallel. The following examples consider the problem of producing thumbnail-size images from a set of full-size ones. The <a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/thumbnail/thumbnail.go">gopl.io/ch8/thumbnail</a> package provides an <code>ImageFile</code> function that can scale a single image.</p>
+<p>The program below loops over a list of image file names and produces a thumbnail for each one:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/thumbnail/thumbnail_test.go">gopl.io/ch8/thumbnail/thumbnail_test.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// makeThumbnails makes thumbnails of the specified files.</span>
+<span class="kd">func</span> <span class="nx">makeThumbnails</span><span class="p">(</span><span class="nx">filenames</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">log</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The order in which we process the files doesn't matter, since each scaling operation is independent of all the others. Problems like this that consist entirely of subproblems that are completely independent of each other are described as <a href="https://en.wikipedia.org/wiki/Embarrassingly_parallel"><em>embarrassingly parallel</em></a>. Embarrassingly parallel problems are the easiest kind to implement concurrently and enjoy performance that scales linearly with the amount of parallelism.</p>
+<p>The following first attempt at a concurrent version just adds a <code>go</code> keyword. Let's ignore errors for now and address them later.</p>
+<div class="codehilite"><pre><span class="c1">// NOTE: incorrect!</span>
+<span class="kd">func</span> <span class="nx">makeThumbnails2</span><span class="p">(</span><span class="nx">filenames</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="c1">// NOTE: ignoring errors</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This version runs too fast, since it takes less time than the original, even when the slice of file names contains only a single element. This is because <code>makeThumbnails</code> returns before it has finished doing what it was supposed to do. It starts all the goroutines, one per file name, but doesn't wait for them to finish.</p>
+<p>There is no direct way to wait until a goroutine has finished, but we can change the inner goroutine to report its completion to the outer goroutine by sending an event on a shared channel. Since we know that there are exactly <code>len(filenames)</code> inner goroutines, the outer goroutine need only count that many events before it returns:</p>
+<div class="codehilite"><pre><span class="c1">// makeThumbnails3 makes thumbnails of the specified files in parallel.</span>
+<span class="kd">func</span> <span class="nx">makeThumbnails3</span><span class="p">(</span><span class="nx">filenames</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">f</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="c1">// NOTE: ignoring errors</span>
+            <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+        <span class="p">}(</span><span class="nx">f</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Wait for goroutines to complete.</span>
+    <span class="k">for</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="o">&lt;-</span><span class="nx">ch</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Notice that we passed the value of <code>f</code> as an explicit argument to the literal function instead of using the declaration of <code>f</code> from the enclosing for loop (as shown below):</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="c1">// NOTE: incorrect!</span>
+        <span class="c1">// ...</span>
+    <span class="p">}()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Recall the problem of loop variable capture inside an anonymous function, described in <a href="../ch5/#caveat-capturing-iteration-variables">Section 5.6.1</a>. In the above code, the single variable <code>f</code> is shared by all the anonymous function values and updated by successive loop iterations. By the time the new goroutines start executing the literal function, the <code>for</code> loop may have updated <code>f</code> and started another iteration or finished entirely, so when these goroutines read the value of <code>f</code>, they all observe it to have the value of the final element of the slice. By adding an explicit parameter, we ensure that we use the value of <code>f</code> that is current when the go statement is executed.</p>
             </div>
         </div>
 
