@@ -683,3 +683,71 @@ On the other hand, a buffer provides no benefit in either of the following case:
 If the second stage is more elaborate, a single cook may not be able to keep up with the supply from the first cook or meet the demand from the third. To solve the problem, we could hire another cook to help the second, performing the same task but working independently. This is analogous to creating another goroutine communicating over the same channels.
 
 The [gopl.io/ch8/cake](https://github.com/shichao-an/gopl.io/blob/master/ch8/cake/cake.go) package simulates this cake shop, with several parameters.
+
+### Looping in Parallel
+
+This section explores some common concurrency patterns for executing all the iterations of a loop in parallel. The following examples consider the problem of producing thumbnail-size images from a set of full-size ones. The [gopl.io/ch8/thumbnail](https://github.com/shichao-an/gopl.io/blob/master/ch8/thumbnail/thumbnail.go) package provides an `ImageFile` function that can scale a single image.
+
+The program below loops over a list of image file names and produces a thumbnail for each one:
+
+<small>[gopl.io/ch8/thumbnail/thumbnail_test.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/thumbnail/thumbnail_test.go)</small>
+
+```go
+// makeThumbnails makes thumbnails of the specified files.
+func makeThumbnails(filenames []string) {
+	for _, f := range filenames {
+		if _, err := thumbnail.ImageFile(f); err != nil {
+			log.Println(err)
+		}
+	}
+}
+```
+
+The order in which we process the files doesn't matter, since each scaling operation is independent of all the others. Problems like this that consist entirely of subproblems that are completely independent of each other are described as [*embarrassingly parallel*](https://en.wikipedia.org/wiki/Embarrassingly_parallel). Embarrassingly parallel problems are the easiest kind to implement concurrently and enjoy performance that scales linearly with the amount of parallelism.
+
+The following first attempt at a concurrent version just adds a `go` keyword. Let's ignore errors for now and address them later.
+
+```go
+// NOTE: incorrect!
+func makeThumbnails2(filenames []string) {
+	for _, f := range filenames {
+		go thumbnail.ImageFile(f) // NOTE: ignoring errors
+	}
+}
+```
+
+This version runs too fast, since it takes less time than the original, even when the slice of file names contains only a single element. This is because `makeThumbnails` returns before it has finished doing what it was supposed to do. It starts all the goroutines, one per file name, but doesn't wait for them to finish.
+
+There is no direct way to wait until a goroutine has finished, but we can change the inner goroutine to report its completion to the outer goroutine by sending an event on a shared channel. Since we know that there are exactly `len(filenames)` inner goroutines, the outer goroutine need only count that many events before it returns:
+
+```go
+// makeThumbnails3 makes thumbnails of the specified files in parallel.
+func makeThumbnails3(filenames []string) {
+	ch := make(chan struct{})
+	for _, f := range filenames {
+		go func(f string) {
+			thumbnail.ImageFile(f) // NOTE: ignoring errors
+			ch <- struct{}{}
+		}(f)
+	}
+
+	// Wait for goroutines to complete.
+	for range filenames {
+		<-ch
+	}
+}
+```
+
+Notice that we passed the value of `f` as an explicit argument to the literal function instead of using the declaration of `f` from the enclosing for loop (as shown below):
+
+```go
+for _, f := range filenames {
+	go func() {
+		thumbnail.ImageFile(f) // NOTE: incorrect!
+		// ...
+	}()
+}
+```
+
+Recall the problem of loop variable capture inside an anonymous function, described in [Section 5.6.1](ch5.md#caveat-capturing-iteration-variables). In the above code, the single variable `f` is shared by all the anonymous function values and updated by successive loop iterations. By the time the new goroutines start executing the literal function, the `for` loop may have updated `f` and started another iteration or finished entirely, so when these goroutines read the value of `f`, they all observe it to have the value of the final element of the slice. By adding an explicit parameter, we ensure that we use the value of `f` that is current when the go statement is executed.
+
