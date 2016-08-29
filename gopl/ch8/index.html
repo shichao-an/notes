@@ -1122,6 +1122,123 @@ $ killall reverb2
 
 
 <p>Recall the problem of loop variable capture inside an anonymous function, described in <a href="../ch5/#caveat-capturing-iteration-variables">Section 5.6.1</a>. In the above code, the single variable <code>f</code> is shared by all the anonymous function values and updated by successive loop iterations. By the time the new goroutines start executing the literal function, the <code>for</code> loop may have updated <code>f</code> and started another iteration or finished entirely, so when these goroutines read the value of <code>f</code>, they all observe it to have the value of the final element of the slice. By adding an explicit parameter, we ensure that we use the value of <code>f</code> that is current when the go statement is executed.</p>
+<p>In the next version of <code>makeThumbnails</code>, if an worker goroutine's call to <code>thumbnail.ImageFile</code> fails to create a file, it returns an error to the main goroutine. <code>makeThumbnails4</code> returns the first error it receives from any of the scaling operations:</p>
+<div class="codehilite"><pre><span class="c1">// makeThumbnails4 makes thumbnails for the specified files in parallel.</span>
+<span class="c1">// It returns an error if any step failed.</span>
+<span class="kd">func</span> <span class="nx">makeThumbnails4</span><span class="p">(</span><span class="nx">filenames</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="nx">errors</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">error</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">f</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+            <span class="nx">errors</span> <span class="o">&lt;-</span> <span class="nx">err</span>
+        <span class="p">}(</span><span class="nx">f</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">errors</span><span class="p">;</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">err</span> <span class="c1">// NOTE: incorrect: goroutine leak!</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function has a subtle bug. When it encounters the first non-nil error, it returns the error to the caller, leaving no goroutine draining the errors channel. Each remaining worker goroutine will block forever when it tries to send a value on that channel, and will never terminate. This results in a goroutine leak (<a href="#buffered-channels">Section 8.4.4</a>), which may cause the whole program to get stuck or to run out of memory.</p>
+<p>The simplest solution is to use a buffered channel with sufficient capacity that no worker goroutine will block when it sends a message. An alternative solution is to create another goroutine to drain the channel while the main goroutine returns the first error without delay.</p>
+<p>The next version of <code>makeThumbnails</code> uses a buffered channel to return the names of the generated image files along with any errors.</p>
+<div class="codehilite"><pre><span class="c1">// makeThumbnails5 makes thumbnails for the specified files in parallel.</span>
+<span class="c1">// It returns the generated file names in an arbitrary order,</span>
+<span class="c1">// or an error if any step failed.</span>
+<span class="kd">func</span> <span class="nx">makeThumbnails5</span><span class="p">(</span><span class="nx">filenames</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">thumbfiles</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">type</span> <span class="nx">item</span> <span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">thumbfile</span> <span class="kt">string</span>
+        <span class="nx">err</span>       <span class="kt">error</span>
+    <span class="p">}</span>
+
+    <span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">item</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">filenames</span><span class="p">))</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">f</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kd">var</span> <span class="nx">it</span> <span class="nx">item</span>
+            <span class="nx">it</span><span class="p">.</span><span class="nx">thumbfile</span><span class="p">,</span> <span class="nx">it</span><span class="p">.</span><span class="nx">err</span> <span class="p">=</span> <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+            <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">it</span>
+        <span class="p">}(</span><span class="nx">f</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="nx">it</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">ch</span>
+        <span class="k">if</span> <span class="nx">it</span><span class="p">.</span><span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">it</span><span class="p">.</span><span class="nx">err</span>
+        <span class="p">}</span>
+        <span class="nx">thumbfiles</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">thumbfiles</span><span class="p">,</span> <span class="nx">it</span><span class="p">.</span><span class="nx">thumbfile</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="nx">thumbfiles</span><span class="p">,</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The final version of <code>makeThumbnails</code> is shown below. It returns the total number of bytes occupied by the new files. Unlike the previous versions, however, it receives the file names not as a slice but over a channel of strings, so we cannot predict the number of loop iterations.</p>
+<p>To know when the last goroutine has finished (which may not be the last one to start), we need to increment a counter before each goroutine starts and decrement it as each goroutine finishes. This demands a special kind of counter that can be safely manipulated from multiple goroutines and that provides a way to wait until it becomes zero. This counter type is known as <a href="https://golang.org/pkg/sync/#WaitGroup"><code>sync.WaitGroup</code></a> as shown in the code below:</p>
+<div class="codehilite"><pre><span class="c1">// makeThumbnails6 makes thumbnails for each file received from the channel.</span>
+<span class="c1">// It returns the number of bytes occupied by the files it creates.</span>
+<span class="kd">func</span> <span class="nx">makeThumbnails6</span><span class="p">(</span><span class="nx">filenames</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int64</span> <span class="p">{</span>
+    <span class="nx">sizes</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int64</span><span class="p">)</span>
+    <span class="kd">var</span> <span class="nx">wg</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span> <span class="c1">// number of working goroutines</span>
+    <span class="k">for</span> <span class="nx">f</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filenames</span> <span class="p">{</span>
+        <span class="nx">wg</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1">// worker</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">f</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nx">Done</span><span class="p">()</span>
+            <span class="nx">thumb</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">thumbnail</span><span class="p">.</span><span class="nx">ImageFile</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                <span class="nx">log</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="p">}</span>
+            <span class="nx">info</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stat</span><span class="p">(</span><span class="nx">thumb</span><span class="p">)</span> <span class="c1">// OK to ignore error</span>
+            <span class="nx">sizes</span> <span class="o">&lt;-</span> <span class="nx">info</span><span class="p">.</span><span class="nx">Size</span><span class="p">()</span>
+        <span class="p">}(</span><span class="nx">f</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// closer</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">wg</span><span class="p">.</span><span class="nx">Wait</span><span class="p">()</span>
+        <span class="nb">close</span><span class="p">(</span><span class="nx">sizes</span><span class="p">)</span>
+    <span class="p">}()</span>
+
+    <span class="kd">var</span> <span class="nx">total</span> <span class="kt">int64</span>
+    <span class="k">for</span> <span class="nx">size</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">sizes</span> <span class="p">{</span>
+        <span class="nx">total</span> <span class="o">+=</span> <span class="nx">size</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">total</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The structure of the code above is a common and idiomatic pattern for looping in parallel when we don't know the number of iterations:</p>
+<ul>
+<li>Note the asymmetry in the <code>Add</code> and <code>Done</code> methods.<ul>
+<li><code>Add</code> increments the counter and must be called before the worker goroutine starts, not within it; <u>otherwise we would not be sure that the <code>Add</code> happens before the "closer" goroutine calls <code>Wait</code>.</u></li>
+<li><code>Add</code> takes a parameter, but <code>Done</code> does not; it's equivalent to <code>Add(-1)</code>. We use <code>defer</code> to ensure that the counter is decremented even in the error case.</li>
+</ul>
+</li>
+<li>The <code>sizes</code> channel carries each file size back to the main goroutine, which receives them using a <code>range</code> loop and computes the sum.</li>
+<li>Observe how we create a closer goroutine that waits for the workers to finish before closing the <code>sizes</code> channel. These two operations, <code>wait</code> and <code>close</code>, must be concurrent with the loop over <code>sizes</code>. Consider the alternatives:<ul>
+<li>If the <code>wait</code> operation were placed in the main goroutine before the loop, it would never end.</li>
+<li>If the <code>wait</code> operation were placed after the loop, it would be unreachable since with nothing closing the channel, the loop would never terminate.</li>
+</ul>
+</li>
+</ul>
+<p>The following figure illustrates the sequence of events in the <code>makeThumbnails6</code> function:</p>
+<p><a href="../figure_8.5.png" title="Figure 8.5. The sequence of events in makeThumbnails6."><img alt="Figure 8.5. The sequence of events in makeThumbnails6." src="../figure_8.5_600.png" /></a></p>
+<ul>
+<li>The vertical lines represent goroutines.</li>
+<li>The thin segments indicate sleep, the thick segments activity.</li>
+<li>The diagonal arrows indicate events that synchronize one goroutine with another.</li>
+</ul>
+<p>Notice how the main goroutine spends most of its time in the <code>range</code> loop asleep, waiting for a worker to send a value or the closer to close the channel.</p>
             </div>
         </div>
 
