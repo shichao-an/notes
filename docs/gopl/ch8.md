@@ -751,3 +751,123 @@ for _, f := range filenames {
 
 Recall the problem of loop variable capture inside an anonymous function, described in [Section 5.6.1](ch5.md#caveat-capturing-iteration-variables). In the above code, the single variable `f` is shared by all the anonymous function values and updated by successive loop iterations. By the time the new goroutines start executing the literal function, the `for` loop may have updated `f` and started another iteration or finished entirely, so when these goroutines read the value of `f`, they all observe it to have the value of the final element of the slice. By adding an explicit parameter, we ensure that we use the value of `f` that is current when the go statement is executed.
 
+In the next version of `makeThumbnails`, if an worker goroutine's call to `thumbnail.ImageFile` fails to create a file, it returns an error to the main goroutine. `makeThumbnails4` returns the first error it receives from any of the scaling operations:
+
+```go
+// makeThumbnails4 makes thumbnails for the specified files in parallel.
+// It returns an error if any step failed.
+func makeThumbnails4(filenames []string) error {
+	errors := make(chan error)
+
+	for _, f := range filenames {
+		go func(f string) {
+			_, err := thumbnail.ImageFile(f)
+			errors <- err
+		}(f)
+	}
+
+	for range filenames {
+		if err := <-errors; err != nil {
+			return err // NOTE: incorrect: goroutine leak!
+		}
+	}
+
+	return nil
+}
+```
+
+This function has a subtle bug. When it encounters the first non-nil error, it returns the error to the caller, leaving no goroutine draining the errors channel. Each remaining worker goroutine will block forever when it tries to send a value on that channel, and will never terminate. This results in a goroutine leak ([Section 8.4.4](#buffered-channels)), which may cause the whole program to get stuck or to run out of memory.
+
+The simplest solution is to use a buffered channel with sufficient capacity that no worker goroutine will block when it sends a message. An alternative solution is to create another goroutine to drain the channel while the main goroutine returns the first error without delay.
+
+The next version of `makeThumbnails` uses a buffered channel to return the names of the generated image files along with any errors.
+
+```go
+// makeThumbnails5 makes thumbnails for the specified files in parallel.
+// It returns the generated file names in an arbitrary order,
+// or an error if any step failed.
+func makeThumbnails5(filenames []string) (thumbfiles []string, err error) {
+	type item struct {
+		thumbfile string
+		err       error
+	}
+
+	ch := make(chan item, len(filenames))
+	for _, f := range filenames {
+		go func(f string) {
+			var it item
+			it.thumbfile, it.err = thumbnail.ImageFile(f)
+			ch <- it
+		}(f)
+	}
+
+	for range filenames {
+		it := <-ch
+		if it.err != nil {
+			return nil, it.err
+		}
+		thumbfiles = append(thumbfiles, it.thumbfile)
+	}
+
+	return thumbfiles, nil
+}
+```
+
+The final version of `makeThumbnails` is shown below. It returns the total number of bytes occupied by the new files. Unlike the previous versions, however, it receives the file names not as a slice but over a channel of strings, so we cannot predict the number of loop iterations.
+
+To know when the last goroutine has finished (which may not be the last one to start), we need to increment a counter before each goroutine starts and decrement it as each goroutine finishes. This demands a special kind of counter that can be safely manipulated from multiple goroutines and that provides a way to wait until it becomes zero. This counter type is known as [`sync.WaitGroup`](https://golang.org/pkg/sync/#WaitGroup) as shown in the code below:
+
+```go
+// makeThumbnails6 makes thumbnails for each file received from the channel.
+// It returns the number of bytes occupied by the files it creates.
+func makeThumbnails6(filenames <-chan string) int64 {
+	sizes := make(chan int64)
+	var wg sync.WaitGroup // number of working goroutines
+	for f := range filenames {
+		wg.Add(1)
+		// worker
+		go func(f string) {
+			defer wg.Done()
+			thumb, err := thumbnail.ImageFile(f)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			info, _ := os.Stat(thumb) // OK to ignore error
+			sizes <- info.Size()
+		}(f)
+	}
+
+	// closer
+	go func() {
+		wg.Wait()
+		close(sizes)
+	}()
+
+	var total int64
+	for size := range sizes {
+		total += size
+	}
+	return total
+}
+```
+
+The structure of the code above is a common and idiomatic pattern for looping in parallel when we don't know the number of iterations:
+
+* Note the asymmetry in the `Add` and `Done` methods.
+    * `Add` increments the counter and must be called before the worker goroutine starts, not within it; <u>otherwise we would not be sure that the `Add` happens before the "closer" goroutine calls `Wait`.</u>
+    * `Add` takes a parameter, but `Done` does not; it's equivalent to `Add(-1)`. We use `defer` to ensure that the counter is decremented even in the error case.
+* The `sizes` channel carries each file size back to the main goroutine, which receives them using a `range` loop and computes the sum.
+* Observe how we create a closer goroutine that waits for the workers to finish before closing the `sizes` channel. These two operations, `wait` and `close`, must be concurrent with the loop over `sizes`. Consider the alternatives:
+    * If the `wait` operation were placed in the main goroutine before the loop, it would never end.
+    * If the `wait` operation were placed after the loop, it would be unreachable since with nothing closing the channel, the loop would never terminate.
+
+The following figure illustrates the sequence of events in the `makeThumbnails6` function:
+
+[![Figure 8.5. The sequence of events in makeThumbnails6.](figure_8.5_600.png)](figure_8.5.png "Figure 8.5. The sequence of events in makeThumbnails6.")
+
+* The vertical lines represent goroutines.
+* The thin segments indicate sleep, the thick segments activity.
+* The diagonal arrows indicate events that synchronize one goroutine with another.
+
+Notice how the main goroutine spends most of its time in the `range` loop asleep, waiting for a worker to send a value or the closer to close the channel.
