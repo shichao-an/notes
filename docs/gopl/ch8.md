@@ -871,3 +871,49 @@ The following figure illustrates the sequence of events in the `makeThumbnails6`
 * The diagonal arrows indicate events that synchronize one goroutine with another.
 
 Notice how the main goroutine spends most of its time in the `range` loop asleep, waiting for a worker to send a value or the closer to close the channel.
+
+### Example: Concurrent Web Crawler
+
+[Section 5.6](ch5.md#anonymous-functions) shows a simple web crawler that explored the link graph of the web in breadth-first order. In this section show is concurrent version so that independent calls to `crawl` can exploit the I/O parallelism available in the web. The `crawl` function remains exactly as it was in [gopl.io/ch5/findlinks3](https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks3/findlinks.go):
+
+<small>[gopl.io/ch8/crawl1/findlinks.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl1/findlinks.go)</small>
+
+```go
+func crawl(url string) []string {
+	fmt.Println(url)
+	list, err := links.Extract(url)
+	if err != nil {
+		log.Print(err)
+	}
+	return list
+}
+```
+
+The main function resembles `breadthFirst` ([Section 5.6](ch5.md#anonymous-functions)):
+
+* As before, a `worklist` records the queue of items that need processing, each item being a list of URLs to crawl, but this time a channel is used instead of a slice.
+* Each call to `crawl` occurs in its own goroutine and sends the links it discovers back to the `worklist`.
+
+```go
+func main() {
+	worklist := make(chan []string)
+
+	// Start with the command-line arguments.
+	go func() { worklist <- os.Args[1:] }()
+
+	// Crawl the web concurrently.
+	seen := make(map[string]bool)
+	for list := range worklist {
+		for _, link := range list {
+			if !seen[link] {
+				seen[link] = true
+				go func(link string) {
+					worklist <- crawl(link)
+				}(link)
+			}
+		}
+	}
+}
+```
+
+Notice that the `crawl` goroutine takes link as an explicit parameter to avoid the problem of loop variable capture  in [Section 5.6.1](ch5.md#caveat-capturing-iteration-variables). Also notice that the initial send of the command-line arguments to the `worklist` must run in its own goroutine to avoid deadlock, a stuck situation in which both the main goroutine and a crawler goroutine attempt to send to each other while neither is receiving. An alternative solution would be to use a buffered channel.

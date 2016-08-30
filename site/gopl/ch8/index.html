@@ -451,6 +451,9 @@
         <li class="main "><a href="#looping-in-parallel">Looping in Parallel</a></li>
         
     
+        <li class="main "><a href="#example-concurrent-web-crawler">Example: Concurrent Web Crawler</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1239,6 +1242,48 @@ $ killall reverb2
 <li>The diagonal arrows indicate events that synchronize one goroutine with another.</li>
 </ul>
 <p>Notice how the main goroutine spends most of its time in the <code>range</code> loop asleep, waiting for a worker to send a value or the closer to close the channel.</p>
+<h3 id="example-concurrent-web-crawler">Example: Concurrent Web Crawler</h3>
+<p><a href="../ch5/#anonymous-functions">Section 5.6</a> shows a simple web crawler that explored the link graph of the web in breadth-first order. In this section show is concurrent version so that independent calls to <code>crawl</code> can exploit the I/O parallelism available in the web. The <code>crawl</code> function remains exactly as it was in <a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks3/findlinks.go">gopl.io/ch5/findlinks3</a>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl1/findlinks.go">gopl.io/ch8/crawl1/findlinks.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="nx">list</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">links</span><span class="p">.</span><span class="nx">Extract</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">list</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The main function resembles <code>breadthFirst</code> (<a href="../ch5/#anonymous-functions">Section 5.6</a>):</p>
+<ul>
+<li>As before, a <code>worklist</code> records the queue of items that need processing, each item being a list of URLs to crawl, but this time a channel is used instead of a slice.</li>
+<li>Each call to <code>crawl</code> occurs in its own goroutine and sends the links it discovers back to the <code>worklist</code>.</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">worklist</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span>
+
+    <span class="c1">// Start with the command-line arguments.</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">worklist</span> <span class="o">&lt;-</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">}()</span>
+
+    <span class="c1">// Crawl the web concurrently.</span>
+    <span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">list</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">worklist</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">link</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">list</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">link</span><span class="p">]</span> <span class="p">{</span>
+                <span class="nx">seen</span><span class="p">[</span><span class="nx">link</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+                <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">link</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nx">worklist</span> <span class="o">&lt;-</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
+                <span class="p">}(</span><span class="nx">link</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Notice that the <code>crawl</code> goroutine takes link as an explicit parameter to avoid the problem of loop variable capture  in <a href="../ch5/#caveat-capturing-iteration-variables">Section 5.6.1</a>. Also notice that the initial send of the command-line arguments to the <code>worklist</code> must run in its own goroutine to avoid deadlock, a stuck situation in which both the main goroutine and a crawler goroutine attempt to send to each other while neither is receiving. An alternative solution would be to use a buffered channel.</p>
             </div>
         </div>
 
