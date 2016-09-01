@@ -917,3 +917,83 @@ func main() {
 ```
 
 Notice that the `crawl` goroutine takes link as an explicit parameter to avoid the problem of loop variable capture  in [Section 5.6.1](ch5.md#caveat-capturing-iteration-variables). Also notice that the initial send of the command-line arguments to the `worklist` must run in its own goroutine to avoid deadlock, a stuck situation in which both the main goroutine and a crawler goroutine attempt to send to each other while neither is receiving. An alternative solution would be to use a buffered channel.
+
+The crawler is now highly concurrent and prints a storm of URLs, but it has two problems.  The first problem manifests itself as error messages in the log after a few seconds of operation:
+
+```text
+$ go build gopl.io/ch8/crawl1
+$ ./crawl1 http://gopl.io/
+http://gopl.io/
+https://golang.org/help/
+https://golang.org/doc/
+https://golang.org/blog/
+...
+2015/07/15 18:22:12 Get ...: dial tcp: lookup blog.golang.org: no such host
+2015/07/15 18:22:12 Get ...: dial tcp 23.21.222.120:443: socket:
+too many open files
+...
+```
+
+The program created so many network connections at once that it exceeded the per-process limit on the number of open files, causing operations such as DNS lookups and calls to `net.Dial` to start failing.
+
+The program is too parallel. Unbounded parallelism is rarely a good idea since there is always a limiting factor in the system, such as:
+
+* The number of CPU cores for compute-bound workloads
+* The number of spindles and heads for local disk I/O operations
+* The bandwidth of the network for streaming downloads or the serving capacity of a web service.
+
+The solution is to limit the number of parallel uses of the resource to match the level of parallelism that is available. A simple way to do that in our example is to ensure that no more than *n* calls to `links.Extract` are active at once, where *n* is comfortably less than the file descriptor limit.
+
+We can limit parallelism using a buffered channel of capacity *n* to model a concurrency primitive called a *counting semaphore*. Conceptually, each of the *n* vacant slots in the channel buffer represents a token entitling the holder to proceed. Sending a value into the channel acquires a token, and receiving a value from the channel releases a token, creating a new vacant slot. This ensures that at most *n* sends can occur without an intervening receive.Since the channel element type is not important, we'll use `struct{}`, which has size zero.
+
+In the following rewritten `crawl` function, the call to `links.Extract` is bracketed by operations to acquire and release a token, thus ensuring that at most 20 calls to it are active at one time. It's good practice to keep the semaphore operations as close as possible to the I/O operation they regulate.
+
+<small>[gopl.io/ch8/crawl2/findlinks.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl2/findlinks.go)</small>
+
+```go
+// tokens is a counting semaphore used to
+// enforce a limit of 20 concurrent requests.
+var tokens = make(chan struct{}, 20)
+
+func crawl(url string) []string {
+	fmt.Println(url)
+	tokens <- struct{}{} // acquire a token
+	list, err := links.Extract(url)
+	<-tokens // release the token
+
+	if err != nil {
+		log.Print(err)
+	}
+	return list
+}
+```
+
+The second problem is that the program never terminates, even when it has discovered all the links reachable from the initial URLs. For the program to terminate, we need to break out of the main loop when the `worklist` is empty and no crawl goroutines are active.
+
+```go
+func main() {
+	worklist := make(chan []string)
+	var n int // number of pending sends to worklist
+
+	// Start with the command-line arguments.
+	n++
+	go func() { worklist <- os.Args[1:] }()
+
+	// Crawl the web concurrently.
+	seen := make(map[string]bool)
+	for ; n > 0; n-- {
+		list := <-worklist
+		for _, link := range list {
+			if !seen[link] {
+				seen[link] = true
+				n++
+				go func(link string) {
+					worklist <- crawl(link)
+				}(link)
+			}
+		}
+	}
+}
+```
+
+In this version, the counter `n` keeps track of the number of sends to the `worklist` that are yet to occur. Each time we know that an item needs to be sent to the worklist, we increment `n`, once before we send the initial command-line arguments, and again each time we start a crawler goroutine. The main loop terminates when `n` falls to zero, since there is no more work to be done.
