@@ -1284,6 +1284,78 @@ $ killall reverb2
 
 
 <p>Notice that the <code>crawl</code> goroutine takes link as an explicit parameter to avoid the problem of loop variable capture  in <a href="../ch5/#caveat-capturing-iteration-variables">Section 5.6.1</a>. Also notice that the initial send of the command-line arguments to the <code>worklist</code> must run in its own goroutine to avoid deadlock, a stuck situation in which both the main goroutine and a crawler goroutine attempt to send to each other while neither is receiving. An alternative solution would be to use a buffered channel.</p>
+<p>The crawler is now highly concurrent and prints a storm of URLs, but it has two problems.  The first problem manifests itself as error messages in the log after a few seconds of operation:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch8/crawl1
+$ ./crawl1 http://gopl.io/
+http://gopl.io/
+https://golang.org/help/
+https://golang.org/doc/
+https://golang.org/blog/
+...
+2015/07/15 18:22:12 Get ...: dial tcp: lookup blog.golang.org: no such host
+2015/07/15 18:22:12 Get ...: dial tcp 23.21.222.120:443: socket:
+too many open files
+...
+</pre></div>
+
+
+<p>The program created so many network connections at once that it exceeded the per-process limit on the number of open files, causing operations such as DNS lookups and calls to <code>net.Dial</code> to start failing.</p>
+<p>The program is too parallel. Unbounded parallelism is rarely a good idea since there is always a limiting factor in the system, such as:</p>
+<ul>
+<li>The number of CPU cores for compute-bound workloads</li>
+<li>The number of spindles and heads for local disk I/O operations</li>
+<li>The bandwidth of the network for streaming downloads or the serving capacity of a web service.</li>
+</ul>
+<p>The solution is to limit the number of parallel uses of the resource to match the level of parallelism that is available. A simple way to do that in our example is to ensure that no more than <em>n</em> calls to <code>links.Extract</code> are active at once, where <em>n</em> is comfortably less than the file descriptor limit.</p>
+<p>We can limit parallelism using a buffered channel of capacity <em>n</em> to model a concurrency primitive called a <em>counting semaphore</em>. Conceptually, each of the <em>n</em> vacant slots in the channel buffer represents a token entitling the holder to proceed. Sending a value into the channel acquires a token, and receiving a value from the channel releases a token, creating a new vacant slot. This ensures that at most <em>n</em> sends can occur without an intervening receive.Since the channel element type is not important, we'll use <code>struct{}</code>, which has size zero.</p>
+<p>In the following rewritten <code>crawl</code> function, the call to <code>links.Extract</code> is bracketed by operations to acquire and release a token, thus ensuring that at most 20 calls to it are active at one time. It's good practice to keep the semaphore operations as close as possible to the I/O operation they regulate.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl2/findlinks.go">gopl.io/ch8/crawl2/findlinks.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// tokens is a counting semaphore used to</span>
+<span class="c1">// enforce a limit of 20 concurrent requests.</span>
+<span class="kd">var</span> <span class="nx">tokens</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{},</span> <span class="mi">20</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="nx">tokens</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span> <span class="c1">// acquire a token</span>
+    <span class="nx">list</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">links</span><span class="p">.</span><span class="nx">Extract</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="o">&lt;-</span><span class="nx">tokens</span> <span class="c1">// release the token</span>
+
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">list</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The second problem is that the program never terminates, even when it has discovered all the links reachable from the initial URLs. For the program to terminate, we need to break out of the main loop when the <code>worklist</code> is empty and no crawl goroutines are active.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">worklist</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span>
+    <span class="kd">var</span> <span class="nx">n</span> <span class="kt">int</span> <span class="c1">// number of pending sends to worklist</span>
+
+    <span class="c1">// Start with the command-line arguments.</span>
+    <span class="nx">n</span><span class="o">++</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">worklist</span> <span class="o">&lt;-</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">}()</span>
+
+    <span class="c1">// Crawl the web concurrently.</span>
+    <span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="p">;</span> <span class="nx">n</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">n</span><span class="o">--</span> <span class="p">{</span>
+        <span class="nx">list</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">worklist</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">link</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">list</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">link</span><span class="p">]</span> <span class="p">{</span>
+                <span class="nx">seen</span><span class="p">[</span><span class="nx">link</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+                <span class="nx">n</span><span class="o">++</span>
+                <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">link</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nx">worklist</span> <span class="o">&lt;-</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
+                <span class="p">}(</span><span class="nx">link</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this version, the counter <code>n</code> keeps track of the number of sends to the <code>worklist</code> that are yet to occur. Each time we know that an item needs to be sent to the worklist, we increment <code>n</code>, once before we send the initial command-line arguments, and again each time we start a crawler goroutine. The main loop terminates when <code>n</code> falls to zero, since there is no more work to be done.</p>
             </div>
         </div>
 
