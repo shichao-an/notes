@@ -6,7 +6,7 @@ This chapter provides details about the basic structural elements of a Go progra
 
 In Go, the names of functions, variables, constants, types, statement labels, and packages follow a simple rule: a name begins with a letter (anything that Unicode deems a letter) or an underscore and may have any number of additional letters, digits, and underscores. The names are case-sensitive: `heapSort` and `Heapsort` are different names.
 
-Go has 25 keywords like `if` and `switch` that may be used only where the syntax permits; they can’t be used as names.
+Go has 25 keywords like `if` and `switch` that may be used only where the syntax permits; they can't be used as names.
 
  | | |
 -|-|-|-
@@ -278,7 +278,7 @@ Each time we take the address of a variable or copy a pointer, we create new ali
 
 ##### **Pointer and the `flag` package**
 
-Pointers are key to the `flag` package, which uses a program’s command-line arguments to set the values of certain variables for the entire program. To illustrate, this variation on the earlier `echo` command takes two optional flags:
+Pointers are key to the `flag` package, which uses a program's command-line arguments to set the values of certain variables for the entire program. To illustrate, this variation on the earlier `echo` command takes two optional flags:
 
 * `-n` causes `echo` to omit the trailing newline that would normally be printed;
 * `-s sep` causes it to separate the output arguments by the contents of the string `sep` instead of the default single space.
@@ -310,7 +310,7 @@ func main() {
 The function `flag.Bool` creates a new flag variable of type `bool`. It takes three arguments:
 
 * The name of the flag (`"n"`),
-* The variable’s default value (`false`),
+* The variable's default value (`false`),
 * A message that will be printed if the user provides an invalid argument, an invalid flag, or `-h` or `-help`.
 
 This is similar to `flag.String`.
@@ -347,7 +347,7 @@ fmt.Println(*p)  // "0"
 fmt.Println(*p)  // "2"
 ```
 
-A variable created with `new` is no different from an ordinary local variable whose address is taken, except that there’s no need to invent (and declare) a dummy name, and we can use `new(T)` in an expression. <u>Thus `new` is only a syntactic convenience, not a fundamental notion.</u>
+A variable created with `new` is no different from an ordinary local variable whose address is taken, except that there's no need to invent (and declare) a dummy name, and we can use `new(T)` in an expression. <u>Thus `new` is only a syntactic convenience, not a fundamental notion.</u>
 
 The two `newInt` functions below have identical behaviors:
 
@@ -376,7 +376,7 @@ There is one exception to this rule: two variables whose type carries no informa
 
 The `new` function is relatively rarely used because the most common unnamed variables are of struct types, for which the struct literal syntax ([Section 4.4.1](ch4.md#struct-literals)) is more flexible.
 
-Since new is a predeclared function, not a keyword, it’s possible to redefine the name for something else within a function, for example:
+Since new is a predeclared function, not a keyword, it's possible to redefine the name for something else within a function, for example:
 
 ```go
 func delta(old, new int) int { return new - old }
@@ -406,7 +406,7 @@ for t := 0.0; t < cycles*2*math.Pi; t += res {
 * The variable `t` is created each time the for loop begins.
 * New variables `x` and `y` are created on each iteration of the loop.
 
-##### **How does the garbage collector know that a variable’s storage can be reclaimed?** *
+##### **How does the garbage collector know that a variable's storage can be reclaimed?** *
 
 The basic idea is that every package-level variable, and every local variable of each currently active function, can potentially be the start or root of a path to the variable in question, following pointers and other kinds of references that ultimately lead to the variable. If no such path exists, the variable has become unreachable, so it can no longer affect the rest of the computation.
 
@@ -434,13 +434,13 @@ func g() {
 In the above code:
 
 * `x` must be heap-allocated because it is still reachable from the variable `global` after `f` has returned, despite being declared as a local variable; we say `x` *escapes* from `f`.
-* Conversely, when `g` returns, the variable `*y` becomes unreachable and can be recycled. Since `*y` does not escape from `g`, it’s safe for the compiler to allocate *y on the stack, even though it was allocated with `new`.
+* Conversely, when `g` returns, the variable `*y` becomes unreachable and can be recycled. Since `*y` does not escape from `g`, it's safe for the compiler to allocate `*y` on the stack, even though it was allocated with `new`.
 
-In any case, the notion of escaping is not something that you need to worry about in order to write correct code, though it’s good to keep in mind during performance optimization, since each variable that escapes requires an extra memory allocation.
+In any case, the notion of escaping is not something that you need to worry about in order to write correct code, though it's good to keep in mind during performance optimization, since each variable that escapes requires an extra memory allocation.
 
 ##### **Thoughts on garbage collection** *
 
-Garbage collection is a tremendous help in writing correct programs, but it does not relieve you of the burden of thinking about memory. You don’t need to explicitly allocate and free memory, but to write efficient programs you still need to be aware of the lifetime of variables.  For example, keeping unnecessary pointers to short-lived objects within long-lived objects, especially global variables, will prevent the garbage collector from reclaiming the short-lived objects.
+Garbage collection is a tremendous help in writing correct programs, but it does not relieve you of the burden of thinking about memory. You don't need to explicitly allocate and free memory, but to write efficient programs you still need to be aware of the lifetime of variables.  For example, keeping unnecessary pointers to short-lived objects within long-lived objects, especially global variables, will prevent the garbage collector from reclaiming the short-lived objects.
 
 ### Assignments
 
@@ -594,13 +594,13 @@ The type of a variable or expression defines the characteristics of the values i
 
 Variables can share the same representation but signify very different concepts. [p39]
 
-A `type` declaration defines a new *named type* that has the same *underlying type* as an existing type. <u>The named type provides a way to separate different and perhaps incompatible uses of the underlying type so that they can’t be mixed unintentionally.</u>
+A `type` declaration defines a new *named type* that has the same *underlying type* as an existing type. <u>The named type provides a way to separate different and perhaps incompatible uses of the underlying type so that they can't be mixed unintentionally.</u>
 
 ```go
 type name underlying-type
 ```
 
-Type declarations most often appear at package level, where the named type is visible throughout the package; if the name is exported (it starts with an upper-case letter), it’s accessible from other packages as well.
+Type declarations most often appear at package level, where the named type is visible throughout the package; if the name is exported (it starts with an upper-case letter), it's accessible from other packages as well.
 
 #### Example of type declarations: temperature scales *
 
@@ -630,7 +630,7 @@ func FToC(f Fahrenheit) Celsius { return Celsius((f - 32) * 5 / 9) }
 
 This package defines two types, `Celsius` and `Fahrenheit` for the two units of temperature. <u>Even though both have the same underlying type, `float64`, they are not the same type, so they cannot be compared or combined in arithmetic expressions.</u> Defining two types avoids errors like inadvertently combining temperatures in the two different scales; an explicit type conversion like `Celsius(t)` or `Fahrenheit(t)` is required to convert from a `float64`.
 
-* `Celsius(t)` and `Fahrenheit(t)` are conversions, not function calls. <u>They don’t change the value or representation in any way, but they make the change of meaning explicit.</u>
+* `Celsius(t)` and `Fahrenheit(t)` are conversions, not function calls. <u>They don't change the value or representation in any way, but they make the change of meaning explicit.</u>
 * The functions `CToF` and `FToC` convert between the two scales; they do return different values.
 
 #### Type conversion *
@@ -680,9 +680,9 @@ Note that in the last case, the type conversion `Celsius(f)` does not change the
 
 A named type provides notational convenience if it helps avoid writing out complex types over and over again. The advantage is small when the underlying type is simple like `float64`, but big for complicated types (detailed when discussing [structs](ch4.md#structs)).
 
-Named types also make it possible to define new behaviors for values of the type. These behaviors are expressed as a set of functions associated with the type, called the type’s **methods**. Methods are discussed in [Chapter 6](ch6.md). The following example of the `String` method gives a taste the mechanism.
+Named types also make it possible to define new behaviors for values of the type. These behaviors are expressed as a set of functions associated with the type, called the type's **methods**. Methods are discussed in [Chapter 6](ch6.md). The following example of the `String` method gives a taste the mechanism.
 
-The declaration below, in which the `Celsius` parameter `c` appears before the function name, associates with the `Celsius` type a method named `String` that returns `c`’s numeric value followed by `°C`:
+The declaration below, in which the `Celsius` parameter `c` appears before the function name, associates with the `Celsius` type a method named `String` that returns `c`'s numeric value followed by `°C`:
 
 ```go
 func (c Celsius) String() string { return fmt.Sprintf("%g°C", c) }
@@ -773,11 +773,11 @@ The *doc comment* ([Section 10.7.4](#ch10.md#documenting-packages)) immediately 
 
 ##### **Import path** *
 
-Every package within a Go program is identified by a unique string called its **import path**, which appears in an `import` declaration like `gopl.io/ch2/tempconv`. The language specification doesn’t define where these strings come from or what they mean; it’s up to the tools to interpret them. When using the `go` tool ([Chapter 10](ch10.md)), <u>an import path denotes a directory containing Go source files that make up the package.</u>
+Every package within a Go program is identified by a unique string called its **import path**, which appears in an `import` declaration like `gopl.io/ch2/tempconv`. The language specification doesn't define where these strings come from or what they mean; it's up to the tools to interpret them. When using the `go` tool ([Chapter 10](ch10.md)), <u>an import path denotes a directory containing Go source files that make up the package.</u>
 
 ##### **Package name** *
 
-In addition to its import path, each package has a **package name**, which is the short buy not necessarily unique name that appears in its package declaration. By convention, a package’s name matches the last segment of its import path. For example, the package name of `gopl.io/ch2/tempconv` is `tempconv`.
+In addition to its import path, each package has a **package name**, which is the short buy not necessarily unique name that appears in its package declaration. By convention, a package's name matches the last segment of its import path. For example, the package name of `gopl.io/ch2/tempconv` is `tempconv`.
 
 To use `gopl.io/ch2/tempconv`, we must import it:
 
@@ -850,13 +850,13 @@ An variable declared at package level starts life with the value of its optional
 func init() { /* ... */ }
 ```
 
-Except that `init` functions can’t be called or referenced, they are normal functions. Within each file, `init` functions are automatically executed when the program starts, in the order in which they are declared.
+Except that `init` functions can't be called or referenced, they are normal functions. Within each file, `init` functions are automatically executed when the program starts, in the order in which they are declared.
 
 * One package is initialized at a time, in the order of imports in the program, dependencies first.
     * For example, if package `p` imports `q`, then `q` is fully initialized before `p`'s initialization begins.
 * Initialization proceeds from the bottom up; the `main` package is the last to be initialized. All packages are fully initialized before the application's `main` function begins.
 
-The package below defines a function `PopCount` that returns the number of set bits (bits whose value is 1) in a `uint64` value, which is called its [*population count*](https://en.wikipedia.org/wiki/Hamming_weight). It uses an `init` function to precompute a table of results, `pc`, for each possible 8-bit value so that the `PopCount` function needn’t take 64 steps but can just return the sum of eight table lookups. (This is definitely not the fastest algorithm for counting bits, but it’s convenient for illustrating `init` functions, and for showing how to precompute a table of values, which is often a useful programming technique.)
+The package below defines a function `PopCount` that returns the number of set bits (bits whose value is 1) in a `uint64` value, which is called its [*population count*](https://en.wikipedia.org/wiki/Hamming_weight). It uses an `init` function to precompute a table of results, `pc`, for each possible 8-bit value so that the `PopCount` function needn't take 64 steps but can just return the sum of eight table lookups. (This is definitely not the fastest algorithm for counting bits, but it's convenient for illustrating `init` functions, and for showing how to precompute a table of values, which is often a useful programming technique.)
 
 <small>[gopl.io/ch2/popcount](https://github.com/shichao-an/gopl.io/blob/master/ch2/popcount/main.go)</small>
 
@@ -897,7 +897,7 @@ A declaration associates a name with a program entity, such as a function or a v
 
 #### Scope vs. Lifetime *
 
-Don’t confuse scope with lifetime.
+Don't confuse scope with lifetime.
 
 * The scope of a declaration is a region of the program text; it is a compile-time property.
 * The lifetime of a variable is the range of time during execution when the variable can be referred to by other parts of the program; it is a run-time property.
