@@ -1356,6 +1356,55 @@ too many open files
 
 
 <p>In this version, the counter <code>n</code> keeps track of the number of sends to the <code>worklist</code> that are yet to occur. Each time we know that an item needs to be sent to the worklist, we increment <code>n</code>, once before we send the initial command-line arguments, and again each time we start a crawler goroutine. The main loop terminates when <code>n</code> falls to zero, since there is no more work to be done.</p>
+<p>This concurrent crawler now runs about 20 times faster than the breadth-first crawler from <a href="../ch5/#anonymous-functions">Section 5.6</a>  and terminates correctly if it should complete its task.</p>
+<p>The program below shows an alternative solution to the problem of excessive concurrency. It uses the original <code>crawl</code> function that has no counting semaphore, but calls it from one of 20 long-lived crawler goroutines, thus ensuring that at most 20 HTTP requests are active concurrently.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl3/findlinks.go">gopl.io/ch8/crawl3/findlinks.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">worklist</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span>  <span class="c1">// lists of URLs, may have duplicates</span>
+    <span class="nx">unseenLinks</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">)</span> <span class="c1">// de-duplicated URLs</span>
+
+    <span class="c1">// Add command-line arguments to worklist.</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">worklist</span> <span class="o">&lt;-</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="p">}()</span>
+
+    <span class="c1">// Create 20 crawler goroutines to fetch each unseen link.</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">20</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="nx">link</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">unseenLinks</span> <span class="p">{</span>
+                <span class="nx">foundLinks</span> <span class="o">:=</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
+                <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">worklist</span> <span class="o">&lt;-</span> <span class="nx">foundLinks</span> <span class="p">}()</span>
+            <span class="p">}</span>
+        <span class="p">}()</span>
+    <span class="p">}</span>
+
+    <span class="c1">// The main goroutine de-duplicates worklist items</span>
+    <span class="c1">// and sends the unseen ones to the crawlers.</span>
+    <span class="nx">seen</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">list</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">worklist</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">link</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">list</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">link</span><span class="p">]</span> <span class="p">{</span>
+                <span class="nx">seen</span><span class="p">[</span><span class="nx">link</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+                <span class="nx">unseenLinks</span> <span class="o">&lt;-</span> <span class="nx">link</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In the above program:</p>
+<ul>
+<li>The crawler goroutines are all fed by the same channel, <code>unseenLinks</code>.</li>
+<li>The main goroutine is responsible for de-duplicating items it receives from the <code>worklist</code>, and then sending each unseen one over the <code>unseenLinks</code> channel to a crawler goroutine.</li>
+</ul>
+<p>The <code>seen</code> map is <em>confined</em> within the main goroutine; that is, it can be accessed only by that goroutine. Like other forms of information hiding, confinement helps us reason about the correctness of a program. For example:</p>
+<ul>
+<li>Local variables cannot be mentioned by name from outside the function in which they are declared.</li>
+<li>Variables that do not escape (<a href="../ch2/#lifetime-of-variables">Section 2.3.4</a>) from a function cannot be accessed from outside that function.</li>
+<li>Encapsulated fields of an object cannot be accessed except by the methods of that object.</li>
+</ul>
+<p>In all cases, information hiding helps to limit unintended interactions between parts of the program.</p>
+<p>Links found by <code>crawl</code> are sent to the worklist from a dedicated goroutine to avoid deadlock.</p>
+<p>To save space, this example does not address the problem of termination.</p>
             </div>
         </div>
 
