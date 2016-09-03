@@ -997,3 +997,58 @@ func main() {
 ```
 
 In this version, the counter `n` keeps track of the number of sends to the `worklist` that are yet to occur. Each time we know that an item needs to be sent to the worklist, we increment `n`, once before we send the initial command-line arguments, and again each time we start a crawler goroutine. The main loop terminates when `n` falls to zero, since there is no more work to be done.
+
+This concurrent crawler now runs about 20 times faster than the breadth-first crawler from [Section 5.6](ch5.md#anonymous-functions)  and terminates correctly if it should complete its task.
+
+The program below shows an alternative solution to the problem of excessive concurrency. It uses the original `crawl` function that has no counting semaphore, but calls it from one of 20 long-lived crawler goroutines, thus ensuring that at most 20 HTTP requests are active concurrently.
+
+<small>[gopl.io/ch8/crawl3/findlinks.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl3/findlinks.go)</small>
+
+```go
+func main() {
+	worklist := make(chan []string)  // lists of URLs, may have duplicates
+	unseenLinks := make(chan string) // de-duplicated URLs
+
+	// Add command-line arguments to worklist.
+	go func() { worklist <- os.Args[1:] }()
+
+	// Create 20 crawler goroutines to fetch each unseen link.
+	for i := 0; i < 20; i++ {
+		go func() {
+			for link := range unseenLinks {
+				foundLinks := crawl(link)
+				go func() { worklist <- foundLinks }()
+			}
+		}()
+	}
+
+	// The main goroutine de-duplicates worklist items
+	// and sends the unseen ones to the crawlers.
+	seen := make(map[string]bool)
+	for list := range worklist {
+		for _, link := range list {
+			if !seen[link] {
+				seen[link] = true
+				unseenLinks <- link
+			}
+		}
+	}
+}
+```
+
+In the above program:
+
+* The crawler goroutines are all fed by the same channel, `unseenLinks`.
+* The main goroutine is responsible for de-duplicating items it receives from the `worklist`, and then sending each unseen one over the `unseenLinks` channel to a crawler goroutine.
+
+The `seen` map is *confined* within the main goroutine; that is, it can be accessed only by that goroutine. Like other forms of information hiding, confinement helps us reason about the correctness of a program. For example:
+
+* Local variables cannot be mentioned by name from outside the function in which they are declared.
+* Variables that do not escape ([Section 2.3.4](ch2.md#lifetime-of-variables)) from a function cannot be accessed from outside that function.
+* Encapsulated fields of an object cannot be accessed except by the methods of that object.
+
+In all cases, information hiding helps to limit unintended interactions between parts of the program.
+
+Links found by `crawl` are sent to the worklist from a dedicated goroutine to avoid deadlock.
+
+To save space, this example does not address the problem of termination.
