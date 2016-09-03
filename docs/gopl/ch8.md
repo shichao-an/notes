@@ -1039,16 +1039,14 @@ func main() {
 In the above program:
 
 * The crawler goroutines are all fed by the same channel, `unseenLinks`.
-* The main goroutine is responsible for de-duplicating items it receives from the `worklist`, and then sending each unseen one over the `unseenLinks` channel to a crawler goroutine.
+* The main goroutine is responsible for de-duplicating items it receives from the worklist, and then sending each unseen one over the `unseenLinks` channel to a crawler goroutine.
+* The `seen` map is *confined* within the main goroutine; that is, it can be accessed only by that goroutine. Like other forms of information hiding, confinement helps us reason about the correctness of a program. For example:
 
-The `seen` map is *confined* within the main goroutine; that is, it can be accessed only by that goroutine. Like other forms of information hiding, confinement helps us reason about the correctness of a program. For example:
+    * Local variables cannot be mentioned by name from outside the function in which they are declared.
+    * Variables that do not escape ([Section 2.3.4](ch2.md#lifetime-of-variables)) from a function cannot be accessed from outside that function.
+    * Encapsulated fields of an object cannot be accessed except by the methods of that object.
 
-* Local variables cannot be mentioned by name from outside the function in which they are declared.
-* Variables that do not escape ([Section 2.3.4](ch2.md#lifetime-of-variables)) from a function cannot be accessed from outside that function.
-* Encapsulated fields of an object cannot be accessed except by the methods of that object.
+    In all cases, information hiding helps to limit unintended interactions between parts of the program.
 
-In all cases, information hiding helps to limit unintended interactions between parts of the program.
-
-Links found by `crawl` are sent to the worklist from a dedicated goroutine to avoid deadlock.
-
-To save space, this example does not address the problem of termination.
+* Links found by `crawl` are sent to the worklist from a dedicated goroutine to avoid deadlock.
+* To save space, this example does not address the problem of termination.

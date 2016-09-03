@@ -456,6 +456,61 @@ tasklet_enable(&my_tasklet); /* tasklet is now enabled */
 
 You can remove a tasklet from the pending queue via `tasklet_kill()`. This function receives a pointer as a lone argument to the tasklet's `tasklet_struct`. Removing a scheduled tasklet from the queue is useful when dealing with a tasklet that often reschedules itself. This function first waits for the tasklet to finish executing and then it removes the tasklet from the queue. Nothing stops some other code from rescheduling the tasklet. This function must not be used from interrupt context because it sleeps.
 
+#### ksoftirqd
+
+Softirq processing is aided by a set of per-processor kernel threads. These kernel threads help in the processing of softirqs when the system is overwhelmed with softirqs. Because tasklets are implemented using softirqs, the following discussion applies equally to softirqs and tasklets.
+
+As described, the kernel processes softirqs in a number of places, most commonly
+on return from handling an interrupt. There are two characteristics with softirqs:
+
+* Softirqs might be raised at high rates, such as during heavy network traffic.
+* Softirq functions can reactivate themselves. That is, while running, a softirq can raise itself so that it runs again. For example, the networking subsystem's softirq raises itself.
+
+The combination of these two can result in user-space programs being starved of processor time.
+
+Not processing the reactivated softirqs in a timely manner is unacceptable. When softirqs were first designed, this caused a dilemma that needed fixing, and neither of the two obvious solution was a good one, as discussed below:
+
+##### **First solution: keep processing** *
+
+The first solution is simply to keep processing softirqs as they come in and to recheck and reprocess any pending softirqs before returning. This ensures that the kernel processes softirqs in a timely manner and, most important, that any reactivated softirqs are also immediately processed. The problem lies in high load environments, in which many softirqs continually reactivate themselves. The kernel might continually service softirqs without accomplishing much else. User-space is neglected; nothing but softirqs and interrupt handlers run. This approach might work fine if the system is never under intense load; if the system experiences moderate interrupt levels, this solution is not acceptable. User-space cannot be starved for significant periods.
+
+##### **Second solution: not handle reactivated softirqs** *
+
+The second solution is not to handle reactivated softirqs. On return from interrupt, the kernel merely looks at all pending softirqs and executes them as normal. If any softirqs reactivate themselves, however, they will not run until the next time the kernel handles pending softirqs. This is most likely not until the next interrupt occurs, which can equate to a lengthy amount of time before any new (or reactivated) softirqs are executed. Worse, on an otherwise idle system, it is beneficial to process the softirqs right away. Unfortunately, this approach is oblivious to which processes are runnable. Therefore, although this method prevents starving user-space, it does starve the softirqs and does not take good advantage of an idle system.
+
+##### **Final solution: compromise** *
+
+The solution ultimately implemented in the kernel is to not immediately process reactivated softirqs. Instead, if the number of softirqs grows excessive, the kernel wakes up a family of kernel threads to handle the load. The kernel threads run with the lowest possible priority (nice value of 19), which ensures they do not run in lieu of anything important. The advantage it brings are:
+
+* The concession prevents heavy softirq activity from completely starving user-space of processor time.
+* It also ensures that excessive softirqs do run eventually.
+* On an idle system the softirqs are handled rather quickly because the kernel threads will schedule immediately.
+
+There is one thread per processor, each named `ksoftirqd/n` where `n` is the processor number. On a two-processor system, they are `ksoftirqd/0` and `ksoftirqd/1`. Having a thread on each processor ensures an idle processor, if available, can always service softirqs. After the threads are initialized, they run a tight loop similar to this:
+
+```c
+for (;;) {
+    if (!softirq_pending(cpu))
+        schedule();
+
+    set_current_state(TASK_RUNNING);
+
+    while (softirq_pending(cpu)) {
+        do_softirq();
+        if (need_resched())
+            schedule();
+    }
+
+    set_current_state(TASK_INTERRUPTIBLE);
+}
+```
+
+The above code does this:
+
+* If any softirqs are pending (as reported by `softirq_pending()`), `ksoftirqd` calls `do_softirq()` to handle them. Note that it does this repeatedly to also handle any reactivated softirqs.
+* After each iteration, `schedule()` is called if needed, to enable more important processes to run.
+* After all processing is complete, the kernel thread sets itself `TASK_INTERRUPTIBLE` and invokes the scheduler to select a new runnable process.
+
 ### Doubts and Solution
 
 #### Verbatim
