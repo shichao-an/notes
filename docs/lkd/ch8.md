@@ -511,6 +511,35 @@ The above code does this:
 * After each iteration, `schedule()` is called if needed, to enable more important processes to run.
 * After all processing is complete, the kernel thread sets itself `TASK_INTERRUPTIBLE` and invokes the scheduler to select a new runnable process.
 
+#### The Old BH Mechanism
+
+(skipped)
+[p148]
+
+### Work Queues
+
+Work queues are a different form of deferring work.  Work queues defer work into a kernel thread; this bottom half always runs in process context:
+
+* Code deferred to a work queue has all the usual benefits of process context.
+* Most importantly, work queues are schedulable and can therefore sleep.
+
+Normally, it is easy to decide between using work queues and softirqs/tasklets:
+
+* If the deferred work needs to sleep, work queues are used.
+* If the deferred work need not sleep, softirqs or tasklets are used.
+
+Indeed, the usual alternative to work queues is kernel threads. Because the kernel developers frown upon creating a new kernel thread, work queues are strongly preferred. They are also easy to use.
+
+If you need a schedulable entity to perform your bottom-half processing, you need work queues. They are the only bottom-half mechanisms that run in process context, and thus the only ones that can sleep. This means they are useful for situations in which you need to allocate a lot of memory, obtain a semaphore, or perform block I/O. If you do not need a kernel thread to handle your deferred work, consider a tasklet instead.
+
+#### Implementing Work Queues
+
+In its most basic form, the work queue subsystem is an interface for creating kernel threads to handle work queued from elsewhere. These kernel threads are called *worker threads*. Work queues enables your driver to create a special worker thread to handle deferred work. The work queue subsystem, however, implements and provides a default worker thread for handling work. Therefore, in its most common form, a work queue is a simple interface for deferring work to a generic kernel thread.
+
+The default worker threads are called `events/n` where `n` is the processor number; there is one per processor. For example, on a uniprocessor system there is one thread, `events/0`. A dual processor system would additionally have an `events/1` thread. The default worker thread handles deferred work from multiple locations. Many drivers in the kernel defer their bottom-half work to the default thread. Unless a driver or subsystem has a strong requirement for creating its own thread, the default thread is preferred.
+
+Creating your own worker thread might be advantageous if you perform large amounts of processing in the worker thread. Processor-intense and performance-critical work might benefit from its own thread. This also lightens the load on the default threads, which prevents starving the rest of the queued work.
+
 ### Doubts and Solution
 
 #### Verbatim
