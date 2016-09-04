@@ -450,6 +450,13 @@
         
             <li><a href="#ksoftirqd">ksoftirqd</a></li>
         
+            <li><a href="#the-old-bh-mechanism">The Old BH Mechanism</a></li>
+        
+    
+        <li class="main "><a href="#work-queues">Work Queues</a></li>
+        
+            <li><a href="#implementing-work-queues">Implementing Work Queues</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -962,6 +969,26 @@ on return from handling an interrupt. There are two characteristics with softirq
 <li>After each iteration, <code>schedule()</code> is called if needed, to enable more important processes to run.</li>
 <li>After all processing is complete, the kernel thread sets itself <code>TASK_INTERRUPTIBLE</code> and invokes the scheduler to select a new runnable process.</li>
 </ul>
+<h4 id="the-old-bh-mechanism">The Old BH Mechanism</h4>
+<p>(skipped)
+[p148]</p>
+<h3 id="work-queues">Work Queues</h3>
+<p>Work queues are a different form of deferring work.  Work queues defer work into a kernel thread; this bottom half always runs in process context:</p>
+<ul>
+<li>Code deferred to a work queue has all the usual benefits of process context.</li>
+<li>Most importantly, work queues are schedulable and can therefore sleep.</li>
+</ul>
+<p>Normally, it is easy to decide between using work queues and softirqs/tasklets:</p>
+<ul>
+<li>If the deferred work needs to sleep, work queues are used.</li>
+<li>If the deferred work need not sleep, softirqs or tasklets are used.</li>
+</ul>
+<p>Indeed, the usual alternative to work queues is kernel threads. Because the kernel developers frown upon creating a new kernel thread, work queues are strongly preferred. They are also easy to use.</p>
+<p>If you need a schedulable entity to perform your bottom-half processing, you need work queues. They are the only bottom-half mechanisms that run in process context, and thus the only ones that can sleep. This means they are useful for situations in which you need to allocate a lot of memory, obtain a semaphore, or perform block I/O. If you do not need a kernel thread to handle your deferred work, consider a tasklet instead.</p>
+<h4 id="implementing-work-queues">Implementing Work Queues</h4>
+<p>In its most basic form, the work queue subsystem is an interface for creating kernel threads to handle work queued from elsewhere. These kernel threads are called <em>worker threads</em>. Work queues enables your driver to create a special worker thread to handle deferred work. The work queue subsystem, however, implements and provides a default worker thread for handling work. Therefore, in its most common form, a work queue is a simple interface for deferring work to a generic kernel thread.</p>
+<p>The default worker threads are called <code>events/n</code> where <code>n</code> is the processor number; there is one per processor. For example, on a uniprocessor system there is one thread, <code>events/0</code>. A dual processor system would additionally have an <code>events/1</code> thread. The default worker thread handles deferred work from multiple locations. Many drivers in the kernel defer their bottom-half work to the default thread. Unless a driver or subsystem has a strong requirement for creating its own thread, the default thread is preferred.</p>
+<p>Creating your own worker thread might be advantageous if you perform large amounts of processing in the worker thread. Processor-intense and performance-critical work might benefit from its own thread. This also lightens the load on the default threads, which prevents starving the rest of the queued work.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
