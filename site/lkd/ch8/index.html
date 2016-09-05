@@ -989,6 +989,97 @@ on return from handling an interrupt. There are two characteristics with softirq
 <p>In its most basic form, the work queue subsystem is an interface for creating kernel threads to handle work queued from elsewhere. These kernel threads are called <em>worker threads</em>. Work queues enables your driver to create a special worker thread to handle deferred work. The work queue subsystem, however, implements and provides a default worker thread for handling work. Therefore, in its most common form, a work queue is a simple interface for deferring work to a generic kernel thread.</p>
 <p>The default worker threads are called <code>events/n</code> where <code>n</code> is the processor number; there is one per processor. For example, on a uniprocessor system there is one thread, <code>events/0</code>. A dual processor system would additionally have an <code>events/1</code> thread. The default worker thread handles deferred work from multiple locations. Many drivers in the kernel defer their bottom-half work to the default thread. Unless a driver or subsystem has a strong requirement for creating its own thread, the default thread is preferred.</p>
 <p>Creating your own worker thread might be advantageous if you perform large amounts of processing in the worker thread. Processor-intense and performance-critical work might benefit from its own thread. This also lightens the load on the default threads, which prevents starving the rest of the queued work.</p>
+<h5 id="data-structures-representing-the-threads"><strong>Data Structures Representing the Threads</strong></h5>
+<p>The worker threads are represented by the <code>workqueue_struct</code> structure:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L59">linux/kernel/workqueue.c#L159</a></small></p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm"> * The externally visible workqueue abstraction is an array of</span>
+<span class="cm"> * per-CPU workqueues:</span>
+<span class="cm"> */</span><span class="w"></span>
+struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span>struct<span class="w"> </span>cpu_workqueue_struct<span class="w"> </span>cpu_wq<span class="err">[</span>NR_CPUS<span class="err">];</span><span class="w"></span>
+<span class="w">    </span>struct<span class="w"> </span>list_head<span class="w"> </span>list<span class="err">;</span><span class="w"></span>
+<span class="w">    </span>const<span class="w"> </span>char<span class="w"> </span><span class="o">*</span>name<span class="err">;</span><span class="w"></span>
+<span class="w">    </span>int<span class="w"> </span>singlethread<span class="err">;</span><span class="w"></span>
+<span class="w">    </span>int<span class="w"> </span>freezeable<span class="err">;</span><span class="w"></span>
+<span class="w">    </span>int<span class="w"> </span>rt<span class="err">;</span><span class="w"></span>
+<span class="err">};</span><span class="w"></span>
+</pre></div>
+
+
+<p>This structure, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L59">kernel/workqueue.c</a>, contains an array of <code>struct cpu_workqueue_struct</code>, one per processor on the system. Because the worker threads exist on each processor in the system, there is one of these structures per worker thread, per processor, on a given machine. The <code>cpu_workqueue_struct</code> is the core data structure and is also defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L43">kernel/workqueue.c</a>:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">cpu_workqueue_struct</span> <span class="p">{</span>
+    <span class="n">spinlock_t</span> <span class="n">lock</span><span class="p">;</span>             <span class="cm">/* lock protecting this structure */</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">worklist</span><span class="p">;</span>   <span class="cm">/* list of work */</span>
+    <span class="n">wait_queue_head_t</span> <span class="n">more_work</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">work_struct</span> <span class="o">*</span><span class="n">current_struct</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="n">wq</span><span class="p">;</span> <span class="cm">/* associated workqueue_struct */</span>
+    <span class="n">task_t</span> <span class="o">*</span><span class="kr">thread</span><span class="p">;</span>              <span class="cm">/* associated thread */</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>Note that each type of worker thread has one <code>workqueue_struct</code> associated to it. Inside, there is one <code>cpu_workqueue_struct</code> for every thread and, thus, every processor, because there is one worker thread on each processor.</p>
+<h5 id="data-structures-representing-the-work"><strong>Data Structures Representing the Work</strong></h5>
+<p>All worker threads are implemented as normal kernel threads running the <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L424"><code>worker_thread()</code></a> function. After initial setup, this function enters an infinite loop and goes to sleep. When work is queued, the thread is awakened and processes the work.  When there is no work left to process, it goes back to sleep.</p>
+<p>The work is represented by the <code>work_struct</code> structure, defined in <code>&lt;linux/workqueue.h&gt;</code>:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/workqueue.h">include/linux/workqueue.h#L25</a></small></p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">work_struct</span> <span class="p">{</span>
+    <span class="n">atomic_long_t</span> <span class="n">data</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">entry</span><span class="p">;</span>
+    <span class="n">work_func_t</span> <span class="n">func</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+
+
+<p>These structures are strung into a linked list, one for each type of queue on each processor. For example, there is one list of deferred work for the generic thread, per processor.</p>
+<ul>
+<li>When a worker thread wakes up, it runs any work in its list.</li>
+<li>As it completes work, it removes the corresponding <code>work_struct</code> entries from the linked list.</li>
+<li>When the list is empty, it goes back to sleep.</li>
+</ul>
+<p>The core of <code>worker_thread</code> is simplified as follows:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L424">kernel/workqueue.c#L424</a></small></p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+    <span class="n">prepare_to_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cwq</span><span class="o">-&gt;</span><span class="n">more_work</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">,</span> <span class="n">TASK_INTERRUPTIBLE</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">list_empty</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cwq</span><span class="o">-&gt;</span><span class="n">worklist</span><span class="p">))</span>
+        <span class="n">schedule</span><span class="p">();</span>
+    <span class="n">finish_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cwq</span><span class="o">-&gt;</span><span class="n">more_work</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wait</span><span class="p">);</span>
+    <span class="n">run_workqueue</span><span class="p">(</span><span class="n">cwq</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function performs the following functions, in an infinite loop:</p>
+<ol>
+<li>The thread marks itself sleeping (the task's state is set to <code>TASK_INTERRUPTIBLE</code>) and adds itself to a wait queue.</li>
+<li>If the linked list of work is empty, the thread calls <code>schedule()</code> and goes to sleep.</li>
+<li>If the list is not empty, the thread does not go to sleep. Instead, it marks itself <code>TASK_RUNNING</code> and removes itself from the wait queue.</li>
+<li>If the list is nonempty, the thread calls <code>run_workqueue()</code> to perform the deferred work.</li>
+</ol>
+<p>The function <code>run_workqueue()</code> actually performs the deferred work:</p>
+<p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L375">kernel/workqueue.c#L375</a></small></p>
+<div class="codehilite"><pre><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">list_empty</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cwq</span><span class="o">-&gt;</span><span class="n">worklist</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">work_struct</span> <span class="o">*</span><span class="n">work</span><span class="p">;</span>
+    <span class="n">work_func_t</span> <span class="n">f</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">;</span>
+    <span class="n">work</span> <span class="o">=</span> <span class="n">list_entry</span><span class="p">(</span><span class="n">cwq</span><span class="o">-&gt;</span><span class="n">worklist</span><span class="p">.</span><span class="n">next</span><span class="p">,</span> <span class="k">struct</span> <span class="n">work_struct</span><span class="p">,</span> <span class="n">entry</span><span class="p">);</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">work</span><span class="o">-&gt;</span><span class="n">func</span><span class="p">;</span>
+    <span class="n">list_del_init</span><span class="p">(</span><span class="n">cwq</span><span class="o">-&gt;</span><span class="n">worklist</span><span class="p">.</span><span class="n">next</span><span class="p">);</span>
+    <span class="n">work_clear_pending</span><span class="p">(</span><span class="n">work</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">(</span><span class="n">work</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function loops over each entry in the linked list of pending work and executes the <code>func</code> member of the <code>workqueue_struct</code> for each entry in the linked list:</p>
+<ol>
+<li>While the list is not empty, it grabs the next entry in the list.</li>
+<li>It retrieves the function that should be called, <code>func</code>, and its argument, <code>data</code>.</li>
+<li>It removes this entry from the list and clears the pending bit in the structure itself.</li>
+<li>It invokes the function.</li>
+<li>Repeat.</li>
+</ol>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>

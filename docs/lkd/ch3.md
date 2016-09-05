@@ -28,7 +28,6 @@ Each thread includes:
 
 The kernel schedules individual threads, not processes. <u>Linux does not differentiate between threads and processes. To Linux, a thread is just a special kind of process.</u>
 
-
 #### Virtualized processor and virtual memory
 
 On modern operating systems, processes provide two virtualizations: a **virtualized processor** and **virtual memory**.
@@ -37,7 +36,6 @@ On modern operating systems, processes provide two virtualizations: a **virtuali
 * Virtual memory lets the process allocate and manage memory as if it alone owned all the memory in the system. See [Chapter 12. Memory Management](ch12.md)
 
 <u>Threads share the virtual memory abstraction</u>, whereas each receives its own virtualized processor.
-
 
 #### Life of a process
 
@@ -57,7 +55,6 @@ In Linux, the `fork()` system call creates a new process by duplicating an exist
 The `exec()` family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u>`fork()` is actually implemented via the `clone()` system call</u>, which is discussed in a following section.
 
 The `exit()` system call terminates the process and frees all its resources. A parent process can inquire about the status of a terminated child via the `wait4()` system call. A process can wait for the termination of a specific process. <u>When a process exits, it is placed into a special zombie state that represents terminated processes until the parent calls `wait()` or `waitpid()`.</u> The kernel implements the `wait4()` system call. Linux systems, via the C library, typically provide the `wait()`, `waitpid()`, `wait3()`, and `wait4()` functions.
-
 
 ### Process Descriptor and the Task Structure
 
@@ -79,7 +76,7 @@ The `task_struct` structure is allocated via the **slab allocator** to provide o
 
 [Errata](http://www.crashcourse.ca/wiki/index.php/Updates_to_LKD3#Figure_3.2_.28p._26.29): "struct thread_struct" should read "struct thread_info"
 
-The `thread_info` structure is defined on x86 in `<asm/thread_info.h>` (see below code). Each task's `thread_info` structure is allocated at the end of its stack.The task element of the structure is a pointer to the task's actual `task_struct`:
+The `thread_info` structure is defined on x86 in `<asm/thread_info.h>` (see below code). Each task's `thread_info` structure is allocated at the end of its stack. The task element of the structure is a pointer to the task's actual `task_struct`:
 
 * [arch/x86/include/asm/thread_info.h](https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L26)
 
@@ -131,7 +128,6 @@ current_thread_info()->task;
 #### Process State
 
 The `state` field of the process descriptor describes the current condition of the process.
-
 
 [![Figure 3.3 Flow chart of process states.](figure_3.3_600.png)](figure_3.3.png "Figure 3.3 Flow chart of process states.")
 
@@ -326,7 +322,6 @@ Back in `do_fork()`, if `copy_process()` returns successfully, the new child is 
 
 <u>Deliberately, the kernel runs the child process first. In the case of the child calling `exec()` immediately, this eliminates any copy-on-write overhead that would occur if the parent ran first and began writing to the address space.</u>
 
-
 #### `vfork()`
 
 The `vfork()` system call has the same effect as `fork()`, except that the page table entries of the parent process are not copied. The child executes as the sole thread in the parent's address space, and the parent is blocked until the child either calls `exec()` or exits. The child is not allowed to write to the address space. [p33]
@@ -343,7 +338,6 @@ The `vfork()` system call is implemented via a special flag to the `clone()` sys
 
 If this all goes as planned, the child is now executing in a new address space, and the parent is again executing in its original address space. The overhead is lower, but the implementation is not pretty.
 
-
 ### The Linux Implementation of Threads
 
 * Threads are a programming abstraction that provide multiple threads of execution within the same program in a shared memory address space.
@@ -357,7 +351,6 @@ Linux has a unique implementation of threads:
 * Each thread has a unique `task_struct` and appears to the kernel as a normal process. Threads just happen to share resources, such as an address space, with other processes.
 
 This approach to threads contrasts greatly with operating systems such as Microsoft Windows or Sun Solaris, which have explicit kernel support for threads (and sometimes call threads lightweight processes). [p34]
-
 
 #### Creating Threads
 
@@ -417,7 +410,7 @@ Similarity with normal threads:
 
 * Kernel threads are schedulable and preemptable.
 
-Linux delegates several tasks to kernel threads, most notably the `flush` tasks and the `ksoftirqd` task. Use `ps -ef` command to see them.
+Linux delegates several tasks to kernel threads, most notably the `flush` tasks and the [`ksoftirqd`](ch8.md#ksoftirqd) task. Use `ps -ef` command to see them.
 
 * Kernel threads are created on system boot by other kernel threads.
 * A kernel thread can be created only by another kernel thread. The kernel handles this automatically by forking all new kernel threads off of the `kthreadd` kernel process.
@@ -493,7 +486,7 @@ Regardless of how a process terminates, the bulk of the work is handled by `do_e
     * Reparents any of the task's children to another thread in their thread group or the init process
     * Sets the task's exit state (stored in `exit_state` in the `task_struct` structure) to `EXIT_ZOMBIE`.
 9. It calls `schedule()` to switch to a new process.
-    *  Because the process is now not schedulable, this is the last code the task will ever execute. `do_exit()` never returns.
+    * Because the process is now not schedulable, this is the last code the task will ever execute. `do_exit()` never returns.
 
 At this point:
 
@@ -501,7 +494,6 @@ At this point:
 * The task is not runnable (and no longer has an address space in which to run) and is in the `EXIT_ZOMBIE` exit state.
 * The only memory it occupies is its kernel stack, the `thread_info` structure, and the `task_struct` structure.
 * <u>The task exists solely to provide information to its parent. After the parent retrieves the information, or notifies the kernel that it is uninterested, the remaining memory held by the process is freed and returned to the system for use.</u>
-
 
 #### Removing the Process Descriptor
 
@@ -574,7 +566,6 @@ The above code attempts to find and return another task in the process's thread 
 
 After a suitable new parent for the children is found, each child needs to be located and reparented to `reaper`:
 
-
 ```c
 reaper = find_new_reaper(father);
 list_for_each_entry_safe(p, n, &father->children, sibling) {
@@ -586,6 +577,7 @@ list_for_each_entry_safe(p, n, &father->children, sibling) {
     reparent_thread(p, father);
 }
 ```
+
 `ptrace_exit_finish()` is then called to do the same reparenting but to a list of *ptraced* children:
 
 ```c
@@ -618,6 +610,7 @@ After the process are successfully reparented, there is no risk of stray zombie 
 - - -
 
 ### Doubts and Solutions
+
 #### Verbatim
 
 > These two routines are provided by the macros `next_task(task)` and `prev_task(task)`, respectively.

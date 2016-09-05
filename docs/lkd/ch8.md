@@ -540,6 +540,110 @@ The default worker threads are called `events/n` where `n` is the processor numb
 
 Creating your own worker thread might be advantageous if you perform large amounts of processing in the worker thread. Processor-intense and performance-critical work might benefit from its own thread. This also lightens the load on the default threads, which prevents starving the rest of the queued work.
 
+##### **Data Structures Representing the Threads**
+
+The worker threads are represented by the `workqueue_struct` structure:
+
+<small>[linux/kernel/workqueue.c#L159](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L59)</small>
+
+```
+/*
+ * The externally visible workqueue abstraction is an array of
+ * per-CPU workqueues:
+ */
+struct workqueue_struct {
+    struct cpu_workqueue_struct cpu_wq[NR_CPUS];
+    struct list_head list;
+    const char *name;
+    int singlethread;
+    int freezeable;
+    int rt;
+};
+```
+
+This structure, defined in [kernel/workqueue.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L59), contains an array of `struct cpu_workqueue_struct`, one per processor on the system. Because the worker threads exist on each processor in the system, there is one of these structures per worker thread, per processor, on a given machine. The `cpu_workqueue_struct` is the core data structure and is also defined in [kernel/workqueue.c](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L43):
+
+```c
+struct cpu_workqueue_struct {
+    spinlock_t lock;             /* lock protecting this structure */
+    struct list_head worklist;   /* list of work */
+    wait_queue_head_t more_work;
+    struct work_struct *current_struct;
+    struct workqueue_struct *wq; /* associated workqueue_struct */
+    task_t *thread;              /* associated thread */
+};
+```
+
+Note that each type of worker thread has one `workqueue_struct` associated to it. Inside, there is one `cpu_workqueue_struct` for every thread and, thus, every processor, because there is one worker thread on each processor.
+
+##### **Data Structures Representing the Work**
+
+All worker threads are implemented as normal kernel threads running the [`worker_thread()`](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L424) function. After initial setup, this function enters an infinite loop and goes to sleep. When work is queued, the thread is awakened and processes the work.  When there is no work left to process, it goes back to sleep.
+
+The work is represented by the `work_struct` structure, defined in `<linux/workqueue.h>`:
+
+<small>[include/linux/workqueue.h#L25](https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/workqueue.h)</small>
+
+```c
+struct work_struct {
+    atomic_long_t data;
+    struct list_head entry;
+    work_func_t func;
+};
+```
+
+These structures are strung into a linked list, one for each type of queue on each processor. For example, there is one list of deferred work for the generic thread, per processor.
+
+* When a worker thread wakes up, it runs any work in its list.
+* As it completes work, it removes the corresponding `work_struct` entries from the linked list.
+* When the list is empty, it goes back to sleep.
+
+The core of `worker_thread` is simplified as follows:
+
+<small>[kernel/workqueue.c#L424](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L424)</small>
+
+```c
+for (;;) {
+    prepare_to_wait(&cwq->more_work, &wait, TASK_INTERRUPTIBLE);
+    if (list_empty(&cwq->worklist))
+        schedule();
+    finish_wait(&cwq->more_work, &wait);
+    run_workqueue(cwq);
+}
+```
+
+This function performs the following functions, in an infinite loop:
+
+1. The thread marks itself sleeping (the task's state is set to `TASK_INTERRUPTIBLE`) and adds itself to a wait queue.
+2. If the linked list of work is empty, the thread calls `schedule()` and goes to sleep.
+3. If the list is not empty, the thread does not go to sleep. Instead, it marks itself `TASK_RUNNING` and removes itself from the wait queue.
+4. If the list is nonempty, the thread calls `run_workqueue()` to perform the deferred work.
+
+The function `run_workqueue()` actually performs the deferred work:
+
+<small>[kernel/workqueue.c#L375](https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L375)</small>
+
+```c
+while (!list_empty(&cwq->worklist)) {
+    struct work_struct *work;
+    work_func_t f;
+    void *data;
+    work = list_entry(cwq->worklist.next, struct work_struct, entry);
+    f = work->func;
+    list_del_init(cwq->worklist.next);
+    work_clear_pending(work);
+    f(work);
+}
+```
+
+This function loops over each entry in the linked list of pending work and executes the `func` member of the `workqueue_struct` for each entry in the linked list:
+
+1. While the list is not empty, it grabs the next entry in the list.
+2. It retrieves the function that should be called, `func`, and its argument, `data`.
+3. It removes this entry from the list and clears the pending bit in the structure itself.
+4. It invokes the function.
+5. Repeat.
+
 ### Doubts and Solution
 
 #### Verbatim
