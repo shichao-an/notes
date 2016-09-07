@@ -454,6 +454,9 @@
         <li class="main "><a href="#example-concurrent-web-crawler">Example: Concurrent Web Crawler</a></li>
         
     
+        <li class="main "><a href="#multiplexing-with-select">Multiplexing with select</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1409,6 +1412,87 @@ too many open files
 </li>
 <li>To save space, this example does not address the problem of termination.</li>
 </ul>
+<h3 id="multiplexing-with-select">Multiplexing with <code>select</code></h3>
+<p>The program below does the countdown for a rocket launch. The <code>time.Tick</code> function returns a channel on which it sends events periodically, acting like a <a href="https://en.wikipedia.org/wiki/Metronome">metronome</a>. The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown1/countdown.go">gopl.io/ch8/countdown1/countdown.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Commencing countdown.&quot;</span><span class="p">)</span>
+    <span class="nx">tick</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Tick</span><span class="p">(</span><span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">countdown</span> <span class="o">:=</span> <span class="mi">10</span><span class="p">;</span> <span class="nx">countdown</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">countdown</span><span class="o">--</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">countdown</span><span class="p">)</span>
+        <span class="o">&lt;-</span><span class="nx">tick</span>
+    <span class="p">}</span>
+    <span class="nx">launch</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following code adds the ability to abort the launch sequence by pressing the return key during the countdown. First, it starts a goroutine that tries to read a single byte from the standard input and, if it succeeds, sends a value on a channel called <code>abort</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown2/countdown.go">gopl.io/ch8/countdown2/countdown.go</a></small></p>
+<div class="codehilite"><pre><span class="nx">abort</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">.</span><span class="nx">Read</span><span class="p">(</span><span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="c1">// read a single byte</span>
+    <span class="nx">abort</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+<span class="p">}()</span>
+</pre></div>
+
+
+<p>Now each iteration of the countdown loop needs to wait for an event to arrive on one of the two channels:</p>
+<ul>
+<li>The ticker channel if everything is fine ("nominal" in NASA jargon)</li>
+<li>An abort event if there was an "anomaly"</li>
+</ul>
+<p>We can't just receive from each channel because whichever operation we try first will block until completion. We need to multiplex these operations with a <em>select statement</em>.</p>
+<p>The general form of a select statement is shown above.</p>
+<div class="codehilite"><pre><span class="k">select</span> <span class="p">{</span>
+<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ch1</span><span class="p">:</span>
+    <span class="c1">// ...</span>
+<span class="k">case</span> <span class="nx">x</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">ch2</span><span class="p">:</span>
+    <span class="c1">// ...use x...</span>
+<span class="k">case</span> <span class="nx">ch3</span> <span class="o">&lt;-</span> <span class="nx">y</span><span class="p">:</span>
+    <span class="c1">// ...</span>
+<span class="k">default</span><span class="p">:</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Like a switch statement, it has a number of cases and an optional default. Each case specifies a <em>communication</em> (a send or receive operation on some channel) and an associated block of statements.</p>
+<ul>
+<li>In the first case, a receive expression appears on its own.</li>
+<li>In the second case, a receive expression appears within a short variable declaration. This enables you to refer to the received value.</li>
+</ul>
+<p>A <code>select</code> waits until a communication for some case is ready to proceed. It then performs that communication and executes the case's associated statements; the other communications do not happen. A <code>select</code> with no cases, <code>select{}</code>, waits forever.</p>
+<p>Let's return to our rocket launch program. The <code>time.After</code> function immediately returns a channel, and starts a new goroutine that sends a single value on that channel after the specified time. The select statement below waits until the first of two events arrives, either an abort event or the event indicating that 10 seconds have elapsed. If 10 seconds go by with no abort, the launch proceeds.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// ...create abort channel...</span>
+
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Commencing countdown.  Press return to abort.&quot;</span><span class="p">)</span>
+    <span class="k">select</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">time</span><span class="p">.</span><span class="nx">After</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">):</span>
+        <span class="c1">// Do nothing.</span>
+    <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">abort</span><span class="p">:</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Launch aborted!&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="nx">launch</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The example below is more subtle. The channel <code>ch</code>, whose buffer size is 1, is alternately empty then full, so only one of the cases can proceed, either the send when <code>i</code> is even, or the receive when <code>i</code> is odd. It always prints <code>0 2 4 6 8</code>.</p>
+<div class="codehilite"><pre><span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+    <span class="k">select</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nx">x</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">ch</span><span class="p">:</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="c1">// &quot;0&quot; &quot;2&quot; &quot;4&quot; &quot;6&quot; &quot;8&quot;</span>
+    <span class="k">case</span> <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">i</span><span class="p">:</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If multiple cases are ready, <code>select</code> picks one at random, which ensures that every channel has an equal chance of being selected. Increasing the buffer size of the previous example makes its output nondeterministic, because when the buffer is neither full nor empty, the select statement figuratively tosses a coin.</p>
             </div>
         </div>
 
