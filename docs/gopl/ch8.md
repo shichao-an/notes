@@ -1050,3 +1050,96 @@ In the above program:
 
 * Links found by `crawl` are sent to the worklist from a dedicated goroutine to avoid deadlock.
 * To save space, this example does not address the problem of termination.
+
+### Multiplexing with `select`
+
+The program below does the countdown for a rocket launch. The `time.Tick` function returns a channel on which it sends events periodically, acting like a [metronome](https://en.wikipedia.org/wiki/Metronome). The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.
+
+<small>[gopl.io/ch8/countdown1/countdown.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown1/countdown.go)</small>
+
+```go
+func main() {
+	fmt.Println("Commencing countdown.")
+	tick := time.Tick(1 * time.Second)
+	for countdown := 10; countdown > 0; countdown-- {
+		fmt.Println(countdown)
+		<-tick
+	}
+	launch()
+}
+```
+
+The following code adds the ability to abort the launch sequence by pressing the return key during the countdown. First, it starts a goroutine that tries to read a single byte from the standard input and, if it succeeds, sends a value on a channel called `abort`.
+
+<small>[gopl.io/ch8/countdown2/countdown.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown2/countdown.go)</small>
+
+```go
+abort := make(chan struct{})
+go func() {
+	os.Stdin.Read(make([]byte, 1)) // read a single byte
+	abort <- struct{}{}
+}()
+```
+
+Now each iteration of the countdown loop needs to wait for an event to arrive on one of the two channels:
+
+* The ticker channel if everything is fine ("nominal" in NASA jargon)
+* An abort event if there was an "anomaly"
+
+We can't just receive from each channel because whichever operation we try first will block until completion. We need to multiplex these operations with a *select statement*.
+
+The general form of a select statement is shown above.
+
+```go
+select {
+case <-ch1:
+	// ...
+case x := <-ch2:
+	// ...use x...
+case ch3 <- y:
+	// ...
+default:
+	// ...
+}
+```
+
+Like a switch statement, it has a number of cases and an optional default. Each case specifies a *communication* (a send or receive operation on some channel) and an associated block of statements.
+
+* In the first case, a receive expression appears on its own.
+* In the second case, a receive expression appears within a short variable declaration. This enables you to refer to the received value.
+
+A `select` waits until a communication for some case is ready to proceed. It then performs that communication and executes the case's associated statements; the other communications do not happen. A `select` with no cases, `select{}`, waits forever.
+
+Let's return to our rocket launch program. The `time.After` function immediately returns a channel, and starts a new goroutine that sends a single value on that channel after the specified time. The select statement below waits until the first of two events arrives, either an abort event or the event indicating that 10 seconds have elapsed. If 10 seconds go by with no abort, the launch proceeds.
+
+```go
+func main() {
+	// ...create abort channel...
+
+	fmt.Println("Commencing countdown.  Press return to abort.")
+	select {
+	case <-time.After(10 * time.Second):
+		// Do nothing.
+	case <-abort:
+		fmt.Println("Launch aborted!")
+		return
+	}
+	launch()
+}
+```
+
+
+The example below is more subtle. The channel `ch`, whose buffer size is 1, is alternately empty then full, so only one of the cases can proceed, either the send when `i` is even, or the receive when `i` is odd. It always prints `0 2 4 6 8`.
+
+```go
+ch := make(chan int, 1)
+for i := 0; i < 10; i++ {
+	select {
+	case x := <-ch:
+		fmt.Println(x) // "0" "2" "4" "6" "8"
+	case ch <- i:
+	}
+}
+```
+
+If multiple cases are ready, `select` picks one at random, which ensures that every channel has an equal chance of being selected. Increasing the buffer size of the previous example makes its output nondeterministic, because when the buffer is neither full nor empty, the select statement figuratively tosses a coin.
