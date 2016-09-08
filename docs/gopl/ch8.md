@@ -1053,7 +1053,7 @@ In the above program:
 
 ### Multiplexing with `select`
 
-The program below does the countdown for a rocket launch. The `time.Tick` function returns a channel on which it sends events periodically, acting like a [metronome](https://en.wikipedia.org/wiki/Metronome). The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.
+The program below does the countdown for a rocket launch. The [`time.Tick`](https://golang.org/pkg/time/#Tick) function returns a channel on which it sends events periodically, acting like a [metronome](https://en.wikipedia.org/wiki/Metronome). The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.
 
 <small>[gopl.io/ch8/countdown1/countdown.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown1/countdown.go)</small>
 
@@ -1143,3 +1143,59 @@ for i := 0; i < 10; i++ {
 ```
 
 If multiple cases are ready, `select` picks one at random, which ensures that every channel has an equal chance of being selected. Increasing the buffer size of the previous example makes its output nondeterministic, because when the buffer is neither full nor empty, the select statement figuratively tosses a coin.
+
+The following launch program prints the countdown. The select statement below causes each iteration of the loop to wait up to 1 second for an abort, but no longer.
+
+<small>[gopl.io/ch8/countdown3/countdown.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown3/countdown.go)</small>
+
+```go
+func main() {
+	// ...create abort channel...
+
+	fmt.Println("Commencing countdown.  Press return to abort.")
+	tick := time.Tick(1 * time.Second)
+	for countdown := 10; countdown > 0; countdown-- {
+		fmt.Println(countdown)
+		select {
+		case <-tick:
+			// Do nothing.
+		case <-abort:
+			fmt.Println("Launch aborted!")
+			return
+		}
+	}
+	launch()
+}
+```
+
+The `time.Tick` function behaves as if it creates a goroutine that calls `time.Sleep` in a loop, sending an event each time it wakes up. When the countdown function above returns, it stops receiving events from tick, but the ticker goroutine is still there, trying in vain to send on a channel from which no goroutine is receiving, which is a **goroutine leak** ([Section 8.4.4](#buffered-channels)).
+
+The `Tick` function is convenient, but it's appropriate only when the ticks will be needed throughout the lifetime of the application. Otherwise, we should use this pattern:
+
+```go
+ticker := time.NewTicker(1 * time.Second)
+<-ticker.C // receive from the ticker's channel
+ticker.Stop() // cause the ticker's goroutine to terminate
+```
+
+Sometimes we want to try to send or receive on a channel but avoid blocking if the channel is not ready, which a non-blocking communication. A select statement can do that. A select may have a default, which specifies what to do when none of the other communications can proceed immediately.
+
+The select statement below receives a value from the `abort` channel if there is one to receive; otherwise it does nothing. This is a *non-blocking* receive operation; doing it repeatedly is called [polling](https://en.wikipedia.org/wiki/Polling_(computer_science)) a channel.
+
+```go
+select {
+case <-abort:
+	fmt.Printf("Launch aborted!\n")
+	return
+default:
+	// do nothing
+}
+```
+
+The zero value for a channel is `nil`, and nil channels are sometimes useful. Because send and receive operations on a nil channel block forever, a case in a select statement whose channel is nil is never selected. This enables us to use nil to enable or disable cases that correspond to features like:
+
+* Handling timeouts or cancellation
+* Responding to other input events
+* Emitting output
+
+The next section gives us an example.
