@@ -1413,7 +1413,7 @@ too many open files
 <li>To save space, this example does not address the problem of termination.</li>
 </ul>
 <h3 id="multiplexing-with-select">Multiplexing with <code>select</code></h3>
-<p>The program below does the countdown for a rocket launch. The <code>time.Tick</code> function returns a channel on which it sends events periodically, acting like a <a href="https://en.wikipedia.org/wiki/Metronome">metronome</a>. The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.</p>
+<p>The program below does the countdown for a rocket launch. The <a href="https://golang.org/pkg/time/#Tick"><code>time.Tick</code></a> function returns a channel on which it sends events periodically, acting like a <a href="https://en.wikipedia.org/wiki/Metronome">metronome</a>. The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown1/countdown.go">gopl.io/ch8/countdown1/countdown.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Commencing countdown.&quot;</span><span class="p">)</span>
@@ -1493,6 +1493,55 @@ too many open files
 
 
 <p>If multiple cases are ready, <code>select</code> picks one at random, which ensures that every channel has an equal chance of being selected. Increasing the buffer size of the previous example makes its output nondeterministic, because when the buffer is neither full nor empty, the select statement figuratively tosses a coin.</p>
+<p>The following launch program prints the countdown. The select statement below causes each iteration of the loop to wait up to 1 second for an abort, but no longer.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown3/countdown.go">gopl.io/ch8/countdown3/countdown.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// ...create abort channel...</span>
+
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Commencing countdown.  Press return to abort.&quot;</span><span class="p">)</span>
+    <span class="nx">tick</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Tick</span><span class="p">(</span><span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">countdown</span> <span class="o">:=</span> <span class="mi">10</span><span class="p">;</span> <span class="nx">countdown</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">countdown</span><span class="o">--</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">countdown</span><span class="p">)</span>
+        <span class="k">select</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">tick</span><span class="p">:</span>
+            <span class="c1">// Do nothing.</span>
+        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">abort</span><span class="p">:</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Launch aborted!&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="nx">launch</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>time.Tick</code> function behaves as if it creates a goroutine that calls <code>time.Sleep</code> in a loop, sending an event each time it wakes up. When the countdown function above returns, it stops receiving events from tick, but the ticker goroutine is still there, trying in vain to send on a channel from which no goroutine is receiving, which is a <strong>goroutine leak</strong> (<a href="#buffered-channels">Section 8.4.4</a>).</p>
+<p>The <code>Tick</code> function is convenient, but it's appropriate only when the ticks will be needed throughout the lifetime of the application. Otherwise, we should use this pattern:</p>
+<div class="codehilite"><pre><span class="nx">ticker</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">NewTicker</span><span class="p">(</span><span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+<span class="o">&lt;-</span><span class="nx">ticker</span><span class="p">.</span><span class="nx">C</span> <span class="c1">// receive from the ticker&#39;s channel</span>
+<span class="nx">ticker</span><span class="p">.</span><span class="nx">Stop</span><span class="p">()</span> <span class="c1">// cause the ticker&#39;s goroutine to terminate</span>
+</pre></div>
+
+
+<p>Sometimes we want to try to send or receive on a channel but avoid blocking if the channel is not ready, which a non-blocking communication. A select statement can do that. A select may have a default, which specifies what to do when none of the other communications can proceed immediately.</p>
+<p>The select statement below receives a value from the <code>abort</code> channel if there is one to receive; otherwise it does nothing. This is a <em>non-blocking</em> receive operation; doing it repeatedly is called <a href="https://en.wikipedia.org/wiki/Polling_(computer_science)">polling</a> a channel.</p>
+<div class="codehilite"><pre><span class="k">select</span> <span class="p">{</span>
+<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">abort</span><span class="p">:</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Launch aborted!\n&quot;</span><span class="p">)</span>
+    <span class="k">return</span>
+<span class="k">default</span><span class="p">:</span>
+    <span class="c1">// do nothing</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The zero value for a channel is <code>nil</code>, and nil channels are sometimes useful. Because send and receive operations on a nil channel block forever, a case in a select statement whose channel is nil is never selected. This enables us to use nil to enable or disable cases that correspond to features like:</p>
+<ul>
+<li>Handling timeouts or cancellation</li>
+<li>Responding to other input events</li>
+<li>Emitting output</li>
+</ul>
+<p>The next section gives us an example.</p>
             </div>
         </div>
 
