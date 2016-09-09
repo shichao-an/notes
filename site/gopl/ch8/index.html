@@ -457,6 +457,9 @@
         <li class="main "><a href="#multiplexing-with-select">Multiplexing with select</a></li>
         
     
+        <li class="main "><a href="#example-concurrent-directory-traversal">Example: Concurrent Directory Traversal</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1542,6 +1545,38 @@ too many open files
 <li>Emitting output</li>
 </ul>
 <p>The next section gives us an example.</p>
+<h3 id="example-concurrent-directory-traversal">Example: Concurrent Directory Traversal</h3>
+<p>This section builds a program that reports the disk usage of one or more directories specified on the command line, like the Unix <a href="https://en.wikipedia.org/wiki/Du_(Unix)"><code>du</code></a> command. Most of its work is done by the <code>walkDir</code> function below, which enumerates the entries of the directory <code>dir</code> using the <code>dirents</code> helper function.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/du1/main.go">gopl.io/ch8/du1/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// walkDir recursively walks the file tree rooted at dir</span>
+<span class="c1">// and sends the size of each found file on fileSizes.</span>
+<span class="kd">func</span> <span class="nx">walkDir</span><span class="p">(</span><span class="nx">dir</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">fileSizes</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">int64</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">entry</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">dirents</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">entry</span><span class="p">.</span><span class="nx">IsDir</span><span class="p">()</span> <span class="p">{</span>
+            <span class="nx">subdir</span> <span class="o">:=</span> <span class="nx">filepath</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="nx">entry</span><span class="p">.</span><span class="nx">Name</span><span class="p">())</span>
+            <span class="nx">walkDir</span><span class="p">(</span><span class="nx">subdir</span><span class="p">,</span> <span class="nx">fileSizes</span><span class="p">)</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">fileSizes</span> <span class="o">&lt;-</span> <span class="nx">entry</span><span class="p">.</span><span class="nx">Size</span><span class="p">()</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// dirents returns the entries of directory dir.</span>
+<span class="kd">func</span> <span class="nx">dirents</span><span class="p">(</span><span class="nx">dir</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="nx">os</span><span class="p">.</span><span class="nx">FileInfo</span> <span class="p">{</span>
+    <span class="nx">entries</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ioutil</span><span class="p">.</span><span class="nx">ReadDir</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;du1: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">nil</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">entries</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<ul>
+<li>The <a href="https://golang.org/pkg/io/ioutil/#ReadDir"><code>ioutil.ReadDir</code></a> function returns a slice of <a href="https://golang.org/pkg/os/#FileInfo"><code>os.FileInfo</code></a>, which is the same information that a call to <a href="https://golang.org/pkg/os/#Stat"><code>os.Stat</code></a> returns for a single file.</li>
+<li>For each subdirectory, <code>walkDir</code> recursively calls itself, and for each file, <code>walkDir</code> sends a message (the size of the file in bytes) on the <code>fileSizes</code> channel.</li>
+</ul>
             </div>
         </div>
 

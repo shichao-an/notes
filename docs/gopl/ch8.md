@@ -1199,3 +1199,38 @@ The zero value for a channel is `nil`, and nil channels are sometimes useful. Be
 * Emitting output
 
 The next section gives us an example.
+
+### Example: Concurrent Directory Traversal
+
+This section builds a program that reports the disk usage of one or more directories specified on the command line, like the Unix [`du`](https://en.wikipedia.org/wiki/Du_(Unix)) command. Most of its work is done by the `walkDir` function below, which enumerates the entries of the directory `dir` using the `dirents` helper function.
+
+<small>[gopl.io/ch8/du1/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/du1/main.go)</small>
+
+```go
+// walkDir recursively walks the file tree rooted at dir
+// and sends the size of each found file on fileSizes.
+func walkDir(dir string, fileSizes chan<- int64) {
+	for _, entry := range dirents(dir) {
+		if entry.IsDir() {
+			subdir := filepath.Join(dir, entry.Name())
+			walkDir(subdir, fileSizes)
+		} else {
+			fileSizes <- entry.Size()
+		}
+	}
+}
+
+// dirents returns the entries of directory dir.
+func dirents(dir string) []os.FileInfo {
+	entries, err := ioutil.ReadDir(dir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "du1: %v\n", err)
+		return nil
+	}
+	return entries
+}
+```
+
+* The [`ioutil.ReadDir`](https://golang.org/pkg/io/ioutil/#ReadDir) function returns a slice of [`os.FileInfo`](https://golang.org/pkg/os/#FileInfo), which is the same information that a call to [`os.Stat`](https://golang.org/pkg/os/#Stat) returns for a single file.
+* For each subdirectory, `walkDir` recursively calls itself, and for each file, `walkDir` sends a message (the size of the file in bytes) on the `fileSizes` channel.
+
