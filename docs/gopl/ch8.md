@@ -1234,3 +1234,111 @@ func dirents(dir string) []os.FileInfo {
 * The [`ioutil.ReadDir`](https://golang.org/pkg/io/ioutil/#ReadDir) function returns a slice of [`os.FileInfo`](https://golang.org/pkg/os/#FileInfo), which is the same information that a call to [`os.Stat`](https://golang.org/pkg/os/#Stat) returns for a single file.
 * For each subdirectory, `walkDir` recursively calls itself, and for each file, `walkDir` sends a message (the size of the file in bytes) on the `fileSizes` channel.
 
+The main function below uses two goroutines:
+
+* The background goroutine calls `walkDir` for each director `y` specified on the command line and finally closes the `fileSizes` channel.
+* The main goroutine computes the sum of the file sizes it receives from the channel and finally prints the total.
+
+```go
+// The du1 command computes the disk usage of the files in a directory.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	// Determine the initial directories.
+	flag.Parse()
+	roots := flag.Args()
+	if len(roots) == 0 {
+		roots = []string{"."}
+	}
+
+	// Traverse the file tree.
+	fileSizes := make(chan int64)
+	go func() {
+		for _, root := range roots {
+			walkDir(root, fileSizes)
+		}
+		close(fileSizes)
+	}()
+
+	// Print the results.
+	var nfiles, nbytes int64
+	for size := range fileSizes {
+		nfiles++
+		nbytes += size
+	}
+	printDiskUsage(nfiles, nbytes)
+}
+
+func printDiskUsage(nfiles, nbytes int64) {
+	fmt.Printf("%d files  %.1f GB\n", nfiles, float64(nbytes)/1e9)
+}
+```
+
+This program pauses for a long while before printing its result:
+
+```shell-session
+$ go build gopl.io/ch8/du1
+$ ./du1 $HOME /usr /bin /etc
+213201 files 62.7 GB
+```
+
+The program would be nicer if it kept us informed of its progress. However, simply moving the `printDiskUsage` call into the loop would cause it to print thousands of lines of output. The variant of `du` below prints the totals periodically, but only if the `-v `flag is specified since not all users will want to see progress messages. The background goroutine that loops over `roots` remains unchanged.
+
+In the following program:
+
+* The main goroutine uses a ticker to generate events every 500ms.
+* The select statement waits for either a file size message, in which case it updates the totals, or a tick event, in which case it prints the current totals.
+* If the `-v` flag is not specified, the `tick` channel remains nil, and its case in the `select` is effectively disabled.
+
+<small>[gopl.io/ch8/du2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/du2/main.go)</small>
+
+```go
+var verbose = flag.Bool("v", false, "show verbose progress messages")
+
+func main() {
+	// ...start background goroutine...
+	// Print the results periodically.
+	var tick <-chan time.Time
+	if *verbose {
+		tick = time.Tick(500 * time.Millisecond)
+	}
+	var nfiles, nbytes int64
+loop:
+	for {
+		select {
+		case size, ok := <-fileSizes:
+			if !ok {
+				break loop // fileSizes was closed
+			}
+			nfiles++
+			nbytes += size
+		case <-tick:
+			printDiskUsage(nfiles, nbytes)
+		}
+	}
+	printDiskUsage(nfiles, nbytes) // final totals
+}
+```
+
+Since the program no longer uses a `range` loop, the first `select` case must explicitly test whether the `fileSizes` channel has been closed, using the two-result form of receive operation. If the channel has been closed, the program breaks out of the loop. <u>The labeled `break` statement breaks out of both the `select` and the `for` loop; an unlabeled break would break out of only the `select`, causing the loop to begin the next iteration.</u>
+
+The program now gives us a stream of updates:
+
+```go
+$ go build gopl.io/ch8/du2
+$ ./du2 -v $HOME /usr /bin /etc
+28608 files 8.3 GB
+54147 files 10.3 GB
+93591 files 15.1 GB
+127169 files 52.9 GB
+175931 files 62.2 GB
+213201 files 62.7 GB
+```
