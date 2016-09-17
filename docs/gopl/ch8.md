@@ -1290,7 +1290,7 @@ $ ./du1 $HOME /usr /bin /etc
 213201 files 62.7 GB
 ```
 
-The program would be nicer if it kept us informed of its progress. However, simply moving the `printDiskUsage` call into the loop would cause it to print thousands of lines of output. The variant of `du` below prints the totals periodically, but only if the `-v `flag is specified since not all users will want to see progress messages. The background goroutine that loops over `roots` remains unchanged.
+The program would be nicer if it kept us informed of its progress. However, simply moving the `printDiskUsage` call into the loop would cause it to print thousands of lines of output. The variant of `du` below prints the totals periodically, but only if the `-v` flag is specified since not all users will want to see progress messages. The background goroutine that loops over `roots` remains unchanged.
 
 In the following program:
 
@@ -1342,3 +1342,55 @@ $ ./du2 -v $HOME /usr /bin /etc
 175931 files 62.2 GB
 213201 files 62.7 GB
 ```
+
+However, it still takes too long to finish. All the calls to `walkDir` can be done concurrently, thereby exploiting parallelism in the disk system. The third version of `du`, below, creates a new goroutine for each call to `walkDir`. It uses a `sync.WaitGroup` ([Section 8.5](#looping-in-parallel)) to count the number of calls to `walkDir` that are still active, and a closer goroutine to close the `fileSizes` channel when the counter drops to zero.
+
+<small>[gopl.io/ch8/du3/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/du3/main.go)</small>
+
+```go
+func main() {
+	// ...determine roots...
+
+	// Traverse each root of the file tree in parallel.
+	fileSizes := make(chan int64)
+	var n sync.WaitGroup
+	for _, root := range roots {
+		n.Add(1)
+		go walkDir(root, &n, fileSizes)
+	}
+	go func() {
+		n.Wait()
+		close(fileSizes)
+	}()
+
+	// ...select loop...
+}
+
+func walkDir(dir string, n *sync.WaitGroup, fileSizes chan<- int64) {
+	defer n.Done()
+	for _, entry := range dirents(dir) {
+		if entry.IsDir() {
+			n.Add(1)
+			subdir := filepath.Join(dir, entry.Name())
+			go walkDir(subdir, n, fileSizes)
+		} else {
+			fileSizes <- entry.Size()
+		}
+	}
+}
+```
+
+Since this program creates many thousands of goroutines at its peak, we have to change `dirents` to use a counting semaphore to prevent it from opening too many files at once, similar to the web crawler in [Section 8.6](#example-concurrent-web-crawler):
+
+```go
+// sema is a counting semaphore for limiting concurrency in dirents.
+var sema = make(chan struct{}, 20)
+
+// dirents returns the entries of directory dir.
+func dirents(dir string) []os.FileInfo {
+	sema <- struct{}{}        // acquire token
+	defer func() { <-sema }() // release token
+	// ...
+```
+
+This version runs several times faster than the previous one.
