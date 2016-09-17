@@ -1632,7 +1632,7 @@ too many open files
 </pre></div>
 
 
-<p>The program would be nicer if it kept us informed of its progress. However, simply moving the <code>printDiskUsage</code> call into the loop would cause it to print thousands of lines of output. The variant of <code>du</code> below prints the totals periodically, but only if the <code>-v</code>flag is specified since not all users will want to see progress messages. The background goroutine that loops over <code>roots</code> remains unchanged.</p>
+<p>The program would be nicer if it kept us informed of its progress. However, simply moving the <code>printDiskUsage</code> call into the loop would cause it to print thousands of lines of output. The variant of <code>du</code> below prints the totals periodically, but only if the <code>-v</code> flag is specified since not all users will want to see progress messages. The background goroutine that loops over <code>roots</code> remains unchanged.</p>
 <p>In the following program:</p>
 <ul>
 <li>The main goroutine uses a ticker to generate events every 500ms.</li>
@@ -1679,6 +1679,56 @@ too many open files
 <span class="mi">175931</span> <span class="nx">files</span> <span class="mf">62.2</span> <span class="nx">GB</span>
 <span class="mi">213201</span> <span class="nx">files</span> <span class="mf">62.7</span> <span class="nx">GB</span>
 </pre></div>
+
+
+<p>However, it still takes too long to finish. All the calls to <code>walkDir</code> can be done concurrently, thereby exploiting parallelism in the disk system. The third version of <code>du</code>, below, creates a new goroutine for each call to <code>walkDir</code>. It uses a <code>sync.WaitGroup</code> (<a href="#looping-in-parallel">Section 8.5</a>) to count the number of calls to <code>walkDir</code> that are still active, and a closer goroutine to close the <code>fileSizes</code> channel when the counter drops to zero.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/du3/main.go">gopl.io/ch8/du3/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// ...determine roots...</span>
+
+    <span class="c1">// Traverse each root of the file tree in parallel.</span>
+    <span class="nx">fileSizes</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int64</span><span class="p">)</span>
+    <span class="kd">var</span> <span class="nx">n</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">root</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">roots</span> <span class="p">{</span>
+        <span class="nx">n</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">go</span> <span class="nx">walkDir</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">n</span><span class="p">,</span> <span class="nx">fileSizes</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">n</span><span class="p">.</span><span class="nx">Wait</span><span class="p">()</span>
+        <span class="nb">close</span><span class="p">(</span><span class="nx">fileSizes</span><span class="p">)</span>
+    <span class="p">}()</span>
+
+    <span class="c1">// ...select loop...</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">walkDir</span><span class="p">(</span><span class="nx">dir</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">n</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">,</span> <span class="nx">fileSizes</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">int64</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Done</span><span class="p">()</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">entry</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">dirents</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">entry</span><span class="p">.</span><span class="nx">IsDir</span><span class="p">()</span> <span class="p">{</span>
+            <span class="nx">n</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="nx">subdir</span> <span class="o">:=</span> <span class="nx">filepath</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="nx">entry</span><span class="p">.</span><span class="nx">Name</span><span class="p">())</span>
+            <span class="k">go</span> <span class="nx">walkDir</span><span class="p">(</span><span class="nx">subdir</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="nx">fileSizes</span><span class="p">)</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">fileSizes</span> <span class="o">&lt;-</span> <span class="nx">entry</span><span class="p">.</span><span class="nx">Size</span><span class="p">()</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Since this program creates many thousands of goroutines at its peak, we have to change <code>dirents</code> to use a counting semaphore to prevent it from opening too many files at once, similar to the web crawler in <a href="#example-concurrent-web-crawler">Section 8.6</a>:</p>
+<div class="codehilite"><pre><span class="c1">// sema is a counting semaphore for limiting concurrency in dirents.</span>
+<span class="kd">var</span> <span class="nx">sema</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{},</span> <span class="mi">20</span><span class="p">)</span>
+
+<span class="c1">// dirents returns the entries of directory dir.</span>
+<span class="kd">func</span> <span class="nx">dirents</span><span class="p">(</span><span class="nx">dir</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="nx">os</span><span class="p">.</span><span class="nx">FileInfo</span> <span class="p">{</span>
+    <span class="nx">sema</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>        <span class="c1">// acquire token</span>
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="o">&lt;-</span><span class="nx">sema</span> <span class="p">}()</span> <span class="c1">// release token</span>
+    <span class="c1">// ...</span>
+</pre></div>
+
+
+<p>This version runs several times faster than the previous one.</p>
             </div>
         </div>
 
