@@ -1394,3 +1394,115 @@ func dirents(dir string) []os.FileInfo {
 ```
 
 This version runs several times faster than the previous one.
+
+### Cancellation
+
+Sometimes we need to instruct a goroutine to stop what it is doing, for example, in a web server performing a computation on behalf of a client that has disconnected.
+
+There is no way for one goroutine to terminate another directly, since that would leave all its shared variables in undefined states.
+
+In the rocket launch program ([Section 8.7](#multiplexing-with-select)) we sent a single value on a channel named `abort`, which the countdown goroutine interpreted as a request to stop itself. But what if we need to cancel two goroutines, or an arbitrary number?
+
+One possibility might be to send as many events on the `abort` channel as there are goroutines to cancel:
+
+* If some of the goroutines have already terminated themselves, however, our count will be too large, and our sends will get stuck.
+* On the other hand, if those goroutines have spawned other goroutines, our count will be too small, and some goroutines will remain unaware of the cancellation.
+
+In general, it's hard to know how many goroutines are working on our behalf at any given moment. Moreover, when a goroutine receives a value from the `abort` channel, it consumes that value so that other goroutines won't see it. For cancellation, what we need is a reliable mechanism to *broadcast* an event over a channel so that many goroutines can see it as it occurs and can later see that it has occurred.
+
+Recall that after a channel has been closed and drained of all sent values, subsequent receive operations proceed immediately, yielding zero values. We can exploit this to create a broadcast mechanism: don't send a value on the channel, close it.
+
+We can add cancellation to the `du` program from the previous section with a few simple changes.
+
+First, create a cancellation channel on which no values are ever sent, but whose closure indicates that it is time for the program to stop what it is doing. We also define a utility function, `cancelled`, that checks or *polls* the cancellation state when it is called.
+
+<small>[gopl.io/ch8/du4/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/du4/main.go)</small>
+
+```go
+var done = make(chan struct{})
+
+func cancelled() bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
+	}
+}
+```
+
+Next, create a goroutine that will read from the standard input, which is typically connected to the terminal. As soon as any input is read (for instance, the user presses the return key), this goroutine broadcasts the cancellation by closing the `done` channel.
+
+```go
+// Cancel traversal when input is detected.
+go func() {
+  os.Stdin.Read(make([]byte, 1)) // read a single byte
+  close(done)
+}()
+```
+
+To make our goroutines respond to the cancellation, in the main goroutine, add a third case to the select statement that tries to receive from the `done` channel. The function returns if this case is ever selected, but before it returns it must first drain the `fileSizes` channel, discarding all values until the channel is closed. It does this to ensure that any active calls to `walkDir` can run to completion without getting stuck sending to `fileSizes`.
+
+```go
+for {
+  select {
+  case <-done:
+    // Drain fileSizes to allow existing goroutines to finish.
+    for range fileSizes {
+      // Do nothing.
+    }
+    return
+  case size, ok := <-fileSizes:
+    // ...
+    //!-3
+    if !ok {
+      break loop // fileSizes was closed
+    }
+    nfiles++
+    nbytes += size
+  case <-tick:
+    printDiskUsage(nfiles, nbytes)
+  }
+}
+```
+
+The `walkDir` goroutine polls the cancellation status when it begins, and returns without doing anything if the status is set. This turns all goroutines created after cancellation into no-ops:
+
+```go
+func walkDir(dir string, n *sync.WaitGroup, fileSizes chan<- int64) {
+	defer n.Done()
+	if cancelled() {
+		return
+	}
+	for _, entry := range dirents(dir) {
+		// ...
+	}
+}
+```
+
+It might be profitable to poll the cancellation status again within `walkDir`'s loop, to avoid creating goroutines after the cancellation event. Ensuring that no expensive operations ever occur after the cancellation event may require updating many places in your code, but often most of the benefit can be obtained by checking for cancellation in a few important places. [p252]
+
+A little profiling of this program revealed that the bottleneck was the acquisition of a semaphore token in `dirents`. The `select` below makes this operation cancellable and reduces the typical cancellation latency of the program from hundreds of milliseconds to tens:
+
+```go
+func dirents(dir string) []os.FileInfo {
+	select {
+	case sema <- struct{}{}: // acquire token
+	case <-done:
+		return nil // cancelled
+	}
+	defer func() { <-sema }() // release token
+
+	// ...read directory...
+}
+```
+
+Now, when cancellation occurs, all the background goroutines quickly stop and the `main` function returns. When `main` returns, a program exits, so it can be hard to tell a main function that cleans up after itself from one that does not.
+
+There's a handy trick we can use during testing: if instead of returning from `main` in the event of cancellation, we execute a call to `panic`, then the runtime will dump the stack of every goroutine in the program:
+
+* If the main goroutine is the only one left, then it has cleaned up after itself.
+* If other goroutines remain, they may not have been properly cancelled, or perhaps they have been cancelled but the cancellation takes time.
+
+A little investigation may be worthwhile. The panic dump often contains sufficient information to distinguish these cases.
+
