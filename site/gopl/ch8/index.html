@@ -460,6 +460,9 @@
         <li class="main "><a href="#example-concurrent-directory-traversal">Example: Concurrent Directory Traversal</a></li>
         
     
+        <li class="main "><a href="#cancellation">Cancellation</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1729,6 +1732,101 @@ too many open files
 
 
 <p>This version runs several times faster than the previous one.</p>
+<h3 id="cancellation">Cancellation</h3>
+<p>Sometimes we need to instruct a goroutine to stop what it is doing, for example, in a web server performing a computation on behalf of a client that has disconnected.</p>
+<p>There is no way for one goroutine to terminate another directly, since that would leave all its shared variables in undefined states.</p>
+<p>In the rocket launch program (<a href="#multiplexing-with-select">Section 8.7</a>) we sent a single value on a channel named <code>abort</code>, which the countdown goroutine interpreted as a request to stop itself. But what if we need to cancel two goroutines, or an arbitrary number?</p>
+<p>One possibility might be to send as many events on the <code>abort</code> channel as there are goroutines to cancel:</p>
+<ul>
+<li>If some of the goroutines have already terminated themselves, however, our count will be too large, and our sends will get stuck.</li>
+<li>On the other hand, if those goroutines have spawned other goroutines, our count will be too small, and some goroutines will remain unaware of the cancellation.</li>
+</ul>
+<p>In general, it's hard to know how many goroutines are working on our behalf at any given moment. Moreover, when a goroutine receives a value from the <code>abort</code> channel, it consumes that value so that other goroutines won't see it. For cancellation, what we need is a reliable mechanism to <em>broadcast</em> an event over a channel so that many goroutines can see it as it occurs and can later see that it has occurred.</p>
+<p>Recall that after a channel has been closed and drained of all sent values, subsequent receive operations proceed immediately, yielding zero values. We can exploit this to create a broadcast mechanism: don't send a value on the channel, close it.</p>
+<p>We can add cancellation to the <code>du</code> program from the previous section with a few simple changes.</p>
+<p>First, create a cancellation channel on which no values are ever sent, but whose closure indicates that it is time for the program to stop what it is doing. We also define a utility function, <code>cancelled</code>, that checks or <em>polls</em> the cancellation state when it is called.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/du4/main.go">gopl.io/ch8/du4/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">done</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+
+<span class="kd">func</span> <span class="nx">cancelled</span><span class="p">()</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">select</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">done</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">true</span>
+    <span class="k">default</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">false</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Next, create a goroutine that will read from the standard input, which is typically connected to the terminal. As soon as any input is read (for instance, the user presses the return key), this goroutine broadcasts the cancellation by closing the <code>done</code> channel.</p>
+<div class="codehilite"><pre><span class="c1">// Cancel traversal when input is detected.</span>
+<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">.</span><span class="nx">Read</span><span class="p">(</span><span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="c1">// read a single byte</span>
+  <span class="nb">close</span><span class="p">(</span><span class="nx">done</span><span class="p">)</span>
+<span class="p">}()</span>
+</pre></div>
+
+
+<p>To make our goroutines respond to the cancellation, in the main goroutine, add a third case to the select statement that tries to receive from the <code>done</code> channel. The function returns if this case is ever selected, but before it returns it must first drain the <code>fileSizes</code> channel, discarding all values until the channel is closed. It does this to ensure that any active calls to <code>walkDir</code> can run to completion without getting stuck sending to <code>fileSizes</code>.</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="p">{</span>
+  <span class="k">select</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">done</span><span class="p">:</span>
+    <span class="c1">// Drain fileSizes to allow existing goroutines to finish.</span>
+    <span class="k">for</span> <span class="k">range</span> <span class="nx">fileSizes</span> <span class="p">{</span>
+      <span class="c1">// Do nothing.</span>
+    <span class="p">}</span>
+    <span class="k">return</span>
+  <span class="k">case</span> <span class="nx">size</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">fileSizes</span><span class="p">:</span>
+    <span class="c1">// ...</span>
+    <span class="c1">//!-3</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+      <span class="k">break</span> <span class="nx">loop</span> <span class="c1">// fileSizes was closed</span>
+    <span class="p">}</span>
+    <span class="nx">nfiles</span><span class="o">++</span>
+    <span class="nx">nbytes</span> <span class="o">+=</span> <span class="nx">size</span>
+  <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">tick</span><span class="p">:</span>
+    <span class="nx">printDiskUsage</span><span class="p">(</span><span class="nx">nfiles</span><span class="p">,</span> <span class="nx">nbytes</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>walkDir</code> goroutine polls the cancellation status when it begins, and returns without doing anything if the status is set. This turns all goroutines created after cancellation into no-ops:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">walkDir</span><span class="p">(</span><span class="nx">dir</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">n</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">,</span> <span class="nx">fileSizes</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">int64</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">defer</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Done</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">cancelled</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">entry</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">dirents</span><span class="p">(</span><span class="nx">dir</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// ...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>It might be profitable to poll the cancellation status again within <code>walkDir</code>'s loop, to avoid creating goroutines after the cancellation event. Ensuring that no expensive operations ever occur after the cancellation event may require updating many places in your code, but often most of the benefit can be obtained by checking for cancellation in a few important places. [p252]</p>
+<p>A little profiling of this program revealed that the bottleneck was the acquisition of a semaphore token in <code>dirents</code>. The <code>select</code> below makes this operation cancellable and reduces the typical cancellation latency of the program from hundreds of milliseconds to tens:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">dirents</span><span class="p">(</span><span class="nx">dir</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="nx">os</span><span class="p">.</span><span class="nx">FileInfo</span> <span class="p">{</span>
+    <span class="k">select</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nx">sema</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}:</span> <span class="c1">// acquire token</span>
+    <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">done</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">nil</span> <span class="c1">// cancelled</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="o">&lt;-</span><span class="nx">sema</span> <span class="p">}()</span> <span class="c1">// release token</span>
+
+    <span class="c1">// ...read directory...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Now, when cancellation occurs, all the background goroutines quickly stop and the <code>main</code> function returns. When <code>main</code> returns, a program exits, so it can be hard to tell a main function that cleans up after itself from one that does not.</p>
+<p>There's a handy trick we can use during testing: if instead of returning from <code>main</code> in the event of cancellation, we execute a call to <code>panic</code>, then the runtime will dump the stack of every goroutine in the program:</p>
+<ul>
+<li>If the main goroutine is the only one left, then it has cleaned up after itself.</li>
+<li>If other goroutines remain, they may not have been properly cancelled, or perhaps they have been cancelled but the cancellation takes time.</li>
+</ul>
+<p>A little investigation may be worthwhile. The panic dump often contains sufficient information to distinguish these cases.</p>
             </div>
         </div>
 
