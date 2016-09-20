@@ -1080,6 +1080,18 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <li>It invokes the function.</li>
 <li>Repeat.</li>
 </ol>
+<h5 id="work-queue-implementation-summary"><strong>Work Queue Implementation Summary</strong></h5>
+<p>The relationship between the different data structures is illustrated in the following graph:</p>
+<p><a href="../figure_8.1.png" title="Figure 8.1 The relationship between work, work queues, and the worker threads."><img alt="Figure 8.1 The relationship between work, work queues, and the worker threads." src="../figure_8.1_600.png" /></a></p>
+<p>Worker threads are at the highest level.</p>
+<ul>
+<li>There can be multiple types of worker threads; there is one worker thread per processor of a given type. Parts of the kernel can create worker threads as needed. By default, there is the <em>events</em> worker thread.</li>
+<li>Each worker thread is represented by the <code>cpu_workqueue_struct</code> structure.</li>
+<li>The <code>workqueue_struct</code> structure represents all the worker threads of a given type.</li>
+</ul>
+<p>For example, assume that in addition to the generic <em>events</em> worker type, you also create a <em>falcon</em> worker type. If you have a four-processor computer, then there are four <em>events</em> threads (four <code>cpu_workqueue_struct</code> structures) and four <em>falcon</em> threads (four <code>cpu_workqueue_struct</code> structures). There is one <code>workqueue_struct</code> for the <em>events</em> type and one for the <em>falcon</em> type.</p>
+<p>The driver creates work, which it wants to defer to later. The <code>work_struct</code> structure represents this work. This structure contains a pointer to the function that handles the deferred work. The work is submitted to a specific worker thread (in this case, a specific <em>falcon</em> thread). The worker thread then wakes up and performs the queued work.</p>
+<p>Most drivers use the existing default worker threads, named <em>events</em>. They are easy and simple. Some more serious situations, however, demand their own worker threads. The <a href="https://en.wikipedia.org/wiki/XFS">XFS</a> filesystem, for example, creates two new types of worker threads.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>

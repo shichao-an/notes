@@ -644,6 +644,24 @@ This function loops over each entry in the linked list of pending work and execu
 4. It invokes the function.
 5. Repeat.
 
+##### **Work Queue Implementation Summary**
+
+The relationship between the different data structures is illustrated in the following graph:
+
+[![Figure 8.1 The relationship between work, work queues, and the worker threads.](figure_8.1_600.png)](figure_8.1.png "Figure 8.1 The relationship between work, work queues, and the worker threads.")
+
+Worker threads are at the highest level.
+
+* There can be multiple types of worker threads; there is one worker thread per processor of a given type. Parts of the kernel can create worker threads as needed. By default, there is the *events* worker thread.
+* Each worker thread is represented by the `cpu_workqueue_struct` structure.
+* The `workqueue_struct` structure represents all the worker threads of a given type.
+
+For example, assume that in addition to the generic *events* worker type, you also create a *falcon* worker type. If you have a four-processor computer, then there are four *events* threads (four `cpu_workqueue_struct` structures) and four *falcon* threads (four `cpu_workqueue_struct` structures). There is one `workqueue_struct` for the *events* type and one for the *falcon* type.
+
+The driver creates work, which it wants to defer to later. The `work_struct` structure represents this work. This structure contains a pointer to the function that handles the deferred work. The work is submitted to a specific worker thread (in this case, a specific *falcon* thread). The worker thread then wakes up and performs the queued work.
+
+Most drivers use the existing default worker threads, named *events*. They are easy and simple. Some more serious situations, however, demand their own worker threads. The [XFS](https://en.wikipedia.org/wiki/XFS) filesystem, for example, creates two new types of worker threads.
+
 ### Doubts and Solution
 
 #### Verbatim
