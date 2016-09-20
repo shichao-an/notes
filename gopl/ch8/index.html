@@ -463,6 +463,9 @@
         <li class="main "><a href="#cancellation">Cancellation</a></li>
         
     
+        <li class="main "><a href="#example-chat-server">Example: Chat Server</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -1827,6 +1830,130 @@ too many open files
 <li>If other goroutines remain, they may not have been properly cancelled, or perhaps they have been cancelled but the cancellation takes time.</li>
 </ul>
 <p>A little investigation may be worthwhile. The panic dump often contains sufficient information to distinguish these cases.</p>
+<h3 id="example-chat-server">Example: Chat Server</h3>
+<p>This chapter discusses a chat server that enables several users broadcast messages to each other. There are four kinds of goroutine in this program:</p>
+<ul>
+<li>There is one instance apiece of the <code>main</code> and <code>broadcaster</code> goroutines</li>
+<li>For each client connection there is one <code>handleConn</code> and one <code>clientWriter</code> goroutine.</li>
+</ul>
+<p>The broadcaster is a good illustration of how <code>select</code> is used, since it has to respond to three different kinds of messages.</p>
+<p>The main goroutine listens for and accept incoming network connections from clients. For each one, it creates a new <code>handleConn</code> goroutine, similar to the <a href="#example-concurrent-echo-server">concurrent echo server example</a> earlier this chapter.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/chat/chat.go">gopl.io/ch8/chat/chat.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">listener</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Listen</span><span class="p">(</span><span class="s">&quot;tcp&quot;</span><span class="p">,</span> <span class="s">&quot;localhost:8000&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">go</span> <span class="nx">broadcaster</span><span class="p">()</span>
+    <span class="k">for</span> <span class="p">{</span>
+        <span class="nx">conn</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">listener</span><span class="p">.</span><span class="nx">Accept</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="p">}</span>
+        <span class="k">go</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">conn</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The broadcaster's local variable <code>clients</code> records the current set of connected clients. The only information recorded about each client is the identity of its outgoing message channel.</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">client</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="kt">string</span> <span class="c1">// an outgoing message channel</span>
+
+<span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">entering</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">client</span><span class="p">)</span>
+    <span class="nx">leaving</span>  <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">client</span><span class="p">)</span>
+    <span class="nx">messages</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">)</span> <span class="c1">// all incoming client messages</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">broadcaster</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">clients</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">client</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span> <span class="c1">// all connected clients</span>
+    <span class="k">for</span> <span class="p">{</span>
+        <span class="k">select</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="nx">msg</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">messages</span><span class="p">:</span>
+            <span class="c1">// Broadcast incoming message to all</span>
+            <span class="c1">// clients&#39; outgoing message channels.</span>
+            <span class="k">for</span> <span class="nx">cli</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">clients</span> <span class="p">{</span>
+                <span class="nx">cli</span> <span class="o">&lt;-</span> <span class="nx">msg</span>
+            <span class="p">}</span>
+
+        <span class="k">case</span> <span class="nx">cli</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">entering</span><span class="p">:</span>
+            <span class="nx">clients</span><span class="p">[</span><span class="nx">cli</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+
+        <span class="k">case</span> <span class="nx">cli</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">leaving</span><span class="p">:</span>
+            <span class="nb">delete</span><span class="p">(</span><span class="nx">clients</span><span class="p">,</span> <span class="nx">cli</span><span class="p">)</span>
+            <span class="nb">close</span><span class="p">(</span><span class="nx">cli</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The broadcaster does the following:</p>
+<ul>
+<li>It listens on the global <code>entering</code> and <code>leaving</code> channels for announcements of arriving and departing clients. When it receives one of these events, it updates the <code>clients</code> set; if the event was a departure, it closes the client's outgoing message channel.</li>
+<li>It also listens for events on the global <code>messages</code> channel, to which each client sends all its incoming messages. When the broadcaster receives one of these events, it broadcasts the message to every connected client.</li>
+</ul>
+<p>The <code>handleConn</code> goroutine does the following:</p>
+<ul>
+<li>It creates a new outgoing message channel for its client and announces the arrival of this client to the broadcaster over the <code>entering</code> channel.</li>
+<li>Then it reads every line of text from the client, sending each line to the broadcaster over the global incoming message channel, prefixing each message with the identity of its sender.</li>
+<li>Once there is nothing more to read from the client, <code>handleConn</code> announces the departure of the client over the <code>leaving</code> channel and closes the connection.</li>
+</ul>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">conn</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">)</span> <span class="c1">// outgoing client messages</span>
+    <span class="k">go</span> <span class="nx">clientWriter</span><span class="p">(</span><span class="nx">conn</span><span class="p">,</span> <span class="nx">ch</span><span class="p">)</span>
+
+    <span class="nx">who</span> <span class="o">:=</span> <span class="nx">conn</span><span class="p">.</span><span class="nx">RemoteAddr</span><span class="p">().</span><span class="nx">String</span><span class="p">()</span>
+    <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="s">&quot;You are &quot;</span> <span class="o">+</span> <span class="nx">who</span>
+    <span class="nx">messages</span> <span class="o">&lt;-</span> <span class="nx">who</span> <span class="o">+</span> <span class="s">&quot; has arrived&quot;</span>
+    <span class="nx">entering</span> <span class="o">&lt;-</span> <span class="nx">ch</span>
+
+    <span class="nx">input</span> <span class="o">:=</span> <span class="nx">bufio</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">(</span><span class="nx">conn</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Scan</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">messages</span> <span class="o">&lt;-</span> <span class="nx">who</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="nx">input</span><span class="p">.</span><span class="nx">Text</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="c1">// NOTE: ignoring potential errors from input.Err()</span>
+
+    <span class="nx">leaving</span> <span class="o">&lt;-</span> <span class="nx">ch</span>
+    <span class="nx">messages</span> <span class="o">&lt;-</span> <span class="nx">who</span> <span class="o">+</span> <span class="s">&quot; has left&quot;</span>
+    <span class="nx">conn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">clientWriter</span><span class="p">(</span><span class="nx">conn</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">,</span> <span class="nx">ch</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">msg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ch</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">conn</span><span class="p">,</span> <span class="nx">msg</span><span class="p">)</span> <span class="c1">// NOTE: ignoring network errors</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In addition, <code>handleConn</code> creates a <code>clientWriter</code> goroutine for each client that receives messages broadcast to the client's outgoing message channel and writes them to the client's network connection. The client writer's loop terminates when the broadcaster closes the channel after receiving a leaving notification.</p>
+<p>The output below shows the server in action with two clients in separate windows on the
+same computer, using <code>netcat</code> to chat:</p>
+<div class="codehilite"><pre>$ go build gopl.io/ch8/chat
+$ go build gopl.io/ch8/netcat3
+$ ./chat &amp;
+$ ./netcat3
+You are 127.0.0.1:64208           $ ./netcat3
+127.0.0.1:64211 has arrived       You are 127.0.0.1:64211
+Hi!
+127.0.0.1:64208: Hi!              127.0.0.1:64208: Hi!
+Hi yourself.
+127.0.0.1:64211: Hi yourself.     127.0.0.1:64211: Hi yourself.
+^C
+                                  127.0.0.1:64208 has left
+$ ./netcat3
+You are 127.0.0.1:64216           127.0.0.1:64216 has arrived
+                                  Welcome.
+127.0.0.1:64211: Welcome.         127.0.0.1:64211: Welcome.
+                                  ^C
+127.0.0.1:64211 has left
+</pre></div>
+
+
+<p>While hosting a chat session for <em>n</em> clients, this program runs 2<em>n</em>+2 concurrently communicating goroutines, yet it needs no explicit locking operations (<a href="ch9.md#mutual-exclusion-syncmutex">Section 9.2</a>). The clients map is confined to a single goroutine, the broadcaster, so it cannot be accessed concurrently. The only variables that are shared by multiple goroutines are channels and instances of <code>net.Conn</code>, both of which are <em>concurrency safe</em>. The next chapter discusses confinement, concurrency safety, and the implications of sharing variables across goroutines in the next chapter.</p>
             </div>
         </div>
 
