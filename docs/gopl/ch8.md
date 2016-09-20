@@ -1506,3 +1506,135 @@ There's a handy trick we can use during testing: if instead of returning from `m
 
 A little investigation may be worthwhile. The panic dump often contains sufficient information to distinguish these cases.
 
+### Example: Chat Server
+
+This chapter discusses a chat server that enables several users broadcast messages to each other. There are four kinds of goroutine in this program:
+
+* There is one instance apiece of the `main` and `broadcaster` goroutines
+* For each client connection there is one `handleConn` and one `clientWriter` goroutine.
+
+The broadcaster is a good illustration of how `select` is used, since it has to respond to three different kinds of messages.
+
+The main goroutine listens for and accept incoming network connections from clients. For each one, it creates a new `handleConn` goroutine, similar to the [concurrent echo server example](#example-concurrent-echo-server) earlier this chapter.
+
+<small>[gopl.io/ch8/chat/chat.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/chat/chat.go)</small>
+
+```go
+
+func main() {
+	listener, err := net.Listen("tcp", "localhost:8000")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go broadcaster()
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		go handleConn(conn)
+	}
+}
+```
+
+The broadcaster's local variable `clients` records the current set of connected clients. The only information recorded about each client is the identity of its outgoing message channel.
+
+```go
+type client chan<- string // an outgoing message channel
+
+var (
+	entering = make(chan client)
+	leaving  = make(chan client)
+	messages = make(chan string) // all incoming client messages
+)
+
+func broadcaster() {
+	clients := make(map[client]bool) // all connected clients
+	for {
+		select {
+		case msg := <-messages:
+			// Broadcast incoming message to all
+			// clients' outgoing message channels.
+			for cli := range clients {
+				cli <- msg
+			}
+
+		case cli := <-entering:
+			clients[cli] = true
+
+		case cli := <-leaving:
+			delete(clients, cli)
+			close(cli)
+		}
+	}
+}
+```
+
+The broadcaster does the following:
+
+* It listens on the global `entering` and `leaving` channels for announcements of arriving and departing clients. When it receives one of these events, it updates the `clients` set; if the event was a departure, it closes the client's outgoing message channel.
+* It also listens for events on the global `messages` channel, to which each client sends all its incoming messages. When the broadcaster receives one of these events, it broadcasts the message to every connected client.
+
+The `handleConn` goroutine does the following:
+
+* It creates a new outgoing message channel for its client and announces the arrival of this client to the broadcaster over the `entering` channel.
+* Then it reads every line of text from the client, sending each line to the broadcaster over the global incoming message channel, prefixing each message with the identity of its sender.
+* Once there is nothing more to read from the client, `handleConn` announces the departure of the client over the `leaving` channel and closes the connection.
+
+```go
+func handleConn(conn net.Conn) {
+	ch := make(chan string) // outgoing client messages
+	go clientWriter(conn, ch)
+
+	who := conn.RemoteAddr().String()
+	ch <- "You are " + who
+	messages <- who + " has arrived"
+	entering <- ch
+
+	input := bufio.NewScanner(conn)
+	for input.Scan() {
+		messages <- who + ": " + input.Text()
+	}
+	// NOTE: ignoring potential errors from input.Err()
+
+	leaving <- ch
+	messages <- who + " has left"
+	conn.Close()
+}
+
+func clientWriter(conn net.Conn, ch <-chan string) {
+	for msg := range ch {
+		fmt.Fprintln(conn, msg) // NOTE: ignoring network errors
+	}
+}
+```
+
+In addition, `handleConn` creates a `clientWriter` goroutine for each client that receives messages broadcast to the client's outgoing message channel and writes them to the client's network connection. The client writer's loop terminates when the broadcaster closes the channel after receiving a leaving notification.
+
+The output below shows the server in action with two clients in separate windows on the
+same computer, using `netcat` to chat:
+
+```text
+$ go build gopl.io/ch8/chat
+$ go build gopl.io/ch8/netcat3
+$ ./chat &
+$ ./netcat3
+You are 127.0.0.1:64208           $ ./netcat3
+127.0.0.1:64211 has arrived       You are 127.0.0.1:64211
+Hi!
+127.0.0.1:64208: Hi!              127.0.0.1:64208: Hi!
+Hi yourself.
+127.0.0.1:64211: Hi yourself.     127.0.0.1:64211: Hi yourself.
+^C
+                                  127.0.0.1:64208 has left
+$ ./netcat3
+You are 127.0.0.1:64216           127.0.0.1:64216 has arrived
+                                  Welcome.
+127.0.0.1:64211: Welcome.         127.0.0.1:64211: Welcome.
+                                  ^C
+127.0.0.1:64211 has left
+```
+
+While hosting a chat session for *n* clients, this program runs 2*n*+2 concurrently communicating goroutines, yet it needs no explicit locking operations ([Section 9.2](ch9.md#mutual-exclusion-syncmutex)). The clients map is confined to a single goroutine, the broadcaster, so it cannot be accessed concurrently. The only variables that are shared by multiple goroutines are channels and instances of `net.Conn`, both of which are *concurrency safe*. The next chapter discusses confinement, concurrency safety, and the implications of sharing variables across goroutines in the next chapter.

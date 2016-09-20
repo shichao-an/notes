@@ -2,7 +2,7 @@
 
 <small>Back to [Roadmap](index.md).</small>
 
-### OKR-1: August 31, 2016
+### OKR-1: December 31, 2016
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
@@ -25,6 +25,7 @@ Book | Chapter/Part | #Pass | Start | End
 GOPL | ch5 | 1 | 2016-04-11 | 2016-05-09
 GOPL | ch6 | 1 | 2016-05-11 | 2016-05-18
 GOPL | ch7 | 1 | 2016-05-18 | 2016-08-13
+GOPL | ch8 | 1 | 2016-08-15 | 2016-09-19
 CSN  | part1 | 1 | 2016-01-15 | 2016-05-24
 CSN  | part2 | 1 | 2016-05-25 |
 LKD  | ch8 | 1 | 2016-04-15 |
