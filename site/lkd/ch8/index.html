@@ -375,6 +375,10 @@
                         </li>
                       
                         <li>
+                            <a href="../../gopl/ch9/">Chapter 9. Concurrency with Shared Variables</a>
+                        </li>
+                      
+                        <li>
                             <a href="../../gopl/ch10/">Chapter 10. Packages and the Go Tool</a>
                         </li>
                       
@@ -456,6 +460,8 @@
         <li class="main "><a href="#work-queues">Work Queues</a></li>
         
             <li><a href="#implementing-work-queues">Implementing Work Queues</a></li>
+        
+            <li><a href="#using-work-queues">Using Work Queues</a></li>
         
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
@@ -1092,6 +1098,30 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <p>For example, assume that in addition to the generic <em>events</em> worker type, you also create a <em>falcon</em> worker type. If you have a four-processor computer, then there are four <em>events</em> threads (four <code>cpu_workqueue_struct</code> structures) and four <em>falcon</em> threads (four <code>cpu_workqueue_struct</code> structures). There is one <code>workqueue_struct</code> for the <em>events</em> type and one for the <em>falcon</em> type.</p>
 <p>The driver creates work, which it wants to defer to later. The <code>work_struct</code> structure represents this work. This structure contains a pointer to the function that handles the deferred work. The work is submitted to a specific worker thread (in this case, a specific <em>falcon</em> thread). The worker thread then wakes up and performs the queued work.</p>
 <p>Most drivers use the existing default worker threads, named <em>events</em>. They are easy and simple. Some more serious situations, however, demand their own worker threads. The <a href="https://en.wikipedia.org/wiki/XFS">XFS</a> filesystem, for example, creates two new types of worker threads.</p>
+<h4 id="using-work-queues">Using Work Queues</h4>
+<p>Using work queues is easy. This section covers the default <em>events</em> queue and creating new worker threads.</p>
+<h5 id="creating-work"><strong>Creating Work</strong></h5>
+<p>The first step is actually creating some work to defer. To create the structure statically at runtime, use <code>DECLARE_WORK</code>:</p>
+<div class="codehilite"><pre><span class="n">DECLARE_WORK</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This statically creates a <code>work_struct</code> structure named <code>name</code> with handler function <code>func</code> and argument <code>data</code>.</p>
+<p>Alternatively, you can create work at runtime via a pointer:</p>
+<div class="codehilite"><pre><span class="n">INIT_WORK</span><span class="p">(</span><span class="k">struct</span> <span class="n">work_struct</span> <span class="o">*</span><span class="n">work</span><span class="p">,</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This dynamically initializes the work queue pointed to by <code>work</code> with handler function <code>func</code> and argument <code>data</code>.</p>
+<h5 id="your-work-queue-handler"><strong>Your Work Queue Handler</strong></h5>
+<p>The prototype for the work queue handler is:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="n">work_handler</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+
+
+<p>A worker thread executes this function, so the function runs in <a href="../ch3/#process-context">process context</a>. By default, interrupts are enabled and no locks are held. If needed, the function can sleep.</p>
+<p>Despite running in process context, the work handlers cannot access user-space memory because there is no associated user-space memory map for <a href="../ch3/#kernel-threads">kernel threads</a>. The kernel can access user memory only when running on behalf of a user-space process, such as when executing a system call. Only then is user memory mapped in.</p>
+<p>Locking between work queues or other parts of the kernel is handled just as with any other process context code. This makes writing work handlers much easier.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
