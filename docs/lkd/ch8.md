@@ -662,6 +662,42 @@ The driver creates work, which it wants to defer to later. The `work_struct` str
 
 Most drivers use the existing default worker threads, named *events*. They are easy and simple. Some more serious situations, however, demand their own worker threads. The [XFS](https://en.wikipedia.org/wiki/XFS) filesystem, for example, creates two new types of worker threads.
 
+#### Using Work Queues
+
+Using work queues is easy. This section covers the default *events* queue and creating new worker threads.
+
+##### **Creating Work**
+
+The first step is actually creating some work to defer. To create the structure statically at runtime, use `DECLARE_WORK`:
+
+```c
+DECLARE_WORK(name, void (*func)(void *), void *data);
+```
+
+This statically creates a `work_struct` structure named `name` with handler function `func` and argument `data`.
+
+Alternatively, you can create work at runtime via a pointer:
+
+```c
+INIT_WORK(struct work_struct *work, void (*func)(void *), void *data);
+```
+
+This dynamically initializes the work queue pointed to by `work` with handler function `func` and argument `data`.
+
+##### **Your Work Queue Handler**
+
+The prototype for the work queue handler is:
+
+```c
+void work_handler(void *data)
+```
+
+A worker thread executes this function, so the function runs in [process context](ch3.md#process-context). By default, interrupts are enabled and no locks are held. If needed, the function can sleep.
+
+Despite running in process context, the work handlers cannot access user-space memory because there is no associated user-space memory map for [kernel threads](ch3.md#kernel-threads). The kernel can access user memory only when running on behalf of a user-space process, such as when executing a system call. Only then is user memory mapped in.
+
+Locking between work queues or other parts of the kernel is handled just as with any other process context code. This makes writing work handlers much easier.
+
 ### Doubts and Solution
 
 #### Verbatim
