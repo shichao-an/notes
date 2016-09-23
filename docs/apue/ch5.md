@@ -15,9 +15,35 @@ Three streams are predefined and automatically available to a process. They refe
 
 ### Buffering
 
-1. **Fully buffered**
-2. **Line buffered**
-3. **Unbuffered**
+The goal of the buffering provided by the standard I/O library is to use the minimum number of read and write calls. This library also tries to do its buffering automatically for each I/O stream, obviating the need for the application to worry about it.
+
+Three types of buffering are provided:
+
+1. **Fully buffered**. Actual I/O takes place when the standard I/O buffer is filled.
+    * Files residing on disk are normally fully buffered by the standard I/O library.
+    * The buffer used is usually obtained by one of the standard I/O functions calling `malloc` ([Section 7.8](ch7.md#memory-allocation)) the first time I/O is performed on a stream.
+    * The term *flush* describes the writing of a standard I/O buffer. A buffer can be flushed automatically by the standard I/O routines, such as when a buffer fills, or we can call the function `fflush` to flush a stream. Unfortunately, in the UNIX environment, *flush* means two different things:
+        1. In terms of the standard I/O library, it means writing out the contents of a buffer, which may be partially filled.
+        2. In terms of the terminal driver, such as the `tcflush` function in [Chapter 18](ch18.md), it means to discard the data that's already stored in a buffer.
+2. **Line buffered**. The standard I/O library performs I/O when a newline character is encountered on input or output.
+    * <u>This allows us to output a single character at a time (with the standard I/O `fputc` function), knowing that actual I/O will take place only when we finish writing each line.</u>
+    * Line buffering is typically used on a stream when it refers to a terminal, such as standard input and standard output.
+    * Line buffering has two caveats:
+        1. The size of the buffer that the standard I/O library uses to collect each line is fixed, so I/O might take place if this buffer is filled before writing a newline.
+        2. Whenever input is requested through the standard I/O library from either (a) an unbuffered stream or (b) a line-buffered stream (that requires data to be requested from the kernel), all line-buffered output streams are flushed. The reason for the qualifier on (b) is that the requested data may already be in the buffer, which doesn't require data to be read from the kernel. Obviously, any input from an unbuffered stream, item (a), requires data to be obtained from the kernel.
+3. **Unbuffered**. The standard I/O library does not buffer the characters. For example:
+    * If we write 15 characters with the standard I/O `fputs` function, we expect these 15 characters to be output as soon as possible, probably with the `write` function from [Section 3.8](ch3.md#write-function).
+    * The standard error stream is normally unbuffered so that any error messages are displayed as quickly as possible, regardless of whether they contain a newline.
+
+ISO C requires the following buffering characteristics:
+
+* Standard input and standard output are fully buffered, if and only if they do not refer to an interactive device.
+* Standard error is never fully buffered.
+
+However, this *doesn't* tell us either of the following:
+
+* Whether standard input and standard output are unbuffered or line buffered if they refer to an interactive device
+* Whether standard error should be unbuffered or line buffered
 
 Most implementations default to the following types of buffering:
 
@@ -98,7 +124,7 @@ When a process terminates normally, either by calling the exit function directly
 
 Unformatted I/O:
 
-* Character-at-a-time I/O
+* Character-at-a-time I/O.
 * Line-at-a-time I/O: `fgets` and `fputs`. Each line is terminated with a newline character.
 * Direct I/O (binary I/O, object-at-a-time I/O, record-oriented I/O, or structure-oriented I/O): `fread` and `fwrite`. For each I/O operation, we read or write some number of objects, where each object is of a specified size
 
