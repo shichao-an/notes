@@ -453,6 +453,22 @@ express concurrency in a direct and natural way.</p>
 <h3 id="race-conditions">Race Conditions</h3>
 <p>In a sequential program, that is, a program with only one goroutine, the steps of the program happen in the familiar execution order determined by the program logic. For instance, in a sequence of statements, the first one happens before the second one, and so on.</p>
 <p>In a program with two or more goroutines, the steps within each goroutine happen in the familiar order, but in general we don't know whether an event <em>x</em> in one goroutine happens before an event <em>y</em> in another goroutine, or happens after it, or is simultaneous with it. When we cannot confidently say that one event <em>happens before</em> the other, then the events <em>x</em> and <em>y</em> are <em>concurrent</em>.</p>
+<p>Consider a function that works correctly in a sequential program. That function is <em>concurrency-safe</em> if it continues to work correctly even when called concurrently (called from two or more goroutines with no additional synchronization).</p>
+<p>This notion can be generalized to a set of collaborating functions, such as the methods and operations of a particular type. A type is concurrency-safe if all its accessible methods and operations are concurrency-safe.</p>
+<p>We can make a program concurrency-safe without making every concrete type in that program concurrency-safe. Indeed, concurrency-safe types are the exception rather than the rule, so you should access a variable concurrently only if the documentation for its type says that this is safe. We avoid concurrent access to most variables by either of the following:</p>
+<ul>
+<li>Confining them to a single goroutine</li>
+<li>Maintaining a higher-level invariant of mutual exclusion</li>
+</ul>
+<p>In contrast, exported package-level functions are generally expected to be concurrency-safe. Since package-level variables cannot be confined to a single goroutine, functions that modify them must enforce mutual exclusion.</p>
+<p>There are many reasons a function might not work when called concurrently, including:</p>
+<ul>
+<li>Deadlock</li>
+<li>Livelock</li>
+<li>Resource starvation.</li>
+</ul>
+<p>This chapter focuse on the most important one, the <a href="https://en.wikipedia.org/wiki/Race_condition"><strong>race condition</strong></a>.</p>
+<p>A race condition is a situation in which the program does not give the correct result for some interleavings of the operations of multiple goroutines. Race conditions are pernicious because they may remain latent in a program and appear infrequently, perhaps only under heavy load or when using certain compilers, platforms, or architectures. This makes them hard to reproduce and diagnose.</p>
             </div>
         </div>
 
