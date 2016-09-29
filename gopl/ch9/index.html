@@ -434,6 +434,8 @@
     
         <li class="main "><a href="#race-conditions">Race Conditions</a></li>
         
+            <li><a href="#avoiding-a-data-race">Avoiding a data race *</a></li>
+        
     
     </ul>
 </div></div>
@@ -504,7 +506,8 @@ express concurrency in a direct and natural way.</p>
 <p>In all cases the final balance is $300. The only variation is whether Alice's balance slip includes Bob's transaction or not, but the customers are satisfied either way.</p>
 <p>However, this intuition is wrong. There is a fourth possible outcome, in which Bob's deposit occurs in the middle of Alice's deposit, after the balance has been read (<code>balance + amount</code>) but before it has been updated (<code>balance = ...</code>), causing Bob's transaction to disappear. This is because Alice's deposit operation <code>A1</code> is really a sequence of two operations, a read and a write; call them <code>A1r</code> and <code>A1w</code>. The following is the problematic interleaving:</p>
 <p>After <code>A1r</code>, the expression <code>balance + amount</code> evaluates to 200, so this is the value written during <code>A1w</code>, despite the intervening deposit.</p>
-<p>This program contains a particular kind of race condition called a <a href="https://en.wikipedia.org/wiki/Race_condition#Software"><em>data race</em></a>. A data race occurs whenever two goroutines access the same variable concurrently and at least one of the accesses is a write.</p>
+<p>This program contains a particular kind of race condition called a <a href="https://en.wikipedia.org/wiki/Race_condition#Software"><em>data race</em></a>. The definition of it is:</p>
+<p><u>A data race occurs whenever two goroutines access the same variable concurrently and at least one of the accesses is a write.</u></p>
 <p>Things get even messier if the data race involves a variable of a type that is larger than a single machine word, such as an interface, a string, or a slice. The following code updates <code>x</code> concurrently to two slices of different lengths:</p>
 <div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="p">[]</span><span class="kt">int</span>
 <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">x</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="p">}()</span>
@@ -521,6 +524,101 @@ express concurrency in a direct and natural way.</p>
 </ul>
 <p>Recall that there are three parts to a slice: the pointer, the length, and the capacity. If the pointer comes from the first call to <code>make</code> and the length comes from the second, <code>x</code> would be a slice whose nominal length is 1,000,000 but whose underlying array has only 10 elements. In this case, storing to element 999,999 would clobber an arbitrary faraway memory location, with consequences that are impossible to predict and hard to debug and localize. This semantic minefield is called <a href="https://en.wikipedia.org/wiki/Undefined_behavior"><em>undefined behavior</em></a> and is well known to C programmers; fortunately it is rarely as troublesome in Go as in C.</p>
 <p>Even the notion that a concurrent program is an interleaving of several sequential programs is a false intuition. <a href="#memory-synchronization">Section 9.4</a> will show that data races may have even stranger outcomes. Many programmers will occasionally offer justifications for known data races in their programs. The absence of problems on a given compiler and platform may give them false confidence. A good rule of thumb is that there is no such thing as a <em>benign data race</em>. So how do we avoid data races in our programs?</p>
+<h4 id="avoiding-a-data-race">Avoiding a data race *</h4>
+<p>There are three ways to avoid a data race.</p>
+<h5 id="avoid-writing-the-variable"><strong>Avoid writing the variable</strong> *</h5>
+<p>The first way is not to write the variable. Consider the map below, which is lazily populated as each key is requested for the first time. If <code>Icon</code> is called sequentially, the program works fine, but if <code>Icon</code> is called concurrently, there is a data race accessing the map.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">icons</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span>
+
+<span class="c1">// NOTE: not concurrency-safe!</span>
+<span class="kd">func</span> <span class="nx">Icon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span> <span class="p">{</span>
+    <span class="nx">icon</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+    <span class="nx">icon</span> <span class="p">=</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span>
+    <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="p">=</span> <span class="nx">icon</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">icon</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If instead we initialize the map with all necessary entries before creating additional goroutines and never modify it again, then any number of goroutines may safely call <code>Icon</code> concurrently since each only reads the map.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">icons</span> <span class="p">=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span><span class="p">{</span>
+    <span class="s">&quot;spades.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;spades.png&quot;</span><span class="p">),</span>
+    <span class="s">&quot;hearts.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;hearts.png&quot;</span><span class="p">),</span>
+    <span class="s">&quot;diamonds.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;diamonds.png&quot;</span><span class="p">),</span>
+    <span class="s">&quot;clubs.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;clubs.png&quot;</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="c1">// Concurrency-safe.</span>
+<span class="kd">func</span> <span class="nx">Icon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>In the example above, the <code>icons</code> variable is assigned during package initialization, which happens before the program's <code>main</code> function starts running. Once initialized, <code>icons</code> is never modified. Data structures that are never modified or are immutable are inherently concurrency-safe and need no synchronization. This approach can be used if updates are essential.</p>
+<h5 id="avoid-accessing-the-variable-from-multiple-goroutines"><strong>Avoid accessing the variable from multiple goroutines</strong> *</h5>
+<p>The second way to avoid a data race is to avoid accessing the variable from multiple goroutines. This is the approach taken by many of the programs in the previous chapter, for example:</p>
+<ul>
+<li>The main goroutine in the concurrent web crawler (<a href="../ch8/#example-concurrent-web-crawler">Section 8.6</a>) is the sole goroutine that accesses the <code>seen</code> map.</li>
+<li>The <code>broadcaster</code> goroutine in the chat server (<a href="../ch8/#example-chat-server">Section 8.10</a>) is the only goroutine that accesses the <code>clients</code> map.</li>
+</ul>
+<p>These variables are <em>confined</em> to a single goroutine.</p>
+<p>Since other goroutines cannot access the variable directly, they must use a channel to send the confining goroutine a request to query or update the variable. This is what is meant by the Go mantra:</p>
+<p>"Do not communicate by sharing memory; instead, share memory by communicating."</p>
+<p>A goroutine that brokers access to a confined variable using channel requests is called a <em>monitor goroutine</em> for that variable. For example, the <code>broadcaster</code> goroutine monitors access to the <code>clients</code> map.</p>
+<p>The following is the <code>bank</code> example rewritten with the <code>balance</code> variable confined to a monitor goroutine called <code>teller</code>:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/bank1/bank.go">gopl.io/ch9/bank1/bank.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package bank provides a concurrency-safe bank with one account.</span>
+<span class="kn">package</span> <span class="nx">bank</span>
+
+<span class="kd">var</span> <span class="nx">deposits</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span> <span class="c1">// send amount to deposit</span>
+<span class="kd">var</span> <span class="nx">balances</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span> <span class="c1">// receive balance</span>
+
+<span class="kd">func</span> <span class="nx">Deposit</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span> <span class="nx">deposits</span> <span class="o">&lt;-</span> <span class="nx">amount</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">Balance</span><span class="p">()</span> <span class="kt">int</span>       <span class="p">{</span> <span class="k">return</span> <span class="o">&lt;-</span><span class="nx">balances</span> <span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">teller</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">balance</span> <span class="kt">int</span> <span class="c1">// balance is confined to teller goroutine</span>
+    <span class="k">for</span> <span class="p">{</span>
+        <span class="k">select</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="nx">amount</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">deposits</span><span class="p">:</span>
+            <span class="nx">balance</span> <span class="o">+=</span> <span class="nx">amount</span>
+        <span class="k">case</span> <span class="nx">balances</span> <span class="o">&lt;-</span> <span class="nx">balance</span><span class="p">:</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">go</span> <span class="nx">teller</span><span class="p">()</span> <span class="c1">// start the monitor goroutine</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Even when a variable cannot be confined to a single goroutine for its entire lifetime, confinement may still be a solution to the problem of concurrent access. For example, it's common to share a variable between goroutines in a pipeline by passing its address from one stage to the next over a channel. If each stage of the pipeline refrains from accessing the variable after sending it to the next stage, then all accesses to the variable are sequential. In effect, the variable is confined to one stage of the pipeline, then confined to the next, and so on. This discipline is sometimes called <em>serial confinement</em>.</p>
+<p>In the example below, <code>Cakes</code> are serially confined, first to the <code>baker</code> goroutine, then to the <code>icer</code> goroutine:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Cake</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">state</span> <span class="kt">string</span> <span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">baker</span><span class="p">(</span><span class="nx">cooked</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="o">*</span><span class="nx">Cake</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">{</span>
+        <span class="nx">cake</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">Cake</span><span class="p">)</span>
+        <span class="nx">cake</span><span class="p">.</span><span class="nx">state</span> <span class="p">=</span> <span class="s">&quot;cooked&quot;</span>
+        <span class="nx">cooked</span> <span class="o">&lt;-</span> <span class="nx">cake</span> <span class="c1">// baker never touches this cake again</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">icer</span><span class="p">(</span><span class="nx">iced</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="o">*</span><span class="nx">Cake</span><span class="p">,</span> <span class="nx">cooked</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="o">*</span><span class="nx">Cake</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">cake</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">cooked</span> <span class="p">{</span>
+        <span class="nx">cake</span><span class="p">.</span><span class="nx">state</span> <span class="p">=</span> <span class="s">&quot;iced&quot;</span>
+        <span class="nx">iced</span> <span class="o">&lt;-</span> <span class="nx">cake</span> <span class="c1">// icer never touches this cake again</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h5 id="allow-only-one-goroutine-to-access-the-variable-at-a-time"><strong>Allow only one goroutine to access the variable at a time</strong> *</h5>
+<p>The third way to avoid a data race is to allow many goroutines to access the variable, but only one at a time. This approach is known as <a href="https://en.wikipedia.org/wiki/Mutual_exclusion"><em>mutual exclusion</em></a> and is the subject of the next section.</p>
             </div>
         </div>
 
