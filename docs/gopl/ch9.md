@@ -79,7 +79,9 @@ However, this intuition is wrong. There is a fourth possible outcome, in which B
 
 After `A1r`, the expression `balance + amount` evaluates to 200, so this is the value written during `A1w`, despite the intervening deposit.
 
-This program contains a particular kind of race condition called a [*data race*](https://en.wikipedia.org/wiki/Race_condition#Software). A data race occurs whenever two goroutines access the same variable concurrently and at least one of the accesses is a write.
+This program contains a particular kind of race condition called a [*data race*](https://en.wikipedia.org/wiki/Race_condition#Software). The definition of it is:
+
+<u>A data race occurs whenever two goroutines access the same variable concurrently and at least one of the accesses is a write.</u>
 
 Things get even messier if the data race involves a variable of a type that is larger than a single machine word, such as an interface, a string, or a slice. The following code updates `x` concurrently to two slices of different lengths:
 
@@ -99,3 +101,115 @@ The value of `x` in the final statement is not defined. It could be any of the f
 Recall that there are three parts to a slice: the pointer, the length, and the capacity. If the pointer comes from the first call to `make` and the length comes from the second, `x` would be a slice whose nominal length is 1,000,000 but whose underlying array has only 10 elements. In this case, storing to element 999,999 would clobber an arbitrary faraway memory location, with consequences that are impossible to predict and hard to debug and localize. This semantic minefield is called [*undefined behavior*](https://en.wikipedia.org/wiki/Undefined_behavior) and is well known to C programmers; fortunately it is rarely as troublesome in Go as in C.
 
 Even the notion that a concurrent program is an interleaving of several sequential programs is a false intuition. [Section 9.4](#memory-synchronization) will show that data races may have even stranger outcomes. Many programmers will occasionally offer justifications for known data races in their programs. The absence of problems on a given compiler and platform may give them false confidence. A good rule of thumb is that there is no such thing as a *benign data race*. So how do we avoid data races in our programs?
+
+#### Avoiding a data race *
+
+There are three ways to avoid a data race.
+
+##### **Avoid writing the variable** *
+
+The first way is not to write the variable. Consider the map below, which is lazily populated as each key is requested for the first time. If `Icon` is called sequentially, the program works fine, but if `Icon` is called concurrently, there is a data race accessing the map.
+
+```go
+var icons = make(map[string]image.Image)
+
+func loadIcon(name string) image.Image
+
+// NOTE: not concurrency-safe!
+func Icon(name string) image.Image {
+	icon, ok := icons[name]
+	if !ok {
+	icon = loadIcon(name)
+	icons[name] = icon
+	}
+	return icon
+}
+```
+
+If instead we initialize the map with all necessary entries before creating additional goroutines and never modify it again, then any number of goroutines may safely call `Icon` concurrently since each only reads the map.
+
+```go
+var icons = map[string]image.Image{
+	"spades.png": loadIcon("spades.png"),
+	"hearts.png": loadIcon("hearts.png"),
+	"diamonds.png": loadIcon("diamonds.png"),
+	"clubs.png": loadIcon("clubs.png"),
+}
+
+// Concurrency-safe.
+func Icon(name string) image.Image { return icons[name] }
+```
+
+In the example above, the `icons` variable is assigned during package initialization, which happens before the program's `main` function starts running. Once initialized, `icons` is never modified. Data structures that are never modified or are immutable are inherently concurrency-safe and need no synchronization. This approach can be used if updates are essential.
+
+##### **Avoid accessing the variable from multiple goroutines** *
+
+The second way to avoid a data race is to avoid accessing the variable from multiple goroutines. This is the approach taken by many of the programs in the previous chapter, for example:
+
+* The main goroutine in the concurrent web crawler ([Section 8.6](ch8.md#example-concurrent-web-crawler)) is the sole goroutine that accesses the `seen` map.
+* The `broadcaster` goroutine in the chat server ([Section 8.10](ch8.md#example-chat-server)) is the only goroutine that accesses the `clients` map.
+
+These variables are *confined* to a single goroutine.
+
+Since other goroutines cannot access the variable directly, they must use a channel to send the confining goroutine a request to query or update the variable. This is what is meant by the Go mantra:
+
+"Do not communicate by sharing memory; instead, share memory by communicating."
+
+A goroutine that brokers access to a confined variable using channel requests is called a *monitor goroutine* for that variable. For example, the `broadcaster` goroutine monitors access to the `clients` map.
+
+The following is the `bank` example rewritten with the `balance` variable confined to a monitor goroutine called `teller`:
+
+<small>[gopl.io/ch9/bank1/bank.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/bank1/bank.go)</small>
+
+```go
+// Package bank provides a concurrency-safe bank with one account.
+package bank
+
+var deposits = make(chan int) // send amount to deposit
+var balances = make(chan int) // receive balance
+
+func Deposit(amount int) { deposits <- amount }
+func Balance() int       { return <-balances }
+
+func teller() {
+	var balance int // balance is confined to teller goroutine
+	for {
+		select {
+		case amount := <-deposits:
+			balance += amount
+		case balances <- balance:
+		}
+	}
+}
+
+func init() {
+	go teller() // start the monitor goroutine
+}
+```
+
+Even when a variable cannot be confined to a single goroutine for its entire lifetime, confinement may still be a solution to the problem of concurrent access. For example, it's common to share a variable between goroutines in a pipeline by passing its address from one stage to the next over a channel. If each stage of the pipeline refrains from accessing the variable after sending it to the next stage, then all accesses to the variable are sequential. In effect, the variable is confined to one stage of the pipeline, then confined to the next, and so on. This discipline is sometimes called *serial confinement*.
+
+In the example below, `Cakes` are serially confined, first to the `baker` goroutine, then to the `icer` goroutine:
+
+```go
+type Cake struct{ state string }
+
+func baker(cooked chan<- *Cake) {
+	for {
+		cake := new(Cake)
+		cake.state = "cooked"
+		cooked <- cake // baker never touches this cake again
+	}
+}
+
+func icer(iced chan<- *Cake, cooked <-chan *Cake) {
+	for cake := range cooked {
+		cake.state = "iced"
+		iced <- cake // icer never touches this cake again
+	}
+}
+```
+
+##### **Allow only one goroutine to access the variable at a time** *
+
+The third way to avoid a data race is to allow many goroutines to access the variable, but only one at a time. This approach is known as [*mutual exclusion*](https://en.wikipedia.org/wiki/Mutual_exclusion) and is the subject of the next section.
