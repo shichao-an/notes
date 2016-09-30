@@ -446,6 +446,8 @@
         
             <li><a href="#array-of-pointers">Array of Pointers</a></li>
         
+            <li><a href="#pointer-to-function">Pointer to Function</a></li>
+        
     
     </ul>
 </div></div>
@@ -648,6 +650,73 @@ x = 10, 10
 
 
 <p>See <a href="../part1/#array-of-pointers">Array of Pointers</a> for details.</p>
+<h4 id="pointer-to-function">Pointer to Function</h4>
+<p>By default, a function's name is the <a href="#constant-pointer">constant pointer</a> to this function. See also <a href="http://en.cppreference.com/w/c/language/pointer#Pointers_to_functions">pointer to function</a>.</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">inc</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="o">*</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">f</span><span class="p">)(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span> <span class="o">=</span> <span class="n">inc</span><span class="p">;</span>
+
+    <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+    <span class="n">f</span><span class="p">(</span><span class="o">&amp;</span><span class="n">i</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><a href="http://en.cppreference.com/w/c/language/typedef"><code>typedef</code></a> can be used to declare a function pointer type that looks better.</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">inc_t</span><span class="p">)(</span><span class="kt">int</span><span class="o">*</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">inc_t</span> <span class="n">f</span> <span class="o">=</span> <span class="n">inc</span><span class="p">;</span>
+    <span class="p">...</span> <span class="p">...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Obviously, the following code is easier to read and understand with <code>typedef</code>:</p>
+<div class="codehilite"><pre><span class="n">inc_t</span> <span class="nf">getFunc</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">inc</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">inc_t</span> <span class="n">inc</span> <span class="o">=</span> <span class="n">getFunc</span><span class="p">();</span>
+    <span class="p">...</span> <span class="p">...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Note the difference between:</p>
+<ul>
+<li>Defining a function pointer type: <code>typedef void (*inc_t)(int*)</code></li>
+<li>Defining a function type: <code>typedef void (inc_t)(int*)</code></li>
+</ul>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">test</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;test&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="n">func_t</span><span class="p">)();</span>
+<span class="k">typedef</span> <span class="nf">void</span><span class="p">(</span><span class="o">*</span><span class="n">func_ptr_t</span><span class="p">)();</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="n">func_t</span><span class="o">*</span> <span class="n">f</span> <span class="o">=</span> <span class="n">test</span><span class="p">;</span>
+    <span class="n">func_ptr_t</span> <span class="n">p</span> <span class="o">=</span> <span class="n">test</span><span class="p">;</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="n">p</span><span class="p">();</span>
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
             </div>
         </div>
 
