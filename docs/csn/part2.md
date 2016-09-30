@@ -192,3 +192,76 @@ int main(int argc, char* argv[])
 ```
 
 See [Array of Pointers](part1.md#array-of-pointers) for details.
+
+#### Pointer to Function
+
+By default, a function's name is the [constant pointer](#constant-pointer) to this function. See also [pointer to function](http://en.cppreference.com/w/c/language/pointer#Pointers_to_functions).
+
+```c
+void inc(int* x)
+{
+    *x += 1;
+}
+
+int main(void)
+{
+    void (*f)(int*) = inc;
+
+    int i = 100;
+    f(&i);
+    printf("%d\n", i);
+
+    return 0;
+}
+```
+
+[`typedef`](http://en.cppreference.com/w/c/language/typedef) can be used to declare a function pointer type that looks better.
+
+```c
+typedef void (*inc_t)(int*);
+
+int main(void)
+{
+    inc_t f = inc;
+    ... ...
+}
+```
+
+Obviously, the following code is easier to read and understand with `typedef`:
+
+```c
+inc_t getFunc()
+{
+    return inc;
+}
+
+int main(void)
+{
+    inc_t inc = getFunc();
+    ... ...
+}
+```
+
+Note the difference between:
+
+* Defining a function pointer type: `typedef void (*inc_t)(int*)`
+* Defining a function type: `typedef void (inc_t)(int*)`
+
+```c
+void test()
+{
+    printf("test");
+}
+
+typedef void(func_t)();
+typedef void(*func_ptr_t)();
+
+int main(int argc, char* argv[])
+{
+    func_t* f = test;
+    func_ptr_t p = test;
+    f();
+    p();
+    return EXIT_SUCCESS;
+}
+```
