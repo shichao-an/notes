@@ -850,7 +850,7 @@ test2: x = 1237(0xbffff7d4), y = 90(0xbffff7d8), s = abc(0x4ad3);
 
 #### Function Types
 
-Do not confuse "function type" and "function pointer type". The name of a function is a pointer to that function.
+Do not confuse "function type" and "[function pointer](part2.md#pointer-to-function) type". The name of a function is a pointer to that function.
 
 ```c
 typedef void(func_t)();      // function type
