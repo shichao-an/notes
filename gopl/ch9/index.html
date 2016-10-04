@@ -436,6 +436,8 @@
         
             <li><a href="#avoiding-a-data-race">Avoiding a data race *</a></li>
         
+            <li><a href="#mutual-exclusion-syncmutex">Mutual Exclusion: sync.Mutex</a></li>
+        
     
     </ul>
 </div></div>
@@ -619,6 +621,55 @@ express concurrency in a direct and natural way.</p>
 
 <h5 id="allow-only-one-goroutine-to-access-the-variable-at-a-time"><strong>Allow only one goroutine to access the variable at a time</strong> *</h5>
 <p>The third way to avoid a data race is to allow many goroutines to access the variable, but only one at a time. This approach is known as <a href="https://en.wikipedia.org/wiki/Mutual_exclusion"><em>mutual exclusion</em></a> and is the subject of the next section.</p>
+<h4 id="mutual-exclusion-syncmutex">Mutual Exclusion: <code>sync.Mutex</code></h4>
+<p><a href="#example-concurrent-web-crawler">Section 8.6</a> uses a buffered channel as a <em>counting semaphore</em> to ensure that no more than 20 goroutines made simultaneous HTTP requests. With the same idea, we can use a channel of capacity 1 to ensure that at most one goroutine accesses a shared variable at a time. A semaphore that counts only to 1 is called a <a href="https://en.wikipedia.org/wiki/Semaphore_(programming)"><em>binary semaphore</em></a>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/bank2/bank.go">gopl.io/ch9/bank2/bank.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">sema</span>    <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{},</span> <span class="mi">1</span><span class="p">)</span> <span class="c1">// a binary semaphore guarding balance</span>
+    <span class="nx">balance</span> <span class="kt">int</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">Deposit</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">sema</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span> <span class="c1">// acquire token</span>
+    <span class="nx">balance</span> <span class="p">=</span> <span class="nx">balance</span> <span class="o">+</span> <span class="nx">amount</span>
+    <span class="o">&lt;-</span><span class="nx">sema</span> <span class="c1">// release token</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Balance</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">sema</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span> <span class="c1">// acquire token</span>
+    <span class="nx">b</span> <span class="o">:=</span> <span class="nx">balance</span>
+    <span class="o">&lt;-</span><span class="nx">sema</span> <span class="c1">// release token</span>
+    <span class="k">return</span> <span class="nx">b</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This pattern of <a href="https://en.wikipedia.org/wiki/Mutual_exclusion">mutual exclusion</a> is so useful that it is supported directly by the <a href="https://golang.org/pkg/sync/#Mutex"><code>Mutex</code></a> type from the <a href="https://golang.org/pkg/sync/"><code>sync</code></a> package. Its <code>Lock</code> method acquires the token (called a <em>lock</em>) and its <code>Unlock</code> method releases it:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/bank3/bank.go">gopl.io/ch9/bank3/bank.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;sync&quot;</span>
+
+<span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">mu</span>      <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span> <span class="c1">// guards balance</span>
+    <span class="nx">balance</span> <span class="kt">int</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">Deposit</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">balance</span> <span class="p">=</span> <span class="nx">balance</span> <span class="o">+</span> <span class="nx">amount</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Balance</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">b</span> <span class="o">:=</span> <span class="nx">balance</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">b</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each time a goroutine accesses <code>balance</code>, it must call the mutex's <code>Lock</code> method to acquire an exclusive lock. If some other goroutine has acquired the lock, this operation will block until the other goroutine calls <code>Unlock</code> and the lock becomes available again. The mutex <em>guards</em> the shared variables. <u>By convention, the variables guarded by a mutex are declared immediately after the declaration of the mutex itself.</u> If you deviate from this, be sure to document it.</p>
+<p>The region of code between <code>Lock</code> and <code>Unlock</code> in which a goroutine is free to read and modify the shared variables is called a <a href="https://en.wikipedia.org/wiki/Critical_section"><em>critical section</em></a>. The lock holder's call to <code>Unlock</code> happens before any other goroutine can acquire the lock for itself. It is essential that the goroutine release the lock once it is finished, on all paths through the function, including error paths.</p>
             </div>
         </div>
 
