@@ -213,3 +213,59 @@ func icer(iced chan<- *Cake, cooked <-chan *Cake) {
 ##### **Allow only one goroutine to access the variable at a time** *
 
 The third way to avoid a data race is to allow many goroutines to access the variable, but only one at a time. This approach is known as [*mutual exclusion*](https://en.wikipedia.org/wiki/Mutual_exclusion) and is the subject of the next section.
+
+#### Mutual Exclusion: `sync.Mutex`
+
+[Section 8.6](#example-concurrent-web-crawler) uses a buffered channel as a *counting semaphore* to ensure that no more than 20 goroutines made simultaneous HTTP requests. With the same idea, we can use a channel of capacity 1 to ensure that at most one goroutine accesses a shared variable at a time. A semaphore that counts only to 1 is called a [*binary semaphore*](https://en.wikipedia.org/wiki/Semaphore_(programming)).
+
+<small>[gopl.io/ch9/bank2/bank.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/bank2/bank.go)</small>
+
+```go
+var (
+	sema    = make(chan struct{}, 1) // a binary semaphore guarding balance
+	balance int
+)
+
+func Deposit(amount int) {
+	sema <- struct{}{} // acquire token
+	balance = balance + amount
+	<-sema // release token
+}
+
+func Balance() int {
+	sema <- struct{}{} // acquire token
+	b := balance
+	<-sema // release token
+	return b
+}
+```
+
+This pattern of [mutual exclusion](https://en.wikipedia.org/wiki/Mutual_exclusion) is so useful that it is supported directly by the [`Mutex`](https://golang.org/pkg/sync/#Mutex) type from the [`sync`](https://golang.org/pkg/sync/) package. Its `Lock` method acquires the token (called a *lock*) and its `Unlock` method releases it:
+
+<small>[gopl.io/ch9/bank3/bank.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/bank3/bank.go)</small>
+
+```go
+import "sync"
+
+var (
+	mu      sync.Mutex // guards balance
+	balance int
+)
+
+func Deposit(amount int) {
+	mu.Lock()
+	balance = balance + amount
+	mu.Unlock()
+}
+
+func Balance() int {
+	mu.Lock()
+	b := balance
+	mu.Unlock()
+	return b
+}
+```
+
+Each time a goroutine accesses `balance`, it must call the mutex's `Lock` method to acquire an exclusive lock. If some other goroutine has acquired the lock, this operation will block until the other goroutine calls `Unlock` and the lock becomes available again. The mutex *guards* the shared variables. <u>By convention, the variables guarded by a mutex are declared immediately after the declaration of the mutex itself.</u> If you deviate from this, be sure to document it.
+
+The region of code between `Lock` and `Unlock` in which a goroutine is free to read and modify the shared variables is called a [*critical section*](https://en.wikipedia.org/wiki/Critical_section). The lock holder's call to `Unlock` happens before any other goroutine can acquire the lock for itself. It is essential that the goroutine release the lock once it is finished, on all paths through the function, including error paths.
