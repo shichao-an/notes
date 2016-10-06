@@ -269,3 +269,113 @@ func Balance() int {
 Each time a goroutine accesses `balance`, it must call the mutex's `Lock` method to acquire an exclusive lock. If some other goroutine has acquired the lock, this operation will block until the other goroutine calls `Unlock` and the lock becomes available again. The mutex *guards* the shared variables. <u>By convention, the variables guarded by a mutex are declared immediately after the declaration of the mutex itself.</u> If you deviate from this, be sure to document it.
 
 The region of code between `Lock` and `Unlock` in which a goroutine is free to read and modify the shared variables is called a [*critical section*](https://en.wikipedia.org/wiki/Critical_section). The lock holder's call to `Unlock` happens before any other goroutine can acquire the lock for itself. It is essential that the goroutine release the lock once it is finished, on all paths through the function, including error paths.
+
+The bank program above exemplifies a common concurrency pattern:
+
+* A set of exported functions encapsulates one or more variables so that the only way to access the variables is through these functions (or methods, for the variables of an object).
+* Each function acquires a mutex lock at the beginning and releases it at the end, thereby ensuring that the shared variables are not accessed concurrently.
+
+This arrangement of functions, mutex lock, and variables is called a [*monitor*](https://en.wikipedia.org/wiki/Monitor_(synchronization)). This older use of the word "monitor" inspired the term "monitor goroutine". Both uses share the meaning of a broker that ensures variables are accessed sequentially.
+
+In more complex critical sections, especially those in which errors must be dealt with by returning early, it can be hard to tell that calls to `Lock` and `Unlock` are strictly paired on all paths. Go's `defer` statement is useful by deferring a call to `Unlock`, and the critical section implicitly extends to the end of the current function.
+
+```go
+func Balance() int {
+	mu.Lock()
+	defer mu.Unlock()
+	return balance
+}
+```
+
+In the example above:
+
+* The `Unlock` executes after the `return` statement has read the value of `balance`, so the `Balance` function is concurrency-safe. Also, the local variable `b` is no longer needed.
+* Furthermore, a deferred `Unlock` will run even if the critical section panics, which may be important in programs that make use of `recover` ([Section 5.10](ch5.md#recover)). A `defer` is marginally more expensive than an explicit call to `Unlock`, but not enough to justify less clear code. Concurrent programs always favor clarity and resist premature optimization. Where possible, use `defer` and extend critical sections to the end of a function.
+
+In the `Withdraw` function below:
+
+* On success, it reduces the balance by the specified amount and returns `true`.
+* If the account holds insufficient funds for the transaction, `Withdraw` restores the balance and returns `false`.
+
+```go
+// NOTE: not atomic!
+func Withdraw(amount int) bool {
+	Deposit(-amount)
+	if Balance() < 0 {
+		Deposit(amount)
+		return false // insufficient funds
+	}
+	return true
+}
+```
+
+This function eventually gives the correct result, but it has a side effect. When an excessive withdrawal is attempted, the balance transiently dips below zero. This may cause a concurrent withdrawal for a modest sum to be spuriously rejected. So if Bob tries to buy a sports car, Alice can't pay for her morning coffee.
+
+The problem is that `Withdraw` is not [*atomic*](https://en.wikipedia.org/wiki/Linearizability): it consists of a sequence of three separate operations, each of which acquires and then releases the mutex lock, but nothing locks the whole sequence.
+
+Ideally, `Withdraw` should acquire the mutex lock once around the whole operation. However, this attempt won't work:
+
+```go
+// NOTE: incorrect!
+func Withdraw(amount int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	Deposit(-amount)
+	if Balance() < 0 {
+		Deposit(amount)
+		return false // insufficient funds
+	}
+	return true
+}
+```
+
+`Deposit` tries to acquire the mutex lock a second time by calling `mu.Lock()`, but because mutex locks are not [*re-entrant*](https://en.wikipedia.org/wiki/Reentrancy_(computing)), it's not possible to lock a mutex that's already locked. This leads to a deadlock where nothing can proceed, and `Withdraw` blocks forever.
+
+There is a good reason Go's mutexes are not re-entrant. The purpose of a mutex is to ensure that certain invariants of the shared variables are maintained at critical points during program execution. One of the invariants is "no goroutine is accessing the shared variables", but there may be additional invariants specific to the data structures that the mutex guards. When a goroutine acquires a mutex lock, it may assume that the invariants hold. While it holds the lock, it may update the shared variables so that the invariants are temporarily violated. However, when it releases the lock, it must guarantee that order has been restored and the invariants hold once again. Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.
+
+A common solution is to divide a function such as `Deposit` into two:
+
+* An unexported function, `deposit`, which assumes the lock is already held and does the real work
+* An exported function `Deposit` that acquires the lock before calling `deposit`
+
+The rewritten `Withdraw` in terms of `deposit` is like this:
+
+```go
+func Withdraw(amount int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	deposit(-amount)
+	if balance < 0 {
+		deposit(amount)
+		return false // insufficient funds
+	}
+	return true
+}
+
+func Deposit(amount int) {
+	mu.Lock()
+	defer mu.Unlock()
+	deposit(amount)
+}
+
+func Balance() int {
+	mu.Lock()
+	defer mu.Unlock()
+	return balance
+}
+
+// This function requires that the lock be held.
+func deposit(amount int) { balance += amount }
+```
+
+Encapsulation ([Section 6.6](ch6.md#encapsulation)), by reducing unexpected interactions in a program, helps us maintain data structure invariants. For the same reason, encapsulation also helps us maintain concurrency invariants. <u>When you use a mutex, make sure that both it and the variables it guards are not exported, whether they are package-level variables or the fields of a struct.</u>
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p265 on mutexes**
+
+> Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.
+
+<span class="text-danger">Question</span>: What does it mean?
