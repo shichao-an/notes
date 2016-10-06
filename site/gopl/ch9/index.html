@@ -439,6 +439,11 @@
             <li><a href="#mutual-exclusion-syncmutex">Mutual Exclusion: sync.Mutex</a></li>
         
     
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -670,6 +675,104 @@ express concurrency in a direct and natural way.</p>
 
 <p>Each time a goroutine accesses <code>balance</code>, it must call the mutex's <code>Lock</code> method to acquire an exclusive lock. If some other goroutine has acquired the lock, this operation will block until the other goroutine calls <code>Unlock</code> and the lock becomes available again. The mutex <em>guards</em> the shared variables. <u>By convention, the variables guarded by a mutex are declared immediately after the declaration of the mutex itself.</u> If you deviate from this, be sure to document it.</p>
 <p>The region of code between <code>Lock</code> and <code>Unlock</code> in which a goroutine is free to read and modify the shared variables is called a <a href="https://en.wikipedia.org/wiki/Critical_section"><em>critical section</em></a>. The lock holder's call to <code>Unlock</code> happens before any other goroutine can acquire the lock for itself. It is essential that the goroutine release the lock once it is finished, on all paths through the function, including error paths.</p>
+<p>The bank program above exemplifies a common concurrency pattern:</p>
+<ul>
+<li>A set of exported functions encapsulates one or more variables so that the only way to access the variables is through these functions (or methods, for the variables of an object).</li>
+<li>Each function acquires a mutex lock at the beginning and releases it at the end, thereby ensuring that the shared variables are not accessed concurrently.</li>
+</ul>
+<p>This arrangement of functions, mutex lock, and variables is called a <a href="https://en.wikipedia.org/wiki/Monitor_(synchronization)"><em>monitor</em></a>. This older use of the word "monitor" inspired the term "monitor goroutine". Both uses share the meaning of a broker that ensures variables are accessed sequentially.</p>
+<p>In more complex critical sections, especially those in which errors must be dealt with by returning early, it can be hard to tell that calls to <code>Lock</code> and <code>Unlock</code> are strictly paired on all paths. Go's <code>defer</code> statement is useful by deferring a call to <code>Unlock</code>, and the critical section implicitly extends to the end of the current function.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Balance</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">defer</span> <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">balance</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In the example above:</p>
+<ul>
+<li>The <code>Unlock</code> executes after the <code>return</code> statement has read the value of <code>balance</code>, so the <code>Balance</code> function is concurrency-safe. Also, the local variable <code>b</code> is no longer needed.</li>
+<li>Furthermore, a deferred <code>Unlock</code> will run even if the critical section panics, which may be important in programs that make use of <code>recover</code> (<a href="../ch5/#recover">Section 5.10</a>). A <code>defer</code> is marginally more expensive than an explicit call to <code>Unlock</code>, but not enough to justify less clear code. Concurrent programs always favor clarity and resist premature optimization. Where possible, use <code>defer</code> and extend critical sections to the end of a function.</li>
+</ul>
+<p>In the <code>Withdraw</code> function below:</p>
+<ul>
+<li>On success, it reduces the balance by the specified amount and returns <code>true</code>.</li>
+<li>If the account holds insufficient funds for the transaction, <code>Withdraw</code> restores the balance and returns <code>false</code>.</li>
+</ul>
+<div class="codehilite"><pre><span class="c1">// NOTE: not atomic!</span>
+<span class="kd">func</span> <span class="nx">Withdraw</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="nx">Deposit</span><span class="p">(</span><span class="o">-</span><span class="nx">amount</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">Balance</span><span class="p">()</span> <span class="p">&lt;</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">Deposit</span><span class="p">(</span><span class="nx">amount</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">false</span> <span class="c1">// insufficient funds</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function eventually gives the correct result, but it has a side effect. When an excessive withdrawal is attempted, the balance transiently dips below zero. This may cause a concurrent withdrawal for a modest sum to be spuriously rejected. So if Bob tries to buy a sports car, Alice can't pay for her morning coffee.</p>
+<p>The problem is that <code>Withdraw</code> is not <a href="https://en.wikipedia.org/wiki/Linearizability"><em>atomic</em></a>: it consists of a sequence of three separate operations, each of which acquires and then releases the mutex lock, but nothing locks the whole sequence.</p>
+<p>Ideally, <code>Withdraw</code> should acquire the mutex lock once around the whole operation. However, this attempt won't work:</p>
+<div class="codehilite"><pre><span class="c1">// NOTE: incorrect!</span>
+<span class="kd">func</span> <span class="nx">Withdraw</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">defer</span> <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="nx">Deposit</span><span class="p">(</span><span class="o">-</span><span class="nx">amount</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">Balance</span><span class="p">()</span> <span class="p">&lt;</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">Deposit</span><span class="p">(</span><span class="nx">amount</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">false</span> <span class="c1">// insufficient funds</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>Deposit</code> tries to acquire the mutex lock a second time by calling <code>mu.Lock()</code>, but because mutex locks are not <a href="https://en.wikipedia.org/wiki/Reentrancy_(computing)"><em>re-entrant</em></a>, it's not possible to lock a mutex that's already locked. This leads to a deadlock where nothing can proceed, and <code>Withdraw</code> blocks forever.</p>
+<p>There is a good reason Go's mutexes are not re-entrant. The purpose of a mutex is to ensure that certain invariants of the shared variables are maintained at critical points during program execution. One of the invariants is "no goroutine is accessing the shared variables", but there may be additional invariants specific to the data structures that the mutex guards. When a goroutine acquires a mutex lock, it may assume that the invariants hold. While it holds the lock, it may update the shared variables so that the invariants are temporarily violated. However, when it releases the lock, it must guarantee that order has been restored and the invariants hold once again. Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.</p>
+<p>A common solution is to divide a function such as <code>Deposit</code> into two:</p>
+<ul>
+<li>An unexported function, <code>deposit</code>, which assumes the lock is already held and does the real work</li>
+<li>An exported function <code>Deposit</code> that acquires the lock before calling <code>deposit</code></li>
+</ul>
+<p>The rewritten <code>Withdraw</code> in terms of <code>deposit</code> is like this:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Withdraw</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">defer</span> <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="nx">deposit</span><span class="p">(</span><span class="o">-</span><span class="nx">amount</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">balance</span> <span class="p">&lt;</span> <span class="mi">0</span> <span class="p">{</span>
+        <span class="nx">deposit</span><span class="p">(</span><span class="nx">amount</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">false</span> <span class="c1">// insufficient funds</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Deposit</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">defer</span> <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="nx">deposit</span><span class="p">(</span><span class="nx">amount</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">Balance</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">defer</span> <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">balance</span>
+<span class="p">}</span>
+
+<span class="c1">// This function requires that the lock be held.</span>
+<span class="kd">func</span> <span class="nx">deposit</span><span class="p">(</span><span class="nx">amount</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span> <span class="nx">balance</span> <span class="o">+=</span> <span class="nx">amount</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Encapsulation (<a href="../ch6/#encapsulation">Section 6.6</a>), by reducing unexpected interactions in a program, helps us maintain data structure invariants. For the same reason, encapsulation also helps us maintain concurrency invariants. <u>When you use a mutex, make sure that both it and the variables it guards are not exported, whether they are package-level variables or the fields of a struct.</u></p>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
+<blockquote>
+<p>Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean?</p>
             </div>
         </div>
 
