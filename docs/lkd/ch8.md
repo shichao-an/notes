@@ -698,6 +698,121 @@ Despite running in process context, the work handlers cannot access user-space m
 
 Locking between work queues or other parts of the kernel is handled just as with any other process context code. This makes writing work handlers much easier.
 
+##### **Scheduling Work**
+
+Now that the work is created, we can schedule it. To queue a given work's handler function with the default *events* worker threads, call:
+
+```c
+schedule_work(&work);
+```
+
+The work is scheduled immediately and is run as soon as the *events* worker thread on the current processor wakes up.
+
+Sometimes you do not want the work to execute immediately, but instead after some delay. You can schedule work to execute at a given time in the future:
+
+```c
+schedule_delayed_work(&work, delay);
+```
+
+In this case, the `work_struct` represented by `&work` will not execute for at least `delay` timer ticks into the future. Using ticks as a unit of time is covered in [Chapter 10](ch10.md).
+
+##### **Flushing Work**
+
+Queued work is executed when the worker thread next wakes up. Sometimes, you need to ensure that a given batch of work has completed before continuing. This is especially important because:
+
+* [Modules](https://en.wikipedia.org/wiki/Loadable_kernel_module) almost certainly want to call this function before unloading.
+* Other places in the kernel also might need to ensure that no work is pending, to prevent race conditions.
+
+For these needs, there is a function to flush a given work queue:
+
+```c
+void flush_scheduled_work(void);
+```
+
+* This function waits until all entries in the queue are executed before returning.
+* This function sleeps while waiting for any pending work to execute. Therefore, you can call it only from process context.
+
+Note that this function does not cancel any delayed work. Any work that was scheduled via `schedule_delayed_work()`, and whose delay is not yet up, is not flushed via `flush_scheduled_work()`. To cancel delayed work, call:
+
+```c
+int cancel_delayed_work(struct work_struct *work);
+```
+
+This function cancels the pending work, if any, associated with the given `work_struct`.
+
+##### **Creating New Work Queues**
+
+If the default queue is insufficient for your needs, you can create a new work queue and corresponding worker threads. Because this creates one worker thread per processor, you should create unique work queues only if your code needs the performance of a unique set of threads.
+
+You create a new work queue and the associated worker threads via a simple function:
+
+```c
+struct workqueue_struct *create_workqueue(const char *name);
+```
+
+The parameter `name` is used to name the kernel threads. For example, the default events queue is created via:
+
+```c
+struct workqueue_struct *keventd_wq;
+keventd_wq = create_workqueue("events");
+```
+
+This function creates all the worker threads (one for each processor in the system) and prepares them to handle work.
+
+Creating work is handled in the same manner regardless of the queue type. After the work is created, the following functions are analogous to `schedule_work()` and `schedule_delayed_work()`, except that they work on the given work queue and not the default *events* queue.
+
+```c
+int queue_work(struct workqueue_struct *wq, struct work_struct *work)
+
+int queue_delayed_work(struct workqueue_struct *wq,
+                       struct work_struct *work,
+                       unsigned long delay)
+```
+
+Finally, you can flush a wait queue via a call to the function:
+
+```c
+flush_workqueue(struct workqueue_struct *wq)
+```
+
+As previously discussed, this function works identically to `flush_scheduled_work()`, except that it waits for the given queue to empty before returning.
+
+#### The Old Task Queue Mechanism
+
+(skipped) [p155-156]
+
+### Which Bottom Half Should I Use?
+
+The decision over which bottom half to use is important. The current 2.6 kernel provides three choices: softirqs, tasklets, and work queues. Tasklets are built on softirqs and, therefore, both are similar. The work queue mechanism is an entirely different creature and is built on kernel threads.
+
+#### Softirqs: least serialization, for highly threaded code *
+
+Softirqs, by design, provide the least serialization. <u>This requires softirq handlers to go through extra steps to ensure that shared data is safe because two or more softirqs of the same type may run concurrently on different processors.</u> If the code in question is already highly threaded, such as in a networking subsystem that is chest-deep in per-processor variables, softirqs make a good choice. They are certainly the fastest alternative for timing-critical and high-frequency uses.
+
+#### Tasklets: simple interface, for less threaded code *
+
+Tasklets make more sense if the code is not finely threaded. They have a simpler interface and, because two tasklets of the same type might not run concurrently, they are easier to implement. <u>Tasklets are effectively softirqs that do not run concurrently.</u> A driver developer should always choose tasklets over softirqs, unless prepared to utilize per-processor variables or similar magic to ensure that the softirq can safely run concurrently on multiple processors.
+
+#### Work queues: process context *
+
+If the deferred work needs to run in process context, the only choice of the three is work queues. If process context is not a requirements (specifically, if you have no need to sleep), softirqs or tasklets are perhaps better suited. Work queues involve the highest overhead because they involve kernel threads and, therefore, [context switching](ch4.md#preemption-and-context-switching). This doesn't mean they are inefficient, but in light of thousands of interrupts hitting per second (as the networking subsystem might experience), other methods make more sense. However, work queues are sufficient for most situations.
+
+#### Softirqs vs. tasklets vs. work queues
+
+In terms of ease of use, work queues wins. Using the default *events* queue is easy. Next come tasklets, which also have a simple interface. Coming in last are softirqs, which need to be statically created and require careful thinking with their implementation.
+
+The following table is a comparison between the three bottom-half interfaces.
+
+Bottom Half | Context | Inherent Serialization
+----------- | ------- | ----------------------
+Softirq | Interrupt | None
+Tasklet | Interrupt | Against the same tasklet
+Work queues | Process | None (scheduled as process context)
+
+In short, normal driver writers have two choices:
+
+If you need a schedulable entity to perform your deferred work, and if fundamentally, you need to sleep for any reason, then work queues are your only option. Otherwise, tasklets are preferred. Only if scalability becomes a concern do you investigate softirqs.
+
 ### Doubts and Solution
 
 #### Verbatim
