@@ -463,6 +463,19 @@
         
             <li><a href="#using-work-queues">Using Work Queues</a></li>
         
+            <li><a href="#the-old-task-queue-mechanism">The Old Task Queue Mechanism</a></li>
+        
+    
+        <li class="main "><a href="#which-bottom-half-should-i-use">Which Bottom Half Should I Use?</a></li>
+        
+            <li><a href="#softirqs-least-serialization-for-highly-threaded-code">Softirqs: least serialization, for highly threaded code *</a></li>
+        
+            <li><a href="#tasklets-simple-interface-for-less-threaded-code">Tasklets: simple interface, for less threaded code *</a></li>
+        
+            <li><a href="#work-queues-process-context">Work queues: process context *</a></li>
+        
+            <li><a href="#softirqs-vs-tasklets-vs-work-queues">Softirqs vs. tasklets vs. work queues</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -1122,6 +1135,110 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <p>A worker thread executes this function, so the function runs in <a href="../ch3/#process-context">process context</a>. By default, interrupts are enabled and no locks are held. If needed, the function can sleep.</p>
 <p>Despite running in process context, the work handlers cannot access user-space memory because there is no associated user-space memory map for <a href="../ch3/#kernel-threads">kernel threads</a>. The kernel can access user memory only when running on behalf of a user-space process, such as when executing a system call. Only then is user memory mapped in.</p>
 <p>Locking between work queues or other parts of the kernel is handled just as with any other process context code. This makes writing work handlers much easier.</p>
+<h5 id="scheduling-work"><strong>Scheduling Work</strong></h5>
+<p>Now that the work is created, we can schedule it. To queue a given work's handler function with the default <em>events</em> worker threads, call:</p>
+<div class="codehilite"><pre><span class="n">schedule_work</span><span class="p">(</span><span class="o">&amp;</span><span class="n">work</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The work is scheduled immediately and is run as soon as the <em>events</em> worker thread on the current processor wakes up.</p>
+<p>Sometimes you do not want the work to execute immediately, but instead after some delay. You can schedule work to execute at a given time in the future:</p>
+<div class="codehilite"><pre><span class="n">schedule_delayed_work</span><span class="p">(</span><span class="o">&amp;</span><span class="n">work</span><span class="p">,</span> <span class="n">delay</span><span class="p">);</span>
+</pre></div>
+
+
+<p>In this case, the <code>work_struct</code> represented by <code>&amp;work</code> will not execute for at least <code>delay</code> timer ticks into the future. Using ticks as a unit of time is covered in <a href="../ch10/">Chapter 10</a>.</p>
+<h5 id="flushing-work"><strong>Flushing Work</strong></h5>
+<p>Queued work is executed when the worker thread next wakes up. Sometimes, you need to ensure that a given batch of work has completed before continuing. This is especially important because:</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Loadable_kernel_module">Modules</a> almost certainly want to call this function before unloading.</li>
+<li>Other places in the kernel also might need to ensure that no work is pending, to prevent race conditions.</li>
+</ul>
+<p>For these needs, there is a function to flush a given work queue:</p>
+<div class="codehilite"><pre><span class="kt">void</span> <span class="nf">flush_scheduled_work</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</pre></div>
+
+
+<ul>
+<li>This function waits until all entries in the queue are executed before returning.</li>
+<li>This function sleeps while waiting for any pending work to execute. Therefore, you can call it only from process context.</li>
+</ul>
+<p>Note that this function does not cancel any delayed work. Any work that was scheduled via <code>schedule_delayed_work()</code>, and whose delay is not yet up, is not flushed via <code>flush_scheduled_work()</code>. To cancel delayed work, call:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="nf">cancel_delayed_work</span><span class="p">(</span><span class="k">struct</span> <span class="n">work_struct</span> <span class="o">*</span><span class="n">work</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This function cancels the pending work, if any, associated with the given <code>work_struct</code>.</p>
+<h5 id="creating-new-work-queues"><strong>Creating New Work Queues</strong></h5>
+<p>If the default queue is insufficient for your needs, you can create a new work queue and corresponding worker threads. Because this creates one worker thread per processor, you should create unique work queues only if your code needs the performance of a unique set of threads.</p>
+<p>You create a new work queue and the associated worker threads via a simple function:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="nf">create_workqueue</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+</pre></div>
+
+
+<p>The parameter <code>name</code> is used to name the kernel threads. For example, the default events queue is created via:</p>
+<div class="codehilite"><pre><span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="n">keventd_wq</span><span class="p">;</span>
+<span class="n">keventd_wq</span> <span class="o">=</span> <span class="n">create_workqueue</span><span class="p">(</span><span class="s">&quot;events&quot;</span><span class="p">);</span>
+</pre></div>
+
+
+<p>This function creates all the worker threads (one for each processor in the system) and prepares them to handle work.</p>
+<p>Creating work is handled in the same manner regardless of the queue type. After the work is created, the following functions are analogous to <code>schedule_work()</code> and <code>schedule_delayed_work()</code>, except that they work on the given work queue and not the default <em>events</em> queue.</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">queue_work</span><span class="p">(</span><span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="n">wq</span><span class="p">,</span> <span class="k">struct</span> <span class="n">work_struct</span> <span class="o">*</span><span class="n">work</span><span class="p">)</span>
+
+<span class="kt">int</span> <span class="n">queue_delayed_work</span><span class="p">(</span><span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="n">wq</span><span class="p">,</span>
+                       <span class="k">struct</span> <span class="n">work_struct</span> <span class="o">*</span><span class="n">work</span><span class="p">,</span>
+                       <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">delay</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Finally, you can flush a wait queue via a call to the function:</p>
+<div class="codehilite"><pre><span class="n">flush_workqueue</span><span class="p">(</span><span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="n">wq</span><span class="p">)</span>
+</pre></div>
+
+
+<p>As previously discussed, this function works identically to <code>flush_scheduled_work()</code>, except that it waits for the given queue to empty before returning.</p>
+<h4 id="the-old-task-queue-mechanism">The Old Task Queue Mechanism</h4>
+<p>(skipped) [p155-156]</p>
+<h3 id="which-bottom-half-should-i-use">Which Bottom Half Should I Use?</h3>
+<p>The decision over which bottom half to use is important. The current 2.6 kernel provides three choices: softirqs, tasklets, and work queues. Tasklets are built on softirqs and, therefore, both are similar. The work queue mechanism is an entirely different creature and is built on kernel threads.</p>
+<h4 id="softirqs-least-serialization-for-highly-threaded-code">Softirqs: least serialization, for highly threaded code *</h4>
+<p>Softirqs, by design, provide the least serialization. <u>This requires softirq handlers to go through extra steps to ensure that shared data is safe because two or more softirqs of the same type may run concurrently on different processors.</u> If the code in question is already highly threaded, such as in a networking subsystem that is chest-deep in per-processor variables, softirqs make a good choice. They are certainly the fastest alternative for timing-critical and high-frequency uses.</p>
+<h4 id="tasklets-simple-interface-for-less-threaded-code">Tasklets: simple interface, for less threaded code *</h4>
+<p>Tasklets make more sense if the code is not finely threaded. They have a simpler interface and, because two tasklets of the same type might not run concurrently, they are easier to implement. <u>Tasklets are effectively softirqs that do not run concurrently.</u> A driver developer should always choose tasklets over softirqs, unless prepared to utilize per-processor variables or similar magic to ensure that the softirq can safely run concurrently on multiple processors.</p>
+<h4 id="work-queues-process-context">Work queues: process context *</h4>
+<p>If the deferred work needs to run in process context, the only choice of the three is work queues. If process context is not a requirements (specifically, if you have no need to sleep), softirqs or tasklets are perhaps better suited. Work queues involve the highest overhead because they involve kernel threads and, therefore, <a href="../ch4/#preemption-and-context-switching">context switching</a>. This doesn't mean they are inefficient, but in light of thousands of interrupts hitting per second (as the networking subsystem might experience), other methods make more sense. However, work queues are sufficient for most situations.</p>
+<h4 id="softirqs-vs-tasklets-vs-work-queues">Softirqs vs. tasklets vs. work queues</h4>
+<p>In terms of ease of use, work queues wins. Using the default <em>events</em> queue is easy. Next come tasklets, which also have a simple interface. Coming in last are softirqs, which need to be statically created and require careful thinking with their implementation.</p>
+<p>The following table is a comparison between the three bottom-half interfaces.</p>
+<table>
+<thead>
+<tr>
+<th>Bottom Half</th>
+<th>Context</th>
+<th>Inherent Serialization</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Softirq</td>
+<td>Interrupt</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Tasklet</td>
+<td>Interrupt</td>
+<td>Against the same tasklet</td>
+</tr>
+<tr>
+<td>Work queues</td>
+<td>Process</td>
+<td>None (scheduled as process context)</td>
+</tr>
+</tbody>
+</table>
+<p>In short, normal driver writers have two choices:</p>
+<p>If you need a schedulable entity to perform your deferred work, and if fundamentally, you need to sleep for any reason, then work queues are your only option. Otherwise, tasklets are preferred. Only if scalability becomes a concern do you investigate softirqs.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
