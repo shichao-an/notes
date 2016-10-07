@@ -214,7 +214,7 @@ func icer(iced chan<- *Cake, cooked <-chan *Cake) {
 
 The third way to avoid a data race is to allow many goroutines to access the variable, but only one at a time. This approach is known as [*mutual exclusion*](https://en.wikipedia.org/wiki/Mutual_exclusion) and is the subject of the next section.
 
-#### Mutual Exclusion: `sync.Mutex`
+### Mutual Exclusion: [`sync.Mutex`](https://golang.org/pkg/sync/#Mutex)
 
 [Section 8.6](#example-concurrent-web-crawler) uses a buffered channel as a *counting semaphore* to ensure that no more than 20 goroutines made simultaneous HTTP requests. With the same idea, we can use a channel of capacity 1 to ensure that at most one goroutine accesses a shared variable at a time. A semaphore that counts only to 1 is called a [*binary semaphore*](https://en.wikipedia.org/wiki/Semaphore_(programming)).
 
@@ -369,6 +369,28 @@ func deposit(amount int) { balance += amount }
 ```
 
 Encapsulation ([Section 6.6](ch6.md#encapsulation)), by reducing unexpected interactions in a program, helps us maintain data structure invariants. For the same reason, encapsulation also helps us maintain concurrency invariants. <u>When you use a mutex, make sure that both it and the variables it guards are not exported, whether they are package-level variables or the fields of a struct.</u>
+
+### Read/Write Mutexes: [`sync.RWMutex`](https://golang.org/pkg/sync/#RWMutex)
+
+Since the `Balance` function only needs to read the state of the variable, it would actually be safe for multiple `Balance` calls to run concurrently, as long as no `Deposit` or `Withdraw` call is running. In this scenario we need a special kind of lock that allows read-only operations to proceed in parallel with each other, but write operations to have fully exclusive access. This lock is called a [*multiple readers, single writer*](https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock) lock, which is provided by `sync.RWMutex` in Go:
+
+```go
+var mu sync.RWMutex
+var balance int
+
+func Balance() int {
+	mu.RLock() // readers lock
+	defer mu.RUnlock()
+	return balance
+}
+```
+
+* The `Balance` function now calls the `RLock` and `RUnlock` methods to acquire and release a *reader* or *shared* lock.
+* The `Deposit` function, which is unchanged, calls the `mu.Lock` and `mu.Unlock` methods to acquire and release a *writer* or *exclusive* lock.
+
+`RLock` can be used only if there are no writes to shared variables in the critical section. In general, we should not assume that logically read-only functions or methods don't also update some variables. For example, a method that appears to be a simple accessor might also increment an internal usage counter, or update a cache so that repeat calls are faster. If in doubt, use an exclusive `Lock`.
+
+It's only profitable to use an `RWMutex` when most of the goroutines that acquire the lock are readers, and the lock is under contention, that is, goroutines routinely have to wait to acquire it. An `RWMutex` requires more complex internal bookkeeping, making it slower than a regular mutex for uncontended locks.
 
 ### Doubts and Solution
 

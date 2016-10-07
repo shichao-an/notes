@@ -813,6 +813,34 @@ In short, normal driver writers have two choices:
 
 If you need a schedulable entity to perform your deferred work, and if fundamentally, you need to sleep for any reason, then work queues are your only option. Otherwise, tasklets are preferred. Only if scalability becomes a concern do you investigate softirqs.
 
+### Locking Between the Bottom Halves
+
+Locking is not discussed yet, which is an expansive topic in the next two chapters. It is crucial to protect shared data from concurrent access while using bottom halves, even on a single processor machine. A bottom half can run at virtually any moment.
+
+One benefit of tasklets is that they are serialized with respect to themselves. The same tasklet will not run concurrently, even on two different processors. This means you do not have to worry about intra-tasklet concurrency issues. Inter-tasklet concurrency (when two different tasklets share the same data) requires proper locking.
+
+Because softirqs provide no serialization, (even two instances of the same softirq might run simultaneously), all shared data needs an appropriate lock.
+
+If process context code and a bottom half share data, you need to do both of the following before accessing the data:
+
+* Disable bottom-half processing.
+* Obtain a lock.
+
+This ensures both ensures local and SMP protection and prevents a deadlock.
+
+If interrupt context code and a bottom half share data, you need to do both of the following before accessing the data:
+
+* Disable interrupts.
+* Obtain a lock.
+
+This also ensures both local and SMP protection and prevents a deadlock.
+
+Any shared data in a work queue requires locking.
+
+The locking issues are no different from normal kernel code because work queues run in process context.
+
+[Chapter 9](ch9.md) provides a background on the issues surrounding concurrency, and [Chapter 10](ch10.md) covers the kernel locking primitives. These chapters cover how to protect data that bottom halves use.
+
 ### Doubts and Solution
 
 #### Verbatim
