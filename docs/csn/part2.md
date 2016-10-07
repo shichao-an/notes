@@ -265,3 +265,17 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 ```
+
+### Pointer to an Array
+
+Notice the difference between pointers in the following code:
+
+```c
+int x[] = {1,2,3,4,5,6};
+
+int *p1 = x;      // pointer to an integer
+int (*p2)[] = &x; // pointer to an array
+```
+
+* The type of `p1` is `int*`, which indicates it points to an integer type. The array's name by default points to its first element, thus `x` is also an `int*` type.
+* `p2` is a pointer to an "array type", not "array element type".

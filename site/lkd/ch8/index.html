@@ -477,6 +477,9 @@
             <li><a href="#softirqs-vs-tasklets-vs-work-queues">Softirqs vs. tasklets vs. work queues</a></li>
         
     
+        <li class="main "><a href="#locking-between-the-bottom-halves">Locking Between the Bottom Halves</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1239,6 +1242,25 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 </table>
 <p>In short, normal driver writers have two choices:</p>
 <p>If you need a schedulable entity to perform your deferred work, and if fundamentally, you need to sleep for any reason, then work queues are your only option. Otherwise, tasklets are preferred. Only if scalability becomes a concern do you investigate softirqs.</p>
+<h3 id="locking-between-the-bottom-halves">Locking Between the Bottom Halves</h3>
+<p>Locking is not discussed yet, which is an expansive topic in the next two chapters. It is crucial to protect shared data from concurrent access while using bottom halves, even on a single processor machine. A bottom half can run at virtually any moment.</p>
+<p>One benefit of tasklets is that they are serialized with respect to themselves. The same tasklet will not run concurrently, even on two different processors. This means you do not have to worry about intra-tasklet concurrency issues. Inter-tasklet concurrency (when two different tasklets share the same data) requires proper locking.</p>
+<p>Because softirqs provide no serialization, (even two instances of the same softirq might run simultaneously), all shared data needs an appropriate lock.</p>
+<p>If process context code and a bottom half share data, you need to do both of the following before accessing the data:</p>
+<ul>
+<li>Disable bottom-half processing.</li>
+<li>Obtain a lock.</li>
+</ul>
+<p>This ensures both ensures local and SMP protection and prevents a deadlock.</p>
+<p>If interrupt context code and a bottom half share data, you need to do both of the following before accessing the data:</p>
+<ul>
+<li>Disable interrupts.</li>
+<li>Obtain a lock.</li>
+</ul>
+<p>This also ensures both local and SMP protection and prevents a deadlock.</p>
+<p>Any shared data in a work queue requires locking.</p>
+<p>The locking issues are no different from normal kernel code because work queues run in process context.</p>
+<p><a href="../ch9/">Chapter 9</a> provides a background on the issues surrounding concurrency, and <a href="../ch10/">Chapter 10</a> covers the kernel locking primitives. These chapters cover how to protect data that bottom halves use.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
