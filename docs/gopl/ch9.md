@@ -392,6 +392,55 @@ func Balance() int {
 
 It's only profitable to use an `RWMutex` when most of the goroutines that acquire the lock are readers, and the lock is under contention, that is, goroutines routinely have to wait to acquire it. An `RWMutex` requires more complex internal bookkeeping, making it slower than a regular mutex for uncontended locks.
 
+### Memory Synchronization
+
+From previous examples, it is seen that the `Balance` method needs mutual exclusion, either channel-based or mutex-based, even if it consists only of a single operation (unlike `Deposit` where there is no danger of another goroutine executing "in the middle" of it). There are two reasons we need a mutex:
+
+1. It's equally important that `Balance` not execute in the middle of some other operation like `Withdraw`.
+2. Synchronization is about more than just the order of execution of multiple goroutines; synchronization also affects memory.
+
+In a modern computer there may be dozens of processors, each with its own local cache of the main memory. For efficiency, writes to memory are buffered within each processor and flushed out to main memory only when necessary. They may even be committed to main memory in a different order than they were written by the writing goroutine. <u>Synchronization primitives like channel communications and mutex operations cause the processor to flush out and commit all its accumulated writes so that the effects of goroutine execution up to that point are guaranteed to be visible to goroutines running on other processors.</u>
+
+Consider the possible outputs of the following code:
+
+```go
+var x, y int
+go func() {
+	x = 1                   // A1
+	fmt.Print("y:", y, " ") // A2
+}()
+
+go func() {
+	y = 1                   // B1
+	fmt.Print("x:", x, " ") // B2
+}()
+```
+
+Since these two goroutines are concurrent and access shared variables without mutual exclusion, there is a data race, so the program is not deterministic. We might expect it to print any one of these four results, which correspond to intuitive interleavings of the labeled statements of the program:
+
+```text
+y:0 x:1
+x:0 y:1
+x:1 y:1
+y:1 x:1
+```
+
+The fourth line above could be explained by the sequence `A1,B1,A2,B2` or by `B1,A1,A2,B2`. However, the following two outcomes might also happen, depending on the compiler, CPU, and many other factors:
+
+```text
+x:0 y:0
+y:0 x:0
+```
+
+Within a single goroutine, the effects of each statement are guaranteed to occur in the order of execution; goroutines are [*sequentially consistent*](https://en.wikipedia.org/wiki/Sequential_consistency). But in the absence of explicit synchronization using a channel or mutex, there is no guarantee that events are seen in the same order by all goroutines. Although goroutine *A* must observe the effect of the write `x = 1` before it reads the value of `y`, it does not necessarily observe the write to `y` done by goroutine *B*, so A may print a *stale* value of `y`.
+
+It is tempting to try to understand concurrency as if it corresponds to some interleaving of the statements of each goroutine, but as the example above shows, this is not how a modern compiler or CPU works:
+
+* <u>Because the assignment and the `Print` refer to different variables, a compiler may conclude that the order of the two statements cannot affect the result, and swap them.</u>
+* If the two goroutines execute on different CPUs, each with its own cache, writes by one goroutine are not visible to the other goroutine's `Print` until the caches are synchronized with main memory.
+
+All these concurrency problems can be avoided by the consistent use of simple, established patterns. Where possible, confine variables to a single goroutine; for all other variables, use mutual exclusion.
+
 ### Doubts and Solution
 
 #### Verbatim
