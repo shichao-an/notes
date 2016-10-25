@@ -443,6 +443,9 @@
         <li class="main "><a href="#readwrite-mutexes-syncrwmutex">Read/Write Mutexes: sync.RWMutex</a></li>
         
     
+        <li class="main "><a href="#memory-synchronization">Memory Synchronization</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -789,6 +792,48 @@ express concurrency in a direct and natural way.</p>
 </ul>
 <p><code>RLock</code> can be used only if there are no writes to shared variables in the critical section. In general, we should not assume that logically read-only functions or methods don't also update some variables. For example, a method that appears to be a simple accessor might also increment an internal usage counter, or update a cache so that repeat calls are faster. If in doubt, use an exclusive <code>Lock</code>.</p>
 <p>It's only profitable to use an <code>RWMutex</code> when most of the goroutines that acquire the lock are readers, and the lock is under contention, that is, goroutines routinely have to wait to acquire it. An <code>RWMutex</code> requires more complex internal bookkeeping, making it slower than a regular mutex for uncontended locks.</p>
+<h3 id="memory-synchronization">Memory Synchronization</h3>
+<p>From previous examples, it is seen that the <code>Balance</code> method needs mutual exclusion, either channel-based or mutex-based, even if it consists only of a single operation (unlike <code>Deposit</code> where there is no danger of another goroutine executing "in the middle" of it). There are two reasons we need a mutex:</p>
+<ol>
+<li>It's equally important that <code>Balance</code> not execute in the middle of some other operation like <code>Withdraw</code>.</li>
+<li>Synchronization is about more than just the order of execution of multiple goroutines; synchronization also affects memory.</li>
+</ol>
+<p>In a modern computer there may be dozens of processors, each with its own local cache of the main memory. For efficiency, writes to memory are buffered within each processor and flushed out to main memory only when necessary. They may even be committed to main memory in a different order than they were written by the writing goroutine. <u>Synchronization primitives like channel communications and mutex operations cause the processor to flush out and commit all its accumulated writes so that the effects of goroutine execution up to that point are guaranteed to be visible to goroutines running on other processors.</u></p>
+<p>Consider the possible outputs of the following code:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span>
+<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">x</span> <span class="p">=</span> <span class="mi">1</span>                   <span class="c1">// A1</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="s">&quot;y:&quot;</span><span class="p">,</span> <span class="nx">y</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">)</span> <span class="c1">// A2</span>
+<span class="p">}()</span>
+
+<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">y</span> <span class="p">=</span> <span class="mi">1</span>                   <span class="c1">// B1</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="s">&quot;x:&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">)</span> <span class="c1">// B2</span>
+<span class="p">}()</span>
+</pre></div>
+
+
+<p>Since these two goroutines are concurrent and access shared variables without mutual exclusion, there is a data race, so the program is not deterministic. We might expect it to print any one of these four results, which correspond to intuitive interleavings of the labeled statements of the program:</p>
+<div class="codehilite"><pre>y:0 x:1
+x:0 y:1
+x:1 y:1
+y:1 x:1
+</pre></div>
+
+
+<p>The fourth line above could be explained by the sequence <code>A1,B1,A2,B2</code> or by <code>B1,A1,A2,B2</code>. However, the following two outcomes might also happen, depending on the compiler, CPU, and many other factors:</p>
+<div class="codehilite"><pre>x:0 y:0
+y:0 x:0
+</pre></div>
+
+
+<p>Within a single goroutine, the effects of each statement are guaranteed to occur in the order of execution; goroutines are <a href="https://en.wikipedia.org/wiki/Sequential_consistency"><em>sequentially consistent</em></a>. But in the absence of explicit synchronization using a channel or mutex, there is no guarantee that events are seen in the same order by all goroutines. Although goroutine <em>A</em> must observe the effect of the write <code>x = 1</code> before it reads the value of <code>y</code>, it does not necessarily observe the write to <code>y</code> done by goroutine <em>B</em>, so A may print a <em>stale</em> value of <code>y</code>.</p>
+<p>It is tempting to try to understand concurrency as if it corresponds to some interleaving of the statements of each goroutine, but as the example above shows, this is not how a modern compiler or CPU works:</p>
+<ul>
+<li><u>Because the assignment and the <code>Print</code> refer to different variables, a compiler may conclude that the order of the two statements cannot affect the result, and swap them.</u></li>
+<li>If the two goroutines execute on different CPUs, each with its own cache, writes by one goroutine are not visible to the other goroutine's <code>Print</code> until the caches are synchronized with main memory.</li>
+</ul>
+<p>All these concurrency problems can be avoided by the consistent use of simple, established patterns. Where possible, confine variables to a single goroutine; for all other variables, use mutual exclusion.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
