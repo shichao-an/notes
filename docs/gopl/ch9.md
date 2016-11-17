@@ -441,6 +441,115 @@ It is tempting to try to understand concurrency as if it corresponds to some int
 
 All these concurrency problems can be avoided by the consistent use of simple, established patterns. Where possible, confine variables to a single goroutine; for all other variables, use mutual exclusion.
 
+### Lazy Initialization: `sync.Once`
+
+Initializing a variable up front increases the start-up latency of a program and is unnecessary if execution doesn't always reach the part of the program that uses that variable. Therefore, it is good practice to defer an expensive initialization step until it is needed. Consider the `icons` variable discussed [earlier in the chapter](#avoiding-a-data-race):
+
+```go
+var icons map[string]image.Image
+```
+
+The following version of `Icon` uses [*lazy initialization*](https://en.wikipedia.org/wiki/Lazy_initialization):
+
+```go
+func loadIcons() {
+	icons = map[string]image.Image{
+		"spades.png": loadIcon("spades.png"),
+		"hearts.png": loadIcon("hearts.png"),
+		"diamonds.png": loadIcon("diamonds.png"),
+		"clubs.png": loadIcon("clubs.png"),
+	}
+}
+
+// NOTE: not concurrency-safe!
+func Icon(name string) image.Image {
+	if icons == nil {
+		loadIcons() // one-time initialization
+	}
+	return icons[name]
+}
+```
+
+For a variable accessed by only a single goroutine, we can use the pattern above, but this pattern is not safe if `Icon` is called concurrently. Like the bank's original `Deposit` function, `Icon` consists of multiple steps: it tests whether `icons` is nil, then it loads the icons, then it updates icons to a non-nil value.
+
+Intuition might suggest that the worst possible outcome of the race condition above is that the `loadIcons` function is called several times. While the first goroutine is busy loading the icons, another goroutine entering `Icon` would find the variable still equal to nil, and would also call `loadIcons`. However, this intuition is also wrong. As discussed in [Section 9.4](#memory-synchronization), in the absence of explicit synchronization, the compiler and CPU are free to reorder accesses to memory in any number of ways, so long as the behavior of each goroutine is sequentially consistent. One possible reordering of the statements of `loadIcons` is shown below. It stores the empty map in the `icons` variable before populating it:
+
+```go
+func loadIcons() {
+	icons = make(map[string]image.Image)
+	icons["spades.png"] = loadIcon("spades.png")
+	icons["hearts.png"] = loadIcon("hearts.png")
+	icons["diamonds.png"] = loadIcon("diamonds.png")
+	icons["clubs.png"] = loadIcon("clubs.png")
+}
+```
+
+Consequently, a goroutine finding `icons` to be non-nil may not assume that the initialization of the variable is complete.
+
+The simplest correct way to ensure that all goroutines observe the effects of `loadIcons` is to synchronize them using a mutex:
+
+```go
+var mu sync.Mutex // guards icons
+var icons map[string]image.Image
+
+// Concurrency-safe.
+func Icon(name string) image.Image {
+	mu.Lock()
+	defer mu.Unlock()
+	if icons == nil {
+		loadIcons()
+	}
+	return icons[name]
+}
+```
+
+However, the cost of enforcing mutually exclusive access to icons is that two goroutines cannot access the variable concurrently, even once the variable has been safely initialized and will never be modified again. This suggests a multiple-readers lock:
+
+```go
+var mu sync.RWMutex // guards icons
+var icons map[string]image.Image
+
+// Concurrency-safe.
+func Icon(name string) image.Image {
+	mu.RLock()
+	if icons != nil {
+		icon := icons[name]
+		mu.RUnlock()
+		return icon
+	}
+	mu.RUnlock()
+
+	// acquire an exclusive lock
+	mu.Lock()
+	if icons == nil { // NOTE: must recheck for nil
+		loadIcons()
+	}
+	icon := icons[name]
+	mu.Unlock()
+	return icon
+}
+```
+
+There are now two critical sections:
+
+1. The goroutine first acquires a reader lock, consults the map, then releases the lock.
+2. If an entry was found, it is returned. If no entry was found, the goroutine acquires a writer lock. There is no way to upgrade a shared lock to an exclusive one without first releasing the shared lock, so we must recheck the `icons` variable in case another goroutine already initialized it in the interim.
+
+The pattern above has greater concurrency but is complex and thus error-prone. Fortunately, the `sync` package provides a specialized solution to the problem of one-time initialization: [`sync.Once`](https://golang.org/pkg/sync/#Once). Conceptually, a `Once` consists of a mutex and a boolean variable that records whether initialization has taken place; the mutex guards both the boolean and the client's data structures. The sole method, `Do`, accepts the initialization function as its argument. The following `Icon` function uses `Once`:
+
+```go
+var loadIconsOnce sync.Once
+var icons map[string]image.Image
+
+// Concurrency-safe.
+func Icon(name string) image.Image {
+	loadIconsOnce.Do(loadIcons)
+  return icons[name]
+}
+```
+
+Each call to `Do(loadIcons)` locks the mutex and checks the boolean variable. In the first call, in which the variable is false, `Do` calls `loadIcons` and sets the variable to true. Subsequent calls do nothing, but the mutex synchronization ensures that the effects of `loadIcons` on memory (specifically, `icons`) become visible to all goroutines. Using `sync.Once` in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.
+
 ### Doubts and Solution
 
 #### Verbatim
@@ -448,5 +557,11 @@ All these concurrency problems can be avoided by the consistent use of simple, e
 ##### **p265 on mutexes**
 
 > Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.
+
+<span class="text-danger">Question</span>: What does it mean?
+
+##### **p271 in `sync.Once`**
+
+> ... the mutex synchronization ensures that the effects of `loadIcons` on memory (specifically, `icons`) become visible to all goroutines. Using `sync.Once` in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.
 
 <span class="text-danger">Question</span>: What does it mean?

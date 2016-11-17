@@ -446,6 +446,9 @@
         <li class="main "><a href="#memory-synchronization">Memory Synchronization</a></li>
         
     
+        <li class="main "><a href="#lazy-initialization-synconce">Lazy Initialization: sync.Once</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -834,11 +837,115 @@ y:0 x:0
 <li>If the two goroutines execute on different CPUs, each with its own cache, writes by one goroutine are not visible to the other goroutine's <code>Print</code> until the caches are synchronized with main memory.</li>
 </ul>
 <p>All these concurrency problems can be avoided by the consistent use of simple, established patterns. Where possible, confine variables to a single goroutine; for all other variables, use mutual exclusion.</p>
+<h3 id="lazy-initialization-synconce">Lazy Initialization: <code>sync.Once</code></h3>
+<p>Initializing a variable up front increases the start-up latency of a program and is unnecessary if execution doesn't always reach the part of the program that uses that variable. Therefore, it is good practice to defer an expensive initialization step until it is needed. Consider the <code>icons</code> variable discussed <a href="#avoiding-a-data-race">earlier in the chapter</a>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">icons</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span>
+</pre></div>
+
+
+<p>The following version of <code>Icon</code> uses <a href="https://en.wikipedia.org/wiki/Lazy_initialization"><em>lazy initialization</em></a>:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">loadIcons</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">icons</span> <span class="p">=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span><span class="p">{</span>
+        <span class="s">&quot;spades.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;spades.png&quot;</span><span class="p">),</span>
+        <span class="s">&quot;hearts.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;hearts.png&quot;</span><span class="p">),</span>
+        <span class="s">&quot;diamonds.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;diamonds.png&quot;</span><span class="p">),</span>
+        <span class="s">&quot;clubs.png&quot;</span><span class="p">:</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;clubs.png&quot;</span><span class="p">),</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// NOTE: not concurrency-safe!</span>
+<span class="kd">func</span> <span class="nx">Icon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">icons</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">loadIcons</span><span class="p">()</span> <span class="c1">// one-time initialization</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>For a variable accessed by only a single goroutine, we can use the pattern above, but this pattern is not safe if <code>Icon</code> is called concurrently. Like the bank's original <code>Deposit</code> function, <code>Icon</code> consists of multiple steps: it tests whether <code>icons</code> is nil, then it loads the icons, then it updates icons to a non-nil value.</p>
+<p>Intuition might suggest that the worst possible outcome of the race condition above is that the <code>loadIcons</code> function is called several times. While the first goroutine is busy loading the icons, another goroutine entering <code>Icon</code> would find the variable still equal to nil, and would also call <code>loadIcons</code>. However, this intuition is also wrong. As discussed in <a href="#memory-synchronization">Section 9.4</a>, in the absence of explicit synchronization, the compiler and CPU are free to reorder accesses to memory in any number of ways, so long as the behavior of each goroutine is sequentially consistent. One possible reordering of the statements of <code>loadIcons</code> is shown below. It stores the empty map in the <code>icons</code> variable before populating it:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">loadIcons</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">icons</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span><span class="p">)</span>
+    <span class="nx">icons</span><span class="p">[</span><span class="s">&quot;spades.png&quot;</span><span class="p">]</span> <span class="p">=</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;spades.png&quot;</span><span class="p">)</span>
+    <span class="nx">icons</span><span class="p">[</span><span class="s">&quot;hearts.png&quot;</span><span class="p">]</span> <span class="p">=</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;hearts.png&quot;</span><span class="p">)</span>
+    <span class="nx">icons</span><span class="p">[</span><span class="s">&quot;diamonds.png&quot;</span><span class="p">]</span> <span class="p">=</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;diamonds.png&quot;</span><span class="p">)</span>
+    <span class="nx">icons</span><span class="p">[</span><span class="s">&quot;clubs.png&quot;</span><span class="p">]</span> <span class="p">=</span> <span class="nx">loadIcon</span><span class="p">(</span><span class="s">&quot;clubs.png&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Consequently, a goroutine finding <code>icons</code> to be non-nil may not assume that the initialization of the variable is complete.</p>
+<p>The simplest correct way to ensure that all goroutines observe the effects of <code>loadIcons</code> is to synchronize them using a mutex:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">mu</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span> <span class="c1">// guards icons</span>
+<span class="kd">var</span> <span class="nx">icons</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span>
+
+<span class="c1">// Concurrency-safe.</span>
+<span class="kd">func</span> <span class="nx">Icon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">defer</span> <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">icons</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">loadIcons</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>However, the cost of enforcing mutually exclusive access to icons is that two goroutines cannot access the variable concurrently, even once the variable has been safely initialized and will never be modified again. This suggests a multiple-readers lock:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">mu</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span> <span class="c1">// guards icons</span>
+<span class="kd">var</span> <span class="nx">icons</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span>
+
+<span class="c1">// Concurrency-safe.</span>
+<span class="kd">func</span> <span class="nx">Icon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span> <span class="p">{</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">RLock</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">icons</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">icon</span> <span class="o">:=</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+        <span class="nx">mu</span><span class="p">.</span><span class="nx">RUnlock</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nx">icon</span>
+    <span class="p">}</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">RUnlock</span><span class="p">()</span>
+
+    <span class="c1">// acquire an exclusive lock</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">icons</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span> <span class="c1">// NOTE: must recheck for nil</span>
+        <span class="nx">loadIcons</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="nx">icon</span> <span class="o">:=</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+    <span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">icon</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>There are now two critical sections:</p>
+<ol>
+<li>The goroutine first acquires a reader lock, consults the map, then releases the lock.</li>
+<li>If an entry was found, it is returned. If no entry was found, the goroutine acquires a writer lock. There is no way to upgrade a shared lock to an exclusive one without first releasing the shared lock, so we must recheck the <code>icons</code> variable in case another goroutine already initialized it in the interim.</li>
+</ol>
+<p>The pattern above has greater concurrency but is complex and thus error-prone. Fortunately, the <code>sync</code> package provides a specialized solution to the problem of one-time initialization: <a href="https://golang.org/pkg/sync/#Once"><code>sync.Once</code></a>. Conceptually, a <code>Once</code> consists of a mutex and a boolean variable that records whether initialization has taken place; the mutex guards both the boolean and the client's data structures. The sole method, <code>Do</code>, accepts the initialization function as its argument. The following <code>Icon</code> function uses <code>Once</code>:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">loadIconsOnce</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">Once</span>
+<span class="kd">var</span> <span class="nx">icons</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span>
+
+<span class="c1">// Concurrency-safe.</span>
+<span class="kd">func</span> <span class="nx">Icon</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Image</span> <span class="p">{</span>
+    <span class="nx">loadIconsOnce</span><span class="p">.</span><span class="nx">Do</span><span class="p">(</span><span class="nx">loadIcons</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nx">icons</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Each call to <code>Do(loadIcons)</code> locks the mutex and checks the boolean variable. In the first call, in which the variable is false, <code>Do</code> calls <code>loadIcons</code> and sets the variable to true. Subsequent calls do nothing, but the mutex synchronization ensures that the effects of <code>loadIcons</code> on memory (specifically, <code>icons</code>) become visible to all goroutines. Using <code>sync.Once</code> in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
 <blockquote>
 <p>Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean?</p>
+<h5 id="p271-in-synconce"><strong>p271 in <code>sync.Once</code></strong></h5>
+<blockquote>
+<p>... the mutex synchronization ensures that the effects of <code>loadIcons</code> on memory (specifically, <code>icons</code>) become visible to all goroutines. Using <code>sync.Once</code> in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: What does it mean?</p>
             </div>
