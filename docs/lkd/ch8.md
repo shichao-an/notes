@@ -841,6 +841,66 @@ The locking issues are no different from normal kernel code because work queues 
 
 [Chapter 9](ch9.md) provides a background on the issues surrounding concurrency, and [Chapter 10](ch10.md) covers the kernel locking primitives. These chapters cover how to protect data that bottom halves use.
 
+### Disabling Bottom Halves
+
+It is normally not sufficient to only disable bottom halves. To safely protect shared data, you usually need to obtain a lock *and* disable bottom halves. You might use such methods in a driver, which are covered in [Chapter 10](ch10.md). If you are writing core kernel code, however, you might need to disable just the bottom halves.
+
+* To disable all bottom-half processing (all softirqs and thus all tasklets), call `local_bh_disable()`.
+* To enable bottom-half processing, call `local_bh_enable()`.
+
+The function is misnamed; no one bothered to change the name when the BH interface gave way to softirqs. The following table is a summary of these functions.
+
+Method | Description
+------ | -----------
+`void local_bh_disable()` | Disables softirq and tasklet processing on the local processor
+`void local_bh_enable()` | Enables softirq and tasklet processing on the local processor
+
+The calls can be nested; only the final call to `local_bh_enable()` actually enables bottom halves. For example, the first time `local_bh_disable(`) is called, local softirq processing is disabled. If `local_bh_disable()` is called three more times, local processing remains disabled. Processing is not reenabled until the fourth call to `local_bh_enable()`.
+
+The functions accomplish this by maintaining a per-task counter via the `preempt_count`, the same counter used by kernel preemption. This counter is used both by the interrupt and bottom-half subsystems. Thus, in Linux, a single pertask counter represents the atomicity of a task. This has proved useful for work such as debugging sleeping-while-atomic bugs. When the counter reaches zero, bottom-half processing is possible. Because bottom halves were disabled, `local_bh_enable()` also checks for any pending bottom halves and executes them.
+
+The functions are unique to each supported architecture and are usually written as complicated macros in `<asm/softirq.h>`. The following are close C representations:
+
+```c
+/*
+* disable local bottom halves by incrementing the preempt_count
+*/
+void local_bh_disable(void)
+{
+    struct thread_info *t = current_thread_info();
+    t->preempt_count += SOFTIRQ_OFFSET;
+}
+
+/*
+* decrement the preempt_count - this will ‘automatically’ enable
+* bottom halves if the count returns to zero
+*
+* optionally run any bottom halves that are pending
+*/
+void local_bh_enable(void)
+{
+    struct thread_info *t = current_thread_info();
+    t->preempt_count -= SOFTIRQ_OFFSET;
+
+    /*
+    * is preempt_count zero and are any bottom halves pending?
+    * if so, run them
+    */
+    if (unlikely(!t->preempt_count && softirq_pending(smp_processor_id())))
+        do_softirq();
+}
+```
+
+These calls do not disable the execution of work queues.
+
+Because work queues run in process context, there are no issues with asynchronous execution, and thus, there is no need to disable them. However, because softirqs and tasklets can occur asynchronously (for example, on return from handling an interrupt), kernel code may need to disable them. With work queues, on the other hand, protecting shared data is the same as in any process context.  [Chapters 8](ch8.md) and [Chapter 9](ch9.md) give the details.
+
+### Conclusion
+
+This chapter covers the three mechanisms used to defer work in the Linux kernel: softirqs, tasklets, and work queues and goes over their design and implementation.  We also discussed a lot about synchronization and concurrency because such topics apply quite a bit to bottom halves. We even wrapped up the chapter with a discussion on disabling bottom halves for reasons of concurrency protection.
+
+[Chapter 9](ch9.md) discusses kernel synchronization and concurrency in the abstract, providing a foundation for understanding the issues at the heart of the problem. [Chapter 10](ch10.md) discusses the specific interfaces provided by the kernel to solve these problems.
+
 ### Doubts and Solution
 
 #### Verbatim
