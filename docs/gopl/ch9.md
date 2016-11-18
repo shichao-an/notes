@@ -550,6 +550,16 @@ func Icon(name string) image.Image {
 
 Each call to `Do(loadIcons)` locks the mutex and checks the boolean variable. In the first call, in which the variable is false, `Do` calls `loadIcons` and sets the variable to true. Subsequent calls do nothing, but the mutex synchronization ensures that the effects of `loadIcons` on memory (specifically, `icons`) become visible to all goroutines. Using `sync.Once` in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.
 
+### The Race Detector
+
+The Go runtime and toolchain are equipped with a sophisticated and easy-to-use dynamic analysis tool, the [**race detector**](https://golang.org/doc/articles/race_detector.html). Add the `-race` flag to your `go build`, `go run`, or `go test` command. This causes the compiler to build a modified version of your application or test with additional instrumentation that effectively records all accesses to shared variables that occurred during execution, along with the identity of the goroutine that read or wrote the variable. In addition, the modified program records all synchronization events, such as `go` statements, channel operations, and calls to `(*sync.Mutex).Lock`, `(*sync.WaitGroup).Wait`, and so on. The complete set of synchronization events is specified by the [*The Go Memory Model*](https://golang.org/ref/mem) document that accompanies the language specification.
+
+The race detector studies this stream of events, looking for cases in which <u>one goroutine reads or writes a shared variable that was most recently written by a different goroutine without an intervening synchronization operation.</u> This indicates a concurrent access to the shared variable, and thus a data race. The tool prints a report that includes the identity of the variable, and the stacks of active function calls in the reading goroutine and the writing goroutine. This is usually sufficient to pinpoint the problem. [Section 9.7](#example-concurrent-non-blocking-cache) contains an example of race detector.
+
+The race detector reports all data races that were actually executed. However, it can only detect race conditions that occur during a run; it cannot prove that none will ever occur. For best results, make sure that your tests exercise your packages using concurrency. Due to extra bookkeeping, a program built with race detection needs more time and memory to run, but the overhead is tolerable even for many production jobs. For infrequently occurring race conditions, making the race detector do its job can save time of debugging.
+
+### Example: Concurrent Non-Blocking Cache
+
 ### Doubts and Solution
 
 #### Verbatim
