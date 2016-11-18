@@ -480,6 +480,12 @@
         <li class="main "><a href="#locking-between-the-bottom-halves">Locking Between the Bottom Halves</a></li>
         
     
+        <li class="main "><a href="#disabling-bottom-halves">Disabling Bottom Halves</a></li>
+        
+    
+        <li class="main "><a href="#conclusion">Conclusion</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1261,6 +1267,69 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <p>Any shared data in a work queue requires locking.</p>
 <p>The locking issues are no different from normal kernel code because work queues run in process context.</p>
 <p><a href="../ch9/">Chapter 9</a> provides a background on the issues surrounding concurrency, and <a href="../ch10/">Chapter 10</a> covers the kernel locking primitives. These chapters cover how to protect data that bottom halves use.</p>
+<h3 id="disabling-bottom-halves">Disabling Bottom Halves</h3>
+<p>It is normally not sufficient to only disable bottom halves. To safely protect shared data, you usually need to obtain a lock <em>and</em> disable bottom halves. You might use such methods in a driver, which are covered in <a href="../ch10/">Chapter 10</a>. If you are writing core kernel code, however, you might need to disable just the bottom halves.</p>
+<ul>
+<li>To disable all bottom-half processing (all softirqs and thus all tasklets), call <code>local_bh_disable()</code>.</li>
+<li>To enable bottom-half processing, call <code>local_bh_enable()</code>.</li>
+</ul>
+<p>The function is misnamed; no one bothered to change the name when the BH interface gave way to softirqs. The following table is a summary of these functions.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>void local_bh_disable()</code></td>
+<td>Disables softirq and tasklet processing on the local processor</td>
+</tr>
+<tr>
+<td><code>void local_bh_enable()</code></td>
+<td>Enables softirq and tasklet processing on the local processor</td>
+</tr>
+</tbody>
+</table>
+<p>The calls can be nested; only the final call to <code>local_bh_enable()</code> actually enables bottom halves. For example, the first time <code>local_bh_disable(</code>) is called, local softirq processing is disabled. If <code>local_bh_disable()</code> is called three more times, local processing remains disabled. Processing is not reenabled until the fourth call to <code>local_bh_enable()</code>.</p>
+<p>The functions accomplish this by maintaining a per-task counter via the <code>preempt_count</code>, the same counter used by kernel preemption. This counter is used both by the interrupt and bottom-half subsystems. Thus, in Linux, a single pertask counter represents the atomicity of a task. This has proved useful for work such as debugging sleeping-while-atomic bugs. When the counter reaches zero, bottom-half processing is possible. Because bottom halves were disabled, <code>local_bh_enable()</code> also checks for any pending bottom halves and executes them.</p>
+<p>The functions are unique to each supported architecture and are usually written as complicated macros in <code>&lt;asm/softirq.h&gt;</code>. The following are close C representations:</p>
+<div class="codehilite"><pre><span class="cm">/*</span>
+<span class="cm">* disable local bottom halves by incrementing the preempt_count</span>
+<span class="cm">*/</span>
+<span class="kt">void</span> <span class="nf">local_bh_disable</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">thread_info</span> <span class="o">*</span><span class="n">t</span> <span class="o">=</span> <span class="n">current_thread_info</span><span class="p">();</span>
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">preempt_count</span> <span class="o">+=</span> <span class="n">SOFTIRQ_OFFSET</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/*</span>
+<span class="cm">* decrement the preempt_count - this will ‘automatically’ enable</span>
+<span class="cm">* bottom halves if the count returns to zero</span>
+<span class="cm">*</span>
+<span class="cm">* optionally run any bottom halves that are pending</span>
+<span class="cm">*/</span>
+<span class="kt">void</span> <span class="nf">local_bh_enable</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">thread_info</span> <span class="o">*</span><span class="n">t</span> <span class="o">=</span> <span class="n">current_thread_info</span><span class="p">();</span>
+    <span class="n">t</span><span class="o">-&gt;</span><span class="n">preempt_count</span> <span class="o">-=</span> <span class="n">SOFTIRQ_OFFSET</span><span class="p">;</span>
+
+    <span class="cm">/*</span>
+<span class="cm">    * is preempt_count zero and are any bottom halves pending?</span>
+<span class="cm">    * if so, run them</span>
+<span class="cm">    */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="o">!</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">preempt_count</span> <span class="o">&amp;&amp;</span> <span class="n">softirq_pending</span><span class="p">(</span><span class="n">smp_processor_id</span><span class="p">())))</span>
+        <span class="n">do_softirq</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>These calls do not disable the execution of work queues.</p>
+<p>Because work queues run in process context, there are no issues with asynchronous execution, and thus, there is no need to disable them. However, because softirqs and tasklets can occur asynchronously (for example, on return from handling an interrupt), kernel code may need to disable them. With work queues, on the other hand, protecting shared data is the same as in any process context.  <a href="./">Chapters 8</a> and <a href="../ch9/">Chapter 9</a> give the details.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>This chapter covers the three mechanisms used to defer work in the Linux kernel: softirqs, tasklets, and work queues and goes over their design and implementation.  We also discussed a lot about synchronization and concurrency because such topics apply quite a bit to bottom halves. We even wrapped up the chapter with a discussion on disabling bottom halves for reasons of concurrency protection.</p>
+<p><a href="../ch9/">Chapter 9</a> discusses kernel synchronization and concurrency in the abstract, providing a foundation for understanding the issues at the heart of the problem. <a href="../ch10/">Chapter 10</a> discusses the specific interfaces provided by the kernel to solve these problems.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>

@@ -739,8 +739,7 @@ In conclusion, user preemption can occur:
 
 #### Kernel Preemption
 
-In non-preemptive kernels, kernel code runs until completion. That is, the scheduler cannot reschedule a task while it is in the kernel: kernel code is
-scheduled cooperatively, not preemptively. Kernel code runs until it finishes (returns to user-space) or explicitly blocks.
+In non-preemptive kernels, kernel code runs until completion. That is, the scheduler cannot reschedule a task while it is in the kernel: kernel code is scheduled cooperatively, not preemptively. Kernel code runs until it finishes (returns to user-space) or explicitly blocks.
 
 The Linux kernel (since 2.6), unlike most other Unix variants and many other operating systems, is a fully preemptive kernel. It is possible to preempt a task at any point, so long as the kernel is in a state in which it is safe to reschedule.
 
