@@ -432,12 +432,34 @@
         <li class="main active"><a href="#chapter-9-an-introduction-to-kernel-synchronization">Chapter 9. An Introduction to Kernel Synchronization</a></li>
         
     
+        <li class="main "><a href="#critical-regions-and-race-conditions">Critical Regions and Race Conditions</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-9-an-introduction-to-kernel-synchronization"><strong>Chapter 9. An Introduction to Kernel Synchronization</strong></h3>
+<p>In a shared memory application, developers must ensure that shared resources are protected from concurrent access. The kernel is no exception. Shared resources require protection from concurrent access because if multiple threads of execution access and manipulate the data at the same time, the threads may overwrite each other's changes or access data while it is in an inconsistent state. Concurrent access of shared data often results in instability is hard to track down and debug.</p>
+<p>The term <em>threads of execution</em> implies any instance of executing code. For example, this includes any of the following:</p>
+<ul>
+<li>A task in the kernel</li>
+<li>An interrupt handler</li>
+<li>A bottom half</li>
+<li>A kernel thread</li>
+</ul>
+<p>This chapter may shorten <em>threads of execution</em> to simply <em>threads</em>. Keep in mind that this term describes any executing code.</p>
+<p>[p161]</p>
+<p><a href="https://en.wikipedia.org/wiki/Symmetric_multiprocessing">Symmetrical multiprocessing</a> support was introduced in the 2.0 kernel. Multiprocessing support implies that kernel code can simultaneously run on two or more processors. Consequently, without protection, code in the kernel, running on two different processors, can simultaneously access shared data at exactly the same time. With the introduction of the 2.6 kernel, the Linux kernel is preemptive. This implies that (in the absence of protection) the scheduler can preempt kernel code at virtually any point and reschedule another task. Today, a number of scenarios enable for concurrency inside the kernel, and they all require protection.</p>
+<p>This chapter discusses the issues of concurrency and synchronization in the abstract, as they exist in any operating system kernel. The <a href="../ch10/">next chapter</a> details the specific mechanisms and interfaces that the Linux kernel provides to solve synchronization issues and prevent race conditions.</p>
+<h3 id="critical-regions-and-race-conditions">Critical Regions and Race Conditions</h3>
+<ul>
+<li>Code paths that access and manipulate shared data are called <a href="https://en.wikipedia.org/wiki/Critical_section"><strong>critical regions</strong></a> (also called <strong>critical sections</strong>). It is usually unsafe for multiple threads of execution to access the same resource simultaneously.</li>
+<li>To prevent concurrent access during critical regions, the programmer must ensure that code executes <a href="https://en.wikipedia.org/wiki/Linearizability"><em>atomically</em></a>, which means that operations complete without interruption as if the entire critical region were one indivisible instruction.</li>
+<li>It is a bug if it is possible for two threads of execution to be simultaneously executing within the same critical region. When this occur, it is called a <a href="https://en.wikipedia.org/wiki/Race_condition"><strong>race condition</strong></a>, so-named because the threads raced to get there first. Debugging race conditions is often difficult because they are not easily reproducible.</li>
+<li>Ensuring that unsafe concurrency is prevented and that race conditions do not occur is called <a href="https://en.wikipedia.org/wiki/Synchronization_(computer_science)"><strong>synchronization</strong></a>.</li>
+</ul>
             </div>
         </div>
 
