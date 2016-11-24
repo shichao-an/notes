@@ -560,6 +560,121 @@ The race detector reports all data races that were actually executed. However, i
 
 ### Example: Concurrent Non-Blocking Cache
 
+This section talks about building a *concurrent non-blocking cache*, an abstraction that solves a problem in real-world concurrent programs but is not well addressed by existing libraries. This is the problem of [*memoizing*](https://en.wikipedia.org/wiki/Memoization) a function, which means caching the result of a function so that it need be computed only once.
+
+The solution will be concurrency-safe and will avoid the contention associated with designs based on a single lock for the whole cache. It'll use the `httpGetBody` function below as an example of the function to memoize. It makes an HTTP GET request and reads the request body. Calls to this function are relatively expensive, so we want to avoid repeating them unnecessarily.
+
+```go
+func httpGetBody(url string) (interface{}, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
+}
+```
+
+Notice the final line. `ReadAll` returns two results, a `[]byte` and an `error`, but since these are assignable to the declared result types of `httpGetBody`, `interface{}` and `error` respectively, we can return the result of the call without further ado. We chose this return type for `httpGetBody` so that it conforms to the type of functions that our cache is designed to memoize.
+
+<small>[gopl.io/ch9/memo1/memo.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/memo1/memo.go)</small>
+
+```go
+// Package memo provides a concurrency-unsafe
+// memoization of a function of type Func.
+package memo
+
+// A Memo caches the results of calling a Func.
+type Memo struct {
+	f     Func
+	cache map[string]result
+}
+
+// Func is the type of the function to memoize.
+type Func func(key string) (interface{}, error)
+
+type result struct {
+	value interface{}
+	err   error
+}
+
+func New(f Func) *Memo {
+	return &Memo{f: f, cache: make(map[string]result)}
+}
+
+// NOTE: not concurrency-safe!
+func (memo *Memo) Get(key string) (interface{}, error) {
+	res, ok := memo.cache[key]
+	if !ok {
+		res.value, res.err = memo.f(key)
+		memo.cache[key] = res
+	}
+	return res.value, res.err
+}
+```
+
+A `Memo` instance holds the function `f` to memoize, of type `Func`, and the `cache`, which is a mapping from strings to results. Each result is simply the pair of results returned by a call to `f`, a value and an error.
+
+Below is an example of how to use `Memo`. For each element in a stream of incoming URLs, we call `Get`, logging the latency of the call and the amount of data it returns:
+
+```go
+m := memo.New(httpGetBody)
+for url := range incomingURLs() {
+	start := time.Now()
+	value, err := m.Get(url)
+	if err != nil {
+	log.Print(err)
+	}
+	fmt.Printf("%s, %s, %d bytes\n",
+		url, time.Since(start), len(value.([]byte)))
+}
+```
+
+We can use the [`testing`](https://golang.org/pkg/testing/) package (the topic of [Chapter 11](ch11.md)) to systematically investigate the effect of memoization. In the test output below,the URL stream contains duplicates; that although the first call to `(*Memo).Get` for each URL takes hundreds of milliseconds, the second request returns the same amount of data in under a millisecond.
+
+```text
+$ go test -v gopl.io/ch9/memo1
+=== RUN Test
+https://golang.org, 175.026418ms, 7537 bytes
+https://godoc.org, 172.686825ms, 6878 bytes
+https://play.golang.org, 115.762377ms, 5767 bytes
+http://gopl.io, 749.887242ms, 2856 bytes
+https://golang.org, 721ns, 7537 bytes
+https://godoc.org, 152ns, 6878 bytes
+https://play.golang.org, 205ns, 5767 bytes
+http://gopl.io, 326ns, 2856 bytes
+--- PASS: Test (1.21s)
+PASS
+ok gopl.io/ch9/memo1 1.257s
+```
+
+This test executes all calls to `Get` sequentially.
+
+Since HTTP requests are a great opportunity for parallelism, the following test makes all requests concurrently. <u>The test uses a `sync.WaitGroup` to wait until the last request is complete before returning.</u>
+
+<small>[gopl.io/ch9/memotest/memotest.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/memotest/memotest.go#L84)</small>
+
+```go
+m := memo.New(httpGetBody)
+var n sync.WaitGroup
+for url := range incomingURLs() {
+	n.Add(1)
+	go func(url string) {
+		start := time.Now()
+		value, err := m.Get(url)
+		if err != nil {
+			log.Print(err)
+		}
+		fmt.Printf("%s, %s, %d bytes\n",
+			url, time.Since(start), len(value.([]byte)))
+		n.Done()
+	}(url)
+}
+n.Wait()
+```
+
+The test runs much faster, but unfortunately it is unlikely to work correctly all the time. We may notice unexpected cache misses, or cache hits that return incorrect values, or even crashes.
+
 ### Doubts and Solution
 
 #### Verbatim
