@@ -947,6 +947,110 @@ y:0 x:0
 <p>The race detector studies this stream of events, looking for cases in which <u>one goroutine reads or writes a shared variable that was most recently written by a different goroutine without an intervening synchronization operation.</u> This indicates a concurrent access to the shared variable, and thus a data race. The tool prints a report that includes the identity of the variable, and the stacks of active function calls in the reading goroutine and the writing goroutine. This is usually sufficient to pinpoint the problem. <a href="#example-concurrent-non-blocking-cache">Section 9.7</a> contains an example of race detector.</p>
 <p>The race detector reports all data races that were actually executed. However, it can only detect race conditions that occur during a run; it cannot prove that none will ever occur. For best results, make sure that your tests exercise your packages using concurrency. Due to extra bookkeeping, a program built with race detection needs more time and memory to run, but the overhead is tolerable even for many production jobs. For infrequently occurring race conditions, making the race detector do its job can save time of debugging.</p>
 <h3 id="example-concurrent-non-blocking-cache">Example: Concurrent Non-Blocking Cache</h3>
+<p>This section talks about building a <em>concurrent non-blocking cache</em>, an abstraction that solves a problem in real-world concurrent programs but is not well addressed by existing libraries. This is the problem of <a href="https://en.wikipedia.org/wiki/Memoization"><em>memoizing</em></a> a function, which means caching the result of a function so that it need be computed only once.</p>
+<p>The solution will be concurrency-safe and will avoid the contention associated with designs based on a single lock for the whole cache. It'll use the <code>httpGetBody</code> function below as an example of the function to memoize. It makes an HTTP GET request and reads the request body. Calls to this function are relatively expensive, so we want to avoid repeating them unnecessarily.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">httpGetBody</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="kd">interface</span><span class="p">{},</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="k">defer</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">ioutil</span><span class="p">.</span><span class="nx">ReadAll</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Notice the final line. <code>ReadAll</code> returns two results, a <code>[]byte</code> and an <code>error</code>, but since these are assignable to the declared result types of <code>httpGetBody</code>, <code>interface{}</code> and <code>error</code> respectively, we can return the result of the call without further ado. We chose this return type for <code>httpGetBody</code> so that it conforms to the type of functions that our cache is designed to memoize.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/memo1/memo.go">gopl.io/ch9/memo1/memo.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package memo provides a concurrency-unsafe</span>
+<span class="c1">// memoization of a function of type Func.</span>
+<span class="kn">package</span> <span class="nx">memo</span>
+
+<span class="c1">// A Memo caches the results of calling a Func.</span>
+<span class="kd">type</span> <span class="nx">Memo</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">f</span>     <span class="nx">Func</span>
+    <span class="nx">cache</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">result</span>
+<span class="p">}</span>
+
+<span class="c1">// Func is the type of the function to memoize.</span>
+<span class="kd">type</span> <span class="nx">Func</span> <span class="kd">func</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="kd">interface</span><span class="p">{},</span> <span class="kt">error</span><span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">result</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">value</span> <span class="kd">interface</span><span class="p">{}</span>
+    <span class="nx">err</span>   <span class="kt">error</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">New</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Func</span><span class="p">)</span> <span class="o">*</span><span class="nx">Memo</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">Memo</span><span class="p">{</span><span class="nx">f</span><span class="p">:</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">cache</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">result</span><span class="p">)}</span>
+<span class="p">}</span>
+
+<span class="c1">// NOTE: not concurrency-safe!</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">Get</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="kd">interface</span><span class="p">{},</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">res</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span> <span class="p">=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">f</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="p">=</span> <span class="nx">res</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A <code>Memo</code> instance holds the function <code>f</code> to memoize, of type <code>Func</code>, and the <code>cache</code>, which is a mapping from strings to results. Each result is simply the pair of results returned by a call to <code>f</code>, a value and an error.</p>
+<p>Below is an example of how to use <code>Memo</code>. For each element in a stream of incoming URLs, we call <code>Get</code>, logging the latency of the call and the amount of data it returns:</p>
+<div class="codehilite"><pre><span class="nx">m</span> <span class="o">:=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">httpGetBody</span><span class="p">)</span>
+<span class="k">for</span> <span class="nx">url</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">incomingURLs</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">start</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+    <span class="nx">value</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s, %s, %d bytes\n&quot;</span><span class="p">,</span>
+        <span class="nx">url</span><span class="p">,</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Since</span><span class="p">(</span><span class="nx">start</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="nx">value</span><span class="p">.([]</span><span class="kt">byte</span><span class="p">)))</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We can use the <a href="https://golang.org/pkg/testing/"><code>testing</code></a> package (the topic of <a href="ch11.md">Chapter 11</a>) to systematically investigate the effect of memoization. In the test output below,the URL stream contains duplicates; that although the first call to <code>(*Memo).Get</code> for each URL takes hundreds of milliseconds, the second request returns the same amount of data in under a millisecond.</p>
+<div class="codehilite"><pre>$ go test -v gopl.io/ch9/memo1
+=== RUN Test
+https://golang.org, 175.026418ms, 7537 bytes
+https://godoc.org, 172.686825ms, 6878 bytes
+https://play.golang.org, 115.762377ms, 5767 bytes
+http://gopl.io, 749.887242ms, 2856 bytes
+https://golang.org, 721ns, 7537 bytes
+https://godoc.org, 152ns, 6878 bytes
+https://play.golang.org, 205ns, 5767 bytes
+http://gopl.io, 326ns, 2856 bytes
+--- PASS: Test (1.21s)
+PASS
+ok gopl.io/ch9/memo1 1.257s
+</pre></div>
+
+
+<p>This test executes all calls to <code>Get</code> sequentially.</p>
+<p>Since HTTP requests are a great opportunity for parallelism, the following test makes all requests concurrently. <u>The test uses a <code>sync.WaitGroup</code> to wait until the last request is complete before returning.</u></p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/memotest/memotest.go#L84">gopl.io/ch9/memotest/memotest.go</a></small></p>
+<div class="codehilite"><pre><span class="nx">m</span> <span class="o">:=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">httpGetBody</span><span class="p">)</span>
+<span class="kd">var</span> <span class="nx">n</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+<span class="k">for</span> <span class="nx">url</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">incomingURLs</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">n</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">start</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+        <span class="nx">value</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">log</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s, %s, %d bytes\n&quot;</span><span class="p">,</span>
+            <span class="nx">url</span><span class="p">,</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Since</span><span class="p">(</span><span class="nx">start</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="nx">value</span><span class="p">.([]</span><span class="kt">byte</span><span class="p">)))</span>
+        <span class="nx">n</span><span class="p">.</span><span class="nx">Done</span><span class="p">()</span>
+    <span class="p">}(</span><span class="nx">url</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">n</span><span class="p">.</span><span class="nx">Wait</span><span class="p">()</span>
+</pre></div>
+
+
+<p>The test runs much faster, but unfortunately it is unlikely to work correctly all the time. We may notice unexpected cache misses, or cache hits that return incorrect values, or even crashes.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
