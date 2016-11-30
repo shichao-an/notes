@@ -675,6 +675,92 @@ n.Wait()
 
 The test runs much faster, but unfortunately it is unlikely to work correctly all the time. We may notice unexpected cache misses, or cache hits that return incorrect values, or even crashes.
 
+The worse thing is that it is likely to work correctly some of the time, so we may not even notice that it has a problem. But if we run it with the `-race` flag, the race detector ([Section 9.6](#the-race-detector)) often prints a report such as this one:
+
+```text
+$ go test -run=TestConcurrent -race -v gopl.io/ch9/memo1
+=== RUN TestConcurrent
+...
+WARNING: DATA RACE
+Write by goroutine 36:
+runtime.mapassign1()
+~/go/src/runtime/hashmap.go:411 +0x0
+gopl.io/ch9/memo1.(*Memo).Get()
+~/gobook2/src/gopl.io/ch9/memo1/memo.go:32 +0x205
+...
+Previous write by goroutine 35:
+runtime.mapassign1()
+~/go/src/runtime/hashmap.go:411 +0x0
+gopl.io/ch9/memo1.(*Memo).Get()
+~/gobook2/src/gopl.io/ch9/memo1/memo.go:32 +0x205
+...
+Found 1 data race(s)
+FAIL gopl.io/ch9/memo1 2.393s
+```
+
+The reference to `memo.go:32` tells us that two goroutines have updated the `cache` map without any intervening synchronization. `Get` is not concurrency-safe: it has a data race.
+
+```text
+28 func (memo *Memo) Get(key string) (interface{}, error) {
+29     res, ok := memo.cache[key]
+30     if !ok {
+31         res.value, res.err = memo.f(key)
+32         memo.cache[key] = res
+33     }
+34     return res.value, res.err
+35 }
+```
+
+The simplest way to make the cache concurrency-safe is to use monitor-based synchronization, by adding a mutex to the `Memo`, which acquires the mutex lock at the start of `Get`, and releases it before `Get` returns, so that the two cache operations occur within the critical section:
+
+<small>[gopl.io/ch9/memo2/memo.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/memo2/memo.go)</small>
+
+```go
+type Memo struct {
+	f     Func
+	mu    sync.Mutex // guards cache
+	cache map[string]result
+}
+
+// Get is concurrency-safe.
+func (memo *Memo) Get(key string) (value interface{}, err error) {
+	memo.mu.Lock()
+	res, ok := memo.cache[key]
+	if !ok {
+		res.value, res.err = memo.f(key)
+		memo.cache[key] = res
+	}
+	memo.mu.Unlock()
+	return res.value, res.err
+}
+```
+
+Now the race detector is silent, even when running the tests concurrently. Unfortunately this change to `Memo` reverses our earlier performance gains. By holding the lock for the duration of each call to `f`, `Get` serializes all the I/O operations we intended to parallelize. What we need is a *non-blocking* cache, one that does not serialize calls to the function it memoizes.
+
+In the following implementation of `Get`, the calling goroutine acquires the lock twice: once for the lookup, and then a second time for the update if the lookup returned nothing. In between, other goroutines are free to use the cache.
+
+<small>[gopl.io/ch9/memo3/memo.go](https://github.com/shichao-an/gopl.io/blob/master/ch9/memo3/memo.go)</small>
+
+```go
+func (memo *Memo) Get(key string) (value interface{}, err error) {
+	memo.mu.Lock()
+	res, ok := memo.cache[key]
+	memo.mu.Unlock()
+	if !ok {
+		res.value, res.err = memo.f(key)
+
+		// Between the two critical sections, several goroutines
+		// may race to compute f(key) and update the map.
+		memo.mu.Lock()
+		memo.cache[key] = res
+		memo.mu.Unlock()
+	}
+	return res.value, res.err
+}
+```
+
+The performance improves again, but now we notice that some URLs are being fetched twice.  This happens when two or more goroutines call `Get` for the same URL at about the same time. Both consult the cache, find no value there, and then call the slow function `f`. Then both of them update the map with the result they obtained. One of the results is overwritten by the other.
+
 ### Doubts and Solution
 
 #### Verbatim
