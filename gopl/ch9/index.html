@@ -1051,6 +1051,84 @@ ok gopl.io/ch9/memo1 1.257s
 
 
 <p>The test runs much faster, but unfortunately it is unlikely to work correctly all the time. We may notice unexpected cache misses, or cache hits that return incorrect values, or even crashes.</p>
+<p>The worse thing is that it is likely to work correctly some of the time, so we may not even notice that it has a problem. But if we run it with the <code>-race</code> flag, the race detector (<a href="#the-race-detector">Section 9.6</a>) often prints a report such as this one:</p>
+<div class="codehilite"><pre>$ go test -run=TestConcurrent -race -v gopl.io/ch9/memo1
+=== RUN TestConcurrent
+...
+WARNING: DATA RACE
+Write by goroutine 36:
+runtime.mapassign1()
+~/go/src/runtime/hashmap.go:411 +0x0
+gopl.io/ch9/memo1.(*Memo).Get()
+~/gobook2/src/gopl.io/ch9/memo1/memo.go:32 +0x205
+...
+Previous write by goroutine 35:
+runtime.mapassign1()
+~/go/src/runtime/hashmap.go:411 +0x0
+gopl.io/ch9/memo1.(*Memo).Get()
+~/gobook2/src/gopl.io/ch9/memo1/memo.go:32 +0x205
+...
+Found 1 data race(s)
+FAIL gopl.io/ch9/memo1 2.393s
+</pre></div>
+
+
+<p>The reference to <code>memo.go:32</code> tells us that two goroutines have updated the <code>cache</code> map without any intervening synchronization. <code>Get</code> is not concurrency-safe: it has a data race.</p>
+<div class="codehilite"><pre>28 func (memo *Memo) Get(key string) (interface{}, error) {
+29     res, ok := memo.cache[key]
+30     if !ok {
+31         res.value, res.err = memo.f(key)
+32         memo.cache[key] = res
+33     }
+34     return res.value, res.err
+35 }
+</pre></div>
+
+
+<p>The simplest way to make the cache concurrency-safe is to use monitor-based synchronization, by adding a mutex to the <code>Memo</code>, which acquires the mutex lock at the start of <code>Get</code>, and releases it before <code>Get</code> returns, so that the two cache operations occur within the critical section:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/memo2/memo.go">gopl.io/ch9/memo2/memo.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Memo</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">f</span>     <span class="nx">Func</span>
+    <span class="nx">mu</span>    <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span> <span class="c1">// guards cache</span>
+    <span class="nx">cache</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">result</span>
+<span class="p">}</span>
+
+<span class="c1">// Get is concurrency-safe.</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">Get</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">value</span> <span class="kd">interface</span><span class="p">{},</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">res</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span> <span class="p">=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">f</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="p">=</span> <span class="nx">res</span>
+    <span class="p">}</span>
+    <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Now the race detector is silent, even when running the tests concurrently. Unfortunately this change to <code>Memo</code> reverses our earlier performance gains. By holding the lock for the duration of each call to <code>f</code>, <code>Get</code> serializes all the I/O operations we intended to parallelize. What we need is a <em>non-blocking</em> cache, one that does not serialize calls to the function it memoizes.</p>
+<p>In the following implementation of <code>Get</code>, the calling goroutine acquires the lock twice: once for the lookup, and then a second time for the update if the lookup returned nothing. In between, other goroutines are free to use the cache.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/memo3/memo.go">gopl.io/ch9/memo3/memo.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">Get</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">value</span> <span class="kd">interface</span><span class="p">{},</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">res</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span> <span class="p">=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">f</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+
+        <span class="c1">// Between the two critical sections, several goroutines</span>
+        <span class="c1">// may race to compute f(key) and update the map.</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="p">=</span> <span class="nx">res</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The performance improves again, but now we notice that some URLs are being fetched twice.  This happens when two or more goroutines call <code>Get</code> for the same URL at about the same time. Both consult the cache, find no value there, and then call the slow function <code>f</code>. Then both of them update the map with the result they obtained. One of the results is overwritten by the other.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
