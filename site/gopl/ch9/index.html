@@ -1129,6 +1129,132 @@ FAIL gopl.io/ch9/memo1 2.393s
 
 
 <p>The performance improves again, but now we notice that some URLs are being fetched twice.  This happens when two or more goroutines call <code>Get</code> for the same URL at about the same time. Both consult the cache, find no value there, and then call the slow function <code>f</code>. Then both of them update the map with the result they obtained. One of the results is overwritten by the other.</p>
+<p>We need to avoid this redundant work. This feature is sometimes called <em>duplicate suppression</em>. In the version of <code>Memo</code> below, each map element is a pointer to an entry struct. Each entry contains the memoized result of a call to the function <code>f</code>, but it additionally contains a channel called <code>ready</code>. Right after the entry's result has been set, this channel will be closed, to <em>broadcast</em> (<a href="../ch8/#cancellation">Section 8.9</a>) to any other goroutines that it is now safe for them to read the result from the <code>entry</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/memo4/memo.go">gopl.io/ch9/memo4/memo.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">entry</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">res</span>   <span class="nx">result</span>
+    <span class="nx">ready</span> <span class="kd">chan</span> <span class="kd">struct</span><span class="p">{}</span> <span class="c1">// closed when res is ready</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">New</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Func</span><span class="p">)</span> <span class="o">*</span><span class="nx">Memo</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">Memo</span><span class="p">{</span><span class="nx">f</span><span class="p">:</span> <span class="nx">f</span><span class="p">,</span> <span class="nx">cache</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="o">*</span><span class="nx">entry</span><span class="p">)}</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Memo</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">f</span>     <span class="nx">Func</span>
+    <span class="nx">mu</span>    <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span> <span class="c1">// guards cache</span>
+    <span class="nx">cache</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="o">*</span><span class="nx">entry</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">Get</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="nx">value</span> <span class="kd">interface</span><span class="p">{},</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Lock</span><span class="p">()</span>
+    <span class="nx">e</span> <span class="o">:=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nx">e</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="c1">// This is the first request for this key.</span>
+        <span class="c1">// This goroutine becomes responsible for computing</span>
+        <span class="c1">// the value and broadcasting the ready condition.</span>
+        <span class="nx">e</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">entry</span><span class="p">{</span><span class="nx">ready</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})}</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="p">=</span> <span class="nx">e</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+
+        <span class="nx">e</span><span class="p">.</span><span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">res</span><span class="p">.</span><span class="nx">err</span> <span class="p">=</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">f</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+
+        <span class="nb">close</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">ready</span><span class="p">)</span> <span class="c1">// broadcast ready condition</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// This is a repeat request for this key.</span>
+        <span class="nx">memo</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nx">Unlock</span><span class="p">()</span>
+
+        <span class="o">&lt;-</span><span class="nx">e</span><span class="p">.</span><span class="nx">ready</span> <span class="c1">// wait for ready condition</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">e</span><span class="p">.</span><span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">res</span><span class="p">.</span><span class="nx">err</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A call to <code>Get</code> now involves:</p>
+<ul>
+<li>Acquiring the mutex lock that guards the <code>cache</code> map</li>
+<li>Looking in the map for a pointer to an existing <code>entry</code></li>
+<li>Allocating and inserting a new <code>entry</code> if none was found, then releasing the lock</li>
+</ul>
+<p>But there are two cases this time:</p>
+<ul>
+<li>If there was an existing <code>entry</code> (in the <code>else</code> block), its value is not necessarily ready yet: another goroutine could still be calling the slow function <code>f</code>. Thus the calling goroutine must wait for the entry's "ready" condition before it reads the <code>entry</code>'s result. <u>It does this by reading a value from the <code>ready</code> channel, since this operation blocks until the channel is closed.</u></li>
+<li>If there was no existing entry (in the <code>if e == nil</code> block), then by inserting a new "not ready" entry into the map, the current goroutine becomes responsible for invoking the slow function, updating the entry, and broadcasting the readiness of the new entry to any other goroutines that might (by then) be waiting for it.</li>
+</ul>
+<p>Notice that the variables <code>e.res.value</code> and <code>e.res.err</code> in the <code>entry</code> are shared among multiple goroutines. The goroutine that creates the <code>entry</code> sets their values, and other goroutines read their values once the "ready" condition has been broadcast. Despite being accessed by multiple goroutines, no mutex lock is necessary. The closing of the <code>ready</code> channel happens before any other goroutine receives the broadcast event, so the write to those variables in the first goroutine happens before they are read by subsequent goroutines. There is no data race.</p>
+<p>Our concurrent, duplicate-suppressing, non-blocking cache is complete.</p>
+<p>The implementation of <code>Memo</code> above uses a mutex to guard a map variable that is shared by each goroutine that calls <code>Get</code>. It's interesting to contrast this design with an alternative one in which the map variable is confined to a <em>monitor goroutine</em> to which callers of <code>Get</code> must send a message.</p>
+<p>The declarations of <code>Func</code>, <code>result</code>, and <code>entry</code> remain as before. However, the <code>Memo</code> type now consists of a channel, <code>requests</code>, through which the caller of <code>Get</code> communicates with the monitor goroutine. The element type of the channel is a <code>request</code>. Using this structure, the caller of <code>Get</code> sends the monitor goroutine both the key (the argument to the memoized function), and another channel, <code>response</code>, over which the result should be sent back when it becomes available. This channel will carry only a single value.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/memo5/memo.go">gopl.io/ch9/memo5/memo.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// A request is a message requesting that the Func be applied to key.</span>
+<span class="kd">type</span> <span class="nx">request</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">key</span>      <span class="kt">string</span>
+    <span class="nx">response</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="nx">result</span> <span class="c1">// the client wants a single result</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Memo</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">requests</span> <span class="kd">chan</span> <span class="nx">request</span> <span class="p">}</span>
+
+<span class="c1">// New returns a memoization of f.  Clients must subsequently call Close.</span>
+<span class="kd">func</span> <span class="nx">New</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Func</span><span class="p">)</span> <span class="o">*</span><span class="nx">Memo</span> <span class="p">{</span>
+    <span class="nx">memo</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">Memo</span><span class="p">{</span><span class="nx">requests</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">request</span><span class="p">)}</span>
+    <span class="k">go</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">server</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">memo</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">Get</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="kd">interface</span><span class="p">{},</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">response</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">result</span><span class="p">)</span>
+    <span class="nx">memo</span><span class="p">.</span><span class="nx">requests</span> <span class="o">&lt;-</span> <span class="nx">request</span><span class="p">{</span><span class="nx">key</span><span class="p">,</span> <span class="nx">response</span><span class="p">}</span>
+    <span class="nx">res</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">response</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">err</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">Close</span><span class="p">()</span> <span class="p">{</span> <span class="nb">close</span><span class="p">(</span><span class="nx">memo</span><span class="p">.</span><span class="nx">requests</span><span class="p">)</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>Get</code> method above creates a <code>response</code> channel, puts it in the <code>request</code>, sends it to the monitor goroutine, then immediately receives from it.</p>
+<p>The cache variable is confined to the monitor goroutine <code>(*Memo).server</code> shown below. The monitor reads requests in a loop until the <code>request</code> channel is closed by the <code>Close</code> method. For each request, it consults the cache, creating and inserting a new <code>entry</code> if none was found.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="p">(</span><span class="nx">memo</span> <span class="o">*</span><span class="nx">Memo</span><span class="p">)</span> <span class="nx">server</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Func</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">cache</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="o">*</span><span class="nx">entry</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">req</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">memo</span><span class="p">.</span><span class="nx">requests</span> <span class="p">{</span>
+        <span class="nx">e</span> <span class="o">:=</span> <span class="nx">cache</span><span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nx">e</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="c1">// This is the first request for this key.</span>
+            <span class="nx">e</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">entry</span><span class="p">{</span><span class="nx">ready</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})}</span>
+            <span class="nx">cache</span><span class="p">[</span><span class="nx">req</span><span class="p">.</span><span class="nx">key</span><span class="p">]</span> <span class="p">=</span> <span class="nx">e</span>
+            <span class="k">go</span> <span class="nx">e</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">req</span><span class="p">.</span><span class="nx">key</span><span class="p">)</span> <span class="c1">// call f(key)</span>
+        <span class="p">}</span>
+        <span class="k">go</span> <span class="nx">e</span><span class="p">.</span><span class="nx">deliver</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">response</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">entry</span><span class="p">)</span> <span class="nx">call</span><span class="p">(</span><span class="nx">f</span> <span class="nx">Func</span><span class="p">,</span> <span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Evaluate the function.</span>
+    <span class="nx">e</span><span class="p">.</span><span class="nx">res</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">res</span><span class="p">.</span><span class="nx">err</span> <span class="p">=</span> <span class="nx">f</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+    <span class="c1">// Broadcast the ready condition.</span>
+    <span class="nb">close</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">ready</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">entry</span><span class="p">)</span> <span class="nx">deliver</span><span class="p">(</span><span class="nx">response</span> <span class="kd">chan</span><span class="o">&lt;-</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Wait for the ready condition.</span>
+    <span class="o">&lt;-</span><span class="nx">e</span><span class="p">.</span><span class="nx">ready</span>
+    <span class="c1">// Send the result to the client.</span>
+    <span class="nx">response</span> <span class="o">&lt;-</span> <span class="nx">e</span><span class="p">.</span><span class="nx">res</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Similar to the mutex-based version, the first request for a given key becomes responsible for calling the function <code>f</code> on that key, storing the result in the <code>entry</code>, and broadcasting the readiness of the <code>entry</code> by closing the <code>ready</code> channel. This is done by <code>(*entry).call</code>.</p>
+<p>A subsequent request for the same key finds the existing <code>entry</code> in the map, waits for the result to become ready, and sends the result through the <code>response</code> channel to the client goroutine that called <code>Get</code>. This is done by <code>(*entry).deliver</code>.</p>
+<p><u>The <code>call</code> and <code>deliver</code> methods must be called in their own goroutines to ensure that the monitor goroutine does not stop processing new requests.</u></p>
+<p>This example shows that it's possible to build many concurrent structures using either of the
+two approaches without excessive complexity:</p>
+<ul>
+<li>Shared variables and locks</li>
+<li>Communicating sequential processes</li>
+</ul>
+<p>It's not always obvious which approach is preferable in a given situation, but it's worth knowing how they correspond. Sometimes switching from one approach to the other can make your code simpler.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
