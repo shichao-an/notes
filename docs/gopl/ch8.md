@@ -1410,7 +1410,7 @@ One possibility might be to send as many events on the `abort` channel as there 
 
 In general, it's hard to know how many goroutines are working on our behalf at any given moment. Moreover, when a goroutine receives a value from the `abort` channel, it consumes that value so that other goroutines won't see it. For cancellation, what we need is a reliable mechanism to *broadcast* an event over a channel so that many goroutines can see it as it occurs and can later see that it has occurred.
 
-Recall that after a channel has been closed and drained of all sent values, subsequent receive operations proceed immediately, yielding zero values. We can exploit this to create a broadcast mechanism: don't send a value on the channel, close it.
+Recall that after a channel has been closed and drained of all sent values, subsequent receive operations proceed immediately, yielding zero values. <u>We can exploit this to create a broadcast mechanism: don't send a value on the channel, *close* it.</u>
 
 We can add cancellation to the `du` program from the previous section with a few simple changes.
 
