@@ -900,6 +900,43 @@ two approaches without excessive complexity:
 
 It's not always obvious which approach is preferable in a given situation, but it's worth knowing how they correspond. Sometimes switching from one approach to the other can make your code simpler.
 
+### Goroutines and Threads
+
+The [previous chapter](ch8.md) mentioned that the difference between goroutines and operating system (OS) threads could be ignored until later. Although the differences between them are essentially quantitative, a big enough quantitative difference becomes a qualitative one, and so it is with goroutines and threads.
+
+#### Growable Stacks
+
+Each OS thread has a fixed-size block of memory (often as large as 2MB) for its [*stack*](https://en.wikipedia.org/wiki/Call_stack), the work area where it saves the local variables of function calls that are in progress or temporarily suspended while another function is called.
+
+This fixed-size stack is simultaneously too much and too little:
+
+* A 2MB stack would be a huge waste of memory for a little goroutine, such as one that merely waits for a `WaitGroup` then closes a channel.
+* It's too small for a Go program that creates hundreds of thousands of goroutines at one time. Yet despite their size, fixed-size stacks are not always big enough for the most complex and deeply recursive of functions.
+
+Changing the fixed size can improve space efficiency and allow more threads to be created, or it can enable more deeply recursive functions, but it cannot do both.
+
+In contrast, a goroutine starts life with a small stack, typically 2KB. A goroutine's stack, like the stack of an OS thread, holds the local variables of active and suspended function calls, but unlike an OS thread, a goroutine’s stack is not fixed; it grows and shrinks as needed. The size limit for a goroutine stack may be as much as 1GB, orders of magnitude larger than a typical fixed-size thread stack, though few goroutines use that much.
+
+#### Goroutine Scheduling
+
+OS threads are scheduled by the OS kernel. Every few milliseconds, a hardware timer interrupts the processor, which causes a kernel function called the *scheduler* to be invoked. This function does the following things:
+
+1. Suspends the currently executing thread and saves its registers in memory.
+2. Looks over the list of threads and decides which one should run next
+3. Restores that thread's registers from memory, then resumes the execution of that thread.
+
+Because OS threads are scheduled by the kernel, passing control from one thread to another requires a full [context switch](https://en.wikipedia.org/wiki/Context_switch), which does the following things:
+
+* Saving the state of one user thread to memory
+* Restoring the state of another thread
+* Updating the scheduler's data structures.
+
+This operation is slow, due to its poor locality and the number of memory accesses required, and has historically only gotten worse as the number of CPU cycles required to access memory has increased.
+
+The Go runtime contains its own scheduler that uses a technique known as *m:n scheduling*, because it multiplexes (or schedules) *m* goroutines on *n* OS threads. The job of the Go scheduler is analogous to that of the kernel scheduler, but it is concerned only with the goroutines of a single Go program.
+
+Unlike the operating system's thread scheduler, the Go scheduler is not invoked periodically by a hardware timer, but implicitly by certain Go language constructs. For example, when a goroutine calls `time.Sleep` or blocks in a channel or mutex operation, the scheduler puts it to sleep and runs another goroutine until it is time to wake the first one up. Because it doesn't need a switch to kernel context, rescheduling a goroutine is much cheaper than rescheduling a thread.
+
 ### Doubts and Solution
 
 #### Verbatim

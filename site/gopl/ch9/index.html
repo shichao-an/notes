@@ -455,6 +455,13 @@
         <li class="main "><a href="#example-concurrent-non-blocking-cache">Example: Concurrent Non-Blocking Cache</a></li>
         
     
+        <li class="main "><a href="#goroutines-and-threads">Goroutines and Threads</a></li>
+        
+            <li><a href="#growable-stacks">Growable Stacks</a></li>
+        
+            <li><a href="#goroutine-scheduling">Goroutine Scheduling</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -1255,6 +1262,33 @@ two approaches without excessive complexity:</p>
 <li>Communicating sequential processes</li>
 </ul>
 <p>It's not always obvious which approach is preferable in a given situation, but it's worth knowing how they correspond. Sometimes switching from one approach to the other can make your code simpler.</p>
+<h3 id="goroutines-and-threads">Goroutines and Threads</h3>
+<p>The <a href="../ch8/">previous chapter</a> mentioned that the difference between goroutines and operating system (OS) threads could be ignored until later. Although the differences between them are essentially quantitative, a big enough quantitative difference becomes a qualitative one, and so it is with goroutines and threads.</p>
+<h4 id="growable-stacks">Growable Stacks</h4>
+<p>Each OS thread has a fixed-size block of memory (often as large as 2MB) for its <a href="https://en.wikipedia.org/wiki/Call_stack"><em>stack</em></a>, the work area where it saves the local variables of function calls that are in progress or temporarily suspended while another function is called.</p>
+<p>This fixed-size stack is simultaneously too much and too little:</p>
+<ul>
+<li>A 2MB stack would be a huge waste of memory for a little goroutine, such as one that merely waits for a <code>WaitGroup</code> then closes a channel.</li>
+<li>It's too small for a Go program that creates hundreds of thousands of goroutines at one time. Yet despite their size, fixed-size stacks are not always big enough for the most complex and deeply recursive of functions.</li>
+</ul>
+<p>Changing the fixed size can improve space efficiency and allow more threads to be created, or it can enable more deeply recursive functions, but it cannot do both.</p>
+<p>In contrast, a goroutine starts life with a small stack, typically 2KB. A goroutine's stack, like the stack of an OS thread, holds the local variables of active and suspended function calls, but unlike an OS thread, a goroutine’s stack is not fixed; it grows and shrinks as needed. The size limit for a goroutine stack may be as much as 1GB, orders of magnitude larger than a typical fixed-size thread stack, though few goroutines use that much.</p>
+<h4 id="goroutine-scheduling">Goroutine Scheduling</h4>
+<p>OS threads are scheduled by the OS kernel. Every few milliseconds, a hardware timer interrupts the processor, which causes a kernel function called the <em>scheduler</em> to be invoked. This function does the following things:</p>
+<ol>
+<li>Suspends the currently executing thread and saves its registers in memory.</li>
+<li>Looks over the list of threads and decides which one should run next</li>
+<li>Restores that thread's registers from memory, then resumes the execution of that thread.</li>
+</ol>
+<p>Because OS threads are scheduled by the kernel, passing control from one thread to another requires a full <a href="https://en.wikipedia.org/wiki/Context_switch">context switch</a>, which does the following things:</p>
+<ul>
+<li>Saving the state of one user thread to memory</li>
+<li>Restoring the state of another thread</li>
+<li>Updating the scheduler's data structures.</li>
+</ul>
+<p>This operation is slow, due to its poor locality and the number of memory accesses required, and has historically only gotten worse as the number of CPU cycles required to access memory has increased.</p>
+<p>The Go runtime contains its own scheduler that uses a technique known as <em>m:n scheduling</em>, because it multiplexes (or schedules) <em>m</em> goroutines on <em>n</em> OS threads. The job of the Go scheduler is analogous to that of the kernel scheduler, but it is concerned only with the goroutines of a single Go program.</p>
+<p>Unlike the operating system's thread scheduler, the Go scheduler is not invoked periodically by a hardware timer, but implicitly by certain Go language constructs. For example, when a goroutine calls <code>time.Sleep</code> or blocks in a channel or mutex operation, the scheduler puts it to sleep and runs another goroutine until it is time to wake the first one up. Because it doesn't need a switch to kernel context, rescheduling a goroutine is much cheaper than rescheduling a thread.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
