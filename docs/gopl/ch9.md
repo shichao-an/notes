@@ -937,6 +937,46 @@ The Go runtime contains its own scheduler that uses a technique known as *m:n sc
 
 Unlike the operating system's thread scheduler, the Go scheduler is not invoked periodically by a hardware timer, but implicitly by certain Go language constructs. For example, when a goroutine calls `time.Sleep` or blocks in a channel or mutex operation, the scheduler puts it to sleep and runs another goroutine until it is time to wake the first one up. Because it doesn't need a switch to kernel context, rescheduling a goroutine is much cheaper than rescheduling a thread.
 
+#### GOMAXPROCS
+
+The Go scheduler uses a parameter called `GOMAXPROCS` to determine how many OS threads may be actively executing Go code simultaneously. Its default value is the number of CPUs on the machine, so on a machine with 8 CPUs, the scheduler will schedule Go code on up to 8 OS threads at once. `GOMAXPROCS` is the *n* in *m*:*n* scheduling.
+
+* <u>Goroutines that are sleeping or blocked in a communication do not need a thread at all.</u>
+* Goroutines that are blocked in I/O or other system calls or are calling non-Go functions, do need an OS thread, but `GOMAXPROCS` need not account for them.
+
+You can explicitly control this parameter using the `GOMAXPROCS` environment variable or the [`runtime.GOMAXPROCS`](https://golang.org/pkg/runtime/#GOMAXPROCS) function.
+
+We can see the effect of `GOMAXPROCS` on the following program, which prints an endless stream of zeros and ones:
+
+```go
+for {
+	go fmt.Print(0)
+	fmt.Print(1)
+}
+```
+
+```text
+$ GOMAXPROCS=1 go run hacker-cliché.go
+111111111111111111110000000000000000000011111...
+$ GOMAXPROCS=2 go run hacker-cliché.go
+010101010101010101011001100101011010010100110...
+```
+
+1. In the first run, at most one goroutine was executed at a time. Initially, it was the main goroutine, which prints ones. After a period of time, the Go scheduler put it to sleep and woke up the goroutine that prints zeros, giving it a turn to run on the OS thread.
+2. In the second run, there were two OS threads available, so both goroutines ran simultaneously, printing digits at about the same rate.
+
+Note that many factors are involved in goroutine scheduling, and the runtime is constantly evolving, so your results may differ from the ones above.
+
+#### Goroutines Have No Identity
+
+In most operating systems and programming languages that support multithreading, the current thread has a distinct identity that can be easily obtained as an ordinary value, typically an integer or pointer. This makes it easy to build an abstraction called [**thread-local storage**](https://en.wikipedia.org/wiki/Thread-local_storage), which is essentially a global map keyed by thread identity, so that each thread can store and retrieve values independent of other threads.
+
+Goroutines have no notion of identity that is accessible to the programmer. This is by design, since thread-local storage tends to be abused. For example, in a web server implemented in a language with thread-local storage, it's common for many functions to find information about the HTTP request on whose behalf they are currently working by looking in that storage. However, this can lead to an unhealthy "[action at a distance](https://en.wikipedia.org/wiki/Action_at_a_distance_(computer_programming))" in which the behavior of a function is not determined by its arguments alone, but by the identity of the thread in which it runs. Consequently, if the identity of the thread changes (e.g. some worker threads are enlisted to help) the function misbehaves mysteriously.
+
+Go encourages a simpler style of programming in which parameters that affect the behavior of a function are explicit. Not only does this make programs easier to read, but it facilitates us to freely assign subtasks of a given function to many different goroutines without worrying about their identity.
+
+At this point, all the language features needed for writing Go programs have been discussed. The next two chapters will step back to some of the practices and tools that support programming in the large: how to structure a project as a set of packages, and how to obtain, build, test, benchmark, profile, document, and share those packages.
+
 ### Doubts and Solution
 
 #### Verbatim
