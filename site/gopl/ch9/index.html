@@ -461,6 +461,10 @@
         
             <li><a href="#goroutine-scheduling">Goroutine Scheduling</a></li>
         
+            <li><a href="#gomaxprocs">GOMAXPROCS</a></li>
+        
+            <li><a href="#goroutines-have-no-identity">Goroutines Have No Identity</a></li>
+        
     
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
@@ -1289,6 +1293,38 @@ two approaches without excessive complexity:</p>
 <p>This operation is slow, due to its poor locality and the number of memory accesses required, and has historically only gotten worse as the number of CPU cycles required to access memory has increased.</p>
 <p>The Go runtime contains its own scheduler that uses a technique known as <em>m:n scheduling</em>, because it multiplexes (or schedules) <em>m</em> goroutines on <em>n</em> OS threads. The job of the Go scheduler is analogous to that of the kernel scheduler, but it is concerned only with the goroutines of a single Go program.</p>
 <p>Unlike the operating system's thread scheduler, the Go scheduler is not invoked periodically by a hardware timer, but implicitly by certain Go language constructs. For example, when a goroutine calls <code>time.Sleep</code> or blocks in a channel or mutex operation, the scheduler puts it to sleep and runs another goroutine until it is time to wake the first one up. Because it doesn't need a switch to kernel context, rescheduling a goroutine is much cheaper than rescheduling a thread.</p>
+<h4 id="gomaxprocs">GOMAXPROCS</h4>
+<p>The Go scheduler uses a parameter called <code>GOMAXPROCS</code> to determine how many OS threads may be actively executing Go code simultaneously. Its default value is the number of CPUs on the machine, so on a machine with 8 CPUs, the scheduler will schedule Go code on up to 8 OS threads at once. <code>GOMAXPROCS</code> is the <em>n</em> in <em>m</em>:<em>n</em> scheduling.</p>
+<ul>
+<li><u>Goroutines that are sleeping or blocked in a communication do not need a thread at all.</u></li>
+<li>Goroutines that are blocked in I/O or other system calls or are calling non-Go functions, do need an OS thread, but <code>GOMAXPROCS</code> need not account for them.</li>
+</ul>
+<p>You can explicitly control this parameter using the <code>GOMAXPROCS</code> environment variable or the <a href="https://golang.org/pkg/runtime/#GOMAXPROCS"><code>runtime.GOMAXPROCS</code></a> function.</p>
+<p>We can see the effect of <code>GOMAXPROCS</code> on the following program, which prints an endless stream of zeros and ones:</p>
+<div class="codehilite"><pre><span class="k">for</span> <span class="p">{</span>
+    <span class="k">go</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Print</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<div class="codehilite"><pre>$ GOMAXPROCS=1 go run hacker-cliché.go
+111111111111111111110000000000000000000011111...
+$ GOMAXPROCS=2 go run hacker-cliché.go
+010101010101010101011001100101011010010100110...
+</pre></div>
+
+
+<ol>
+<li>In the first run, at most one goroutine was executed at a time. Initially, it was the main goroutine, which prints ones. After a period of time, the Go scheduler put it to sleep and woke up the goroutine that prints zeros, giving it a turn to run on the OS thread.</li>
+<li>In the second run, there were two OS threads available, so both goroutines ran simultaneously, printing digits at about the same rate.</li>
+</ol>
+<p>Note that many factors are involved in goroutine scheduling, and the runtime is constantly evolving, so your results may differ from the ones above.</p>
+<h4 id="goroutines-have-no-identity">Goroutines Have No Identity</h4>
+<p>In most operating systems and programming languages that support multithreading, the current thread has a distinct identity that can be easily obtained as an ordinary value, typically an integer or pointer. This makes it easy to build an abstraction called <a href="https://en.wikipedia.org/wiki/Thread-local_storage"><strong>thread-local storage</strong></a>, which is essentially a global map keyed by thread identity, so that each thread can store and retrieve values independent of other threads.</p>
+<p>Goroutines have no notion of identity that is accessible to the programmer. This is by design, since thread-local storage tends to be abused. For example, in a web server implemented in a language with thread-local storage, it's common for many functions to find information about the HTTP request on whose behalf they are currently working by looking in that storage. However, this can lead to an unhealthy "<a href="https://en.wikipedia.org/wiki/Action_at_a_distance_(computer_programming)">action at a distance</a>" in which the behavior of a function is not determined by its arguments alone, but by the identity of the thread in which it runs. Consequently, if the identity of the thread changes (e.g. some worker threads are enlisted to help) the function misbehaves mysteriously.</p>
+<p>Go encourages a simpler style of programming in which parameters that affect the behavior of a function are explicit. Not only does this make programs easier to read, but it facilitates us to freely assign subtasks of a given function to many different goroutines without worrying about their identity.</p>
+<p>At this point, all the language features needed for writing Go programs have been discussed. The next two chapters will step back to some of the practices and tools that support programming in the large: how to structure a project as a set of packages, and how to obtain, build, test, benchmark, profile, document, and share those packages.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
