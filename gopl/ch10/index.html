@@ -432,6 +432,12 @@
         <li class="main active"><a href="#chapter-10-packages-and-the-go-tool">Chapter 10. Packages and the Go Tool</a></li>
         
     
+        <li class="main "><a href="#introduction">Introduction</a></li>
+        
+    
+        <li class="main "><a href="#import-paths">Import Paths</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -441,6 +447,42 @@
 <p>In a program, the majority of the functions were written by others and made available for reuse through <strong>packages</strong>.</p>
 <p>Go has over 100 standard packages that provide the foundations for most applications.  The Go community has published many more, and you can find a searchable index of them at <a href="https://godoc.org/">https://godoc.org</a>. This chapter discusses how to use existing packages and create new ones.</p>
 <p>Go also comes with the <code>go</code> tool, a sophisticated but simple-to-use command for managing workspaces of Go packages. Since the beginning of the book, we’ve been showing how to use the <code>go</code> tool to download, build, and run example programs. This chapter studies the tools' underlying concepts and its capabilities, which include printing documentation and querying metadata about the packages in the workspace.</p>
+<h3 id="introduction">Introduction</h3>
+<p>The purpose of any package system is to make the design and maintenance of large programs practical by grouping related features together into units that can be easily understood and changed, independent of the other packages of the program.</p>
+<p>This <a href="https://en.wikipedia.org/wiki/Modular_programming"><em>modularity</em></a> allows packages to be:</p>
+<ul>
+<li>Shared and reused by different projects,</li>
+<li>Distributed within an organization, or,</li>
+<li>Made available to the wider world.</li>
+</ul>
+<p>Each package defines a distinct name space that encloses its identifiers. Each name is associated with a particular package, so we can choose short, clear names for the types, functions, etc. that we use most often, without creating conflicts with other parts of the program.</p>
+<p>Packages also provide <a href="https://en.wikipedia.org/wiki/Encapsulation_(computer_programming)"><em>encapsulation</em></a> by controlling which names are visible or exported outside the package. Restricting the visibility of package members has two advantages:</p>
+<ul>
+<li>It hides the helper functions and types behind the package's API, allowing the package maintainer to change the implementation without affecting code outside the package.</li>
+<li>It hides variables so that clients can access and update them only through exported functions that preserve internal invariants or enforce mutual exclusion in a concurrent program.</li>
+</ul>
+<p>When we change a file, we must recompile the file's package and potentially all the packages that depend on it. Go compilation is notably faster than most other compiled languages, even when building from scratch. There are three main reasons for the compiler's speed.</p>
+<ol>
+<li>All imports must be explicitly listed at the beginning of each source file, so the compiler does not have to read and process an entire file to determine its dependencies.</li>
+<li>The dependencies of a package form a directed acyclic graph, and because there are no cycles, packages can
+be compiled separately and perhaps in parallel.</li>
+<li>The object file for a compiled Go package records export information not just for the package itself, but also for its dependencies. When compiling a package, the compiler must read one object file for each import but need
+not look beyond these files.</li>
+</ol>
+<h3 id="import-paths">Import Paths</h3>
+<p>Each package is identified by a unique string called its <a href="https://golang.org/doc/code.html#ImportPaths"><em>import path</em></a>. Import paths are the strings that appear in <code>import</code> declarations.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;math/rand&quot;</span>
+    <span class="s">&quot;encoding/json&quot;</span>
+    <span class="s">&quot;golang.org/x/net/html&quot;</span>
+    <span class="s">&quot;github.com/go-sql-driver/mysql&quot;</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>As mentioned in <a href="../ch2/#imports">Section 2.6.1</a>, the Go language specification doesn't define the meaning of these strings or how to determine a packages' import path, but leaves these issues to the tools.  This chapter discusses how the <code>go</code> tool interprets them, which is what the majority of Go programmers use for building, testing, and so on. However, other tools do exist. For example, Go programmers using Google's internal multi-language build system follow different rules for naming and locating packages, specifying tests, and so on, that more closely match the conventions of that system.</p>
+<p>For packages you intend to share or publish, import paths should be globally unique. To avoid conflicts, the import paths of all packages other than those from the standard library should start with the Internet domain name of the organization that owns or hosts the package; this also makes it possible to find packages.</p>
             </div>
         </div>
 
