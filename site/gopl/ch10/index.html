@@ -438,6 +438,14 @@
         <li class="main "><a href="#import-paths">Import Paths</a></li>
         
     
+        <li class="main "><a href="#the-package-declaration">The Package Declaration</a></li>
+        
+            <li><a href="#the-last-segment-convention">The "Last Segment" Convention *</a></li>
+        
+    
+        <li class="main "><a href="#import-declarations">Import Declarations</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -483,6 +491,72 @@ not look beyond these files.</li>
 
 <p>As mentioned in <a href="../ch2/#imports">Section 2.6.1</a>, the Go language specification doesn't define the meaning of these strings or how to determine a packages' import path, but leaves these issues to the tools.  This chapter discusses how the <code>go</code> tool interprets them, which is what the majority of Go programmers use for building, testing, and so on. However, other tools do exist. For example, Go programmers using Google's internal multi-language build system follow different rules for naming and locating packages, specifying tests, and so on, that more closely match the conventions of that system.</p>
 <p>For packages you intend to share or publish, import paths should be globally unique. To avoid conflicts, the import paths of all packages other than those from the standard library should start with the Internet domain name of the organization that owns or hosts the package; this also makes it possible to find packages.</p>
+<h3 id="the-package-declaration">The Package Declaration</h3>
+<p>A package declaration is required at the start of every Go source file. Its main purpose is to determine the default identifier for that package (called the <em>package name</em>) when it is imported by another package.</p>
+<p>For example, every file of the <code>math/rand</code> package starts with package <code>rand</code>, so when you import this package, you can access its members as <code>rand.Int</code>, <code>rand.Float64</code>, and so on.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;math/rand&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nx">Int</span><span class="p">())</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="the-last-segment-convention">The "Last Segment" Convention *</h4>
+<p>Conventionally, the package name is the last segment of the import path, and as a result, two packages may have the same name even though their import paths differ. For example, the packages whose import paths are <code>math/rand</code> and <code>crypto/rand</code> both have the name rand. How to use both in the same program will be discussed in a moment.</p>
+<p>There are three major exceptions to the "last segment" convention.</p>
+<ol>
+<li>A package defining a command (an executable Go program) always has the name <code>main</code>, regardless of the packages' import path. This is a signal to <code>go build</code> (<a href="./#building-packages">Section 10.7.3</a>) that it must invoke the linker to make an executable file.</li>
+<li>Some files in the directory may have the suffix <code>_test</code> on their package name if the file name ends with <code>_test.go</code>. Such a directory may define two packages: the usual one, plus another one called an <em>external test package</em>. The <code>_test</code> suffix signals to <code>go test</code> that it must build both packages, and it indicates which files belong to each package. External test packages are used to avoid cycles in the import graph arising from dependencies of the test; they are covered in more detail in <a href="ch11.md#external-test-packages">Section 11.2.4</a>.</li>
+<li>Some tools for dependency management append version number suffixes to package import paths, such as <code>"gopkg.in/yaml.v2"</code>. The package name excludes the suffix, so in this case it would be just <code>yaml</code>.</li>
+</ol>
+<h3 id="import-declarations">Import Declarations</h3>
+<p>A Go source file may contain zero or more import declarations immediately after the package declaration and before the first non-import declaration. Each import declaration may specify the import path of a single package, or multiple packages in a parenthesized list. The two forms below are equivalent but the second form is more common.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;fmt&quot;</span>
+<span class="kn">import</span> <span class="s">&quot;os&quot;</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>Imported packages may be grouped by introducing blank lines; such groupings usually indicate different domains. The order is not significant, but by convention the lines of each group are sorted alphabetically. (Both <code>gofmt</code> and <a href="https://godoc.org/golang.org/x/tools/cmd/goimports"><code>goimports</code></a> will group and sort for you.)</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;html/template&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+
+    <span class="s">&quot;golang.org/x/net/html&quot;</span>
+    <span class="s">&quot;golang.org/x/net/ipv4&quot;</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>If you need to import two packages whose names are the same, like <code>math/rand</code> and <code>crypto/rand</code>, into a third package, the import declaration must specify an alternative name for at least one of them to avoid a conflict. This is called a <em>renaming import</em>.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;crypto/rand&quot;</span>
+    <span class="nx">mrand</span> <span class="s">&quot;math/rand&quot;</span> <span class="c1">// alternative name mrand avoids conflict</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p>The alternative name affects only the importing file, not other files (even ones in the same package).</p>
+<p>A renaming import may be useful even when there is no conflict:</p>
+<ul>
+<li>If the name of the imported package is unwieldy, as is sometimes the case for automatically generated code, an abbreviated name may be more convenient. The same short name should be used consistently to avoid confusion.</li>
+<li>Choosing an alternative name can help avoid conflicts with common local variable names. For example, in a file with many local variables named <code>path</code>, we might import the standard <code>"path"</code> package as <code>pathpkg</code>.</li>
+</ul>
+<p>Each import declaration establishes a dependency from the current package to the imported
+package. The <code>go build</code> tool reports an error if these dependencies form a cycle.</p>
             </div>
         </div>
 
