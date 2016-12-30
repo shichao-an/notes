@@ -446,6 +446,12 @@
         <li class="main "><a href="#import-declarations">Import Declarations</a></li>
         
     
+        <li class="main "><a href="#blank-imports">Blank Imports</a></li>
+        
+    
+        <li class="main "><a href="#packages-and-naming">Packages and Naming</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -555,8 +561,137 @@ not look beyond these files.</li>
 <li>If the name of the imported package is unwieldy, as is sometimes the case for automatically generated code, an abbreviated name may be more convenient. The same short name should be used consistently to avoid confusion.</li>
 <li>Choosing an alternative name can help avoid conflicts with common local variable names. For example, in a file with many local variables named <code>path</code>, we might import the standard <code>"path"</code> package as <code>pathpkg</code>.</li>
 </ul>
-<p>Each import declaration establishes a dependency from the current package to the imported
-package. The <code>go build</code> tool reports an error if these dependencies form a cycle.</p>
+<p>Each import declaration establishes a dependency from the current package to the imported package. The <code>go build</code> tool reports an error if these dependencies form a cycle.</p>
+<h3 id="blank-imports">Blank Imports</h3>
+<p>Within a file, it is an error to import a package but not refer to the name it defines.  However, on occasion we must import a package merely for the side effects of doing so: evaluation of the initializer expressions of its package-level variables and execution of its <code>init</code> functions (<a href="../ch2/#package-initialization">Section 2.6.2</a>). To suppress the "unused import" error, we must use a renaming import in which the alternative name is <code>_</code>, the blank identifier, which can never be referenced.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="nx">_</span> <span class="s">&quot;image/png&quot;</span> <span class="c1">// register PNG decoder</span>
+</pre></div>
+
+
+<p>This is known as a <em>blank import</em>. It is most often used to implement a compile-time mechanism whereby the main program can enable optional features by blank-importing additional packages.</p>
+<p>As an example, the standard library's <a href="https://golang.org/pkg/image/"><code>image</code></a> package exports a <a href="https://golang.org/pkg/image/#Decode"><code>Decode</code></a> function that reads bytes from an <code>io.Reader</code>, figures out which image format was used to encode the data, invokes the appropriate decoder, then returns the resulting <code>image.Image</code>. Using <code>image.Decode</code>, it's easy to build a simple image converter that reads an image in one format and writes it out in another:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch10/jpeg/main.go">gopl.io/ch10/jpeg/main.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// The jpeg command reads a PNG image from the standard input</span>
+<span class="c1">// and writes it as a JPEG image to the standard output.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;image&quot;</span>
+    <span class="s">&quot;image/jpeg&quot;</span>
+    <span class="nx">_</span> <span class="s">&quot;image/png&quot;</span> <span class="c1">// register PNG decoder</span>
+    <span class="s">&quot;io&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">toJPEG</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;jpeg: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">toJPEG</span><span class="p">(</span><span class="nx">in</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="nx">out</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="nx">img</span><span class="p">,</span> <span class="nx">kind</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">image</span><span class="p">.</span><span class="nx">Decode</span><span class="p">(</span><span class="nx">in</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">err</span>
+    <span class="p">}</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;Input format =&quot;</span><span class="p">,</span> <span class="nx">kind</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">jpeg</span><span class="p">.</span><span class="nx">Encode</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="nx">img</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">jpeg</span><span class="p">.</span><span class="nx">Options</span><span class="p">{</span><span class="nx">Quality</span><span class="p">:</span> <span class="mi">95</span><span class="p">})</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>If we feed the output of <a href="https://github.com/shichao-an/gopl.io/blob/master/ch3/mandelbrot/main.go">gopl.io/ch3/mandelbrot</a> (<a href="../ch3/#complex-numbers">Section 3.3</a>) to the converter program, it detects the PNG input format and writes a JPEG image.</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch3/mandelbrot
+<span class="gp">$</span> go build gopl.io/ch10/jpeg
+<span class="gp">$</span> ./mandelbrot <span class="p">|</span> ./jpeg &gt;mandelbrot.jpg
+</pre></div>
+
+
+<p>If without the blank import of <code>image/png</code>, the program compiles and links as usual but can no longer recognize or decode input in PNG format:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch10/jpeg
+<span class="gp">$</span> ./mandelbrot <span class="p">|</span> ./jpeg &gt;mandelbrot.jpg
+<span class="go">jpeg: image: unknown format</span>
+</pre></div>
+
+
+<p>The cause is: the standard library provides decoders for GIF, PNG, and JPEG, and users may provide others, but to keep executables small, decoders are not included in an application unless explicitly requested.</p>
+<p>The <code>image.Decode</code> function consults a table of supported formats. Each entry in the table specifies four things:</p>
+<ol>
+<li>The name of the format</li>
+<li>A string that is a prefix of all images encoded this way, used to detect the encoding</li>
+<li>A function <code>Decode</code> that decodes an encoded image</li>
+<li>Another function <code>DecodeConfig</code> that decodes only the image metadata, such as its size and color space</li>
+</ol>
+<p>An entry is added to the table by calling <code>image.RegisterFormat</code>, typically from within the package initializer of the supporting package for each format, like this one in <code>image/png</code>:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">png</span> <span class="c1">// image/png</span>
+
+<span class="kd">func</span> <span class="nx">Decode</span><span class="p">(</span><span class="nx">r</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Reader</span><span class="p">)</span> <span class="p">(</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nx">DecodeConfig</span><span class="p">(</span><span class="nx">r</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Reader</span><span class="p">)</span> <span class="p">(</span><span class="nx">image</span><span class="p">.</span><span class="nx">Config</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">pngHeader</span> <span class="p">=</span> <span class="s">&quot;\x89PNG\r\n\x1a\n&quot;</span>
+    <span class="nx">image</span><span class="p">.</span><span class="nx">RegisterFormat</span><span class="p">(</span><span class="s">&quot;png&quot;</span><span class="p">,</span> <span class="nx">pngHeader</span><span class="p">,</span> <span class="nx">Decode</span><span class="p">,</span> <span class="nx">DecodeConfig</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The effect is that an application need only blank-import the package for the format it needs to make the <code>image.Decode</code> function able to decode it.</p>
+<p>The database/sql package uses a similar mechanism allowing users install just the database drivers they need. For example:</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;database/mysql&quot;</span>
+    <span class="nx">_</span> <span class="s">&quot;github.com/lib/pq&quot;</span>              <span class="c1">// enable support for Postgres</span>
+    <span class="nx">_</span> <span class="s">&quot;github.com/go-sql-driver/mysql&quot;</span> <span class="c1">// enable support for MySQL</span>
+<span class="p">)</span>
+
+<span class="nx">db</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">sql</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;postgres&quot;</span><span class="p">,</span> <span class="nx">dbname</span><span class="p">)</span> <span class="c1">// OK</span>
+<span class="nx">db</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">sql</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;mysql&quot;</span><span class="p">,</span> <span class="nx">dbname</span><span class="p">)</span>    <span class="c1">// OK</span>
+<span class="nx">db</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">sql</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;sqlite3&quot;</span><span class="p">,</span> <span class="nx">dbname</span><span class="p">)</span>  <span class="c1">// returns error: unknown driver &quot;sqlite3&quot;</span>
+</pre></div>
+
+
+<h3 id="packages-and-naming">Packages and Naming</h3>
+<p>This section offers some advice on how to follow Go's distinctive conventions for naming packages and their members.</p>
+<p>The package name should be short, but not so short as to be cryptic. The most frequently used packages in the standard library are named <code>bufio</code>, <code>bytes</code>, <code>flag</code>, <code>fmt</code>, <code>http</code>, <code>io</code>, <code>json</code>, <code>os</code>, <code>sort</code>, <code>sync</code>, and <code>time</code>.</p>
+<p>Be descriptive and unambiguous where possible. For example, don't name a utility package <code>util</code> when a name such as <code>imageutil</code> or <code>ioutil</code> is specific yet still concise. Avoid choosing package names that are commonly used for related local variables, or you may compel the package's clients to use renaming imports, as with the <code>path</code> package.</p>
+<p>Package names usually take the singular form, with some exceptions:</p>
+<ul>
+<li>The standard packages <code>bytes</code>, <code>errors</code>, and <code>strings</code> use the plural to avoid hiding the corresponding predeclared types.</li>
+<li>The standard package <code>go/types</code> use the plural to avoid conflict with a keyword.</li>
+</ul>
+<p>Avoid package names that already have other connotations. For example, we originally used the name temp for the temperature conversion package in <a href="../ch2/#type-declarations">Section 2.5</a>, but that didn't last long. It was a terrible idea because "temp" is an almost universal synonym for "temporary". We went through a brief period with the name <code>temperature</code>, but that was too long and didn't say what the package did. In the end, it became <code>tempconv</code>, which is shorter and parallel with <code>strconv</code>.</p>
+<p>Since each reference to a member of another package uses a qualified identifier such as <code>fmt.Println</code>, the burden of describing the package member is shared equally by the package name and the member name. We need not mention the concept of formatting in <code>Println</code> because the package name <code>fmt</code> does that already. When designing a package, consider how the two parts of a qualified identifier work together, not the member name alone. For example:</p>
+<ul>
+<li><code>bytes.Equal</code></li>
+<li><code>flag.Int</code></li>
+<li><code>http.Get</code></li>
+<li><code>json.Marshal</code></li>
+</ul>
+<p>We can identify some common naming patterns. The <code>strings</code> package provides a number of independent functions for manipulating strings:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">strings</span>
+
+<span class="kd">func</span> <span class="nx">Index</span><span class="p">(</span><span class="nx">needle</span><span class="p">,</span> <span class="nx">haystack</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span>
+
+<span class="kd">type</span> <span class="nx">Replacer</span> <span class="kd">struct</span><span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">NewReplacer</span><span class="p">(</span><span class="nx">oldnew</span> <span class="o">...</span><span class="kt">string</span><span class="p">)</span> <span class="o">*</span><span class="nx">Replacer</span>
+
+<span class="kd">type</span> <span class="nx">Reader</span> <span class="kd">struct</span><span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">NewReader</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="o">*</span><span class="nx">Reader</span>
+</pre></div>
+
+
+<p>The word <code>string</code> does not appear in any of their names. Clients refer to them as <code>strings.Index</code>, <code>strings.Replacer</code>, and so on.</p>
+<p>Other packages that we might describe as <em>single-type packages</em>, such as <code>html/template</code> and <code>math/rand</code>, expose one principal data type plus its methods, and often a <code>New</code> function to create instances.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">rand</span> <span class="c1">// &quot;math/rand&quot;</span>
+
+<span class="kd">type</span> <span class="nx">Rand</span> <span class="kd">struct</span><span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">New</span><span class="p">(</span><span class="nx">source</span> <span class="nx">Source</span><span class="p">)</span> <span class="o">*</span><span class="nx">Rand</span>
+</pre></div>
+
+
+<p>This can lead to repetition, as in <code>template.Template</code> or <code>rand.Rand</code>, which is why the names of these kinds of packages are often especially short.</p>
+<p>At the other extreme, there are packages like <code>net/http</code> that have a lot of names without a lot of structure, because they perform a complicated task. Despite having over twenty types and many more functions, the package's most important members have the simplest names: <code>Get</code>, <code>Post</code>, <code>Handle</code>, <code>Error</code>, <code>Client</code>, <code>Server</code>.</p>
             </div>
         </div>
 
