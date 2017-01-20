@@ -441,6 +441,8 @@
     
         <li class="main "><a href="#locking">Locking</a></li>
         
+            <li><a href="#causes-of-concurrency">Causes of Concurrency</a></li>
+        
     
     </ul>
 </div></div>
@@ -650,6 +652,34 @@ ensure that the money actually exists in that user's account and deducts the wit
 </ul>
 <p>The next chapter discusses the behavior of the different locks in Linux and their interfaces.</p>
 <p>As you may notice, the lock does not solve the problem; it simply shrinks the critical region down to just the lock and unlock code: probably much smaller, but still a potential race. Fortunately, locks are implemented using atomic operations that ensure no race exists. A single instruction can verify whether the key is taken and, if not, seize it. How this is done is architecture-specific, but almost all processors implement an atomic <a href="https://en.wikipedia.org/wiki/Test-and-set"><em>test and set</em></a> instruction that tests the value of an integer and sets it to a new value only if it is zero. A value of zero means unlocked. On the popular x86 architecture, locks are implemented using such a similar instruction called <a href="https://en.wikipedia.org/wiki/Compare-and-swap"><em>compare and exchange</em></a>.</p>
+<h4 id="causes-of-concurrency">Causes of Concurrency</h4>
+<p>In user-space, programs are scheduled preemptively at the will of the scheduler. Because a process can be preempted at any time and another process can be scheduled onto the processor, a process can be involuntarily preempted in the middle of accessing a critical region. If the newly scheduled process then enters the same critical region (for example, if the two processes manipulate the same shared memory or write to the same file descriptor), a race can occur. The same problem can occur with multiple single-threaded processes sharing files, or within a single program with signals, because signals can occur asynchronously. This type of concurrency in which two things do not actually happen at the same time but interleave with each other is called <em>pseudo-concurrency</em>.</p>
+<p>If you have a symmetrical multiprocessing machine, two processes can actually be executed in a critical region at the exact same time. That is called <em>true concurrency</em>. Although the causes and semantics of true versus pseudo concurrency are different, they both result in the same race conditions and require the same sort of protection.</p>
+<p>The kernel has similar causes of concurrency:</p>
+<ul>
+<li><strong>Interrupts</strong>. An interrupt can occur asynchronously at almost any time, interrupting the currently executing code.</li>
+<li><strong>Softirqs and tasklets</strong>. The kernel can raise or schedule a softirq or tasklet at almost any time, interrupting the currently executing code.</li>
+<li><strong>Kernel preemption</strong>. Because the kernel is preemptive, one task in the kernel can preempt another.</li>
+<li><strong>Sleeping and synchronization with user-space</strong>. A task in the kernel can sleep and thus invoke the scheduler, resulting in the running of a new process.</li>
+<li><strong> Symmetrical multiprocessing</strong>. Two or more processors can execute kernel code at exactly the same time.</li>
+</ul>
+<p>Kernel developers need to understand and prepare for these causes of concurrency:</p>
+<ul>
+<li>It is a major bug if an interrupt occurs in the middle of code that is manipulating a resource and the interrupt handler can access the same resource.</li>
+<li>Similarly, it is a bug if kernel code is preemptive while it is accessing a shared resource.</li>
+<li>Likewise, it is a bug if code in the kernel sleeps while in the middle of a critical section.</li>
+<li>Finally, two processors should never simultaneously access the same piece of data.</li>
+</ul>
+<p>With a clear picture of what data needs protection, it is not hard to provide the locking to keep the system stable. Rather, the hard part is identifying these conditions and realizing that to prevent concurrency, you need some form of protection.</p>
+<h5 id="design-proper-locking-from-the-beginning"><strong>Design proper locking from the beginning</strong> *</h5>
+<p>Implementing the actual locking in your code to protect shared data is not difficult, especially when done early on during the design phase of development. The tricky part is identifying the actual shared data and the corresponding critical sections. This is why designing locking into your code from the get-go, and not as an afterthought, is of paramount importance. It can be difficult to go in, ex post, and identify critical regions and retrofit locking into the existing code. The resulting code is often not pretty, either. The takeaway from this is to always design proper locking into your code from the beginning.</p>
+<h5 id="definitions-of-concurrency-safe-terms"><strong>Definitions of concurrency safe terms</strong> *</h5>
+<ul>
+<li>Code that is safe from concurrent access from an interrupt handler is said to be <em>interrupt-safe</em>.</li>
+<li>Code that is safe from concurrency on symmetrical multiprocessing machines is <em>SMP-safe</em>.</li>
+<li>Code that is safe from concurrency with kernel preemption is <em>preempt-safe</em> (barring a few exceptions, being SMP-safe implies being preempt-safe).</li>
+</ul>
+<p>The actual mechanisms used to provide synchronization and protect against race conditions in all these cases is covered in the next chapter.</p>
             </div>
         </div>
 
