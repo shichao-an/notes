@@ -176,3 +176,47 @@ Implementing the actual locking in your code to protect shared data is not diffi
 * Code that is safe from concurrency with kernel preemption is *preempt-safe* (barring a few exceptions, being SMP-safe implies being preempt-safe).
 
 The actual mechanisms used to provide synchronization and protect against race conditions in all these cases is covered in the next chapter.
+
+#### Knowing What to Protect
+
+Identifying what data specifically needs protection is vital. Since any data that can be accessed concurrently almost assuredly needs protection, <u>it is often easier to identify what data does not need protection and work from there:</u>
+
+* Obviously, any data that is local to one particular thread of execution does not need protection, because only that thread can access the data. For example, local automatic variables (and dynamically allocated data structures whose address is stored only on the stack) do not need any sort of locking because they exist solely on the stack of the executing thread.
+* Likewise, data that is accessed by only a specific task does not require locking (because a process can execute on only one processor at a time).
+
+##### **What does need locking?** *
+
+Most global kernel data structures require locking. A good rule of thumb is that if another thread of execution can access the data, the data needs some sort of locking; if anyone else can see it, lock it. <u>Remember to lock data, not code.</u>
+
+##### **CONFIG Options: SMP Versus UP** *
+
+Because the Linux kernel is configurable at compile time, you can tailor the kernel specifically for a given machine:
+
+* The `CONFIG_SMP` configure option controls whether the kernel supports SMP. Many locking issues disappear on uniprocessor machines; consequently, when `CONFIG_SMP` is unset, unnecessary code is not compiled into the kernel image. For example, such configuration enables uniprocessor machines to forego the overhead of spin locks.
+* The same trick applies to `CONFIG_PREEMPT` (the configure option enabling kernel preemption).
+
+This was an excellent design decision: the kernel maintains one clean source base, and the various locking mechanisms are used as needed. Different combinations of `CONFIG_SMP` and `CONFIG_PREEMPT` on different architectures compile in varying lock support.
+
+In your code, provide appropriate protection for the most pessimistic case, SMP with kernel preemption, and all scenarios will be covered.
+
+Ask yourself these questions whenever you write kernel code:
+
+* Is the data global? Can a thread of execution other than the current one access it?
+* Is the data shared between process context and interrupt context? Is it shared between two different interrupt handlers?
+* If a process is preempted while accessing this data, can the newly scheduled process access the same data?
+* Can the current process sleep (block) on anything? If it does, in what state does that leave any shared data?
+* What prevents the data from being freed out from under me?
+* What happens if this function is called again on another processor?
+* Given the proceeding points, how am I going to ensure that my code is safe from concurrency?
+
+In short, nearly all global and shared data in the kernel requires some form of the synchronization methods, discussed in the next chapter.
+
+### Doubts and Solution
+
+#### Verbatim
+
+##### **p169 on "Knowing What to Protect"**
+
+> What prevents the data from being freed out from under me?
+
+<span class="text-danger">Question</span>: What does it mean and why is it one of the questions asked to ensure the code is safe from concurrency.
