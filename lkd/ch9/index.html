@@ -443,6 +443,13 @@
         
             <li><a href="#causes-of-concurrency">Causes of Concurrency</a></li>
         
+            <li><a href="#knowing-what-to-protect">Knowing What to Protect</a></li>
+        
+    
+        <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
+        
+            <li><a href="#verbatim">Verbatim</a></li>
+        
     
     </ul>
 </div></div>
@@ -680,6 +687,40 @@ ensure that the money actually exists in that user's account and deducts the wit
 <li>Code that is safe from concurrency with kernel preemption is <em>preempt-safe</em> (barring a few exceptions, being SMP-safe implies being preempt-safe).</li>
 </ul>
 <p>The actual mechanisms used to provide synchronization and protect against race conditions in all these cases is covered in the next chapter.</p>
+<h4 id="knowing-what-to-protect">Knowing What to Protect</h4>
+<p>Identifying what data specifically needs protection is vital. Since any data that can be accessed concurrently almost assuredly needs protection, <u>it is often easier to identify what data does not need protection and work from there:</u></p>
+<ul>
+<li>Obviously, any data that is local to one particular thread of execution does not need protection, because only that thread can access the data. For example, local automatic variables (and dynamically allocated data structures whose address is stored only on the stack) do not need any sort of locking because they exist solely on the stack of the executing thread.</li>
+<li>Likewise, data that is accessed by only a specific task does not require locking (because a process can execute on only one processor at a time).</li>
+</ul>
+<h5 id="what-does-need-locking"><strong>What does need locking?</strong> *</h5>
+<p>Most global kernel data structures require locking. A good rule of thumb is that if another thread of execution can access the data, the data needs some sort of locking; if anyone else can see it, lock it. <u>Remember to lock data, not code.</u></p>
+<h5 id="config-options-smp-versus-up"><strong>CONFIG Options: SMP Versus UP</strong> *</h5>
+<p>Because the Linux kernel is configurable at compile time, you can tailor the kernel specifically for a given machine:</p>
+<ul>
+<li>The <code>CONFIG_SMP</code> configure option controls whether the kernel supports SMP. Many locking issues disappear on uniprocessor machines; consequently, when <code>CONFIG_SMP</code> is unset, unnecessary code is not compiled into the kernel image. For example, such configuration enables uniprocessor machines to forego the overhead of spin locks.</li>
+<li>The same trick applies to <code>CONFIG_PREEMPT</code> (the configure option enabling kernel preemption).</li>
+</ul>
+<p>This was an excellent design decision: the kernel maintains one clean source base, and the various locking mechanisms are used as needed. Different combinations of <code>CONFIG_SMP</code> and <code>CONFIG_PREEMPT</code> on different architectures compile in varying lock support.</p>
+<p>In your code, provide appropriate protection for the most pessimistic case, SMP with kernel preemption, and all scenarios will be covered.</p>
+<p>Ask yourself these questions whenever you write kernel code:</p>
+<ul>
+<li>Is the data global? Can a thread of execution other than the current one access it?</li>
+<li>Is the data shared between process context and interrupt context? Is it shared between two different interrupt handlers?</li>
+<li>If a process is preempted while accessing this data, can the newly scheduled process access the same data?</li>
+<li>Can the current process sleep (block) on anything? If it does, in what state does that leave any shared data?</li>
+<li>What prevents the data from being freed out from under me?</li>
+<li>What happens if this function is called again on another processor?</li>
+<li>Given the proceeding points, how am I going to ensure that my code is safe from concurrency?</li>
+</ul>
+<p>In short, nearly all global and shared data in the kernel requires some form of the synchronization methods, discussed in the next chapter.</p>
+<h3 id="doubts-and-solution">Doubts and Solution</h3>
+<h4 id="verbatim">Verbatim</h4>
+<h5 id="p169-on-knowing-what-to-protect"><strong>p169 on "Knowing What to Protect"</strong></h5>
+<blockquote>
+<p>What prevents the data from being freed out from under me?</p>
+</blockquote>
+<p><span class="text-danger">Question</span>: What does it mean and why is it one of the questions asked to ensure the code is safe from concurrency.</p>
             </div>
         </div>
 
