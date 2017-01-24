@@ -452,6 +452,11 @@
         <li class="main "><a href="#packages-and-naming">Packages and Naming</a></li>
         
     
+        <li class="main "><a href="#the-go-tool">The Go Tool</a></li>
+        
+            <li><a href="#workspace-organization">Workspace Organization</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -692,6 +697,88 @@ not look beyond these files.</li>
 
 <p>This can lead to repetition, as in <code>template.Template</code> or <code>rand.Rand</code>, which is why the names of these kinds of packages are often especially short.</p>
 <p>At the other extreme, there are packages like <code>net/http</code> that have a lot of names without a lot of structure, because they perform a complicated task. Despite having over twenty types and many more functions, the package's most important members have the simplest names: <code>Get</code>, <code>Post</code>, <code>Handle</code>, <code>Error</code>, <code>Client</code>, <code>Server</code>.</p>
+<h3 id="the-go-tool">The Go Tool</h3>
+<p>The rest of this chapter concerns the <a href="https://golang.org/cmd/go/"><code>go</code></a> tool, which is used for downloading, querying, formatting, building, testing, and installing packages of Go code.</p>
+<p>The <code>go</code> tool combines the features of a diverse set of tools into one command set:</p>
+<ul>
+<li>It is a package manager (analogous to <code>apt</code> or <code>rpm</code>) that answers queries about its inventory of packages, computes their dependencies, and downloads them from remote version-control systems.</li>
+<li>It is a build system that computes file dependencies and invokes compilers, assemblers, and linkers, although it is intentionally less complete than the standard Unix <a href="https://en.wikipedia.org/wiki/Make_(software)"><code>make</code></a>.</li>
+<li>It is a test driver (discussed in <a href="ch11.md">Chapter 11</a>).</li>
+</ul>
+<p>Its command-line interface uses the "Swiss army knife" style, with over a dozen subcommands, some of which we have already seen, like <code>get</code>, <code>run</code>, <code>build</code>, and <code>fmt</code>. You can run <code>go help</code> to see the index of its built-in documentation. The most commonly used commands are:</p>
+<div class="codehilite"><pre>$ go
+...
+    build     compile packages and dependencies
+    clean     remove object files
+    doc       show documentation for package or symbol
+    env       print Go environment information
+    fmt       run gofmt on package sources
+    get       download and install packages and dependencies
+    install   compile and install packages and dependencies
+    list      list packages
+    run       compile and run Go program
+    test      test packages
+    version   print Go version
+    vet       run go tool vet on packages
+Use &quot;go help [command]&quot; for more information about a command.
+...
+</pre></div>
+
+
+<p>To keep the need for configuration to a minimum, the <code>go</code> tool relies heavily on conventions. For example:</p>
+<ul>
+<li>Given the name of a Go source file, the tool can find its enclosing package, because each directory contains a single package and the import path of a package corresponds to the directory hierarchy in the workspace.</li>
+<li>Given the import path of a package, the tool can find the corresponding directory in which it stores object files.</li>
+<li>It can also find the URL of the server that hosts the source code repository.</li>
+</ul>
+<h4 id="workspace-organization">Workspace Organization</h4>
+<p>The only configuration most users ever need is the <code>GOPATH</code> environment variable, which specifies the root of the workspace. When switching to a different workspace, users update the value of <code>GOPATH</code>. For example:</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">export</span> <span class="nv">GOPATH</span><span class="o">=</span>$HOME/gobook
+<span class="gp">$</span> go get gopl.io/...
+</pre></div>
+
+
+<p>After you download all the programs for this book using the command above, your workspace will contain a hierarchy like this one:</p>
+<div class="codehilite"><pre>GOPATH/
+    src/
+        gopl.io/
+            .git/
+            ch1/
+                helloworld/
+                    main.go
+                dup/
+                    main.go
+                ...
+        golang.org/x/net/
+            .git/
+            html/
+                parse.go
+                node.go
+                ...
+    bin/
+        helloworld
+        dup
+    pkg/
+        darwin_amd64/
+            ...
+</pre></div>
+
+
+<p><code>GOPATH</code> has three subdirectories:</p>
+<ul>
+<li>The <code>src</code> subdirectory holds source code. Each package resides in a directory whose name relative to <code>$GOPATH/src</code> is the package's import path, such as <code>gopl.io/ch1/helloworld</code>. Observe that a single <code>GOPATH</code> workspace contains multiple version-control repositories beneath <code>src</code>, such as <code>gopl.io</code> or <code>golang.org</code>.</li>
+<li>The <code>pkg</code> subdirectory is where the build tools store compiled packages</li>
+<li>The <code>bin</code> subdirectory holds executable programs like <code>helloworld</code>.</li>
+</ul>
+<p>A second environment variable, <code>GOROOT</code>, specifies the root directory of the Go distribution, which provides all the packages of the standard library. The directory structure beneath <code>GOROOT</code> resembles that of <code>GOPATH</code>. For example, the source files of the <code>fmt</code> package reside in the <code>$GOROOT/src/fmt</code> directory. Users never need to set <code>GOROOT</code> since, by default, the <code>go</code> tool will use the location where it was installed.</p>
+<p>The <code>go env</code> command prints the effective values of the environment variables relevant to the toolchain, including the default values for the missing ones. <code>GOOS</code> specifies the target operating system (for example, <code>android</code>, <code>linux</code>, <code>darwin</code>, or <code>windows</code>) and <code>GOARCH</code> specifies the target processor architecture, such as <code>amd64</code>, <code>386</code>, or <code>arm</code>. Although <code>GOPATH</code> is the only variable you must set, the others occasionally appear in our explanations.</p>
+<div class="codehilite"><pre><span class="gp">$</span> go env
+<span class="go">GOPATH=&quot;/home/gopher/gobook&quot;</span>
+<span class="go">GOROOT=&quot;/usr/local/go&quot;</span>
+<span class="go">GOARCH=&quot;amd64&quot;</span>
+<span class="go">GOOS=&quot;darwin&quot;</span>
+<span class="go">...</span>
+</pre></div>
             </div>
         </div>
 
