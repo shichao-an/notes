@@ -446,6 +446,9 @@
             <li><a href="#knowing-what-to-protect">Knowing What to Protect</a></li>
         
     
+        <li class="main "><a href="#deadlocks">Deadlocks</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -714,6 +717,18 @@ ensure that the money actually exists in that user's account and deducts the wit
 <li>Given the proceeding points, how am I going to ensure that my code is safe from concurrency?</li>
 </ul>
 <p>In short, nearly all global and shared data in the kernel requires some form of the synchronization methods, discussed in the next chapter.</p>
+<h3 id="deadlocks">Deadlocks</h3>
+<p>A <a href="https://en.wikipedia.org/wiki/Deadlock"><strong>deadlock</strong></a> is a condition involving one or more threads of execution and one or more resources, such that each thread waits for one of the resources, but all the resources are already held. The threads all wait for each other, but they never make any progress toward releasing the resources that they already hold. Therefore, none of the threads can continue, which results in a deadlock.</p>
+<p>A good analogy is a <a href="https://en.wikipedia.org/wiki/All-way_stop">four-way traffic stop</a>. If each car at the stop decides to wait for the other cars before going, no car will ever proceed, and we have a traffic deadlock.</p>
+<p>The simplest example of a deadlock is the self-deadlock. If a thread of execution attempts to acquire a lock it already holds, it has to wait for the lock to be released. But it will never release the lock, because it is busy waiting for the lock, and the result is deadlock:</p>
+<div class="codehilite"><pre>acquire lock
+acquire lock, again
+wait for lock to become available
+...
+</pre></div>
+
+
+<p>Some kernels prevent this type of deadlock by providing <a href="https://en.wikipedia.org/wiki/Reentrant_mutex">recursive locks</a>. These are locks that a single thread of execution may acquire multiple times. Linux does not provide recursive locks. This is widely considered a good thing. Although recursive locks might alleviate the self-deadlock problem, they very readily lead to sloppy locking semantics.</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p169-on-knowing-what-to-protect"><strong>p169 on "Knowing What to Protect"</strong></h5>
