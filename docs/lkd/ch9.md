@@ -228,6 +228,54 @@ wait for lock to become available
 
 Some kernels prevent this type of deadlock by providing [recursive locks](https://en.wikipedia.org/wiki/Reentrant_mutex). These are locks that a single thread of execution may acquire multiple times. Linux does not provide recursive locks. This is widely considered a good thing. Although recursive locks might alleviate the self-deadlock problem, they very readily lead to sloppy locking semantics.
 
+Similarly, consider *n* threads and *n* locks. If each thread holds a lock that the other thread wants, all threads block while waiting for their respective locks to become available. The most common example is with two threads and two locks, which is often called the *deadly embrace* or the *ABBA deadlock*:
+
+Thread 1 | Thread 2
+-------- | --------
+acquire lock A | acquire lock B
+try to acquire lock B | try to acquire lock A
+wait for lock B | wait for lock A
+
+Each thread is waiting for the other, and neither thread will ever release its original lock; therefore, neither lock will become available.
+
+Prevention of deadlock scenarios is important.Although it is difficult to prove that code is free of deadlocks, you can write deadlock-free code following the rules below:
+
+* Implement lock ordering. Nested locks must always be obtained in the same order. This prevents the deadly embrace deadlock. Document the lock ordering so others will follow it.
+* Prevent [starvation](https://en.wikipedia.org/wiki/Starvation_(computer_science)). Ask yourself:
+    * Does this code always finish?
+    * If foo does not occur, will bar wait forever?
+* Do not double acquire the same lock.
+* Design for simplicity. Complexity in your locking scheme invites deadlocks.
+
+The first point is most important and worth stressing. <u>If two or more locks are acquired at the same time, they must always be acquired in the same order.</u>
+
+Assume you have the cat, dog, and fox locks that protect data structures of the same name. Now assume you have a function that needs to work on all three of these data structures simultaneously. Whatever the case, the data structures require locking to ensure safe access. If one function acquires the locks in the order cat, dog, and then fox, then every other function must obtain these locks (or a subset of them) in this same order. For example, it is a potential deadlock (and hence a bug) to first obtain the fox lock and then obtain the dog lock because the dog lock must always be acquired prior to the fox lock.
+
+The following is an example that would cause a deadlock:
+
+Thread 1 | Thread 2
+-------- | --------
+acquire lock cat | acquire lock fox
+acquire lock dog | try to acquire lock dog
+try to acquire lock fox | wait for lock dog
+wait for lock fox | —
+
+Thread one is waiting for the fox lock, which thread two holds, while thread two is waiting for the dog lock, which thread one holds. Neither ever releases its lock and hence both wait forever. If the locks were always obtained in the same order, a deadlock in this manner would not be possible.
+
+Whenever locks are nested within other locks, a specific ordering must be obeyed. It is
+good practice to place the ordering in a comment above the lock:
+
+```c
+/*
+* cat_lock – locks access to the cat structure
+* always obtain before the dog lock!
+*/
+```
+
+<u>The order of *unlock* does not matter with respect to deadlock, although it is common practice to release the locks in an order inverse to that in which they were acquired.</u>
+
+Preventing deadlocks is important. The Linux kernel has some basic debugging facilities for detecting deadlock scenarios in a running kernel, which are discussed in the next chapter.
+
 ### Doubts and Solution
 
 #### Verbatim
