@@ -1,20 +1,20 @@
-### **Objectives and Key Results**
+### **Roadmap: Objectives and Key Results**
 
 <small>Back to [Roadmap](index.md).</small>
 
-### OKR-1: December 31, 2016
+### OKR-1: April 30, 2017
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
-1 | Operating System | LKD | UTLK | LKD: most chapters; UTLK: first 3 chapters
-1 | Programming Language | GOPL | - | GOPL: all 13 chapters /w second-pass
-1 | Programming Language | CSN | - | CSN: first 3 parts /w second-pass
-2 | System Programming | UNP | TCPv1 | UNP: first 11 chapters (excluding SCTP)
-2 | Misc | HTAE | - | HTAE: first 4 chapters
-2 | System Architecture | BD | - | BD: first 7 chapters
-3 | Programming Language | x86 disassembly | - | Non-Windows contents
-3 | Operating System | SPEC | - | TBD
-3 | System Programming | APUE | TLPI/LSP | TBD
+0 | Operating System | LKD | UTLK | LKD: most chapters; UTLK: first 3 chapters
+0 | Programming Language | GOPL | - | GOPL: all 13 chapters /w second-pass
+0 | Programming Language | CSN | - | CSN: first 3 parts /w second-pass
+0 | System Architecture | DDA | - | TBD
+1 | System Programming | UNP | TCPv1 | UNP: first 11 chapters (excluding SCTP)
+1 | Misc | HTAE | - | HTAE: first 4 chapters
+2 | Operating System | SPEC | - | TBD
+2 | System Programming | APUE | TLPI/LSP | TBD
+2 | Programming Language | x86 disassembly | - | Non-Windows contents
 3 | Networks | TCPv1 | TCPIP | TBD
 3 | Security | CNSPP | - | TBD
 
