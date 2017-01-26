@@ -130,6 +130,12 @@ Big Data: Principles and Best Practices of Scalable Realtime Data Systems
 
 <small>by Nathan Marz, James Warren</small>
 
+#### [DDA](dda/index.md)
+
+Designing Data-Intensive Applications
+
+<small>by Martin Kleppmann</small>
+
 #### [CNSPP](cnspp/index.md)
 
 [![Cryptography and Network Security: Principles and Practice (6th Edition)](cnspp/cover_80.jpg)](cnspp/cover.jpg "Cryptography and Network Security: Principles and Practice (6th Edition)")

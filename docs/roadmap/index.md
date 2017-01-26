@@ -1,4 +1,4 @@
-### **Roadmap: 2016**
+### **Roadmap: Summary**
 
 This page summarizes the roadmap of learning focuses within the next 8 to 12 months.
 
@@ -7,7 +7,7 @@ This page summarizes the roadmap of learning focuses within the next 8 to 12 mon
 * [Objectives and Key Results](okr.md)
 * [Catalog](catalog.md)
 
-### Summary
+### Rationale
 
 #### Fields of Interest
 
