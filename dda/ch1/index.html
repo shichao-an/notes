@@ -435,6 +435,11 @@
         <li class="main "><a href="#thinking-about-data-systems">Thinking About Data Systems</a></li>
         
     
+        <li class="main "><a href="#reliability">Reliability</a></li>
+        
+            <li><a href="#hardware-faults">Hardware faults</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -481,6 +486,34 @@
 <li><strong>Scalability</strong>. As the system grows (in data volume, traffic volume or complexity), there should be reasonable ways of dealing with that growth. See <a href="#scalability">Scalability</a>.</li>
 <li><strong>Maintainability</strong>. Over time, many different people will work on the system (engineering and operations, both maintaining current behavior and adapting the system to new use cases), and they should all be able to work on it productively. See <a href="#maintainability">Maintainability</a>.</li>
 </ul>
+<h3 id="reliability">Reliability</h3>
+<p>Typical expectations for software include:</p>
+<ul>
+<li>The application performs the function that the user expected.</li>
+<li>It can tolerate the user making mistakes, or using the software in unexpected ways.</li>
+<li>Its performance is good enough for the required use case, under expected load and data volume.</li>
+<li>The system prevents any unauthorized access and abuse.</li>
+</ul>
+<p>If all those things together mean "working correctly", then <em>reliability</em> roughly means "continuing to work correctly, even when things go wrong".</p>
+<p>The things that can go wrong are called <em>faults</em>, and systems that anticipate faults and can cope with them are called <a href="https://en.wikipedia.org/wiki/Fault_tolerance"><em>fault-tolerant</em></a> or <em>resilient</em>. The term is slightly misleading: it suggests that we could make a system tolerant of every possible kind of fault, which in reality is not feasible. It only makes sense to talk about tolerating certain <em>types of fault</em>.</p>
+<p>Note that a <em>fault</em> is not the same as a <em>failure</em>.</p>
+<ul>
+<li>A fault is usually defined as one component of the system deviating from its spec.</li>
+<li>A failure is when the system as a whole stops providing the required service to the user.</li>
+</ul>
+<p>It is impossible to reduce the probability of a fault to zero; therefore it is usually best to design fault tolerance mechanisms that prevent faults from causing failures. This book covers several techniques for building reliable systems from unreliable parts.</p>
+<p>Counter-intuitively, in such fault-tolerant systems, it can make sense to increase the rate of faults by triggering them deliberately (for example, by randomly killing individual processes without warning). Many critical bugs are actually due to poor error handling; by deliberately inducing faults, you ensure that the fault-tolerance machinery is continually exercised and tested, which can increase your confidence that faults will be handled correctly when they occur naturally. The Netflix <a href="https://github.com/Netflix/chaosmonkey">chaos monkey</a> is an example of this approach.</p>
+<p>Although we generally prefer tolerating faults over preventing faults, there are cases where prevention is better than cure (e.g. because no cure exists). This is the case with security matters, for example: if an attacker has compromised a system and gained access to sensitive data, that event cannot be undone. However, this book mostly deals with the kinds of fault that can be cured, as described in the following sections.</p>
+<h4 id="hardware-faults">Hardware faults</h4>
+<p>Hardware faults are a common cause of system failure. For example:</p>
+<ul>
+<li>Hard disks crash</li>
+<li>RAM becomes faulty</li>
+<li>The power grid has a blackout</li>
+<li>Someone unplugs the wrong network cable</li>
+</ul>
+<p>These things happen <em>all the time</em> when you have a lot of machines.</p>
+<p>Hard disks are reported as having a <a href="https://en.wikipedia.org/wiki/Mean_time_between_failures">mean time to failure</a> (MTTF) of about 10 to 50 years. Thus, on a storage cluster with 10,000 disks, we should expect on average one disk to die per day.</p>
             </div>
         </div>
 
