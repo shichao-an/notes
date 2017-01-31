@@ -276,6 +276,12 @@ good practice to place the ordering in a comment above the lock:
 
 Preventing deadlocks is important. The Linux kernel has some basic debugging facilities for detecting deadlock scenarios in a running kernel, which are discussed in the next chapter.
 
+### Contention and Scalability
+
+The term [*lock contention*](https://en.wikipedia.org/wiki/Lock_(computer_science)#Granularity), or simply *contention*, describes a lock currently in use but that another thread is trying to acquire. A lock that is *highly contended* often has threads waiting to acquire it. High contention can occur because a lock is frequently obtained, held for a long time after it is obtained, or both. Because a lock's job is to serialize access to a resource, they can slow down a system's performance. A highly contended lock can become a bottleneck in the system, quickly limiting its performance. However, a solution to high contention must continue to provide the necessary concurrency protection, because locks are also required to prevent the system from tearing itself to shreds.
+
+[*Scalability*](https://en.wikipedia.org/wiki/Scalability) is a measurement of how well a system can be expanded. In operating systems, we talk of the scalability with a large number of processes, a large number of processors, or large amounts of memory. We can discuss scalability in relation to virtually any component of a computer to which we can attach a quantity. Ideally, doubling the number of processors should result in a doubling of the system's processor performance, which, of course, is never the case.
+
 ### Doubts and Solution
 
 #### Verbatim
