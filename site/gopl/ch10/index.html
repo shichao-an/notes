@@ -797,8 +797,28 @@ Use &quot;go help [command]&quot; for more information about a command.
 
 <ul>
 <li>The first command gets the <code>golint</code> tool, which checks for common style problems in Go source code.</li>
-<li>The second command runs <code>golint on gopl.io/ch2/popcount</code> from <a href="../ch2/#package-initialization">Section 2.6.2</a>. It helpfully reports that we have forgotten to write a doc comment for the package.</li>
+<li>The second command runs <code>golint</code> on <code>gopl.io/ch2/popcount</code> from <a href="../ch2/#package-initialization">Section 2.6.2</a>. It helpfully reports that we have forgotten to write a doc comment for the package.</li>
 </ul>
+<p>The <code>go get</code> command has support for popular code-hosting sites like <a href="https://github.com/">GitHub</a>, <a href="https://bitbucket.org/">Bitbucket</a>, and <a href="https://launchpad.net/">Launchpad</a> and can make the appropriate requests to their version-control systems. For less well-known sites, you may have to indicate which version-control protocol to use in the import path, such as Git or Mercurial. Run <a href="https://golang.org/cmd/go/#hdr-Import_path_syntax"><code>go help importpath</code></a> for the details.</p>
+<p>The directories that <code>go get</code> creates are true clients of the remote repository, not just copies of the files, so you can use version-control commands to see a diff of local edits you've made or to update to a different revision. For example, the <code>golang.org/x/net</code> directory is a Git client:</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">cd</span> $GOPATH/src/golang.org/x/net
+<span class="gp">$</span> git remote -v
+<span class="go">origin https://go.googlesource.com/net (fetch)</span>
+<span class="go">origin https://go.googlesource.com/net (push)</span>
+</pre></div>
+
+
+<p>Notice that the apparent domain name in the package's import path, <code>golang.org</code>, differs from the actual domain name of the Git server, <code>go.googlesource.com</code>. This is a feature of the <code>go</code> tool that lets packages use a custom domain name in their import path while being hosted by a generic service such as <code>googlesource.com</code> or <code>github.com</code>. HTML pages beneath <a href="https://golang.org/x/net/html">https://golang.org/x/net/html</a> include the metadata shown below, which redirects the go tool to the Git repository at the actual hosting site:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch1/fetch
+<span class="gp">$</span> ./fetch https://golang.org/x/net/html <span class="p">|</span> grep go-import
+<span class="go">&lt;meta name=&quot;go-import&quot;</span>
+<span class="go">      content=&quot;golang.org/x/net git https://go.googlesource.com/net&quot;&gt;</span>
+</pre></div>
+
+
+<p>If you specify the <code>-u</code> flag, <code>go get</code> will ensure that all packages it visits, including dependencies, are updated to their latest version before being built and installed. Without that flag, packages that already exist locally will not be updated.</p>
+<h5 id="vendor-directories"><strong>Vendor Directories</strong> *</h5>
+<p>The <code>go get -u</code> command generally retrieves the latest version of each package, which is convenient when you're getting started but may be inappropriate for deployed projects, where precise control of dependencies is critical for release hygiene. The usual solution to this problem is to <em>vendor</em> the code, that is, to make a persistent local copy of all the necessary dependencies, and to update this copy carefully and deliberately. Prior to Go 1.5, this required changing those packages' import paths, so our copy of <code>golang.org/x/net/html</code> would become <code>gopl.io/vendor/golang.org/x/net/html</code>. More recent versions of the <code>go tool</code> support vendoring directly. See <a href="https://golang.org/cmd/go/#hdr-Vendor_Directories"><em>Vendor Directories</em></a> in the output of the <code>go help gopath</code> command.</p>
             </div>
         </div>
 
