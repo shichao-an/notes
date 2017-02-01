@@ -439,6 +439,12 @@
         
             <li><a href="#hardware-faults">Hardware faults</a></li>
         
+            <li><a href="#software-errors">Software errors</a></li>
+        
+            <li><a href="#human-errors">Human errors</a></li>
+        
+            <li><a href="#how-important-is-reliability">How important is reliability?</a></li>
+        
     
     </ul>
 </div></div>
@@ -524,6 +530,44 @@
 <p>Redundancy of hardware components was sufficient for most applications, since it makes total failure of a single machine fairly rare. As long as you can restore a backup onto a new machine fairly quickly, the downtime in case of failure is not catastrophic in most applications. Thus, multi-machine redundancy was only required by a small number of applications for which high availability was absolutely essential.</p>
 <p>However, as data volumes and computing demands increase, more applications are using larger numbers of machines, which proportionally increases the rate of hardware faults. Moreover, in some "cloud" platforms such as Amazon Web Services it is fairly common for virtual machine instances to become unavailable without warning, as the platform is designed to prioritize flexibility and <a href="https://en.wikipedia.org/wiki/Elasticity_(cloud_computing)">elasticity</a> over single-machine reliability.</p>
 <p>Hence there is a move towards systems that can tolerate the loss of entire machines, by using <a href="https://en.wikipedia.org/wiki/Software_fault_tolerance">software fault-tolerance</a> techniques in preference to hardware redundancy. Such systems also have operational advantages: a single-server system requires planned downtime if you need to reboot the machine (to apply operating system security patches, for example), whereas a system that can tolerate machine failure can be patched one node at a time, without downtime of the entire system.</p>
+<h4 id="software-errors">Software errors</h4>
+<p>Hardware faults are usually considered as being random and independent from each other: one machine's disk failing does not imply that another machine's disk is going to fail. There may be weak correlations (for example due to a common cause, such as the temperature in the server rack), but otherwise it is unlikely that a large number of hardware components will fail at the same time.</p>
+<p>Another class of fault is a systematic error within the system, which are harder to anticipate. Because they are correlated across nodes, they tend to cause many more system failures than uncorrelated hardware faults. Examples include:</p>
+<ul>
+<li>A software bug that causes every instance of an application server to crash when given a particular bad input. For example, consider the <a href="https://en.wikipedia.org/wiki/Leap_second">leap second</a> on <a href="https://en.wikipedia.org/wiki/Leap_second#Examples_of_problems_associated_with_the_leap_second">June 30, 2012</a> that caused many applications to hang simultaneously, due to a bug in the Linux kernel.</li>
+<li>A runaway process uses up some shared resource: CPU time, memory, disk space or network bandwidth.</li>
+<li>A service that the system depends on slows down, becomes unresponsive or starts returning corrupted responses.</li>
+<li><a href="https://en.wikipedia.org/wiki/Cascading_failure">Cascading failures</a>, where a small fault in one component triggers a fault in another component, which in turn triggers further faults.</li>
+</ul>
+<p>The bugs that cause these kinds of software fault often lie dormant for a long time until they are triggered by an unusual set of circumstances. In those circumstances, it is revealed that the software is making some kind of assumption about its environment, and while that assumption is usually true, it eventually stops being true for some reason.</p>
+<p>There is no quick solution to systematic faults in software, but many small things can help:</p>
+<ul>
+<li>Carefully thinking about assumptions and interactions in the system</li>
+<li>Thorough testing</li>
+<li>Process isolation</li>
+<li>Allowing processes to crash and restart</li>
+<li>Measuring, monitoring and analyzing system behavior in production</li>
+</ul>
+<p>If a system is expected to provide some guarantee (for example, in a message queue the number of incoming messages equals the number of outgoing messages), it can constantly check itself while it is running, and raise an alert if a discrepancy is found.</p>
+<h4 id="human-errors">Human errors</h4>
+<p>Humans design and build software systems, and the operators who keep the system running are also human. Even when they have the best intentions, humans are known to be unreliable. A study of large Internet services found that configuration errors by operators were the leading cause of outages, whereas hardware faults (servers or network) cause only 10–25% of outages.</p>
+<p>The best systems combine several approaches in spite of unreliable humans:</p>
+<ul>
+<li>Design systems that minimizes opportunities for error. For example, well-designed abstractions, APIs and admin interfaces make it easy to do "the right thing", and discourage "the wrong thing". However, if the interfaces are too restrictive, people will work around them, negating their benefit, so this is a tricky balance to get right.</li>
+<li>Decouple the places where people make the most mistakes from the places where they can cause failures. In particular, provide fully-featured non-production sandbox environments where people can explore and experiment safely, using real data, without affecting real users.</li>
+<li>Test thoroughly at all levels, from unit tests to whole-system integration tests and manual tests. Automated testing is widely used and valuable for covering corner cases that rarely arise in normal operation.</li>
+<li>Allow quick and easy recovery from human errors, to minimize the impact in the case of a failure. For example:<ul>
+<li>Make it fast to roll back configuration changes.</li>
+<li>Roll out new code gradually (so that any unexpected bugs affect only a small subset of users).</li>
+<li>Provide tools to recompute data (in case it turns out that the old computation was incorrect).</li>
+</ul>
+</li>
+<li>Set up detailed and clear monitoring, such as performance metrics and error rates. In other engineering disciplines this is referred to as <a href="https://en.wikipedia.org/wiki/Telemetry"><em>telemetry</em></a> (for example, once a rocket has left the ground, telemetry is essential for tracking what is happening and for understanding failures). Monitoring can show us early warning signals, and allow us to check whether any assumptions or constraints are being violated. When a problem occurs, metrics can be invaluable in diagnosing the issue.</li>
+<li>Good management practices and training.</li>
+</ul>
+<h4 id="how-important-is-reliability">How important is reliability?</h4>
+<p>Bugs in business applications cause lost productivity (and legal risks if figures are reported incor‐ rectly), and outages of e-commerce sites can have huge costs in terms of lost revenue and reputation. Even in "non-critical" applications we have a responsibility to our users.</p>
+<p>There are situations in which we may choose to sacrifice reliability in order to reduce development cost (e.g. when developing a prototype product for an unproven market) or operational cost (e.g. for a service with a very narrow profit margin), but we should be very conscious of when we are cutting corners.</p>
             </div>
         </div>
 
