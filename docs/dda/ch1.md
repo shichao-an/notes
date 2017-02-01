@@ -101,3 +101,48 @@ Redundancy of hardware components was sufficient for most applications, since it
 However, as data volumes and computing demands increase, more applications are using larger numbers of machines, which proportionally increases the rate of hardware faults. Moreover, in some "cloud" platforms such as Amazon Web Services it is fairly common for virtual machine instances to become unavailable without warning, as the platform is designed to prioritize flexibility and [elasticity](https://en.wikipedia.org/wiki/Elasticity_(cloud_computing)) over single-machine reliability.
 
 Hence there is a move towards systems that can tolerate the loss of entire machines, by using [software fault-tolerance](https://en.wikipedia.org/wiki/Software_fault_tolerance) techniques in preference to hardware redundancy. Such systems also have operational advantages: a single-server system requires planned downtime if you need to reboot the machine (to apply operating system security patches, for example), whereas a system that can tolerate machine failure can be patched one node at a time, without downtime of the entire system.
+
+#### Software errors
+
+Hardware faults are usually considered as being random and independent from each other: one machine's disk failing does not imply that another machine's disk is going to fail. There may be weak correlations (for example due to a common cause, such as the temperature in the server rack), but otherwise it is unlikely that a large number of hardware components will fail at the same time.
+
+Another class of fault is a systematic error within the system, which are harder to anticipate. Because they are correlated across nodes, they tend to cause many more system failures than uncorrelated hardware faults. Examples include:
+
+* A software bug that causes every instance of an application server to crash when given a particular bad input. For example, consider the [leap second](https://en.wikipedia.org/wiki/Leap_second) on [June 30, 2012](https://en.wikipedia.org/wiki/Leap_second#Examples_of_problems_associated_with_the_leap_second) that caused many applications to hang simultaneously, due to a bug in the Linux kernel.
+* A runaway process uses up some shared resource: CPU time, memory, disk space or network bandwidth.
+* A service that the system depends on slows down, becomes unresponsive or starts returning corrupted responses.
+* [Cascading failures](https://en.wikipedia.org/wiki/Cascading_failure), where a small fault in one component triggers a fault in another component, which in turn triggers further faults.
+
+The bugs that cause these kinds of software fault often lie dormant for a long time until they are triggered by an unusual set of circumstances. In those circumstances, it is revealed that the software is making some kind of assumption about its environment, and while that assumption is usually true, it eventually stops being true for some reason.
+
+There is no quick solution to systematic faults in software, but many small things can help:
+
+* Carefully thinking about assumptions and interactions in the system
+* Thorough testing
+* Process isolation
+* Allowing processes to crash and restart
+* Measuring, monitoring and analyzing system behavior in production
+
+If a system is expected to provide some guarantee (for example, in a message queue the number of incoming messages equals the number of outgoing messages), it can constantly check itself while it is running, and raise an alert if a discrepancy is found.
+
+#### Human errors
+
+Humans design and build software systems, and the operators who keep the system running are also human. Even when they have the best intentions, humans are known to be unreliable. A study of large Internet services found that configuration errors by operators were the leading cause of outages, whereas hardware faults (servers or network) cause only 10–25% of outages.
+
+The best systems combine several approaches in spite of unreliable humans:
+
+* Design systems that minimizes opportunities for error. For example, well-designed abstractions, APIs and admin interfaces make it easy to do "the right thing", and discourage "the wrong thing". However, if the interfaces are too restrictive, people will work around them, negating their benefit, so this is a tricky balance to get right.
+* Decouple the places where people make the most mistakes from the places where they can cause failures. In particular, provide fully-featured non-production sandbox environments where people can explore and experiment safely, using real data, without affecting real users.
+* Test thoroughly at all levels, from unit tests to whole-system integration tests and manual tests. Automated testing is widely used and valuable for covering corner cases that rarely arise in normal operation.
+* Allow quick and easy recovery from human errors, to minimize the impact in the case of a failure. For example:
+    * Make it fast to roll back configuration changes.
+    * Roll out new code gradually (so that any unexpected bugs affect only a small subset of users).
+    * Provide tools to recompute data (in case it turns out that the old computation was incorrect).
+* Set up detailed and clear monitoring, such as performance metrics and error rates. In other engineering disciplines this is referred to as [*telemetry*](https://en.wikipedia.org/wiki/Telemetry) (for example, once a rocket has left the ground, telemetry is essential for tracking what is happening and for understanding failures). Monitoring can show us early warning signals, and allow us to check whether any assumptions or constraints are being violated. When a problem occurs, metrics can be invaluable in diagnosing the issue.
+* Good management practices and training.
+
+#### How important is reliability?
+
+Bugs in business applications cause lost productivity (and legal risks if figures are reported incor‐ rectly), and outages of e-commerce sites can have huge costs in terms of lost revenue and reputation. Even in "non-critical" applications we have a responsibility to our users.
+
+There are situations in which we may choose to sacrifice reliability in order to reduce development cost (e.g. when developing a prototype product for an unproven market) or operational cost (e.g. for a service with a very narrow profit margin), but we should be very conscious of when we are cutting corners.

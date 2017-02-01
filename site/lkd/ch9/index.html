@@ -452,6 +452,9 @@
         <li class="main "><a href="#contention-and-scalability">Contention and Scalability</a></li>
         
     
+        <li class="main "><a href="#conclusion">Conclusion</a></li>
+        
+    
         <li class="main "><a href="#doubts-and-solution">Doubts and Solution</a></li>
         
             <li><a href="#verbatim">Verbatim</a></li>
@@ -811,6 +814,44 @@ good practice to place the ordering in a comment above the lock:</p>
 <h3 id="contention-and-scalability">Contention and Scalability</h3>
 <p>The term <a href="https://en.wikipedia.org/wiki/Lock_(computer_science)#Granularity"><em>lock contention</em></a>, or simply <em>contention</em>, describes a lock currently in use but that another thread is trying to acquire. A lock that is <em>highly contended</em> often has threads waiting to acquire it. High contention can occur because a lock is frequently obtained, held for a long time after it is obtained, or both. Because a lock's job is to serialize access to a resource, they can slow down a system's performance. A highly contended lock can become a bottleneck in the system, quickly limiting its performance. However, a solution to high contention must continue to provide the necessary concurrency protection, because locks are also required to prevent the system from tearing itself to shreds.</p>
 <p><a href="https://en.wikipedia.org/wiki/Scalability"><em>Scalability</em></a> is a measurement of how well a system can be expanded. In operating systems, we talk of the scalability with a large number of processes, a large number of processors, or large amounts of memory. We can discuss scalability in relation to virtually any component of a computer to which we can attach a quantity. Ideally, doubling the number of processors should result in a doubling of the system's processor performance, which, of course, is never the case.</p>
+<p>The scalability of Linux on a large number of processors has increased dramatically in the time since multiprocessing support was introduced in the 2.0 kernel:</p>
+<ul>
+<li>In the early days of Linux multiprocessing support, only one task could execute in the kernel at a time.</li>
+<li>During 2.2, this limitation was removed as the locking mechanisms grew more fine-grained.</li>
+<li>Through 2.4 and onward, kernel locking became even finer grained.</li>
+<li>Today, in the 2.6 Linux kernel, kernel locking is very fine-grained and scalability is good.</li>
+</ul>
+<p>The <a href="https://en.wikipedia.org/wiki/Granularity">granularity</a> of locking is a description of the size or amount of data that a lock protects:</p>
+<ul>
+<li>A very coarse lock protects a large amount of data, e.g. an entire subsystem’s set of data structures.</li>
+<li>On the other hand, a very fine-grained lock protects a small amount of data, e.g. only a single element in a larger structure.</li>
+</ul>
+<p>In reality, most locks fall somewhere in between these two extremes, protecting neither an entire subsystem nor an individual element, but perhaps a single structure or list of structures. Most locks start off fairly coarse and are made more fine-grained as lock contention proves to be a problem.</p>
+<p>One example of evolving to finer-grained locking is the scheduler runqueues (the list of runnable processes), discussed in <a href="../ch4/">Chapter 4 Process Scheduling</a>.</p>
+<ul>
+<li>In 2.4 and prior kernels, the scheduler had a single runqueue.</li>
+<li>Early in the 2.6 series, the O(1) scheduler introduced per-processor runqueues, each with a unique lock. The locking evolved from a single global lock to separate locks for each processor. This was an important optimization, because the runqueue lock was highly contended on large machines, essentially serializing the entire scheduling process down to a single processor executing in the scheduler at a time.</li>
+<li>Later in the 2.6 series, the CFS Scheduler improved scalability further.</li>
+</ul>
+<p>This scalability improvement is generally a good thing because it improves Linux's performance on larger and more powerful systems. However, rampant scalability "improvements" can lead to a decrease in performance on smaller SMP and UP machines, because smaller machines may not need such fine-grained locking but will nonetheless need to put up with the increased complexity and overhead.</p>
+<p>For example, consider a linked list:</p>
+<ol>
+<li>An initial locking scheme would provide a single lock for the entire list. Eventually, this single lock might prove to be a scalability bottleneck on large multiprocessor machines that frequently access this linked list.</li>
+<li>In response, the single lock could be broken up into one lock per node in the linked list. For each node that you wanted to read or write, you obtained the nodes' unique lock.</li>
+<li>Now there is only lock contention when multiple processors are accessing the same exact node.</li>
+<li>What if there is still lock contention? Do you provide a lock for each element in each node? Each bit of each element?</li>
+</ol>
+<p>The answer is no. Even though this fine-grained locking might ensure excellent scalability on large SMP machines, how does it perform on dual processor machines? The overhead of all those extra locks is wasted if a dual processor machine does not see significant lock contention to begin with.</p>
+<p>Nonetheless, scalability is an important consideration. Designing your locking from the beginning to scale well is important. Coarse locking of major resources can easily become a bottleneck on even small machines. There is a thin line between too-coarse locking and too-fine locking.</p>
+<ul>
+<li>Locking that is too coarse results in poor scalability if there is high lock contention.</li>
+<li>Locking that is too fine results in wasteful overhead if there is little lock contention.</li>
+</ul>
+<p>Both scenarios equate to poor performance. Start simple and grow in complexity only as needed. Simplicity is key.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>Making your code SMP-safe is not something that can be added as an afterthought. Proper synchronization (locking that is free of deadlocks, scalable, and clean) requires design decisions from start through finish. Whenever you write kernel code, whether it is a new system call or a rewritten driver, protecting data from concurrent access needs to be a primary concern.</p>
+<p>Provide sufficient protection for every scenario (SMP, kernel preemption, and so on) and rest assured that the data will be safe on any given machine and configuration, which is the topic of the next chapter.</p>
+<p>[p173]</p>
 <h3 id="doubts-and-solution">Doubts and Solution</h3>
 <h4 id="verbatim">Verbatim</h4>
 <h5 id="p169-on-knowing-what-to-protect"><strong>p169 on "Knowing What to Protect"</strong></h5>
