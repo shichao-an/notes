@@ -489,17 +489,17 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-13-the-virtual-filesystem"><strong>Chapter 13. The Virtual Filesystem</strong></h3>
+<h3 id="chapter-13-the-virtual-filesystem"><strong>Chapter 13. The Virtual Filesystem</strong><a class="headerlink" href="#chapter-13-the-virtual-filesystem" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p>Although the kernel developers may shun C++ and other explicitly object-oriented languages, thinking in terms of objects is often useful.
 <small>Robert Love</small></p>
 </blockquote>
 <p>The <strong>Virtual Filesystem</strong> (VFS), sometimes called the <strong>Virtual File Switch</strong> is the subsystem of the kernel that implements the file and filesystem-related interfaces to user-space. All filesystems rely on the VFS not only to coexist but also to interoperate. This enables programs to use standard Unix system calls to read and write to different filesystems, even on different media.</p>
-<h3 id="common-filesystem-interface">Common Filesystem Interface</h3>
+<h3 id="common-filesystem-interface">Common Filesystem Interface<a class="headerlink" href="#common-filesystem-interface" title="Permanent link">&para;</a></h3>
 <p>The VFS is the glue that enables system calls such as <code>open()</code>, <code>read()</code>, and <code>write()</code> to work regardless of the filesystem or underlying physical medium. The system calls work between these different filesystems and media; we can use standard system calls to copy or move files from one filesystem to another. Modern operating systems, such as Linux, abstract access to the filesystems via a virtual interface that such interoperation and generic access is possible. [p262]</p>
 <p>New filesystems and new varieties of storage media can find their way into Linux, and programs need not be rewritten or even recompiled.</p>
 <p>The VFS and the block I/O layer (<a href="../ch14/">Chapter 14</a>) provide the abstractions, interfaces, and glue that allow user-space programs to issue generic system calls to access files via a uniform naming policy on any filesystem, which itself exists on any storage medium.</p>
-<h3 id="filesystem-abstraction-layer">Filesystem Abstraction Layer</h3>
+<h3 id="filesystem-abstraction-layer">Filesystem Abstraction Layer<a class="headerlink" href="#filesystem-abstraction-layer" title="Permanent link">&para;</a></h3>
 <p>Such a generic interface for any type of filesystem is feasible only because the kernel implements an abstraction layer around its low-level filesystem interface. This abstraction layer enables Linux to support different filesystems, even if they differ in supported features or behavior.</p>
 <p>This is possible because the VFS provides a common file model that can represent any filesystem’s general feature set and behavior. It is biased toward Unix-style filesystems. Regardless, wildly differing filesystem types are still supportable in Linux, from DOS’s FAT to Windows’s NTFS to many Unix-style and Linux-specific filesystems.</p>
 <p>The abstraction layer works by defining the basic conceptual interfaces and data structures that all filesystems support. The actual filesystem code hides the implementation details. To the VFS layer and the rest of the kernel, each filesystem looks the same. They all support notions such as files and directories, and they all support operations such as creating and deleting files.</p>
@@ -519,7 +519,7 @@ does on write).</li>
 </ol>
 <p>The following figure shows the flow from user-space’s <code>write()</code> call through the data arriving on the physical media. On one side of the system call is the generic VFS interface, providing the frontend to user-space; on the other side of the system call is the filesystem-specific backend, dealing with the implementation details.</p>
 <p><a href="../figure_13.2.png" title="Figure 13.2 The flow of data from user-space issuing a write() call, through the VFS’s generic system call, into the filesystem’s specific write method, and finally arriving at the physical media."><img alt="Figure 13.2 The flow of data from user-space issuing a write() call, through the VFS’s generic system call, into the filesystem’s specific write method, and finally arriving at the physical media." src="../figure_13.2_600.png" /></a></p>
-<h3 id="unix-filesystems">Unix Filesystems</h3>
+<h3 id="unix-filesystems">Unix Filesystems<a class="headerlink" href="#unix-filesystems" title="Permanent link">&para;</a></h3>
 <p>Historically, Unix has provided four basic filesystem-related abstractions:</p>
 <ul>
 <li>Files</li>
@@ -527,18 +527,18 @@ does on write).</li>
 <li>inodes</li>
 <li>Mount points</li>
 </ul>
-<h4 id="filesystem-and-namespace">Filesystem and namespace *</h4>
+<h4 id="filesystem-and-namespace">Filesystem and namespace *<a class="headerlink" href="#filesystem-and-namespace" title="Permanent link">&para;</a></h4>
 <p>A <strong>filesystem</strong> is a hierarchical storage of data adhering to a specific structure. Filesystems contain files, directories, and associated control information. Typical operations performed on filesystems are creation, deletion, and mounting. In Unix, filesystems are mounted at a specific mount point in a global hierarchy known as a <strong>namespace</strong>. (Linux has made this hierarchy per-process, to give a unique namespace to each process.  Because each process inherits its parent’s namespace unless you specify otherwise, there is seemingly one global namespace.) This enables all mounted filesystems to appear as entries in a single tree.</p>
 <p>Contrast this single, unified tree with the behavior of DOS and Windows, which break the file namespace up into drive letters, such as <code>C:</code>. This breaks the namespace up among device and partition boundaries, "leaking" hardware details into the filesystem abstraction. As this delineation may be arbitrary and even confusing to the user, it is inferior to Linux’s unified namespace</p>
-<h4 id="files-and-directories">Files and directories *</h4>
+<h4 id="files-and-directories">Files and directories *<a class="headerlink" href="#files-and-directories" title="Permanent link">&para;</a></h4>
 <p>A <strong>file</strong> is an ordered string of bytes. The first byte marks the beginning of the file, and the last byte marks the end of the file. Each file is assigned a human-readable name for identification by both the system and the user. Typical file operations are read, write, create, and delete. The Unix concept of the file is in stark contrast to record-oriented filesystems, such as OpenVMS’s Files-11. <a href="https://en.wikipedia.org/wiki/Record-oriented_filesystem">Record-oriented filesystems</a> provide a richer, more structured representation of files than Unix’s simple byte-stream abstraction, at the cost of simplicity and flexibility.</p>
 <p>Files are organized in directories. A <strong>directory</strong> is analogous to a folder and usually contains related files. Directories can also contain other directories, called subdirectories. In this fashion, directories may be nested to form paths. Each component of a path is called a directory entry. A path example is <code>/home/wolfman/butter</code>: the root directory <code>/</code>, the directories <code>home</code> and <code>wolfman</code>, and the file <code>butter</code> are all directory entries, called <strong>dentries</strong>. In Unix, directories are actually normal files that simply list the files contained therein. Because a directory is a file to the VFS, the same operations performed on files can be performed on directories.</p>
-<h4 id="file-metadata-inode-and-superblock">File metadata, inode and superblock *</h4>
+<h4 id="file-metadata-inode-and-superblock">File metadata, inode and superblock *<a class="headerlink" href="#file-metadata-inode-and-superblock" title="Permanent link">&para;</a></h4>
 <p>Unix systems separate the concept of a file from any associated information about it, such as access permissions, size, owner, creation time, and so on. This information is sometimes called <strong>file metadata</strong> (data about the file’s data) and is stored in a separate data structure from the file, called the <strong>inode</strong>. This name is short for index node, although these days the term inode is much more ubiquitous.</p>
 <p>All this information is tied together with the filesystem’s own control information, which is stored in the <strong>superblock</strong>. The superblock is a data structure containing information about the filesystem as a whole. Sometimes the collective data is referred to as <strong>filesystem metadata</strong>. Filesystem metadata includes information about both the individual files and the filesystem as a whole.</p>
 <p>Traditionally, Unix filesystems implement these notions as part of their physical on-disk layout. For example, file information is stored as an inode in a separate block on the disk; directories are files; control information is stored centrally in a superblock, and so on. The Unix file concepts are <em>physically mapped</em> on to the storage medium.</p>
 <p>The Linux VFS is designed to work with filesystems that understand and implement such concepts. Non-Unix filesystems, such as FAT or NTFS, still work in Linux, but their filesystem code must provide the appearance of these concepts. For example, even if a filesystem does not support distinct inodes, it must assemble the inode data structure in memory as if it did. Or if a filesystem treats directories as a special object, to the VFS they must represent directories as mere files. Often, this involves some special processing done on-the-fly by the non-Unix filesystems to cope with the Unix paradigm and the requirements of the VFS. Such filesystems still work, however, and the overhead is not unreasonable.</p>
-<h3 id="vfs-objects-and-their-data-structures">VFS Objects and Their Data Structures</h3>
+<h3 id="vfs-objects-and-their-data-structures">VFS Objects and Their Data Structures<a class="headerlink" href="#vfs-objects-and-their-data-structures" title="Permanent link">&para;</a></h3>
 <p>The VFS is object-oriented. A family of data structures represents the common file model. These data structures are akin to objects. Because the kernel is programmed strictly in C, without the benefit of a language directly supporting object-oriented paradigms, the data structures are represented as C structures. The structures contain both data and pointers to filesystem-implemented functions that operate on the data.</p>
 <p>The four primary object types of the VFS are:</p>
 <ul>
@@ -719,18 +719,18 @@ such as sysfs) generate the superblock on-the-fly and store it in memory.</p>
 </ul>
 </li>
 </ul>
-<h3 id="the-superblock-object">The Superblock Object</h3>
-<h3 id="superblock-operations">Superblock Operations</h3>
-<h3 id="the-inode-object">The Inode Object</h3>
-<h3 id="inode-operations">Inode Operations</h3>
-<h3 id="the-dentry-object">The Dentry Object</h3>
-<h4 id="dentry-state">Dentry State</h4>
-<h4 id="the-dentry-cache">The Dentry Cache</h4>
-<h3 id="dentry-operations">Dentry Operations</h3>
-<h3 id="the-file-object">The File Object</h3>
-<h3 id="file-operations">File Operations</h3>
-<h3 id="data-structures-associated-with-filesystems">Data Structures Associated with Filesystems</h3>
-<h3 id="data-structures-associated-with-a-process">Data Structures Associated with a Process</h3>
+<h3 id="the-superblock-object">The Superblock Object<a class="headerlink" href="#the-superblock-object" title="Permanent link">&para;</a></h3>
+<h3 id="superblock-operations">Superblock Operations<a class="headerlink" href="#superblock-operations" title="Permanent link">&para;</a></h3>
+<h3 id="the-inode-object">The Inode Object<a class="headerlink" href="#the-inode-object" title="Permanent link">&para;</a></h3>
+<h3 id="inode-operations">Inode Operations<a class="headerlink" href="#inode-operations" title="Permanent link">&para;</a></h3>
+<h3 id="the-dentry-object">The Dentry Object<a class="headerlink" href="#the-dentry-object" title="Permanent link">&para;</a></h3>
+<h4 id="dentry-state">Dentry State<a class="headerlink" href="#dentry-state" title="Permanent link">&para;</a></h4>
+<h4 id="the-dentry-cache">The Dentry Cache<a class="headerlink" href="#the-dentry-cache" title="Permanent link">&para;</a></h4>
+<h3 id="dentry-operations">Dentry Operations<a class="headerlink" href="#dentry-operations" title="Permanent link">&para;</a></h3>
+<h3 id="the-file-object">The File Object<a class="headerlink" href="#the-file-object" title="Permanent link">&para;</a></h3>
+<h3 id="file-operations">File Operations<a class="headerlink" href="#file-operations" title="Permanent link">&para;</a></h3>
+<h3 id="data-structures-associated-with-filesystems">Data Structures Associated with Filesystems<a class="headerlink" href="#data-structures-associated-with-filesystems" title="Permanent link">&para;</a></h3>
+<h3 id="data-structures-associated-with-a-process">Data Structures Associated with a Process<a class="headerlink" href="#data-structures-associated-with-a-process" title="Permanent link">&para;</a></h3>
             </div>
         </div>
 

@@ -516,8 +516,8 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-6-io-multiplexing-the-select-and-poll-functions"><strong>Chapter 6. I/O Multiplexing: The <code>select</code> and <code>poll</code> Functions</strong></h3>
-<h3 id="introduction">Introduction</h3>
+<h3 id="chapter-6-io-multiplexing-the-select-and-poll-functions"><strong>Chapter 6. I/O Multiplexing: The <code>select</code> and <code>poll</code> Functions</strong><a class="headerlink" href="#chapter-6-io-multiplexing-the-select-and-poll-functions" title="Permanent link">&para;</a></h3>
+<h3 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
 <p>When the TCP client is handling two inputs at the same time: standard input and a TCP socket, we encountered a problem when the client was blocked in a call to <code>fgets</code> (on standard input) and the server process was killed. The server TCP correctly sent a FIN to the client TCP, but since the client process was blocked reading from standard input, it never saw the EOF until it read from the socket (possibly much later).</p>
 <p>We want to be notified if one or more I/O conditions are ready (i.e., input is ready to be read, or the descriptor is capable of taking more output). This capability is called <strong>I/O multiplexing</strong> and is provided by the <code>select</code> and <code>poll</code> functions, as well as a newer POSIX variation of the former, called <code>pselect</code>.</p>
 <p>I/O multiplexing is typically used in networking applications in the following scenarios:</p>
@@ -529,7 +529,7 @@
 <li>If a server handles multiple services and perhaps multiple protocols</li>
 </ul>
 <p>I/O multiplexing is not limited to network programming. Many nontrivial applications find a need for these techniques.</p>
-<h3 id="io-models">I/O Models</h3>
+<h3 id="io-models">I/O Models<a class="headerlink" href="#io-models" title="Permanent link">&para;</a></h3>
 <p>We first examine the basic differences in the five I/O models that are available to us under Unix:</p>
 <ul>
 <li>blocking I/O</li>
@@ -543,13 +543,13 @@
 <li>Waiting for the data to be ready. This involves waiting for data to arrive on the network. When the packet arrives, it is copied into a buffer within the kernel.</li>
 <li>Copying the data from the kernel to the process. This means copying the (ready) data from the kernel's buffer into our application buffer</li>
 </ol>
-<h4 id="blocking-io-model">Blocking I/O Model</h4>
+<h4 id="blocking-io-model">Blocking I/O Model<a class="headerlink" href="#blocking-io-model" title="Permanent link">&para;</a></h4>
 <p>The most prevalent model for I/O is the blocking I/O model (which we have used for all our examples in the previous sections). By default, all sockets are blocking. The scenario is shown in the figure below:</p>
 <p><a href="../figure_6.1.png" title="Figure 6.1. Blocking I/O model."><img alt="Figure 6.1. Blocking I/O model." src="../figure_6.1.png" /></a></p>
 <p>We use UDP for this example instead of TCP because with UDP, the concept of data being "ready" to read is simple: either an entire datagram has been received or it has not. With TCP it gets more complicated, as additional variables such as the socket's low-water mark come into play.</p>
 <p>We also refer to <code>recvfrom</code> as a system call to differentiate between our application and the kernel, regardless of how <code>recvfrom</code> is implemented (system call on BSD and function that invokes <code>getmsg</code> system call on System V). There is normally a switch from running in the application to running in the kernel, followed at some time later by a return to the application.</p>
 <p>In the figure above, the process calls <code>recvfrom</code> and the system call does not return until the datagram arrives and is copied into our application buffer, or an error occurs. The most common error is the system call being interrupted by a signal, as we described in <a href="../ch5/#handling-sigchld-signals">Section 5.9</a>. We say that the process is blocked the entire time from when it calls <code>recvfrom</code> until it returns. When <code>recvfrom</code> returns successfully, our application processes the datagram.</p>
-<h4 id="nonblocking-io-model">Nonblocking I/O Model</h4>
+<h4 id="nonblocking-io-model">Nonblocking I/O Model<a class="headerlink" href="#nonblocking-io-model" title="Permanent link">&para;</a></h4>
 <p>When a socket is set to be nonblocking, we are telling the kernel "when an I/O operation that I request cannot be completed without putting the process to sleep, do not put the process to sleep, but return an error instead". The figure is below:</p>
 <p><a href="../figure_6.2.png" title="Figure 6.2. Nonblocking I/O model."><img alt="Figure 6.2. Nonblocking I/O model." src="../figure_6.2.png" /></a></p>
 <ul>
@@ -557,19 +557,19 @@
 <li>For the fourth time we call recvfrom, a datagram is ready, it is copied into our application buffer, and <code>recvfrom</code> returns successfully. We then process the data.</li>
 </ul>
 <p>When an application sits in a loop calling <code>recvfrom</code> on a nonblocking descriptor like this, it is called <strong>polling</strong>. The application is continually polling the kernel to see if some operation is ready. This is often a waste of CPU time, but this model is occasionally encountered, normally on systems dedicated to one function.</p>
-<h4 id="io-multiplexing-model">I/O Multiplexing Model</h4>
+<h4 id="io-multiplexing-model">I/O Multiplexing Model<a class="headerlink" href="#io-multiplexing-model" title="Permanent link">&para;</a></h4>
 <p>With <strong>I/O multiplexing</strong>, we call <code>select</code> or <code>poll</code> and block in one of these two system calls, instead of blocking in the actual I/O system call. The figure is a summary of the I/O multiplexing model:</p>
 <p><a href="../figure_6.3.png" title="Figure 6.3. I/O multiplexing model."><img alt="Figure 6.3. I/O multiplexing model." src="../figure_6.3.png" /></a></p>
 <p>We block in a call to <code>select</code>, waiting for the datagram socket to be readable. When <code>select</code> returns that the socket is readable, we then call <code>recvfrom</code> to copy the datagram into our application buffer.</p>
-<h5 id="comparing-to-the-blocking-io-model"><strong>Comparing to the blocking I/O model</strong> *</h5>
+<h5 id="comparing-to-the-blocking-io-model"><strong>Comparing to the blocking I/O model</strong> *<a class="headerlink" href="#comparing-to-the-blocking-io-model" title="Permanent link">&para;</a></h5>
 <p>Comparing <a href="../figure_6.3.png">Figure 6.3</a> to <a href="../figure_6.1.png">Figure 6.1</a>:</p>
 <ul>
 <li>Disadvantage: using <code>select</code> requires two system calls (<code>select</code> and <code>recvfrom</code>) instead of one</li>
 <li>Advantage: we can wait for more than one descriptor to be ready (see <a href="#select-function">the <code>select</code> function</a> later in this chapter)</li>
 </ul>
-<h5 id="multithreading-with-blocking-io"><strong>Multithreading with blocking I/O</strong> *</h5>
+<h5 id="multithreading-with-blocking-io"><strong>Multithreading with blocking I/O</strong> *<a class="headerlink" href="#multithreading-with-blocking-io" title="Permanent link">&para;</a></h5>
 <p>Another closely related I/O model is to use multithreading with blocking I/O. That model very closely resembles the model described above, except that instead of using <code>select</code> to block on multiple file descriptors, the program uses multiple threads (one per file descriptor), and each thread is then free to call blocking system calls like <code>recvfrom</code>.</p>
-<h4 id="signal-driven-io-model">Signal-Driven I/O Model</h4>
+<h4 id="signal-driven-io-model">Signal-Driven I/O Model<a class="headerlink" href="#signal-driven-io-model" title="Permanent link">&para;</a></h4>
 <p>The <strong>signal-driven I/O model</strong> uses signals, telling the kernel to notify us with the <code>SIGIO</code> signal when the descriptor is ready. The figure is below:</p>
 <p><a href="../figure_6.4.png" title="Figure 6.4. Signal-Driven I/O model."><img alt="Figure 6.4. Signal-Driven I/O model." src="../figure_6.4.png" /></a></p>
 <ul>
@@ -581,7 +581,7 @@
 </li>
 </ul>
 <p>The advantage to this model is that we are not blocked while waiting for the datagram to arrive. The main loop can continue executing and just wait to be notified by the signal handler that either the data is ready to process or the datagram is ready to be read.</p>
-<h4 id="asynchronous-io-model">Asynchronous I/O Model</h4>
+<h4 id="asynchronous-io-model">Asynchronous I/O Model<a class="headerlink" href="#asynchronous-io-model" title="Permanent link">&para;</a></h4>
 <p><strong>Asynchronous I/O</strong> is defined by the POSIX specification, and various differences in the <em>real-time</em> functions that appeared in the various standards which came together to form the current POSIX specification have been reconciled.</p>
 <p>These functions work by telling the kernel to start the operation and to notify us when the entire operation (including the copy of the data from the kernel to our buffer) is complete. <u>The main difference between this model and the signal-driven I/O model is that with signal-driven I/O, the kernel tells us when an I/O operation can be initiated, but with asynchronous I/O, the kernel tells us when an I/O operation is complete.</u> See the figure below for example:</p>
 <p><a href="../figure_6.5.png" title="Figure 6.5. Asynchronous I/O model."><img alt="Figure 6.5. Asynchronous I/O model." src="../figure_6.5.png" /></a></p>
@@ -599,18 +599,18 @@
 <p>We assume in this example that we ask the kernel to generate some signal when the operation is complete. This signal is not generated until the data has been copied into our application buffer, which is different from the signal-driven I/O model.</p>
 </li>
 </ul>
-<h4 id="comparison-of-the-io-models">Comparison of the I/O Models</h4>
+<h4 id="comparison-of-the-io-models">Comparison of the I/O Models<a class="headerlink" href="#comparison-of-the-io-models" title="Permanent link">&para;</a></h4>
 <p>The figure below is a comparison of the five different I/O models.</p>
 <p><a href="../figure_6.6.png" title="Figure 6.6. Comparison of the five I/O models."><img alt="Figure 6.6. Comparison of the five I/O models." src="../figure_6.6.png" /></a></p>
 <p>The main difference between the first four models is the first phase, as the second phase in the first four models is the same: the process is blocked in a call to <code>recvfrom</code> while the data is copied from the kernel to the caller's buffer. Asynchronous I/O, however, handles both phases and is different from the first four.</p>
-<h4 id="synchronous-io-versus-asynchronous-io">Synchronous I/O versus Asynchronous I/O</h4>
+<h4 id="synchronous-io-versus-asynchronous-io">Synchronous I/O versus Asynchronous I/O<a class="headerlink" href="#synchronous-io-versus-asynchronous-io" title="Permanent link">&para;</a></h4>
 <p>POSIX defines these two terms as follows:</p>
 <ul>
 <li>A synchronous I/O operation causes the requesting process to be blocked until that I/O operation completes.</li>
 <li>An asynchronous I/O operation does not cause the requesting process to be blocked.</li>
 </ul>
 <p>Using these definitions, the first four I/O models (blocking, nonblocking, I/O multiplexing, and signal-driven I/O) are all synchronous because the actual I/O operation (<code>recvfrom</code>) blocks the process. Only the asynchronous I/O model matches the asynchronous I/O definition.</p>
-<h3 id="select-function"><code>select</code> Function</h3>
+<h3 id="select-function"><code>select</code> Function<a class="headerlink" href="#select-function" title="Permanent link">&para;</a></h3>
 <p>The <code>select</code> function allows the process to instruct the kernel to either:</p>
 <ul>
 <li>Wait for any one of multiple events to occur and to wake up the process only when one or more of these events occurs, or</li>
@@ -627,7 +627,7 @@
 </pre></div>
 
 
-<h5 id="the-timeout-argument"><strong>The <em>timeout</em> argument</strong> *</h5>
+<h5 id="the-timeout-argument"><strong>The <em>timeout</em> argument</strong> *<a class="headerlink" href="#the-timeout-argument" title="Permanent link">&para;</a></h5>
 <p>The <em>timeout</em> argument tells the kernel how long to wait for one of the specified descriptors to become ready. A <code>timeval</code> structure specifies the number of seconds and microseconds.</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">timeval</span>  <span class="p">{</span>
   <span class="kt">long</span>   <span class="n">tv_sec</span><span class="p">;</span>          <span class="cm">/* seconds */</span>
@@ -649,7 +649,7 @@
 <li>On some systems, the <code>timeval</code> structure can represent values that are not supported by <code>select</code>; it will fail with <code>EINVAL</code> if the <code>tv_sec</code> field in the timeout is over 100 million seconds.</li>
 <li>The <code>const</code> qualifier on the <em>timeout</em> argument means it is not modified by <code>select</code> on return.</li>
 </ul>
-<h5 id="the-descriptor-sets-arguments"><strong>The descriptor sets arguments</strong> *</h5>
+<h5 id="the-descriptor-sets-arguments"><strong>The descriptor sets arguments</strong> *<a class="headerlink" href="#the-descriptor-sets-arguments" title="Permanent link">&para;</a></h5>
 <p>The three middle arguments, <em>readset</em>, <em>writeset</em>, and <em>exceptset</em>, specify the descriptors that we want the kernel to test for reading, writing, and exception conditions. There are only two exception conditions currently supported:</p>
 <ul>
 <li>The arrival of <a href="https://en.wikipedia.org/wiki/Out-of-band_data">out-of-band data</a> for a socket.</li>
@@ -677,15 +677,15 @@
 
 <p>It is important to initialize the set, since unpredictable results can occur if the set is allocated as an automatic variable and not initialized.</p>
 <p>Any of the middle three arguments to <code>select</code>, <em>readset</em>, <em>writeset</em>, or <em>exceptset</em>, can be specified as a null pointer if we are not interested in that condition. Indeed, if all three pointers are null, then we have a higher precision timer than the normal Unix <code>sleep</code> function. The <code>poll</code> function provides similar functionality.</p>
-<h5 id="the-maxfdp1-argument"><strong>The <em>maxfdp1</em> argument</strong> *</h5>
+<h5 id="the-maxfdp1-argument"><strong>The <em>maxfdp1</em> argument</strong> *<a class="headerlink" href="#the-maxfdp1-argument" title="Permanent link">&para;</a></h5>
 <p>The <em>maxfdp1</em> argument specifies the number of descriptors to be tested. Its value is the maximum descriptor to be tested plus one. The descriptors 0, 1, 2, up through and including <em>maxfdp1</em>–1 are tested.</p>
 <p>The constant <code>FD_SETSIZE</code>, defined by including <code>&lt;sys/select.h&gt;</code>, is the number of descriptors in the <code>fd_set</code> datatype. Its value is often 1024, but few programs use that many descriptors.</p>
 <p>The reason the <em>maxfdp1</em> argument exists, along with the burden of calculating its value, is for efficiency. Although each <code>fd_set</code> has room for many descriptors, typically 1,024, this is much more than the number used by a typical process. The kernel gains efficiency by not copying unneeded portions of the descriptor set between the process and the kernel, and by not testing bits that are always 0.</p>
-<h5 id="readset-writeset-and-exceptset-as-value-result-arguments"><strong><em>readset</em>, <em>writeset</em>, and <em>exceptset</em> as value-result arguments</strong> *</h5>
+<h5 id="readset-writeset-and-exceptset-as-value-result-arguments"><strong><em>readset</em>, <em>writeset</em>, and <em>exceptset</em> as value-result arguments</strong> *<a class="headerlink" href="#readset-writeset-and-exceptset-as-value-result-arguments" title="Permanent link">&para;</a></h5>
 <p><code>select</code> modifies the descriptor sets pointed to by the <em>readset</em>, <em>writeset</em>, and <em>exceptset</em> pointers. These three arguments are value-result arguments. When we call the function, we specify the values of the descriptors that we are interested in, and on return, the result indicates which descriptors are ready. We use the <code>FD_ISSET</code> macro on return to test a specific descriptor in an <code>fd_set</code> structure. Any descriptor that is not ready on return will have its corresponding bit cleared in the descriptor set. To handle this, we turn on all the bits in which we are interested in all the descriptor sets each time we call select.</p>
-<h5 id="return-value-of-select"><strong>Return value of <code>select</code></strong> *</h5>
+<h5 id="return-value-of-select"><strong>Return value of <code>select</code></strong> *<a class="headerlink" href="#return-value-of-select" title="Permanent link">&para;</a></h5>
 <p>The return value from this function indicates the total number of bits that are ready across all the descriptor sets. If the timer value expires before any of the descriptors are ready, a value of 0 is returned. A return value of –1 indicates an error (which can happen, for example, if the function is interrupted by a caught signal).</p>
-<h4 id="conditions-for-a-ready-descriptor">Conditions for a Ready Descriptor</h4>
+<h4 id="conditions-for-a-ready-descriptor">Conditions for a Ready Descriptor<a class="headerlink" href="#conditions-for-a-ready-descriptor" title="Permanent link">&para;</a></h4>
 <p>Previous sections discusses waiting for a descriptor to become ready for I/O (reading or writing) or to have an exception condition pending on it (out-of-band data). The following discussion are specific about the conditions that cause select to return "ready" for sockets</p>
 <ol>
 <li><strong>A socket is ready for reading</strong> if any of the following four conditions is true:<ul>
@@ -762,7 +762,7 @@
 </tr>
 </tbody>
 </table>
-<h4 id="maximum-number-of-descriptors-for-select">Maximum Number of Descriptors for <code>select</code></h4>
+<h4 id="maximum-number-of-descriptors-for-select">Maximum Number of Descriptors for <code>select</code><a class="headerlink" href="#maximum-number-of-descriptors-for-select" title="Permanent link">&para;</a></h4>
 <p>Most applications do not use lots of descriptors. It is rare to find an application that uses hundreds of descriptors, but such applications do exist, and they often use <code>select</code> to multiplex the descriptors.</p>
 <p>When <code>select</code> was originally designed, the OS normally had an upper limit on the maximum number of descriptors per process (the 4.2BSD limit was 31), and select just used this same limit. But, current versions of Unix allow for a virtually unlimited number of descriptors per process (often limited only by the amount of memory and any administrative limits), which affects <code>select</code>.</p>
 <p>Many implementations have declarations similar to the following, which are taken from the 4.4BSD <code>&lt;sys/types.h&gt;</code> header:</p>
@@ -780,7 +780,7 @@
 
 <p>This makes us think that we can just <code>#define FD_SETSIZE</code> to some larger value before including this header to increase the size of the descriptor sets used by <code>select</code>. Unfortunately, this normally does not work. The three descriptor sets are declared within the kernel and also uses the kernel's definition of <code>FD_SETSIZE</code> as the upper limit. The only way to increase the size of the descriptor sets is to increase the value of <code>FD_SETSIZE</code> and then recompile the kernel. Changing the value without recompiling the kernel is inadequate.</p>
 <p>Some vendors are changing their implementation of select to allow the process to define <code>FD_SETSIZE</code> to a larger value than the default. BSD/OS has changed the kernel implementation to allow larger descriptor sets, and it also provides four new <code>FD_</code><em>xxx</em> macros to dynamically allocate and manipulate these larger sets. From a portability standpoint, however, beware of using large descriptor sets.</p>
-<h3 id="str_cli-function-revisited"><code>str_cli</code> Function (Revisited)</h3>
+<h3 id="str_cli-function-revisited"><code>str_cli</code> Function (Revisited)<a class="headerlink" href="#str_cli-function-revisited" title="Permanent link">&para;</a></h3>
 <p>The problem with earlier version of the <code>str_cli</code> (<a href="../ch5/#tcp-echo-client-str_cli-function">Section 5.5</a>) was that we could be blocked in the call to <code>fgets</code> when something happened on the socket. We can now rewrite our <code>str_cli</code> function using <code>select</code> so that:</p>
 <ul>
 <li>The client process is notified as soon as the server process terminates.</li>
@@ -839,9 +839,9 @@
 <li><strong>Handle readable input</strong>. If the standard input is readable, a line is read by <code>fgets</code> and written to the socket using <code>writen</code>.</li>
 </ul>
 <p>Instead of the function flow being driven by the call to <code>fgets</code>, it is now driven by the call to <code>select</code>.</p>
-<h3 id="batch-input-and-buffering">Batch Input and Buffering</h3>
+<h3 id="batch-input-and-buffering">Batch Input and Buffering<a class="headerlink" href="#batch-input-and-buffering" title="Permanent link">&para;</a></h3>
 <p>Unfortunately, our <code>str_cli</code> function is still not correct. Our original version in <a href="../ch5/#tcp-echo-client-str_cli-function">Section 5.5</a> operates in a stop-and-wait mode, which is fine for interactive use: It sends a line to the server and then waits for the reply. This amount of time is one RTT plus the server's processing time (which is close to 0 for a simple echo server). We can therefore estimate how long it will take for a given number of lines to be echoed if we know the RTT between the client and server. We can use <code>ping</code> to measure RTTs.</p>
-<h4 id="stop-and-wait-mode">Stop-and-wait mode *</h4>
+<h4 id="stop-and-wait-mode">Stop-and-wait mode *<a class="headerlink" href="#stop-and-wait-mode" title="Permanent link">&para;</a></h4>
 <p>If we consider the network between the client and server as a full-duplex pipe, with requests going from the client to the server and replies in the reverse direction, then the following figure shows our stop-and-wait mode:</p>
 <p><a href="../figure_6.10.png" title="Figure 6.10. Time line of stop-and-wait mode: interactive input."><img alt="Figure 6.10. Time line of stop-and-wait mode: interactive input." src="../figure_6.10.png" /></a></p>
 <p>Note that this figure:</p>
@@ -851,7 +851,7 @@
 </ul>
 <p>A request is sent by the client at time 0 and we assume an RTT of 8 units of time. The reply sent at time 4 is received at time 7.</p>
 <p>This stop-and-wait mode is fine for interactive input. The problem is: if we run our client in a batch mode, when we redirect the input and output, however, the resulting output file is always smaller than the input file (and they should be identical for an echo server).</p>
-<h4 id="batch-mode">Batch mode *</h4>
+<h4 id="batch-mode">Batch mode *<a class="headerlink" href="#batch-mode" title="Permanent link">&para;</a></h4>
 <p>To see what's happening, realize that in a batch mode, we can keep sending requests as fast as the network can accept them. The server processes them and sends back the replies at the same rate. This leads to the full pipe at time 7, as shown below:</p>
 <p><a href="../figure_6.11.png" title="Figure 6.11. Filling the pipe between the client and server: batch mode."><img alt="Figure 6.11. Filling the pipe between the client and server: batch mode." src="../figure_6.11.png" /></a></p>
 <p>We assume:</p>
@@ -861,12 +861,12 @@
 </ul>
 <p>Assume that the input file contains only nine lines. The last line is sent at time 8, as shown in the above figure. But we cannot close the connection after writing this request because there are still other requests and replies in the pipe. The cause of the problem is our handling of an EOF on input: The function returns to the <code>main</code> function, which then terminates. But <u>in a batch mode, an EOF on input does not imply that we have finished reading from the socket; there might still be requests on the way to the server, or replies on the way back from the server.</u></p>
 <p>The solution is to close one-half of the TCP connection by sending a FIN to the server, telling it we have finished sending data, but leave the socket descriptor open for reading. This is done with the <code>shutdown</code> function, described in the next section.</p>
-<h4 id="buffering-concerns">Buffering concerns *</h4>
+<h4 id="buffering-concerns">Buffering concerns *<a class="headerlink" href="#buffering-concerns" title="Permanent link">&para;</a></h4>
 <p>Buffering for performance as in <code>str_cli</code> (<a href="#str_cli-function-revisited">Section 6.7</a>) adds complexity to a network application.</p>
 <p>When several lines of input are available from the standard input. <code>select</code> will cause the code (<a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c#L24">select/strcliselect01.c#L24</a>) to read the input using <code>fgets</code>, which will read the available lines into a buffer used by stdio. But, <code>fgets</code> only returns a single line and leaves any remaining data sitting in the stdio buffer. The following code (<a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect01.c#L26">select/strcliselect01.c#L26</a>) writes that single line to the server and then <code>select</code> is called again to wait for more work, even if there are additional lines to consume in the stdio buffer. The reason is that <code>select</code> knows nothing of the buffers used by stdio;it will only show readability from the viewpoint of the <code>read</code> system call, not calls like <code>fgets</code>. Thus, mixing stdio and <code>select</code> is considered very error-prone and should only be done with great care.</p>
 <p>The same problem exists with <code>readline</code> in this example (<code>str_cli</code> function). Instead of data being hidden from <code>select</code> in a stdio buffer, it is hidden in <code>readline</code>'s buffer. In <a href="../ch3/#readn-writen-and-readline-functions">Section 3.9</a> we provided a function (<a href="https://github.com/shichao-an/unpv13e/blob/master/lib/readline.c#L52">lib/readline.c#L52</a>) that gives visibility into <code>readline</code>'s buffer, so one possible solution is to modify our code to use that function before calling <code>select</code> to see if data has already been read but not consumed. But again, the complexity grows out of hand quickly when we have to handle the case where the readline buffer contains a partial line (meaning we still need to read more) as well as when it contains one or more complete lines (which we can consume).</p>
 <p>We will address these buffering concerns in the improved version of <code>str_cli</code> shown in <a href="#str_cli-function-revisited-again">Section 6.7</a>.</p>
-<h3 id="shutdown-function"><code>shutdown</code> Function</h3>
+<h3 id="shutdown-function"><code>shutdown</code> Function<a class="headerlink" href="#shutdown-function" title="Permanent link">&para;</a></h3>
 <p>The normal way to terminate a network connection is to call the <code>close</code> function. But, there are two limitations with <code>close</code> that can be avoided with <code>shutdown</code>:</p>
 <ol>
 <li><code>close</code> decrements the descriptor's reference count and closes the socket only if the count reaches 0 (<a href="../ch4/#concurrent-servers">Section 4.8</a>). With <code>shutdown</code>, we can initiate TCP's normal connection termination sequence (the four segments beginning with a FIN in <a href="../figure_2.5.png">Figure 2.5</a>), regardless of the reference count.</li>
@@ -888,7 +888,7 @@
 <li><code>SHUT_RDWR</code>: <strong>The read half and the write half of the connection are both closed.</strong> This is equivalent to calling <code>shutdown</code> twice: first with <code>SHUT_RD</code> and then with <code>SHUT_WR</code>.</li>
 </ul>
 <p>The three <code>SHUT_</code><em>xxx</em> names are defined by the POSIX specification. Typical values for the howto argument that you will encounter will be 0 (close the read half), 1 (close the write half), and 2 (close the read half and the write half).</p>
-<h3 id="str_cli-function-revisited-again"><code>str_cli</code> Function (Revisited Again)</h3>
+<h3 id="str_cli-function-revisited-again"><code>str_cli</code> Function (Revisited Again)<a class="headerlink" href="#str_cli-function-revisited-again" title="Permanent link">&para;</a></h3>
 <p>The following code is our revised and correct version of the <code>str_cli</code> function that uses <code>select</code> and <code>shutdown</code>. In the function, <code>select</code> notifies us as soon as the server closes its end of the connection and <code>shutdown</code> lets us handle batch input correctly.</p>
 <p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/select/strcliselect02.c">select/strcliselect02.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span>    <span class="cpf">&quot;unp.h&quot;</span><span class="cp"></span>
@@ -945,9 +945,9 @@
 </li>
 <li><code>shutdown</code>. When we encounter the EOF on standard input, our new flag, <code>stdineof</code>, is set and we call <code>shutdown</code> with a second argument of <code>SHUT_WR</code> to send the FIN. Here we also use buffers instead of lines, using <code>read</code> and <code>writen</code>.</li>
 </ul>
-<h3 id="tcp-echo-server-revisited">TCP Echo Server (Revisited)</h3>
+<h3 id="tcp-echo-server-revisited">TCP Echo Server (Revisited)<a class="headerlink" href="#tcp-echo-server-revisited" title="Permanent link">&para;</a></h3>
 <p>We now rewrite the TCP echo server (<a href="../ch5/#tcp-echo-server-main-function">Section 5.2</a> and <a href="../ch5/#tcp-echo-server-str_echo-function">5.3</a> as a single process that uses <code>select</code> to handle any number of clients, instead of <code>fork</code>ing one child per client.</p>
-<h4 id="before-first-client-has-established-a-connection">Before first client has established a connection *</h4>
+<h4 id="before-first-client-has-established-a-connection">Before first client has established a connection *<a class="headerlink" href="#before-first-client-has-established-a-connection" title="Permanent link">&para;</a></h4>
 <p>Before the first client has established a connection, the server has a single listening descriptor.</p>
 <ul>
 <li>The server maintains only a read descriptor set (<em>rset</em>), shown in the following figure. Assuming the server is started in the foreground, descriptors 0, 1, and 2 are set to standard input, output, and error, so the first available descriptor for the listening socket is 3.</li>
@@ -955,20 +955,20 @@
 </ul>
 <p><a href="../figure_6.15.png" title="Figure 6.15. Data structures for TCP server with just a listening socket."><img alt="Figure 6.15. Data structures for TCP server with just a listening socket." src="../figure_6.15.png" /></a></p>
 <p>The only nonzero entry in the descriptor set is the entry for the listening sockets and the first argument to <code>select</code> will be 4.</p>
-<h4 id="after-first-client-establishes-connection">After first client establishes connection *</h4>
+<h4 id="after-first-client-establishes-connection">After first client establishes connection *<a class="headerlink" href="#after-first-client-establishes-connection" title="Permanent link">&para;</a></h4>
 <p>When the first client establishes a connection with our server, the listening descriptor becomes readable and our server calls <code>accept</code>. The new connected descriptor returned by accept will be 4. The following figure shows this connection:</p>
 <p><a href="../figure_6.16.png" title="Figure 6.16. TCP server after first client establishes connection."><img alt="Figure 6.16. TCP server after first client establishes connection." src="../figure_6.16.png" /></a></p>
 <p>The server must remember the new connected socket in its <code>client</code> array, and the connected socket must be added to the descriptor set. The updated data structures are shown in the figure below:</p>
 <p><a href="../figure_6.17.png" title="Figure 6.17. Data structures after first client connection is established."><img alt="Figure 6.17. Data structures after first client connection is established." src="../figure_6.17.png" /></a></p>
-<h4 id="after-second-client-connection-is-established">After second client connection is established *</h4>
+<h4 id="after-second-client-connection-is-established">After second client connection is established *<a class="headerlink" href="#after-second-client-connection-is-established" title="Permanent link">&para;</a></h4>
 <p>Sometime later a second client establishes a connection and we have the scenario shown below:</p>
 <p><a href="../figure_6.18.png" title="Figure 6.18. TCP server after second client connection is established."><img alt="Figure 6.18. TCP server after second client connection is established." src="../figure_6.18.png" /></a></p>
 <p>The new connected socket (which we assume is 5) must be remembered, giving the data structures shown below:</p>
 <p><a href="../figure_6.19.png" title="Figure 6.19. Data structures after second client connection is established."><img alt="Figure 6.19. Data structures after second client connection is established." src="../figure_6.19.png" /></a></p>
-<h4 id="after-first-client-terminates-its-connection">After first client terminates its connection *</h4>
+<h4 id="after-first-client-terminates-its-connection">After first client terminates its connection *<a class="headerlink" href="#after-first-client-terminates-its-connection" title="Permanent link">&para;</a></h4>
 <p>Next, we assume the first client terminates its connection. The client TCP sends a FIN, which makes descriptor 4 in the server readable. When our server reads this connected socket, <code>read</code> returns 0. We then close this socket and update our data structures accordingly. The value of <code>client[0]</code> is set to –1 and descriptor 4 in the descriptor set is set to 0. This is shown in the figure below. Notice that the value of <code>maxfd</code> does not change.</p>
 <p><a href="../figure_6.20.png" title="Figure 6.20. Data structures after first client terminates its connection."><img alt="Figure 6.20. Data structures after first client terminates its connection." src="../figure_6.20.png" /></a></p>
-<h4 id="summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited) *</h4>
+<h4 id="summary-of-tcp-echo-server-revisited">Summary of TCP echo server (revisited) *<a class="headerlink" href="#summary-of-tcp-echo-server-revisited" title="Permanent link">&para;</a></h4>
 <ul>
 <li>As clients arrive, we record their connected socket descriptor in the first available entry in the client array (the first entry with a value of –1) and also add the connected socket to the read descriptor set.</li>
 <li>The variable <code>maxi</code> is the highest index in the client array that is currently in use and the variable <code>maxfd</code> (plus one) is the current value of the first argument to select.</li>
@@ -1085,7 +1085,7 @@
 </li>
 </ul>
 <p>This server is more complicated than the earlier version (<a href="../ch5/#tcp-echo-server-main-function">Section 5.2</a> and <a href="../ch5/#tcp-echo-server-str_echo-function">5.3</a>, but it avoids all the overhead of creating a new process for each client and it is a nice example of <code>select</code>. Nevertheless, in <a href="ch16.md#nonblocking-accept">Section 16.6</a>, we will describe a problem with this server that is easily fixed by making the listening socket nonblocking and then checking for, and ignoring, a few errors from <code>accept</code>.</p>
-<h4 id="denial-of-service-attacks">Denial-of-Service Attacks</h4>
+<h4 id="denial-of-service-attacks">Denial-of-Service Attacks<a class="headerlink" href="#denial-of-service-attacks" title="Permanent link">&para;</a></h4>
 <p>There is a problem with the server in the above example. If a malicious client connects to the server, sends one byte of data (other than a newline), and then goes to sleep. The server will call <code>read</code>, which will read the single byte of data from the client and then block in the next call to <code>read</code>, waiting for more data from this client. The server is then blocked ("hung") by this one client and will not service any other clients, until the malicious client either sends a newline or terminates.</p>
 <p>The basic concept here is that when a server is handling multiple clients, the server can never block in a function call related to a single client. Doing so can hang the server and deny service to all other clients. This is called a <strong>denial-of-service</strong> attack, which prevents the server from servicing other legitimate clients.</p>
 <p>Possible solutions are:</p>
@@ -1094,7 +1094,7 @@
 <li>Have each client serviced by a separate thread of control (either spawn a process or a thread to service each client)</li>
 <li>Place a timeout on the I/O operations</li>
 </ul>
-<h3 id="pselect-function"><code>pselect</code> Function</h3>
+<h3 id="pselect-function"><code>pselect</code> Function<a class="headerlink" href="#pselect-function" title="Permanent link">&para;</a></h3>
 <p>The <code>pselect</code> function was invented by POSIX and is now supported by many of the Unix variants.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/select.h&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;signal.h&gt;</span><span class="cp"></span>
@@ -1161,7 +1161,7 @@
 
 
 <p>Before testing the <code>intr_flag</code> variable, we block <code>SIGINT</code>. When <code>pselect</code> is called, it replaces the signal mask of the process with an empty set (i.e., <code>zeromask</code>) and then checks the descriptors, possibly going to <code>sleep</code>. But when <code>pselect</code> returns, the signal mask of the process is reset to its value before <code>pselect</code> was called (i.e., <code>SIGINT</code> is blocked).</p>
-<h3 id="poll-function"><code>poll</code> Function</h3>
+<h3 id="poll-function"><code>poll</code> Function<a class="headerlink" href="#poll-function" title="Permanent link">&para;</a></h3>
 <p><code>poll</code> provides functionality that is similar to <code>select</code>, but <code>poll</code> provides additional information when dealing with STREAMS devices.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;poll.h&gt;</span><span class="cp"></span>
 
@@ -1202,7 +1202,7 @@
 <li>Otherwise, it is the number of descriptors that have a nonzero <code>revents</code> member.</li>
 </ul>
 <p>If we are no longer interested in a particular descriptor, we just set the <code>fd</code> member of the <code>pollfd</code> structure to a negative value. Then the events member is ignored and the <code>revents</code> member is set to 0 on return.</p>
-<h3 id="tcp-echo-server-revisited-again">TCP Echo Server (Revisited Again)</h3>
+<h3 id="tcp-echo-server-revisited-again">TCP Echo Server (Revisited Again)<a class="headerlink" href="#tcp-echo-server-revisited-again" title="Permanent link">&para;</a></h3>
 <p>This section is discusses the TCP echo server from <a href="#tcp-echo-server-revisited">Section 6.8</a> using <code>poll</code> instead of <code>select</code>.</p>
 <p>In the <code>select</code> version we allocate a <code>client</code> array along with a descriptor set named <code>rset</code> (<a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservselect01.c">tcpcliserv/tcpservselect01.c</a>). With <code>poll</code>, we must allocate an array of <code>pollfd</code> structures to maintain the client information instead of allocating another array. We handle the <code>fd</code> member of this array the same way we handled the <code>client</code> array in the <code>selection</code> version: a value of –1 means the entry is not in use; otherwise, it is the descriptor value. Any entry in the array of <code>pollfd</code> structures passed to <code>poll</code> with a negative value for the <code>fd</code> member is just ignored.</p>
 <p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/tcpcliserv/tcpservpoll01.c">tcpcliserv/tcpservpoll01.c</a></small></p>

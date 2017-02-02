@@ -465,7 +465,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-9-an-introduction-to-kernel-synchronization"><strong>Chapter 9. An Introduction to Kernel Synchronization</strong></h3>
+<h3 id="chapter-9-an-introduction-to-kernel-synchronization"><strong>Chapter 9. An Introduction to Kernel Synchronization</strong><a class="headerlink" href="#chapter-9-an-introduction-to-kernel-synchronization" title="Permanent link">&para;</a></h3>
 <p>In a shared memory application, developers must ensure that shared resources are protected from concurrent access. The kernel is no exception. Shared resources require protection from concurrent access because if multiple threads of execution access and manipulate the data at the same time, the threads may overwrite each other's changes or access data while it is in an inconsistent state. Concurrent access of shared data often results in instability is hard to track down and debug.</p>
 <p>The term <em>threads of execution</em> implies any instance of executing code. For example, this includes any of the following:</p>
 <ul>
@@ -478,14 +478,14 @@
 <p>[p161]</p>
 <p><a href="https://en.wikipedia.org/wiki/Symmetric_multiprocessing">Symmetrical multiprocessing</a> support was introduced in the 2.0 kernel. Multiprocessing support implies that kernel code can simultaneously run on two or more processors. Consequently, without protection, code in the kernel, running on two different processors, can simultaneously access shared data at exactly the same time. With the introduction of the 2.6 kernel, the Linux kernel is preemptive. This implies that (in the absence of protection) the scheduler can preempt kernel code at virtually any point and reschedule another task. Today, a number of scenarios enable for concurrency inside the kernel, and they all require protection.</p>
 <p>This chapter discusses the issues of concurrency and synchronization in the abstract, as they exist in any operating system kernel. The <a href="../ch10/">next chapter</a> details the specific mechanisms and interfaces that the Linux kernel provides to solve synchronization issues and prevent race conditions.</p>
-<h3 id="critical-regions-and-race-conditions">Critical Regions and Race Conditions</h3>
+<h3 id="critical-regions-and-race-conditions">Critical Regions and Race Conditions<a class="headerlink" href="#critical-regions-and-race-conditions" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Code paths that access and manipulate shared data are called <a href="https://en.wikipedia.org/wiki/Critical_section"><strong>critical regions</strong></a> (also called <strong>critical sections</strong>). It is usually unsafe for multiple threads of execution to access the same resource simultaneously.</li>
 <li>To prevent concurrent access during critical regions, the programmer must ensure that code executes <a href="https://en.wikipedia.org/wiki/Linearizability"><em>atomically</em></a>, which means that operations complete without interruption as if the entire critical region were one indivisible instruction.</li>
 <li>It is a bug if it is possible for two threads of execution to be simultaneously executing within the same critical region. When this occur, it is called a <a href="https://en.wikipedia.org/wiki/Race_condition"><strong>race condition</strong></a>, so-named because the threads raced to get there first. Debugging race conditions is often difficult because they are not easily reproducible.</li>
 <li>Ensuring that unsafe concurrency is prevented and that race conditions do not occur is called <a href="https://en.wikipedia.org/wiki/Synchronization_(computer_science)"><strong>synchronization</strong></a>.</li>
 </ul>
-<h4 id="why-do-we-need-protection">Why Do We Need Protection?</h4>
+<h4 id="why-do-we-need-protection">Why Do We Need Protection?<a class="headerlink" href="#why-do-we-need-protection" title="Permanent link">&para;</a></h4>
 <p>To best understand the need for synchronization, look at the ubiquity of race conditions.</p>
 <p>The first example is a real-world case: an ATM (Automated Teller Machine, called a cash machine).</p>
 <p>After the user has asked for a specific amount of money, the cash machine needs to
@@ -512,7 +512,7 @@ ensure that the money actually exists in that user's account and deducts the wit
 <p>Both systems performing the withdrawal would have similar code as above: first check whether the deduction is possible, then compute the new total funds, and finally execute the physical deduction. Presume that the first deduction is a withdrawal from an ATM for $100 and that the second deduction is the bank applying a fee of $10 because the customer walked into the bank.  Assume the customer has a total of $105 in the bank. Obviously, one of these transactions cannot correctly complete.</p>
 <p>Assume that the two transactions are initiated at roughly the same time. Both transactions verify that sufficient funds exist: $105 is more than both $100 and $10, so all is good. Then the withdrawal process subtracts $100 from $105, yielding $5. The fee transaction then does the same, subtracting $10 from $105 and getting $95. The withdrawal process then updates the user's new total available funds to $5. Now the fee transaction also updates the new total, resulting in $95 (free money).</p>
 <p>Clearly, financial institutions must ensure that this can never happen. They must lock the account during certain operations, making each transaction atomic with respect to any other transaction. Such transactions must occur in their entirety, without interruption, or not occur at all.</p>
-<h4 id="the-single-variable">The Single Variable</h4>
+<h4 id="the-single-variable">The Single Variable<a class="headerlink" href="#the-single-variable" title="Permanent link">&para;</a></h4>
 <p>Consider a simple shared resource, a single global integer, and a simple critical region, the operation of merely incrementing it: <code>i++</code>;</p>
 <p>This might translate into machine instructions to the computer's processor that resemble the following:</p>
 <ul>
@@ -607,7 +607,7 @@ ensure that the money actually exists in that user's account and deducts the wit
 </tbody>
 </table>
 <p>It would never be possible for the two atomic operations to interleave. The processor would physically ensure that it was impossible. Using such an instruction would alleviate the problem. The kernel provides a set of interfaces that implement these atomic instructions, which are discussed in the next chapter.</p>
-<h3 id="locking">Locking</h3>
+<h3 id="locking">Locking<a class="headerlink" href="#locking" title="Permanent link">&para;</a></h3>
 <p>Assume you have a queue of requests that needs to be serviced and the implementation is a linked list, in which each node represents a request. Two functions manipulate the queue:</p>
 <ul>
 <li>One function adds a new request to the tail of the queue.</li>
@@ -668,7 +668,7 @@ ensure that the money actually exists in that user's account and deducts the wit
 </ul>
 <p>The next chapter discusses the behavior of the different locks in Linux and their interfaces.</p>
 <p>As you may notice, the lock does not solve the problem; it simply shrinks the critical region down to just the lock and unlock code: probably much smaller, but still a potential race. Fortunately, locks are implemented using atomic operations that ensure no race exists. A single instruction can verify whether the key is taken and, if not, seize it. How this is done is architecture-specific, but almost all processors implement an atomic <a href="https://en.wikipedia.org/wiki/Test-and-set"><em>test and set</em></a> instruction that tests the value of an integer and sets it to a new value only if it is zero. A value of zero means unlocked. On the popular x86 architecture, locks are implemented using such a similar instruction called <a href="https://en.wikipedia.org/wiki/Compare-and-swap"><em>compare and exchange</em></a>.</p>
-<h4 id="causes-of-concurrency">Causes of Concurrency</h4>
+<h4 id="causes-of-concurrency">Causes of Concurrency<a class="headerlink" href="#causes-of-concurrency" title="Permanent link">&para;</a></h4>
 <p>In user-space, programs are scheduled preemptively at the will of the scheduler. Because a process can be preempted at any time and another process can be scheduled onto the processor, a process can be involuntarily preempted in the middle of accessing a critical region. If the newly scheduled process then enters the same critical region (for example, if the two processes manipulate the same shared memory or write to the same file descriptor), a race can occur. The same problem can occur with multiple single-threaded processes sharing files, or within a single program with signals, because signals can occur asynchronously. This type of concurrency in which two things do not actually happen at the same time but interleave with each other is called <em>pseudo-concurrency</em>.</p>
 <p>If you have a symmetrical multiprocessing machine, two processes can actually be executed in a critical region at the exact same time. That is called <em>true concurrency</em>. Although the causes and semantics of true versus pseudo concurrency are different, they both result in the same race conditions and require the same sort of protection.</p>
 <p>The kernel has similar causes of concurrency:</p>
@@ -687,24 +687,24 @@ ensure that the money actually exists in that user's account and deducts the wit
 <li>Finally, two processors should never simultaneously access the same piece of data.</li>
 </ul>
 <p>With a clear picture of what data needs protection, it is not hard to provide the locking to keep the system stable. Rather, the hard part is identifying these conditions and realizing that to prevent concurrency, you need some form of protection.</p>
-<h5 id="design-proper-locking-from-the-beginning"><strong>Design proper locking from the beginning</strong> *</h5>
+<h5 id="design-proper-locking-from-the-beginning"><strong>Design proper locking from the beginning</strong> *<a class="headerlink" href="#design-proper-locking-from-the-beginning" title="Permanent link">&para;</a></h5>
 <p>Implementing the actual locking in your code to protect shared data is not difficult, especially when done early on during the design phase of development. The tricky part is identifying the actual shared data and the corresponding critical sections. This is why designing locking into your code from the get-go, and not as an afterthought, is of paramount importance. It can be difficult to go in, ex post, and identify critical regions and retrofit locking into the existing code. The resulting code is often not pretty, either. The takeaway from this is to always design proper locking into your code from the beginning.</p>
-<h5 id="definitions-of-concurrency-safe-terms"><strong>Definitions of concurrency safe terms</strong> *</h5>
+<h5 id="definitions-of-concurrency-safe-terms"><strong>Definitions of concurrency safe terms</strong> *<a class="headerlink" href="#definitions-of-concurrency-safe-terms" title="Permanent link">&para;</a></h5>
 <ul>
 <li>Code that is safe from concurrent access from an interrupt handler is said to be <em>interrupt-safe</em>.</li>
 <li>Code that is safe from concurrency on symmetrical multiprocessing machines is <em>SMP-safe</em>.</li>
 <li>Code that is safe from concurrency with kernel preemption is <em>preempt-safe</em> (barring a few exceptions, being SMP-safe implies being preempt-safe).</li>
 </ul>
 <p>The actual mechanisms used to provide synchronization and protect against race conditions in all these cases is covered in the next chapter.</p>
-<h4 id="knowing-what-to-protect">Knowing What to Protect</h4>
+<h4 id="knowing-what-to-protect">Knowing What to Protect<a class="headerlink" href="#knowing-what-to-protect" title="Permanent link">&para;</a></h4>
 <p>Identifying what data specifically needs protection is vital. Since any data that can be accessed concurrently almost assuredly needs protection, <u>it is often easier to identify what data does not need protection and work from there:</u></p>
 <ul>
 <li>Obviously, any data that is local to one particular thread of execution does not need protection, because only that thread can access the data. For example, local automatic variables (and dynamically allocated data structures whose address is stored only on the stack) do not need any sort of locking because they exist solely on the stack of the executing thread.</li>
 <li>Likewise, data that is accessed by only a specific task does not require locking (because a process can execute on only one processor at a time).</li>
 </ul>
-<h5 id="what-does-need-locking"><strong>What does need locking?</strong> *</h5>
+<h5 id="what-does-need-locking"><strong>What does need locking?</strong> *<a class="headerlink" href="#what-does-need-locking" title="Permanent link">&para;</a></h5>
 <p>Most global kernel data structures require locking. A good rule of thumb is that if another thread of execution can access the data, the data needs some sort of locking; if anyone else can see it, lock it. <u>Remember to lock data, not code.</u></p>
-<h5 id="config-options-smp-versus-up"><strong>CONFIG Options: SMP Versus UP</strong> *</h5>
+<h5 id="config-options-smp-versus-up"><strong>CONFIG Options: SMP Versus UP</strong> *<a class="headerlink" href="#config-options-smp-versus-up" title="Permanent link">&para;</a></h5>
 <p>Because the Linux kernel is configurable at compile time, you can tailor the kernel specifically for a given machine:</p>
 <ul>
 <li>The <code>CONFIG_SMP</code> configure option controls whether the kernel supports SMP. Many locking issues disappear on uniprocessor machines; consequently, when <code>CONFIG_SMP</code> is unset, unnecessary code is not compiled into the kernel image. For example, such configuration enables uniprocessor machines to forego the overhead of spin locks.</li>
@@ -723,7 +723,7 @@ ensure that the money actually exists in that user's account and deducts the wit
 <li>Given the proceeding points, how am I going to ensure that my code is safe from concurrency?</li>
 </ul>
 <p>In short, nearly all global and shared data in the kernel requires some form of the synchronization methods, discussed in the next chapter.</p>
-<h3 id="deadlocks">Deadlocks</h3>
+<h3 id="deadlocks">Deadlocks<a class="headerlink" href="#deadlocks" title="Permanent link">&para;</a></h3>
 <p>A <a href="https://en.wikipedia.org/wiki/Deadlock"><strong>deadlock</strong></a> is a condition involving one or more threads of execution and one or more resources, such that each thread waits for one of the resources, but all the resources are already held. The threads all wait for each other, but they never make any progress toward releasing the resources that they already hold. Therefore, none of the threads can continue, which results in a deadlock.</p>
 <p>A good analogy is a <a href="https://en.wikipedia.org/wiki/All-way_stop">four-way traffic stop</a>. If each car at the stop decides to wait for the other cars before going, no car will ever proceed, and we have a traffic deadlock.</p>
 <p>The simplest example of a deadlock is the self-deadlock. If a thread of execution attempts to acquire a lock it already holds, it has to wait for the lock to be released. But it will never release the lock, because it is busy waiting for the lock, and the result is deadlock:</p>
@@ -811,7 +811,7 @@ good practice to place the ordering in a comment above the lock:</p>
 
 <p><u>The order of <em>unlock</em> does not matter with respect to deadlock, although it is common practice to release the locks in an order inverse to that in which they were acquired.</u></p>
 <p>Preventing deadlocks is important. The Linux kernel has some basic debugging facilities for detecting deadlock scenarios in a running kernel, which are discussed in the next chapter.</p>
-<h3 id="contention-and-scalability">Contention and Scalability</h3>
+<h3 id="contention-and-scalability">Contention and Scalability<a class="headerlink" href="#contention-and-scalability" title="Permanent link">&para;</a></h3>
 <p>The term <a href="https://en.wikipedia.org/wiki/Lock_(computer_science)#Granularity"><em>lock contention</em></a>, or simply <em>contention</em>, describes a lock currently in use but that another thread is trying to acquire. A lock that is <em>highly contended</em> often has threads waiting to acquire it. High contention can occur because a lock is frequently obtained, held for a long time after it is obtained, or both. Because a lock's job is to serialize access to a resource, they can slow down a system's performance. A highly contended lock can become a bottleneck in the system, quickly limiting its performance. However, a solution to high contention must continue to provide the necessary concurrency protection, because locks are also required to prevent the system from tearing itself to shreds.</p>
 <p><a href="https://en.wikipedia.org/wiki/Scalability"><em>Scalability</em></a> is a measurement of how well a system can be expanded. In operating systems, we talk of the scalability with a large number of processes, a large number of processors, or large amounts of memory. We can discuss scalability in relation to virtually any component of a computer to which we can attach a quantity. Ideally, doubling the number of processors should result in a doubling of the system's processor performance, which, of course, is never the case.</p>
 <p>The scalability of Linux on a large number of processors has increased dramatically in the time since multiprocessing support was introduced in the 2.0 kernel:</p>
@@ -848,13 +848,13 @@ good practice to place the ordering in a comment above the lock:</p>
 <li>Locking that is too fine results in wasteful overhead if there is little lock contention.</li>
 </ul>
 <p>Both scenarios equate to poor performance. Start simple and grow in complexity only as needed. Simplicity is key.</p>
-<h3 id="conclusion">Conclusion</h3>
+<h3 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h3>
 <p>Making your code SMP-safe is not something that can be added as an afterthought. Proper synchronization (locking that is free of deadlocks, scalable, and clean) requires design decisions from start through finish. Whenever you write kernel code, whether it is a new system call or a rewritten driver, protecting data from concurrent access needs to be a primary concern.</p>
 <p>Provide sufficient protection for every scenario (SMP, kernel preemption, and so on) and rest assured that the data will be safe on any given machine and configuration, which is the topic of the next chapter.</p>
 <p>[p173]</p>
-<h3 id="doubts-and-solution">Doubts and Solution</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p169-on-knowing-what-to-protect"><strong>p169 on "Knowing What to Protect"</strong></h5>
+<h3 id="doubts-and-solution">Doubts and Solution<a class="headerlink" href="#doubts-and-solution" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
+<h5 id="p169-on-knowing-what-to-protect"><strong>p169 on "Knowing What to Protect"</strong><a class="headerlink" href="#p169-on-knowing-what-to-protect" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>What prevents the data from being freed out from under me?</p>
 </blockquote>

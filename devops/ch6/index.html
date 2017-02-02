@@ -482,8 +482,8 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-6-deployment"><strong>Chapter 6. Deployment</strong></h3>
-<h3 id="introduction">Introduction</h3>
+<h3 id="chapter-6-deployment"><strong>Chapter 6. Deployment</strong><a class="headerlink" href="#chapter-6-deployment" title="Permanent link">&para;</a></h3>
+<h3 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
 <p><strong>Deployment</strong> is the process of placing a version of a service into production. The initial deployment of a service can be viewed as going from no version of the service to the initial version of the service. Because an initial deployment happens only once for most systems and new versions happen frequently, this chapter discuss upgrading a service.</p>
 <p>The overall goal of a deployment is to place an upgraded version of the service into production with minimal impact to the users of the system, whether it is through failures or downtime.</p>
 <p>There are three reasons for changing a service:</p>
@@ -496,7 +496,7 @@
 <p><a href="../figure_6.1.png" title="Figure 6.1 Microservice 3 is being upgraded. (Adapted from Figure 4.1.) [Notation: Architecture]"><img alt="Figure 6.1 Microservice 3 is being upgraded. (Adapted from Figure 4.1.) [Notation: Architecture]" src="../figure_6.1_600.png" /></a></p>
 <p>In the figure above, Microservice 3 is being upgraded (shown in dark gray). Microservice 3 depends on microservices 4 and 5, and microservices 1 and 2 (clients of microservice 3) depend on it. For now, assume that any VM runs exactly one service. Other options are discussed later in this chapter.</p>
 <p>The goal of a deployment is to move from the current state that has N VMs of the old version, A, of a service executing, to a new state where there are N VMs of the new version, B, of the same service in execution.</p>
-<h3 id="strategies-for-managing-a-deployment">Strategies for Managing a Deployment</h3>
+<h3 id="strategies-for-managing-a-deployment">Strategies for Managing a Deployment<a class="headerlink" href="#strategies-for-managing-a-deployment" title="Permanent link">&para;</a></h3>
 <p>There are two popular strategies for managing a deployment: <strong>blue/green deployment</strong> and <strong>rolling upgrade</strong>. They differ in terms of costs and complexity.</p>
 <p>Before discussing these strategies in more detail, we need to make the following two assumptions:</p>
 <ol>
@@ -511,7 +511,7 @@
 </li>
 </ol>
 <p>The placement of a new VM with a version into production takes time. In order to place an upgraded VM of a service into production, the new version must be loaded onto a VM and be initialized and integrated into the environment, sometimes with dependency on placements of some other services first. This can take on the order of minutes. Consequently, depending on how parallel some actions can be and their impact on the system still serving clients, the upgrade of hundreds or thousands of VMs can take hours or, in extreme cases, even days.</p>
-<h4 id="bluegreen-deployment">Blue/Green Deployment</h4>
+<h4 id="bluegreen-deployment">Blue/Green Deployment<a class="headerlink" href="#bluegreen-deployment" title="Permanent link">&para;</a></h4>
 <p>A <strong>blue/green deployment</strong> (sometimes called <strong>big flip</strong> or <strong>red/black deployment</strong>) consists of maintaining the N VMs containing version A in service while provisioning N VMs of virtual machines containing version B.</p>
 <p>Once N VMs have been provisioned with version B and are ready to service requests, then client requests can be routed to version B. This is a matter of instructing the domain name server (DNS) or load balancer to change the routing of messages. This routing switch can be done in a single stroke for all requests. After a supervisory period, the N VMs provisioned with version A are removed from the system. If anything goes wrong during the supervisory period, the routing is switched back, so that the requests go to the VMs running version A again.</p>
 <p>This strategy is conceptually simple, but has some disadvantage:</p>
@@ -524,7 +524,7 @@
 <li><u>Long-running requests and stateful data during the switch-over and rollback require special care.</u></li>
 </ul>
 <p><u>A variation of this model is to do the traffic switching gradually. A small percentage of requests are first routed to version B, effectively conducting a canary test.</u> Canary testing is mentioned in Chapter 5 and discuss it in more detail in the section <a href="#canary-testing">Canary Testing</a>. If everything goes well for a while, more version B VMs can be provisioned and more requests can be routed to this pool of VMs, until all requests are routed to version B.  This increases confidence in your deployment, but also introduces a number of consistency issues (discussed in <a href="#logical-consistency">Section 6.3</a>).</p>
-<h4 id="rolling-upgrade">Rolling Upgrade</h4>
+<h4 id="rolling-upgrade">Rolling Upgrade<a class="headerlink" href="#rolling-upgrade" title="Permanent link">&para;</a></h4>
 <p>A <strong>rolling upgrade</strong> consists of deploying a small number of version B VMs at a time directly to the current production environment, while switching off the same number of VMs running version A. For example, we deploy one version B VM at a time. Once an additional version B VM has been deployed and is receiving requests, one version A VM is removed from the system. Repeating this process N times results in a complete deployment of version B.</p>
 <p>This strategy is inexpensive but more complicated. It may cost a small number of additional VMs for the duration of the deployment, but again introduces a number of issues of consistency and more risks in disturbing the current production environment.</p>
 <p>The following figure provides a representation of a rolling upgrade within the Amazon cloud:</p>
@@ -536,14 +536,14 @@
 </ol>
 <p>The additional cost of a rolling upgrade can be low if you conduct your rolling upgrade when your VMs are not fully utilized, and your killing of one or a small number of VMs at a time still maintains your expected service level. It may cost a bit if you add a small number of VMs before you start the rolling upgrade to mitigate the performance impact and risk of your rolling upgrade.</p>
 <p>During a rolling upgrade, one subset of the VMs is providing service with version A, and the remainder of the VMs are providing service with version B.  This creates the possibility of failures as a result of mixed versions. This type of failure is discussed in the <a href="#logical-consistency">next section</a>.</p>
-<h3 id="logical-consistency">Logical Consistency</h3>
+<h3 id="logical-consistency">Logical Consistency<a class="headerlink" href="#logical-consistency" title="Permanent link">&para;</a></h3>
 <p>There are some types of logical consistency:</p>
 <ul>
 <li><strong>Mixed versions in deployment</strong>. The deployment using a rolling upgrade introduces one type of logical inconsistency (multiple versions of the same service will be simultaneously active). This may also happen with those variants of the blue/green deployment that put new versions into service prior to the completion of the deployment.</li>
 <li><strong>Inconsistency in functionality between a service and its clients</strong>. Revisiting <a href="../figure_6.1.png">Figure 6.1</a>, A service being deployed without synchronous coordination with its client or dependent services may introduce a possible source of logical inconsistency.</li>
 <li><strong>Inconsistency between a service and data kept in a database.</strong></li>
 </ul>
-<h4 id="multiple-versions-of-the-same-service-simultaneously-active">Multiple Versions of the Same Service Simultaneously Active</h4>
+<h4 id="multiple-versions-of-the-same-service-simultaneously-active">Multiple Versions of the Same Service Simultaneously Active<a class="headerlink" href="#multiple-versions-of-the-same-service-simultaneously-active" title="Permanent link">&para;</a></h4>
 <p>The following figure shows an instance of an inconsistency because of two active versions of the same service. Two components are shown: the client and two versions (versions A and B) of a service.</p>
 <ol>
 <li>The client sends a message that is routed to version B.</li>
@@ -563,7 +563,7 @@
 <li><strong>Make the services forward and backward compatible</strong>, and enable the clients to recognize when a particular request has not been satisfied.</li>
 </ul>
 <p>These options are not mutually exclusive (some of these options can be used together). For example, you can use feature toggles within a backward compatible setting. Within a rolling upgrade you will have installed some VMs of the new version while still not having activated the new features. This requires the new version to be backward compatible.</p>
-<h5 id="feature-toggling"><strong>Feature Toggling</strong></h5>
+<h5 id="feature-toggling"><strong>Feature Toggling</strong><a class="headerlink" href="#feature-toggling" title="Permanent link">&para;</a></h5>
 <p>[p107]</p>
 <p>To coordinate the activation of the feature in two directions:</p>
 <ol>
@@ -581,7 +581,7 @@
 <p>An agent (which can human or automated) external to any of the services in the system being upgraded is responsible for setting <em>FeatureXActivationFlag</em>. The flag is maintained in ZooKeeper and thus kept consistent across the VMs involved. As long as all of the VMs are informed simultaneously of the toggling, then the feature is activated simultaneously and there is no version inconsistency that could lead to failures. The simultaneous information broadcast is performed by ZooKeeper. This particular use of ZooKeeper for feature toggling is often implemented in other tools. For example, Netflix’s <a href="https://github.com/Netflix/archaius">Archaius</a> tool provides configuration management for distributed systems. The configuration being managed can be feature toggles or any other property.</p>
 <p><u>The agent is aware of the various services implementing <em>Feature X</em> and does not activate the feature until all of these services have been upgraded. </u></p>
 <p>One complication comes from deciding when the VMs have been "sufficiently upgraded". VMs may fail or become unavailable. Waiting for these VMs to be upgraded before activating the feature is not desirable. The use of a registry/ load balancer as described in <a href="../ch4/">Chapter 4</a> enables the activation agent to avoid these problems. Recall that each VM must renew its registration periodically to indicate that it is still active. The activation agent examines the relevant VMs that are registered to determine when all VMs of the relevant services have been upgraded to the appropriate versions.</p>
-<h5 id="backward-and-forward-compatibility"><strong>Backward and Forward Compatibility</strong></h5>
+<h5 id="backward-and-forward-compatibility"><strong>Backward and Forward Compatibility</strong><a class="headerlink" href="#backward-and-forward-compatibility" title="Permanent link">&para;</a></h5>
 <ul>
 <li><strong>Backward compatibility</strong> means the new version of the service behaves as the old version. For requests that are known to the old version of a service, the new version provides the same behavior. In other words, the external interfaces provided by version B of a service are a superset of the external interfaces provided by version A of that service.</li>
 <li><strong>Forward compatibility</strong> means that a client deals gracefully with error responses indicating an incorrect method call. Suppose a client wishes to utilize a method that will be available in version B of a service but the method is not present in version A. Then if the service returns an error code indicating it does not recognize the method call, the client can infer that it has reached version A of the service.</li>
@@ -603,7 +603,7 @@
 <li><strong>Portability layer</strong>. The following figure shows the concept of a portability layer. A portability layer provides a single interface that can be translated into the interfaces for a variety of similar systems. This technique has been used to port applications to different operating systems, to allow multiple different devices to look identical from the application perspective, or to allow for the substitution of different database systems.</li>
 </ul>
 <p><a href="../figure_6.5.png" title="Figure 6.5 Portability layer with two versions of the external system coexisting [Notation: Architecture]"><img alt="Figure 6.5 Portability layer with two versions of the external system coexisting [Notation: Architecture]" src="../figure_6.5.png" /></a></p>
-<h4 id="compatibility-with-data-kept-in-a-database">Compatibility with Data Kept in a Database</h4>
+<h4 id="compatibility-with-data-kept-in-a-database">Compatibility with Data Kept in a Database<a class="headerlink" href="#compatibility-with-data-kept-in-a-database" title="Permanent link">&para;</a></h4>
 <p>Besides the compatibility of services, some services must also be able to read and write to a database in consistently. For example, that the data schema changes: In the old version of the schema, there is one field for customer address; in the new version, the address is broken into street, city, postal code, and country. Inconsistency, in this case, means that a service intends to write the address as a single field using the schema that has the address broken into portions.</p>
 <p>Inconsistencies are triggered by a change in the database schema. A schema can be either explicit such as in relational database management systems (RDBMSs) or implicit such as in various NoSQL database management systems.</p>
 <p>The most basic solution to such a schema change is <u>not to modify existing fields but only to add new fields or tables</u>, which can be done without affecting existing code. The use of the new fields or tables can be integrated into the application incrementally. <u>One method for accomplishing this is to treat new fields or tables as new features in a release</u>. That is, either the use of the new field or table is under the control of a feature toggle or the services are forward and backward compatible with respect to database fields and tables.</p>
@@ -613,7 +613,7 @@
 <li>Convert data into the appropriate form during reads and writes. This could be done either by the service or by the database management system.</li>
 </ol>
 <p>These options are not mutually exclusive. You might perform the conversion in the background and convert data on the fly while the conversion is ongoing.  Modern RDBMSs provide the ability to reorganize data from one schema to another online while satisfying requests, although at a storage and performance cost. Database systems typically do not provide this capability, and so, if you use them, you have to engineer a solution for your particular situation. [p111]</p>
-<h3 id="packaging">Packaging</h3>
+<h3 id="packaging">Packaging<a class="headerlink" href="#packaging" title="Permanent link">&para;</a></h3>
 <p>This section discusses consistency of the build process in terms of getting the latest versions into the services. Deciding that components package services and that each service is packaged as exactly one component (discussed in <a href="../ch4/">Chapter 4</a>), does not end your packaging decisions. You must decide on the binding time among components residing on the same VM and a strategy for placing services into VMs. Packaging components onto a VM image is called <strong>baking</strong> and the options range from <strong>lightly baked</strong> to <strong>heavily baked</strong> (discussed in <a href="../ch5/">Chapter 5</a>). What we add to that discussion here is the number of processes loaded into each VM.</p>
 <p>A VM is an image that is running on top of a hypervisor that enables sharing a single bare metal processor, memory, and network among multiple tenants or VMs. The image of the VM is loaded onto the hypervisor from which it is scheduled.</p>
 <p>A VM image could include multiple independent processes, each a service. The question is: <strong>Should multiple services be placed in a single VM image?</strong> The following figure shows two options:</p>
@@ -644,11 +644,11 @@
 </ul>
 <p><a href="../figure_6.8.png" title="Figure 6.8 A different type of race condition when two development teams deploy independently [Notation: UML Sequence Diagram]"><img alt="Figure 6.8 A different type of race condition when two development teams deploy independently [Notation: UML Sequence Diagram]" src="../figure_6.8.png" /></a></p>
 <p>The tradeoff for including multiple services into the same VM is between reduced latency and the possibility of deployment race conditions.</p>
-<h3 id="deploying-to-multiple-environments">Deploying to Multiple Environments</h3>
+<h3 id="deploying-to-multiple-environments">Deploying to Multiple Environments<a class="headerlink" href="#deploying-to-multiple-environments" title="Permanent link">&para;</a></h3>
 <p>As long as services are independent and communicate only through messages, deployment to multiple environments (e.g. VMware and Amazon EC2) is possible basically with the design we have presented. The registry/load balancer discussed in <a href="../ch4/">Chapter 4</a> needs to be able to direct messages to different environments.</p>
-<h4 id="business-continuity">Business Continuity</h4>
+<h4 id="business-continuity">Business Continuity<a class="headerlink" href="#business-continuity" title="Permanent link">&para;</a></h4>
 <p>Introduced in <a href="../ch2/">Chapter 2</a>, <strong>business continuity</strong> is the ability for a business to maintain service when facing a disaster or serious outages. It is achieved by deploying to sites that are physically and logically separated from each other. This section differentiates between deploying to a public cloud and a private cloud, although the essential element, the management of state, is the same. Disaster recovery is discussed in <a href="../ch10/">Chapter 10</a> and case study in <a href="../ch11/">Chapter 11</a>.</p>
-<h5 id="public-cloud"><strong>Public Cloud</strong></h5>
+<h5 id="public-cloud"><strong>Public Cloud</strong><a class="headerlink" href="#public-cloud" title="Permanent link">&para;</a></h5>
 <p>Public clouds are extremely reliable in the aggregate. They consist of hundreds of thousands of physical servers and provide extensive replication and failover services. Failures do occur, which can be to particular VMs of your system or to other cloud services.</p>
 <ul>
 <li>A failure to a VM is not a rare occurrence.<ul>
@@ -676,11 +676,11 @@
 </li>
 <li><strong>Latency</strong>. Sending messages from one availability zone to another adds a bit of latency; messages sent from one region to another adds more latency to your system.</li>
 </ol>
-<h5 id="private-cloud"><strong>Private Cloud</strong></h5>
+<h5 id="private-cloud"><strong>Private Cloud</strong><a class="headerlink" href="#private-cloud" title="Permanent link">&para;</a></h5>
 <p>[p116]</p>
-<h3 id="partial-deployment">Partial Deployment</h3>
+<h3 id="partial-deployment">Partial Deployment<a class="headerlink" href="#partial-deployment" title="Permanent link">&para;</a></h3>
 <p>Up to this point the discussion has been focused on all-or-nothing deployments.  Now we discuss two types of partial deployments: canary testing and A/B testing.</p>
-<h4 id="canary-testing">Canary Testing</h4>
+<h4 id="canary-testing">Canary Testing<a class="headerlink" href="#canary-testing" title="Permanent link">&para;</a></h4>
 <p>A new version is deployed into production after having been tested in a staging environment, which is as close to a production environment as possible. There is still a possibility of errors existing in the new version. <u>These errors can be either functional or have a quality impact. Performing an additional step of testing in a real production environment is the purpose of canary testing.</u> A canary test is conceptually similar to a beta test in the shrink-wrapped software world.</p>
 <p>One question is to whom to expose the canary servers. This can be a random sample of users. An alternative is to decide the question based on the organization a user belongs to, for example, the employees of the developing organization, or particular customers. The question could also be answered based on geography, for example, such that all requests that are routed to a particular datacenter are served by canary versions.</p>
 <p>The mechanism for performing the canary tests depends on whether features are activated with feature toggles or whether services are assumed to be forward or backward compatible. In either case, a new feature cannot be fully tested in production until all of the services involved in delivering the feature have been partially deployed.</p>
@@ -690,17 +690,17 @@
 <li>If the services use forward and backward compatibility, then the tests will be accomplished once all of the services involved in a new feature have been upgraded to the new version.</li>
 </ul>
 <p>In either case, you should carefully monitor the canaries, and they should be rolled back in the event an error is detected.</p>
-<h4 id="ab-testing">A/B Testing</h4>
+<h4 id="ab-testing">A/B Testing<a class="headerlink" href="#ab-testing" title="Permanent link">&para;</a></h4>
 <p>A/B testing is introduced in <a href="../ch5/">Chapter 5</a>. It is another form of testing that occurs in the production environment through partial deployment. The "A" and "B" refer to two different versions of a service that present either different user interfaces or different behavior. In this case, it is the behavior of the user when presented with these two different versions that is being tested.</p>
 <p>If either A or B shows preferable behavior in terms of some business metric such as orders placed, then that version becomes the production version and the other version is retired.</p>
 <p>Implementing A/B testing is similar to implementing canaries. The registry/ load balancer must be made aware of A/B testing and ensure that a single customer is served by VMs with either the A behavior or the B behavior but not both. The choice of users that are presented with version B (or A) may be randomized, or it may be deliberate. If deliberate, factors such as geographic location, age group (for registered users), or customer level (e.g., "gold" frequent flyers), may be taken into account.</p>
-<h3 id="rollback">Rollback</h3>
+<h3 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h3>
 <p>The new version of a service is on probation for some period after deployment. It has gone through testing of a variety of forms but it still is not fully trusted.</p>
 <p><strong>Rolling back</strong> means reverting to a prior release. It is also possible to roll forward, to correct the error and generate a new release with the error fixed. Rolling forward is essentially just an instance of upgrading.</p>
 <p>Because of the sensitivity of a rollback and the possibility of rolling forward, rollbacks are rarely triggered automatically. <u>A human should be in the loop who decides whether the error is serious enough to justify discontinuing the current deployment.</u> The human then must decide whether to roll back or roll forward.</p>
-<h4 id="rollback-for-bluegreen-deployment">Rollback for blue/green deployment</h4>
+<h4 id="rollback-for-bluegreen-deployment">Rollback for blue/green deployment<a class="headerlink" href="#rollback-for-bluegreen-deployment" title="Permanent link">&para;</a></h4>
 <p>If you still have VMs with version A available, as in the blue/green deployment model before decommissioning all version A VMs, rolling back can be done by simply redirecting the traffic back to these. <u>One way of dealing with the persistent state problem is to keep version A VMs receiving a replicated copy of the requests version B has been receiving during the probation period.</u></p>
-<h4 id="rollback-for-rolling-upgrade-deployment">Rollback for rolling upgrade deployment</h4>
+<h4 id="rollback-for-rolling-upgrade-deployment">Rollback for rolling upgrade deployment<a class="headerlink" href="#rollback-for-rolling-upgrade-deployment" title="Permanent link">&para;</a></h4>
 <p>With a rolling upgrade model or you cannot simply replace version B by version A as a whole, you have to replace a version B VM with a version A VM in more complicated ways. The new version B can be in one of four states during its lifetime:</p>
 <ul>
 <li><strong>Uninstalled</strong>: cannot be rolled back.</li>
@@ -724,7 +724,7 @@
 <p>A concern when an error is detected is that incorrect values have been written into the database. Dealing with erroneous database values is a delicate operation with significant business implications.</p>
 <p>[p119-120]</p>
 <p>Identifying and correcting incorrect values in the database is a delicate and complicated operation requiring the collection of much metadata.</p>
-<h3 id="tools">Tools</h3>
+<h3 id="tools">Tools<a class="headerlink" href="#tools" title="Permanent link">&para;</a></h3>
 <p>One method for categorizing tools is to determine whether they directly affect the internals of the entity being deployed. As in <a href="../ch5/">Chapter 5</a>, if a VM image contains all the required software including the new version, you can replace a whole VM of the old version with a whole VM of the new version. This is called using a <strong>heavily baked</strong> deployment approach.</p>
 <p>Alternatively, you can use tools to change the internals of a VM, so as to deploy the new version by replacing the old version without terminating the VM. Even if you terminate the VM with the old version, you can start a new <strong>lightly baked</strong> VM but then access the machine from the inside to deploy the new version at a later stage of the deployment process.</p>
 <ul>
@@ -734,7 +734,7 @@
 <li>One emerging trend is the use of lightweight container tools, such as <a href="https://www.docker.com/">Docker</a>, in deployment. A lightweight container is an OS-level virtualization technique for running multiple isolated OSs on a single host (VM or physical machine). They are like VMs, but they are smaller and start much faster.</li>
 <li>Image management and testing tools such as <a href="https://www.vagrantup.com/">Vagrant</a> and <a href="http://kitchen.ci/">Test Kitchen</a> help control both VMs and items inside the VMs. A developer can spin up production-like environments for pre-commit testing and integration testing to reveal issues that would only surface in production.</li>
 </ul>
-<h3 id="summary">Summary</h3>
+<h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>Strategies for deploying multiple VMs of a service include blue/green deployment and rolling upgrade:</p>
 <ul>
 <li>A blue/green deployment does not introduce any logical problems but requires allocating twice the number of VMs required to provide a service.</li>
