@@ -475,14 +475,14 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-8-goroutines-and-channels"><strong>Chapter 8. Goroutines and Channels</strong></h3>
+<h3 id="chapter-8-goroutines-and-channels"><strong>Chapter 8. Goroutines and Channels</strong><a class="headerlink" href="#chapter-8-goroutines-and-channels" title="Permanent link">&para;</a></h3>
 <p>Concurrent programming, the expression of a program as a composition of several autonomous activities, has never been more important than it is today.</p>
 <p>Go enables two styles of concurrent programming.</p>
 <ul>
 <li>This chapter presents goroutines and channels, which support <a href="https://en.wikipedia.org/wiki/Communicating_sequential_processes">communicating sequential processes</a> (CSP), a model of concurrency in which values are passed between independent activities (goroutines) but variables are for the most part confined to a single activity.</li>
 <li><a href="../ch9/">Chapter 9</a> covers some aspects of the more traditional model of <strong>shared memory multithreading</strong>, which will be familiar to those who used threads in other mainstream languages.</li>
 </ul>
-<h3 id="goroutines">Goroutines</h3>
+<h3 id="goroutines">Goroutines<a class="headerlink" href="#goroutines" title="Permanent link">&para;</a></h3>
 <p>In Go, each concurrently executing activity is called a <em>goroutine</em>. If you have used operating system threads or threads in other languages, then you can assume for now that a goroutine is similar to a thread.  The differences between threads and goroutines are essentially quantitative, not qualitative, and will be described in <a href="../ch9/#goroutines-and-threads">Section 9.8</a>.</p>
 <p>When a program starts, its only goroutine is the one that calls the <code>main</code> function, so we call it the <em>main goroutine</em>. New goroutines are created by the <code>go</code> statement:</p>
 <ul>
@@ -528,7 +528,7 @@
 
 <p>The <code>main</code> function then returns. When this happens, all goroutines are abruptly terminated and the program exits. Other than by returning from <code>main</code> or exiting the program, there is no programmatic way for one goroutine to stop another, but as we will see later, there are ways to communicate with a goroutine to request that it stop itself.</p>
 <p>Notice how the program is expressed as the composition of two autonomous activities, spinning and Fibonacci computation. Each is written as a separate function but both make progress concurrently.</p>
-<h3 id="example-concurrent-clock-server">Example: Concurrent Clock Server</h3>
+<h3 id="example-concurrent-clock-server">Example: Concurrent Clock Server<a class="headerlink" href="#example-concurrent-clock-server" title="Permanent link">&para;</a></h3>
 <p>Networking is a natural domain to use concurrency since servers typically handle many connections from their clients at once, each client being essentially independent of the others. This section introduces the <a href="https://golang.org/pkg/net/"><code>net</code></a> package, which provides the components for building networked client and server programs that communicate over TCP, UDP, or Unix domain sockets. The <a href="https://golang.org/pkg/net/http/"><code>net/http</code></a> package introduced since <a href="../ch1/">Chapter 1</a> is built on top of functions from the <code>net</code> package.</p>
 <p>The first example is a sequential clock server that writes the current time to the client once per second:</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/clock1/clock.go">gopl.io/ch8/clock1/clock.go</a></small></p>
@@ -672,7 +672,7 @@ $ ./netcat1
 </pre></div>
 
 
-<h3 id="example-concurrent-echo-server">Example: Concurrent Echo Server</h3>
+<h3 id="example-concurrent-echo-server">Example: Concurrent Echo Server<a class="headerlink" href="#example-concurrent-echo-server" title="Permanent link">&para;</a></h3>
 <p>The clock server used one goroutine per connection. In this section, we'll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of <code>handleConn</code>:</p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">handleConn</span><span class="p">(</span><span class="nx">c</span> <span class="nx">net</span><span class="p">.</span><span class="nx">Conn</span><span class="p">)</span> <span class="p">{</span>
     <span class="nx">io</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="c1">// NOTE: ignoring errors</span>
@@ -771,7 +771,7 @@ $ killall reverb2
 
 <p><u>All that was required to make the server use concurrency, not just to handle connections from multiple clients but even within a single connection, was the insertion of two <code>go</code> keywords.</u></p>
 <p>However in adding these keywords, we had to consider carefully that it is safe to call methods of <code>net.Conn</code> concurrently, which is not true for most types. The next chapter discusses the crucial concept of concurrency safety in the.</p>
-<h3 id="channels">Channels</h3>
+<h3 id="channels">Channels<a class="headerlink" href="#channels" title="Permanent link">&para;</a></h3>
 <p>If goroutines are the activities of a concurrent Go program, channels are the connections between them.</p>
 <ul>
 <li>A channel is a communication mechanism that enables one goroutine to send values to another goroutine.</li>
@@ -819,7 +819,7 @@ $ killall reverb2
 
 
 <p>Unbuffered channels are discussed in <a href="#unbuffered-channels">Section 8.4.1</a> and buffered channels in <a href="#buffered-channels">Section 8.4.4</a>.</p>
-<h4 id="unbuffered-channels">Unbuffered Channels</h4>
+<h4 id="unbuffered-channels">Unbuffered Channels<a class="headerlink" href="#unbuffered-channels" title="Permanent link">&para;</a></h4>
 <ul>
 <li>A send operation on an unbuffered channel blocks the sending goroutine until another goroutine executes a corresponding receive on the same channel, at which point the value is transmitted and both goroutines may continue.</li>
 <li>Conversely, if the receive operation was attempted first, the receiving goroutine is blocked until another goroutine performs a send on the same channel.</li>
@@ -861,7 +861,7 @@ $ killall reverb2
 </ul>
 <p>Before it returns, the background goroutine logs a message, then sends a value on the done channel. The main goroutine waits until it has received this value before returning. As a result, the program always logs the "<code>done</code>" message before exiting.</p>
 <p>Messages sent over channels have two important aspects. Each message has a value, but sometimes the fact of communication and the moment at which it occurs are important. We call messages <em>events</em> when we wish to stress this aspect. When the event carries no additional information, that is, its sole purpose is synchronization, we'll emphasize this by using a channel whose element type is <code>struct{}</code>, though it's common to use a channel of <code>bool</code> or <code>int</code> for the same purpose since <code>done &lt;- 1</code> is shorter than <code>done &lt;- struct{}{}</code>.</p>
-<h4 id="pipelines">Pipelines</h4>
+<h4 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h4>
 <p>Channels can be used to connect goroutines together so that the output of one is the input to another. This is called a <em>pipeline</em>. The program below consists of three goroutines connected by two channels, as shown the following figure.</p>
 <p><a href="../figure_8.1.png" title="Figure 8.1. A three-stage pipeline."><img alt="Figure 8.1. A three-stage pipeline." src="../figure_8.1_600.png" /></a></p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/pipeline1/main.go">gopl.io/ch8/pipeline1/main.go</a></small></p>
@@ -945,7 +945,7 @@ $ killall reverb2
 
 
 <p>Not every channel needs closing. It's only necessary to close a channel when it is important to tell the receiving goroutines that all data have been sent. A channel that the garbage collector determines to be unreachable will have its resources reclaimed whether or not it is closed. (Don't confuse this with the <code>close</code> operation for open files. It is important to call the <code>Close</code> method on every file when you've finished with it.) Attempting to close an already-closed channel causes a panic, as does closing a <code>nil</code> channel. Closing channels has another use as a broadcast mechanism (<a href="#cancellation">Section 8.9</a>).</p>
-<h4 id="unidirectional-channel-types">Unidirectional Channel Types</h4>
+<h4 id="unidirectional-channel-types">Unidirectional Channel Types<a class="headerlink" href="#unidirectional-channel-types" title="Permanent link">&para;</a></h4>
 <p>As programs grow, it is natural to break up large functions into smaller pieces. The previous example program naturally divides into three functions:</p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">out</span> <span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
 <span class="kd">func</span> <span class="nx">squarer</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="nx">in</span> <span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
@@ -1000,7 +1000,7 @@ $ killall reverb2
 <li>The <code>printer(squares)</code> call does a similar implicit conversion to <code>&lt;-chan int</code>.</li>
 </ul>
 <p>Conversions from bidirectional to unidirectional channel types are permitted in any assignment, but not backward. Once you have a value of a unidirectional type such as <code>chan&lt;- int</code>, there is no way to obtain from it a value of type <code>chan int</code> that refers to the same channel data structure.</p>
-<h4 id="buffered-channels">Buffered Channels</h4>
+<h4 id="buffered-channels">Buffered Channels<a class="headerlink" href="#buffered-channels" title="Permanent link">&para;</a></h4>
 <p>A buffered channel has a queue of elements. The queue's maximum size is determined  by the capacity argument to <code>make</code> when it is created. The statement below creates a buffered channel capable of holding three string values.</p>
 <div class="codehilite"><pre><span class="nx">ch</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">string</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 </pre></div>
@@ -1067,7 +1067,7 @@ $ killall reverb2
 <li>With buffered channels, the send and receive operations are decoupled.</li>
 </ul>
 <p>When we know an upper bound on the number of values that will be sent on a channel, it's not unusual to create a buffered channel of that size and perform all the sends before the first value is received. Failure to allocate sufficient buffer capacity would cause the program to deadlock.</p>
-<h5 id="packaging-cake-example"><strong>Packaging cake example</strong> *</h5>
+<h5 id="packaging-cake-example"><strong>Packaging cake example</strong> *<a class="headerlink" href="#packaging-cake-example" title="Permanent link">&para;</a></h5>
 <p>Channel buffering may also affect program performance. Imagine three cooks in a cake shop, one baking, one icing, and one inscribing each cake before passing it on to the next cook in the assembly line:</p>
 <ul>
 <li>In a kitchen with little space, each cook that has finished a cake must wait for the next cook to become ready to accept it. This is analogous to communication over an unbuffered channel.</li>
@@ -1084,7 +1084,7 @@ $ killall reverb2
 </ul>
 <p>If the second stage is more elaborate, a single cook may not be able to keep up with the supply from the first cook or meet the demand from the third. To solve the problem, we could hire another cook to help the second, performing the same task but working independently. This is analogous to creating another goroutine communicating over the same channels.</p>
 <p>The <a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/cake/cake.go">gopl.io/ch8/cake</a> package simulates this cake shop, with several parameters.</p>
-<h3 id="looping-in-parallel">Looping in Parallel</h3>
+<h3 id="looping-in-parallel">Looping in Parallel<a class="headerlink" href="#looping-in-parallel" title="Permanent link">&para;</a></h3>
 <p>This section explores some common concurrency patterns for executing all the iterations of a loop in parallel. The following examples consider the problem of producing thumbnail-size images from a set of full-size ones. The <a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/thumbnail/thumbnail.go">gopl.io/ch8/thumbnail</a> package provides an <code>ImageFile</code> function that can scale a single image.</p>
 <p>The program below loops over a list of image file names and produces a thumbnail for each one:</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/thumbnail/thumbnail_test.go">gopl.io/ch8/thumbnail/thumbnail_test.go</a></small></p>
@@ -1258,7 +1258,7 @@ $ killall reverb2
 <li>The diagonal arrows indicate events that synchronize one goroutine with another.</li>
 </ul>
 <p>Notice how the main goroutine spends most of its time in the <code>range</code> loop asleep, waiting for a worker to send a value or the closer to close the channel.</p>
-<h3 id="example-concurrent-web-crawler">Example: Concurrent Web Crawler</h3>
+<h3 id="example-concurrent-web-crawler">Example: Concurrent Web Crawler<a class="headerlink" href="#example-concurrent-web-crawler" title="Permanent link">&para;</a></h3>
 <p><a href="../ch5/#anonymous-functions">Section 5.6</a> shows a simple web crawler that explored the link graph of the web in breadth-first order. In this section show is concurrent version so that independent calls to <code>crawl</code> can exploit the I/O parallelism available in the web. The <code>crawl</code> function remains exactly as it was in <a href="https://github.com/shichao-an/gopl.io/blob/master/ch5/findlinks3/findlinks.go">gopl.io/ch5/findlinks3</a>:</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/crawl1/findlinks.go">gopl.io/ch8/crawl1/findlinks.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
@@ -1425,7 +1425,7 @@ too many open files
 </li>
 <li>To save space, this example does not address the problem of termination.</li>
 </ul>
-<h3 id="multiplexing-with-select">Multiplexing with <code>select</code></h3>
+<h3 id="multiplexing-with-select">Multiplexing with <code>select</code><a class="headerlink" href="#multiplexing-with-select" title="Permanent link">&para;</a></h3>
 <p>The program below does the countdown for a rocket launch. The <a href="https://golang.org/pkg/time/#Tick"><code>time.Tick</code></a> function returns a channel on which it sends events periodically, acting like a <a href="https://en.wikipedia.org/wiki/Metronome">metronome</a>. The value of each event is a timestamp, but it is rarely as interesting as the fact of its delivery.</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/countdown1/countdown.go">gopl.io/ch8/countdown1/countdown.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
@@ -1555,7 +1555,7 @@ too many open files
 <li>Emitting output</li>
 </ul>
 <p>The next section gives us an example.</p>
-<h3 id="example-concurrent-directory-traversal">Example: Concurrent Directory Traversal</h3>
+<h3 id="example-concurrent-directory-traversal">Example: Concurrent Directory Traversal<a class="headerlink" href="#example-concurrent-directory-traversal" title="Permanent link">&para;</a></h3>
 <p>This section builds a program that reports the disk usage of one or more directories specified on the command line, like the Unix <a href="https://en.wikipedia.org/wiki/Du_(Unix)"><code>du</code></a> command. Most of its work is done by the <code>walkDir</code> function below, which enumerates the entries of the directory <code>dir</code> using the <code>dirents</code> helper function.</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch8/du1/main.go">gopl.io/ch8/du1/main.go</a></small></p>
 <div class="codehilite"><pre><span class="c1">// walkDir recursively walks the file tree rooted at dir</span>
@@ -1739,7 +1739,7 @@ too many open files
 
 
 <p>This version runs several times faster than the previous one.</p>
-<h3 id="cancellation">Cancellation</h3>
+<h3 id="cancellation">Cancellation<a class="headerlink" href="#cancellation" title="Permanent link">&para;</a></h3>
 <p>Sometimes we need to instruct a goroutine to stop what it is doing, for example, in a web server performing a computation on behalf of a client that has disconnected.</p>
 <p>There is no way for one goroutine to terminate another directly, since that would leave all its shared variables in undefined states.</p>
 <p>In the rocket launch program (<a href="#multiplexing-with-select">Section 8.7</a>) we sent a single value on a channel named <code>abort</code>, which the countdown goroutine interpreted as a request to stop itself. But what if we need to cancel two goroutines, or an arbitrary number?</p>
@@ -1834,7 +1834,7 @@ too many open files
 <li>If other goroutines remain, they may not have been properly cancelled, or perhaps they have been cancelled but the cancellation takes time.</li>
 </ul>
 <p>A little investigation may be worthwhile. The panic dump often contains sufficient information to distinguish these cases.</p>
-<h3 id="example-chat-server">Example: Chat Server</h3>
+<h3 id="example-chat-server">Example: Chat Server<a class="headerlink" href="#example-chat-server" title="Permanent link">&para;</a></h3>
 <p>This chapter discusses a chat server that enables several users broadcast messages to each other. There are four kinds of goroutine in this program:</p>
 <ul>
 <li>There is one instance apiece of the <code>main</code> and <code>broadcaster</code> goroutines</li>
