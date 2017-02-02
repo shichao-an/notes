@@ -497,16 +497,16 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-4-elementary-tcp-sockets"><strong>Chapter 4. Elementary TCP Sockets</strong></h3>
+<h3 id="chapter-4-elementary-tcp-sockets"><strong>Chapter 4. Elementary TCP Sockets</strong><a class="headerlink" href="#chapter-4-elementary-tcp-sockets" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p>In C, we cannot represent a constant structure on the right-hand side of an assignment.
 <small><a href="#wildcard-address-and-inaddr_any"><em>UNP</em></a></small></p>
 </blockquote>
-<h3 id="introduction">Introduction</h3>
+<h3 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
 <p>This chapter describes the elementary socket functions required to write a complete TCP client and server, along with concurrent servers, a common Unix technique for providing concurrency when numerous clients are connected to the same server at the same time. Each client connection causes the server to fork a new process just for that client. In this chapter, we consider only the one-process-per-client model using <code>fork</code>.</p>
 <p>The figure below shows a timeline of the typical scenario that takes place between a TCP client and server. First, the server is started, then sometime later, a client is started that connects to the server. We assume that the client sends a request to the server, the server processes the request, and the server sends a reply back to the client. This continues until the client closes its end of the connection, which sends an end-of-file notification to the server. The server then closes its end of the connection and either terminates or waits for a new client connection.</p>
 <p><a href="../figure_4.1.png" title="Figure 4.1. Socket functions for elementary TCP client/server."><img alt="Figure 4.1. Socket functions for elementary TCP client/server." src="../figure_4.1.png" /></a></p>
-<h3 id="socket-function"><code>socket</code> Function</h3>
+<h3 id="socket-function"><code>socket</code> Function<a class="headerlink" href="#socket-function" title="Permanent link">&para;</a></h3>
 <p>To perform network I/O, the first thing a process must do is call the <code>socket</code> function, specifying the type of communication protocol desired (TCP using IPv4, UDP using IPv6, Unix domain stream protocol, etc.).</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"></span>
 
@@ -669,11 +669,11 @@
 <li>The key socket, <code>AF_KEY</code>, is newer than the others. It provides support for cryptographic security. Similar to the way that a routing socket (<code>AF_ROUTE</code>) is an interface to the kernel's routing table, the key socket is an interface into the kernel's key table. This is discussed in <a href="ch19.md">Chapter 19</a>.</li>
 </ul>
 <p>On success, the socket function returns a small non-negative integer value, similar to a file descriptor. We call this a <strong>socket descriptor</strong>, or a <em>sockfd</em>. To obtain this socket descriptor, all we have specified is a protocol family (IPv4, IPv6, or Unix) and the socket type (stream, datagram, or raw). We have not yet specified either the local protocol address or the foreign protocol address.</p>
-<h4 id="af_xxx-versus-pf_xxx"><code>AF_</code><em>xxx</em> Versus <code>PF_</code><em>xxx</em></h4>
+<h4 id="af_xxx-versus-pf_xxx"><code>AF_</code><em>xxx</em> Versus <code>PF_</code><em>xxx</em><a class="headerlink" href="#af_xxx-versus-pf_xxx" title="Permanent link">&para;</a></h4>
 <p>The "<code>AF_</code>" prefix stands for "address family" and the "<code>PF_</code>" prefix stands for "protocol family." Historically, the intent was that a single protocol family might support multiple address families and that the <code>PF_</code> value was used to create the socket and the <code>AF_</code> value was used in socket address structures. But in actuality, a protocol family supporting multiple address families has never been supported and the <code>&lt;sys/socket.h&gt;</code> header defines the <code>PF_</code> value for a given protocol to be equal to the <code>AF_</code> value for that protocol. While there is no guarantee that this equality between the two will always be true, should anyone change this for existing protocols, lots of existing code would break.</p>
 <p>To conform to existing coding practice, we use only the <code>AF_</code> constants in this text, although you may encounter the <code>PF_</code> value, mainly in calls to <code>socket</code>.</p>
 <p>[p98-99]</p>
-<h3 id="connect-function"><code>connect</code> Function</h3>
+<h3 id="connect-function"><code>connect</code> Function<a class="headerlink" href="#connect-function" title="Permanent link">&para;</a></h3>
 <p>The <code>connect</code> function is used by a TCP client to establish a connection with a TCP server.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"></span>
 
@@ -703,7 +703,7 @@
 </li>
 <li>If the client's SYN elicits an ICMP "destination unreachable" from some intermediate router, this is considered a <strong>soft error</strong>. The client kernel saves the message but keeps sending SYNs with the same time between each SYN as in the first scenario. If no response is received after some fixed amount of time (75 seconds for 4.4BSD), the saved ICMP error is returned to the process as either <code>EHOSTUNREACH</code> or <code>ENETUNREACH</code>. It is also possible that the remote system is not reachable by any route in the local system's forwarding table, or that the <code>connect</code> call returns without waiting at all. Note that network unreachables are considered obsolete, and applications should just treat <code>ENETUNREACH</code> and <code>EHOSTUNREACH</code> as the same error.</li>
 </ol>
-<h4 id="example-nonexistent-host-on-the-local-subnet">Example: nonexistent host on the local subnet *</h4>
+<h4 id="example-nonexistent-host-on-the-local-subnet">Example: nonexistent host on the local subnet *<a class="headerlink" href="#example-nonexistent-host-on-the-local-subnet" title="Permanent link">&para;</a></h4>
 <p>We run the client <code>daytimetcpcli</code> (<a href="../ch1/#a-simple-daytime-client">Figure 1.5</a>) and specify an IP address that is on the local subnet (192.168.1/24) but the host ID (100) is nonexistent. When the client host sends out ARP requests (asking for that host to respond with its hardware address), it will never receive an ARP reply.</p>
 <div class="codehilite"><pre><span class="go">solaris % daytimetcpcli 192.168.1.100</span>
 <span class="go">connect error: Connection timed out</span>
@@ -711,7 +711,7 @@
 
 
 <p>We only get the error after the connect times out. Notice that our <code>err_sys</code> function prints the human-readable string associated with the <code>ETIMEDOUT</code> error.</p>
-<h4 id="example-no-server-process-running">Example: no server process running *</h4>
+<h4 id="example-no-server-process-running">Example: no server process running *<a class="headerlink" href="#example-no-server-process-running" title="Permanent link">&para;</a></h4>
 <p>We specify a host (a local router) that is not running a daytime server:</p>
 <div class="codehilite"><pre><span class="go">solaris % daytimetcpcli 192.168.1.5</span>
 <span class="go">connect error: Connection refused</span>
@@ -719,7 +719,7 @@
 
 
 <p>The server responds immediately with an RST.</p>
-<h4 id="example-destination-not-reachable-on-the-internet">Example: destination not reachable on the Internet *</h4>
+<h4 id="example-destination-not-reachable-on-the-internet">Example: destination not reachable on the Internet *<a class="headerlink" href="#example-destination-not-reachable-on-the-internet" title="Permanent link">&para;</a></h4>
 <p>Our final example specifies an IP address that is not reachable on the Internet. If we watch the packets with <code>tcpdump</code>, we see that a router six hops away returns an ICMP host unreachable error.</p>
 <div class="codehilite"><pre><span class="go">solaris % daytimetcpcli 192.3.4.5</span>
 <span class="go">connect error: No route to host</span>
@@ -733,7 +733,7 @@
 <li>If <code>connect</code> fails, the socket is no longer usable and must be closed. We cannot call <code>connect</code> again on the socket.</li>
 </ul>
 <p>In <a href="./#tcp_connect-function">Figure 11.10</a>, we will see that when we call <code>connect</code> in a loop, trying each IP address for a given host until one works, each time <code>connect</code> fails, we must close the socket descriptor and call <code>socket</code> again.</p>
-<h3 id="bind-function"><code>bind</code> Function</h3>
+<h3 id="bind-function"><code>bind</code> Function<a class="headerlink" href="#bind-function" title="Permanent link">&para;</a></h3>
 <p>The <code>bind</code> function assigns a local protocol address to a socket. The protocol address is the combination of either a 32-bit IPv4 address or a 128-bit IPv6 address, along with a 16-bit TCP or UDP port number.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"></span>
 
@@ -801,7 +801,7 @@
 <li>If we specify a port number of 0, the kernel chooses an ephemeral port when <code>bind</code> is called.</li>
 <li>If we specify a wildcard IP address, the kernel does not choose the local IP address until either the socket is connected (TCP) or a datagram is sent on the socket (UDP).</li>
 </ul>
-<h4 id="wildcard-address-and-inaddr_any">Wildcard Address and <code>INADDR_ANY</code> *</h4>
+<h4 id="wildcard-address-and-inaddr_any">Wildcard Address and <code>INADDR_ANY</code> *<a class="headerlink" href="#wildcard-address-and-inaddr_any" title="Permanent link">&para;</a></h4>
 <p>With IPv4, the <em>wildcard</em> address is specified by the constant <code>INADDR_ANY</code>, whose value is normally 0. This tells the kernel to choose the IP address. <a href="../ch1/#a-simple-daytime-server">Figure 1.9</a> has the assignment:</p>
 <div class="codehilite"><pre>    <span class="k">struct</span> <span class="n">sockaddr_in</span>   <span class="n">servaddr</span><span class="p">;</span>
     <span class="n">servaddr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">htonl</span> <span class="p">(</span><span class="n">INADDR_ANY</span><span class="p">);</span>     <span class="cm">/* wildcard */</span>
@@ -817,7 +817,7 @@
 <p>The system allocates and initializes the <code>in6addr_any</code> variable to the constant <code>IN6ADDR_ANY_INIT</code>. The <code>&lt;netinet/in.h&gt;</code> header contains the extern declaration for <code>in6addr_any</code>.</p>
 <p>The value of <code>INADDR_ANY</code> (0) is the same in either network or host byte order, so the use of <code>htonl</code> is not really required. But, since all the <code>INADDR_</code>constants defined by the <code>&lt;netinet/in.h&gt;</code> header are defined in host byte order, we should use <code>htonl</code> with any of these constants.</p>
 <p>If we tell the kernel to choose an ephemeral port number for our socket (by specifying a 0 for port number), <code>bind</code> does not return the chosen value. It cannot return this value since the second argument to <code>bind</code> has the <code>const</code> qualifier. <u>To obtain the value of the ephemeral port assigned by the kernel, we must call <code>getsockname</code> to return the protocol address.</u></p>
-<h4 id="binding-a-non-wildcard-ip-address">Binding a non-wildcard IP address *</h4>
+<h4 id="binding-a-non-wildcard-ip-address">Binding a non-wildcard IP address *<a class="headerlink" href="#binding-a-non-wildcard-ip-address" title="Permanent link">&para;</a></h4>
 <p>A common example of a process binding a non-wildcard IP address to a socket is a host that provides Web servers to multiple organizations:</p>
 <ul>
 <li>First, each organization has its own domain name, such as www.organization.com.</li>
@@ -828,7 +828,7 @@
 <p>One advantage in binding a non-wildcard IP address is that the demultiplexing of a given destination IP address to a given server process is then done by the kernel.</p>
 <p>We must be careful to distinguish between the interface on which a packet arrives versus the destination IP address of that packet. In <a href="../ch8/#verifying-received-response">Section 8.8</a>, we will talk about the <strong>weak end system model</strong> and the <strong>strong end system model</strong>. Most implementations employ the former, meaning it is okay for a packet to arrive with a destination IP address that identifies an interface other than the interface on which the packet arrives. (This assumes a multihomed host.) Binding a non-wildcard IP address restricts the datagrams that will be delivered to the socket based only on the destination IP address. It says nothing about the arriving interface, unless the host employs the strong end system model.</p>
 <p>A common error from bind is <code>EADDRINUSE</code> ("Address already in use"), which is detailed in <a href="../ch7/#generic-socket-options">Section 7.5</a> when discussing the <code>SO_REUSEADDR</code> and <code>SO_REUSEPORT</code> socket options.</p>
-<h3 id="listen-function"><code>listen</code> Function</h3>
+<h3 id="listen-function"><code>listen</code> Function<a class="headerlink" href="#listen-function" title="Permanent link">&para;</a></h3>
 <p>The <code>listen</code> function is called only by a TCP server and it performs two actions:</p>
 <ol>
 <li>The <code>listen</code> function converts an unconnected socket into a passive socket, indicating that the kernel should accept incoming connection requests directed to this socket. In terms of the TCP state transition diagram (<a href="../figure_2.4.png">Figure 2.4</a>), the call to <code>listen</code> moves the socket from the CLOSED state to the LISTEN state.<ul>
@@ -838,7 +838,7 @@
 <li>The second argument <em>backlog</em> to this function specifies the maximum number of connections the kernel should queue for this socket.</li>
 </ol>
 <p>This function is normally called after both the <code>socket</code> and <code>bind</code> functions and must be called before calling the <code>accept</code> function.</p>
-<h4 id="connection-queues">Connection queues *</h4>
+<h4 id="connection-queues">Connection queues *<a class="headerlink" href="#connection-queues" title="Permanent link">&para;</a></h4>
 <p>To understand the <em>backlog</em> argument, we must realize that for a given listening socket, the kernel maintains two queues:</p>
 <ol>
 <li>An <strong>incomplete connection queue</strong>, which contains an entry for each SYN that has arrived from a client for which the server is awaiting completion of the TCP three-way handshake. These sockets are in the <code>SYN_RCVD</code> state (<a href="../figure_2.4.png">Figure 2.4</a>).</li>
@@ -847,7 +847,7 @@
 <p>These two queues are depicted in the figure below:</p>
 <p><a href="../figure_4.7.png" title="Figure 4.7. The two queues maintained by TCP for a listening socket."><img alt="Figure 4.7. The two queues maintained by TCP for a listening socket." src="../figure_4.7.png" /></a></p>
 <p>When an entry is created on the incomplete queue, the parameters from the listen socket are copied over to the newly created connection. <u>The connection creation mechanism is completely automatic; the server process is not involved.</u></p>
-<h4 id="packet-exchanges-during-conenction-establishment">Packet exchanges during conenction establishment *</h4>
+<h4 id="packet-exchanges-during-conenction-establishment">Packet exchanges during conenction establishment *<a class="headerlink" href="#packet-exchanges-during-conenction-establishment" title="Permanent link">&para;</a></h4>
 <p>The following figure depicts the packets exchanged during the connection establishment with these two queues:</p>
 <p><a href="../figure_4.8.png" title="Figure 4.8. TCP three-way handshake and the two queues for a listening socket."><img alt="Figure 4.8. TCP three-way handshake and the two queues for a listening socket." src="../figure_4.8.png" /></a></p>
 <ul>
@@ -864,7 +864,7 @@
 </ul>
 </li>
 </ul>
-<h4 id="the-backlog-argument">The <em>backlog</em> argument *</h4>
+<h4 id="the-backlog-argument">The <em>backlog</em> argument *<a class="headerlink" href="#the-backlog-argument" title="Permanent link">&para;</a></h4>
 <p>Several points to consider when handling the two queues:</p>
 <ul>
 <li><strong>Sum of both queues</strong>. The <em>backlog</em> argument to the <code>listen</code> function has historically specified the maximum value for the sum of both queues.</li>
@@ -905,10 +905,10 @@
 </ul>
 <p>The following figure shows actual number of queued connections for values of <em>backlog</em>:</p>
 <p><a href="../figure_4.10.png" title="Figure 4.10. Actual number of queued connections for values of backlog."><img alt="Figure 4.10. Actual number of queued connections for values of backlog." src="../figure_4.10.png" /></a></p>
-<h4 id="syn-flooding">SYN Flooding *</h4>
+<h4 id="syn-flooding">SYN Flooding *<a class="headerlink" href="#syn-flooding" title="Permanent link">&para;</a></h4>
 <p><a href="https://en.wikipedia.org/wiki/SYN_flood"><strong>SYN flooding</strong></a> is a type of attack (the attacker writes a program to send SYNs at a high rate to the victim) that attempts to fill the incomplete connection queue for one or more TCP ports. Additionally, the source IP address of each SYN is set to a random number (called <a href="https://en.wikipedia.org/wiki/IP_address_spoofing"><strong>IP spoofing</strong></a>) so that the server's SYN/ACK goes nowhere.This also prevents the server from knowing the real IP address of the attacker. By filling the incomplete queue with bogus SYNs, legitimate SYNs are not queued, providing a <a href="https://en.wikipedia.org/wiki/Denial-of-service_attack">denial of service</a> to legitimate clients.</p>
 <p>The <code>listen</code>'s <em>backlog</em> argument should specify the maximum number of completed connections for a given socket that the kernel will queue. The purpose ofto limit completed connections is to stop the kernel from accepting new connection requests for a given socket when the application is not accepting them. If a system implements this interpretation, then the application need not specify huge <em>backlog</em> values just because the server handles lots of client requests or to provide protection against SYN flooding. The kernel handles lots of incomplete connections, regardless of whether they are legitimate or from a hacker. But even with this interpretation, scenarios do occur where the traditional value of 5 is inadequate.</p>
-<h3 id="accept-function"><code>accept</code> Function</h3>
+<h3 id="accept-function"><code>accept</code> Function<a class="headerlink" href="#accept-function" title="Permanent link">&para;</a></h3>
 <p><code>accept</code> is called by a TCP server to return the next completed connection from the front of the completed connection queue (<a href="../figure_4.7.png">Figure 4.7</a>). If the completed connection queue is empty, the process is put to sleep (assuming the default of a blocking socket).</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/socket.h&gt;</span><span class="cp"></span>
 
@@ -941,7 +941,7 @@
 <li>The size of this address (through the <em>addrlen</em> pointer).</li>
 </ul>
 <p>If we are not interested in having the protocol address of the client returned, we set both <em>cliaddr</em> and <em>addrlen</em> to null pointers. See <a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c">intro/daytimetcpsrv.c</a>.</p>
-<h4 id="example-value-result-arguments">Example: Value-Result Arguments</h4>
+<h4 id="example-value-result-arguments">Example: Value-Result Arguments<a class="headerlink" href="#example-value-result-arguments" title="Permanent link">&para;</a></h4>
 <p>The following code shows how to handle the value-result argument to <code>accept</code> by modifying the code from <a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv.c">intro/daytimetcpsrv.c</a> to print the IP address and port of the client:</p>
 <div class="codehilite"><pre><span class="cp">#include</span>    <span class="cpf">&quot;unp.h&quot;</span><span class="cp"></span>
 <span class="cp">#include</span>    <span class="cpf">&lt;time.h&gt;</span><span class="cp"></span>
@@ -1024,8 +1024,8 @@ bind error: Permission denied
 </pre></div>
 
 
-<h3 id="fork-and-exec-functions"><code>fork</code> and <code>exec</code> Functions</h3>
-<h3 id="concurrent-servers">Concurrent Servers</h3>
+<h3 id="fork-and-exec-functions"><code>fork</code> and <code>exec</code> Functions<a class="headerlink" href="#fork-and-exec-functions" title="Permanent link">&para;</a></h3>
+<h3 id="concurrent-servers">Concurrent Servers<a class="headerlink" href="#concurrent-servers" title="Permanent link">&para;</a></h3>
 <p>The server described in <a href="https://github.com/shichao-an/unpv13e/blob/master/intro/daytimetcpsrv1.c">intro/daytimetcpsrv1.c</a> is an <strong>iterative server</strong>. But when a client request can take longer to service, we do not want to tie up a single server with one client; we want to handle multiple clients at the same time. The simplest way to write a concurrent server under Unix is to <code>fork</code> a child process to handle each client.</p>
 <p>The following code shows the outline for a typical concurrent server:</p>
 <div class="codehilite"><pre><span class="kt">pid_t</span> <span class="n">pid</span><span class="p">;</span>
@@ -1056,7 +1056,7 @@ bind error: Permission denied
 <li>When a connection is established, <code>accept</code> returns, the server calls fork, and the child process services the client (on <code>connfd</code>, the connected socket) and the parent process waits for another connection (on <code>listenfd</code>, the listening socket). The parent closes the connected socket since the child handles the new client.</li>
 <li>We assume that the function <code>doit</code> does whatever is required to service the client. When this function returns, we explicitly <code>close</code> the connected socket in the child. This is not required since the next statement calls <code>exit</code>, and part of process termination is to close all open descriptors by the kernel. Whether to include this explicit call to <code>close</code> or not is a matter of personal programming taste.</li>
 </ul>
-<h4 id="reference-count-of-sockets">Reference count of sockets *</h4>
+<h4 id="reference-count-of-sockets">Reference count of sockets *<a class="headerlink" href="#reference-count-of-sockets" title="Permanent link">&para;</a></h4>
 <p>Calling <code>close</code> on a TCP socket causes a FIN to be sent, followed by the normal TCP connection termination sequence. Why doesn't the <code>close</code> of <code>connfd</code> by the parent terminate its connection with the client? To understand what's happening, we must understand that every file or socket has a <strong>reference count</strong>. The reference count is maintained in the file table entry. This is a count of the number of descriptors that are currently open that refer to this file or socket. In the above code:</p>
 <ul>
 <li>After <code>socket</code> returns, the file table entry associated with <code>listenfd</code> has a reference count of 1.</li>
@@ -1064,7 +1064,7 @@ bind error: Permission denied
 <li>But, after <code>fork</code> returns, both descriptors are shared (duplicated) between the parent and child, so the file table entries associated with both sockets now have a reference count of 2. Therefore, when the parent closes <code>connfd</code>, it just decrements the reference count from 2 to 1 and that is all.</li>
 <li>The actual cleanup and de-allocation of the socket does not happen until the reference count reaches 0. This will occur at some time later when the child closes <code>connfd</code>.</li>
 </ul>
-<h4 id="visualizing-the-sockets-and-connection">Visualizing the sockets and connection *</h4>
+<h4 id="visualizing-the-sockets-and-connection">Visualizing the sockets and connection *<a class="headerlink" href="#visualizing-the-sockets-and-connection" title="Permanent link">&para;</a></h4>
 <p>The following figures visualize the sockets and connection in the code above:</p>
 <p>Before call to <code>accept</code> returns, the server is blocked in the call to <code>accept</code> and the connection request arrives from the client:</p>
 <p><a href="../figure_4.14.png" title="Figure 4.14. Status of client/server before call to accept returns."><img alt="Figure 4.14. Status of client/server before call to accept returns." src="../figure_4.14.png" /></a></p>
@@ -1075,7 +1075,7 @@ bind error: Permission denied
 <p>After the parent closes the connected socket and the child closes the listening socket:</p>
 <p><a href="../figure_4.17.png" title="Figure 4.17. Status of client/server after parent and child close appropriate sockets."><img alt="Figure 4.17. Status of client/server after parent and child close appropriate sockets." src="../figure_4.17.png" /></a></p>
 <p>This is the desired final state of the sockets. The child is handling the connection with the client and the parent can call <code>accept</code> again on the listening socket, to handle the next client connection.</p>
-<h3 id="close-function"><code>close</code> Function</h3>
+<h3 id="close-function"><code>close</code> Function<a class="headerlink" href="#close-function" title="Permanent link">&para;</a></h3>
 <p>The normal Unix <code>close</code> function is also used to close a socket and terminate a TCP connection.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
 
@@ -1087,7 +1087,7 @@ bind error: Permission denied
 
 <p>The default action of <code>close</code> with a TCP socket is to mark the socket as closed and return to the process immediately. The socket descriptor is no longer usable by the process: It cannot be used as an argument to <code>read</code> or <code>write</code>. But, <u>TCP will try to send any data that is already queued to be sent to the other end, and after this occurs, the normal TCP connection termination sequence takes place.</u></p>
 <p><code>SO_LINGER</code> socket option (detailed in <a href="../ch7/#generic-socket-options">Section 7.5</a>) lets us change this default action with a TCP socket.</p>
-<h4 id="descriptor-reference-counts">Descriptor Reference Counts</h4>
+<h4 id="descriptor-reference-counts">Descriptor Reference Counts<a class="headerlink" href="#descriptor-reference-counts" title="Permanent link">&para;</a></h4>
 <p>As mentioned in <a href="#reference-count-of-sockets">end of Section 4.8</a>, when the parent process in our concurrent server <code>closes</code> the connected socket, this just decrements the reference count for the descriptor. Since the reference count was still greater than 0, this call to close did not initiate TCP's four-packet connection termination sequence. This is the behavior we want with our concurrent server with the connected socket that is shared between the parent and child.</p>
 <p>If we really want to send a FIN on a TCP connection, the <code>shutdown</code> function can be used (<a href="../ch6/#shutdown-function">Section 6.6</a>) instead of <code>close</code>.</p>
 <p>Be aware if the parent does not call <code>close</code> for each connected socket returned by <code>accept</code>:</p>
@@ -1095,7 +1095,7 @@ bind error: Permission denied
 <li><strong>The parent will eventually run out of descriptors</strong> (there is usually a limit to the number of descriptors that any process can have open at any time)</li>
 <li><strong>None of the client connections will be terminated.</strong> When the child closes the connected socket, its reference count will go from 2 to 1 and it will remain at 1 since the parent never <code>close</code>s the connected socket. This will prevent TCP's connection termination sequence from occurring, and the connection will remain open.</li>
 </ol>
-<h3 id="getsockname-and-getpeername-functions"><code>getsockname</code> and <code>getpeername</code> Functions</h3>
+<h3 id="getsockname-and-getpeername-functions"><code>getsockname</code> and <code>getpeername</code> Functions<a class="headerlink" href="#getsockname-and-getpeername-functions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>getsockname</code> returns the local protocol address associated with a socket.</li>
 <li><code>getpeername</code> returns the foreign protocol address associated with a socket.</li>
@@ -1131,7 +1131,7 @@ bind error: Permission denied
 <li>A convention can be established that a certain descriptor is always set to the connected socket before calling <code>exec</code>.</li>
 </ol>
 <p>The second one is what <code>inetd</code> does, always setting descriptors 0, 1, and 2 to be the connected socket.</p>
-<h4 id="example-obtaining-the-address-family-of-a-socket">Example: Obtaining the Address Family of a Socket</h4>
+<h4 id="example-obtaining-the-address-family-of-a-socket">Example: Obtaining the Address Family of a Socket<a class="headerlink" href="#example-obtaining-the-address-family-of-a-socket" title="Permanent link">&para;</a></h4>
 <p>The <code>sockfd_to_family</code> function shown in the code below returns the address family of a socket.</p>
 <p><small><a href="https://github.com/shichao-an/unpv13e/blob/master/lib/sockfd_to_family.c">lib/sockfd_to_family.c</a></small></p>
 <div class="codehilite"><pre><span class="kt">int</span>

@@ -492,12 +492,12 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-11-threads"><strong>Chapter 11. Threads</strong></h3>
-<h3 id="introduction">Introduction</h3>
+<h3 id="chapter-11-threads"><strong>Chapter 11. Threads</strong><a class="headerlink" href="#chapter-11-threads" title="Permanent link">&para;</a></h3>
+<h3 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
 <p>Processes are discussed in earlier chapters. A limited amount of sharing can occur between related processes.</p>
 <p>This chapter looks inside a process further to see how to use multiple threads of control (or simply threads) to perform multiple tasks within the environment of a single process. All threads within a single process have access to the same process components, such as file descriptors and memory.</p>
 <p>This chapter is concluded with synchronization mechanisms available to prevent multiple threads from viewing inconsistencies in their shared resources.</p>
-<h3 id="thread-concepts">Thread Concepts</h3>
+<h3 id="thread-concepts">Thread Concepts<a class="headerlink" href="#thread-concepts" title="Permanent link">&para;</a></h3>
 <p>With multiple threads of control, the programs can more than one thing at a time within a single process, with each thread handling a separate task. This approach can have several benefits:</p>
 <ul>
 <li>We can simplify code that deals with asynchronous events by assigning a separate thread to handle each event type, while each thread can then handle its event using a synchronous programming model. A synchronous programming model is much simpler than an asynchronous one.</li>
@@ -524,7 +524,7 @@
 <li>File descriptors.</li>
 </ul>
 <p>The threads interfaces of this chapter are from POSIX.1-2001, known as <strong>pthreads</strong> for "POSIX threads". The feature test macro for POSIX threads is <code>_POSIX_THREADS</code>. Applications can either use this in an <code>#ifdef</code> test to determine at compile time whether threads are supported or call <code>sysconf</code> with the <code>_SC_THREADS</code> constant to determine this at runtime. [p384]</p>
-<h3 id="thread-identification">Thread Identification</h3>
+<h3 id="thread-identification">Thread Identification<a class="headerlink" href="#thread-identification" title="Permanent link">&para;</a></h3>
 <p>Unlike the process ID, which is unique in the system, the thread ID has significance only within the context of the process to which it belongs.</p>
 <p>A thread ID is represented by the <code>pthread_t</code> data type. Implementations are allowed to use a structure to represent the <code>pthread_t</code> data type, so portable implementations can’t treat them as integers (process ID's <code>pid_t</code> data type is a non-negative integer). The <code>pthread_equal</code> function (below) must be used to compare two thread IDs. A consequence of allowing the <code>pthread_t</code> data type to be a structure is that there is no portable way to print its value. Linux 3.2.0 uses an unsigned long integer for the <code>pthread_t</code> data type. FreeBSD 8.0 and Mac OS X 10.6.8 use a pointer to the <code>pthread</code> structure for the <code>pthread_t</code> data type.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
@@ -546,7 +546,7 @@
 
 <p>This function can be used with <code>pthread_equal</code> when a thread needs to identify data structures that are tagged with its thread ID. For example, a single master thread places new jobs on a work queue. A pool of three worker threads removes jobs from the queue. Instead of allowing each thread to process whichever job is at the head of the queue, the master thread controls job assignment by placing the ID of the thread that should process the job in each job structure. Each worker thread then removes only jobs that are tagged with its own thread ID. This situation is illustrated below:</p>
 <p><a href="../figure_11.1.png" title="Figure 11.1 Work queue example"><img alt="Figure 11.1 Work queue example" src="../figure_11.1.png" /></a></p>
-<h3 id="thread-creation">Thread Creation</h3>
+<h3 id="thread-creation">Thread Creation<a class="headerlink" href="#thread-creation" title="Permanent link">&para;</a></h3>
 <p>The traditional UNIX process model (one thread of control per process) is conceptually the same as a threads-based model whereby each process is made up of only one thread. As the program runs, its behavior should be indistinguishable from the traditional process, until it creates more threads of control. [p385] Additional threads can be created by calling the <code>pthread_create</code> function:</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
@@ -612,7 +612,7 @@
 gets a chance to run. This behavior is dependent on the operating system’s threads implementation and scheduling algorithms</li>
 <li>Second, the new thread obtains its thread ID by calling <code>pthread_self</code> instead of reading it out of shared memory or receiving it as an argument to its thread-start routine. If the new thread runs before the main thread returns from calling <code>pthread_create</code>, then the new thread will see the uninitialized contents of <em>ntid</em> instead of the thread ID. [p387-388]</li>
 </ul>
-<h3 id="thread-termination">Thread Termination</h3>
+<h3 id="thread-termination">Thread Termination<a class="headerlink" href="#thread-termination" title="Permanent link">&para;</a></h3>
 <p>If any thread within a process calls <code>exit</code>, <code>_Exit</code>, or <code>_exit</code>, then the entire process terminates. Similarly, when the default action is to terminate the process, a signal sent to a thread will terminate the entire process.</p>
 <p>A single thread can exit in three ways, without terminating the entire process:</p>
 <ol>
@@ -620,7 +620,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <li>The thread can be canceled by another thread in the same process.</li>
 <li>The thread can call <code>pthread_exit</code>.</li>
 </ol>
-<h4 id="the-pthread_exit-and-pthread_join-functions">The <code>pthread_exit</code> and <code>pthread_join</code> functions</h4>
+<h4 id="the-pthread_exit-and-pthread_join-functions">The <code>pthread_exit</code> and <code>pthread_join</code> functions<a class="headerlink" href="#the-pthread_exit-and-pthread_join-functions" title="Permanent link">&para;</a></h4>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="kt">void</span> <span class="nf">pthread_exit</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">rval_ptr</span><span class="p">);</span>
@@ -725,7 +725,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>The contents of the structure (allocated on the stack of thread <em>tid1</em>) have changed by the time the main thread can access the structure. Note how the stack of the second thread (<em>tid2</em>) has overwritten the first thread’s stack. To solve this problem, we can either use a global structure or allocate the structure using <code>malloc</code>.</p>
-<h4 id="the-pthread_cancel-function">The <code>pthread_cancel</code> function</h4>
+<h4 id="the-pthread_cancel-function">The <code>pthread_cancel</code> function<a class="headerlink" href="#the-pthread_cancel-function" title="Permanent link">&para;</a></h4>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
 <span class="kt">int</span> <span class="nf">pthread_cancel</span><span class="p">(</span><span class="n">pthread_t</span> <span class="n">tid</span><span class="p">);</span>
@@ -738,7 +738,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <li>By default, <code>pthread_cancel</code> will cause the thread specified by <em>tid</em> to behave as if it had called <code>pthread_exit</code> with an argument of <code>PTHREAD_CANCELED</code>, though a thread can ignore or otherwise control how it is canceled.</li>
 <li><code>pthread_cancel</code> doesn’t wait for the thread to terminate; it merely makes the request.</li>
 </ul>
-<h4 id="the-pthread_cleanup_push-and-pthread_cleanup_pop-functions">The <code>pthread_cleanup_push</code> and <code>pthread_cleanup_pop</code> functions</h4>
+<h4 id="the-pthread_cleanup_push-and-pthread_cleanup_pop-functions">The <code>pthread_cleanup_push</code> and <code>pthread_cleanup_pop</code> functions<a class="headerlink" href="#the-pthread_cleanup_push-and-pthread_cleanup_pop-functions" title="Permanent link">&para;</a></h4>
 <p>A thread can arrange for functions to be called when it exits, similar to the way that the <code>atexit</code> function (<a href="../ch7/#atexit-function">Section 7.3</a>). The functions are known as <strong>thread cleanup handlers</strong>. More than one cleanup handler can be established for a thread. The handlers are recorded in a stack, which means that they are executed in the reverse order from that with which they were registered.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
@@ -877,7 +877,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </tr>
 </tbody>
 </table>
-<h4 id="the-pthread_detach-function">The <code>pthread_detach</code> function</h4>
+<h4 id="the-pthread_detach-function">The <code>pthread_detach</code> function<a class="headerlink" href="#the-pthread_detach-function" title="Permanent link">&para;</a></h4>
 <p>By default, a thread’s termination status is retained until we call <code>pthread_join</code> for that thread. A thread’s underlying storage can be reclaimed immediately on termination if the thread has been detached. After a thread is detached, we can’t use the <code>pthread_join</code> function to wait for its termination status, because calling <code>pthread_join</code> for a detached thread results in undefined behavior. We can detach a thread by calling <code>pthread_detach</code>.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 
@@ -888,7 +888,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 
 <p>We can create a thread that is already in the detached state by modifying the thread attributes we pass to <code>pthread_create</code>. This is detailed in the next chapter.</p>
-<h3 id="thread-synchronization">Thread Synchronization</h3>
+<h3 id="thread-synchronization">Thread Synchronization<a class="headerlink" href="#thread-synchronization" title="Permanent link">&para;</a></h3>
 <p>When multiple threads of control share the same memory, one thread can modify a variable that other threads can read or modify, thus we need to synchronize the threads to ensure that they don’t use an invalid value when accessing the variable’s memory contents.</p>
 <p>When one thread modifies a variable, other threads can potentially see inconsistencies when reading the value of that variable. On processor architectures in which the modification takes more than one memory cycle, this can happen when the memory read is interleaved between the memory write cycles.</p>
 <p>In the following figure, thread A reads the variable and then writes a new value to it, but the write operation takes two memory cycles.  If thread B reads the same variable between the two write cycles, it will see an inconsistent value:</p>
@@ -917,7 +917,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <p>Our operations are sequentially consistent when multiple threads can’t observe inconsistencies in our data. In modern computer systems, memory accesses take multiple bus cycles, and multiprocessors generally interleave bus cycles among multiple processors, so we aren’t guaranteed that our data is sequentially consistent.</p>
 <p>[p399]</p>
 <p>Besides the computer architecture, races can arise from the ways in which our programs use variables, creating places where it is possible to view inconsistencies. For example, we might increment a variable and then make a decision based on its value. The combination of the increment step and the decision-making step isn’t atomic, which opens a window where inconsistencies can arise.</p>
-<h4 id="mutexes">Mutexes</h4>
+<h4 id="mutexes">Mutexes<a class="headerlink" href="#mutexes" title="Permanent link">&para;</a></h4>
 <p>We can protect our data and ensure access by only one thread at a time by using the pthreads mutual-exclusion interfaces. A <a href="https://en.wikipedia.org/wiki/Mutual_exclusion"><strong>mutex</strong></a> is basically a lock that we set (lock) before accessing a shared resource and release (unlock) when we’re done.</p>
 <ul>
 <li>While it is set, any other thread that tries to set it will block until we release it.</li>
@@ -1008,11 +1008,11 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 </ul>
 <p>Before using the object, threads are expected to add a reference to it by calling <code>foo_hold</code>. When they are done, they must call <code>foo_rele</code> to release the reference. When the last reference is released, the object’s memory is freed.</p>
 <p>In this example, we have ignored how threads find an object before calling <code>foo_hold</code>. Even though the reference count is zero, it would be a mistake for <code>foo_rele</code> to free the object’s memory if another thread is blocked on the mutex in a call to <code>foo_hold</code>. We can avoid this problem by ensuring that the object can’t be found before freeing its memory. We’ll see how to do this in the examples that follow.</p>
-<h3 id="deadlock-avoidance">Deadlock Avoidance</h3>
+<h3 id="deadlock-avoidance">Deadlock Avoidance<a class="headerlink" href="#deadlock-avoidance" title="Permanent link">&para;</a></h3>
 <p>A thread will deadlock itself if it tries to lock the same mutex twice. There are less obvious ways to create deadlocks with mutexes. For example, when we use more than one mutex in our programs, a deadlock can occur if we allow one thread to hold a mutex and block while trying to lock a second mutex at the same time that another thread holding the second mutex tries to lock the first mutex. Neither thread can proceed, because each needs a resource that is held by the other.</p>
 <p>Deadlocks can be avoided by carefully controlling the order in which mutexes are locked. For example, assume that you have two mutexes, A and B, that you need to lock at the same time. If all threads always lock mutex A before mutex B (vice versa), no deadlock can occur from the use of the two mutexes (but you can still deadlock on other resources). You’ll have the potential for a deadlock only when one thread attempts to lock the mutexes in the opposite order from another thread.</p>
 <p>Another approach when many locks and data structures are involved (it is difficult to apply the previous approach) is that you might be able to release your locks and try again at a later time. You can use the <code>pthread_mutex_trylock</code> interface to avoid deadlocking in this case. If you are already holding locks and <code>pthread_mutex_trylock</code> is successful, then you can proceed. If it can’t acquire the lock, however, you can release the locks you already hold, clean up, and try again later.</p>
-<h4 id="example-of-two-mutexes">Example of two mutexes</h4>
+<h4 id="example-of-two-mutexes">Example of two mutexes<a class="headerlink" href="#example-of-two-mutexes" title="Permanent link">&para;</a></h4>
 <p>In the following example which shows the use of two mutexes, we avoid deadlocks by ensuring that when we need to acquire two mutexes at the same time, we always lock them in the same order. The second mutex protects a hash list that we use to keep track of the foo data structures. Thus the hashlock mutex protects both the fh hash table and the <code>f_next</code> hash link field in the foo structure. The <code>f_lock</code> mutex in the foo structure protects access to the remainder of the foo structure’s fields.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex2.c">threads/mutex2.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
@@ -1128,7 +1128,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <li>The <code>foo_find</code> function locks the hash list lock and searches for the requested structure. If it is found, we increase the reference count and return a pointer to the structure. This follows the lock ordering by locking the hash list lock in <code>foo_find</code> before <code>foo_hold</code> locks the foo structure’s f_lock mutex.</li>
 <li>With two locks, the <code>foo_rele</code> function is more complicated. If this is the last reference, we need to unlock the structure mutex so that we can acquire the hash list lock, since we’ll need to remove the structure from the hash list. Then we reacquire the structure mutex. Because we could have blocked since the last time we held the structure mutex, we need to recheck the condition to see whether we still need to free the structure. If another thread found the structure and added a reference to it while we blocked to honor the lock ordering, we simply need to decrement the reference count, unlock everything, and return.</li>
 </ul>
-<h4 id="example-of-two-mutexes-simplified">Example of two mutexes (simplified)</h4>
+<h4 id="example-of-two-mutexes-simplified">Example of two mutexes (simplified)<a class="headerlink" href="#example-of-two-mutexes-simplified" title="Permanent link">&para;</a></h4>
 <p>We can simplify the previous example considerably by using the hash list lock to protect the structure reference count. The structure mutex can be used to protect everything else in the <code>foo</code> structure.</p>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/threads/mutex3.c">threads/mutex3.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
@@ -1230,7 +1230,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 <li>If the locking granularity is too fine, then you suffer bad performance from excess locking overhead, and you end up with complex code.</li>
 </ul>
 <p>As a programmer, you need to find the correct balance between code complexity and performance, while still satisfying your locking requirements.</p>
-<h4 id="pthread_mutex_timedlock-function"><code>pthread_mutex_timedlock</code> Function</h4>
+<h4 id="pthread_mutex_timedlock-function"><code>pthread_mutex_timedlock</code> Function<a class="headerlink" href="#pthread_mutex_timedlock-function" title="Permanent link">&para;</a></h4>
 <p>The <code>pthread_mutex_timedlock</code> function allows us to bound the time that a thread blocks when a mutex it is trying to acquire is already locked is equivalent to <code>pthread_mutex_lock</code>, but if the timeout value is reached, <code>pthread_mutex_timedlock</code> will return the error code <code>ETIMEDOUT</code> without locking the mutex:</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;time.h&gt;</span><span class="cp"></span>
@@ -1290,7 +1290,7 @@ gets a chance to run. This behavior is dependent on the operating system’s thr
 
 <p>This strategy is not recommended in practice, because it can lead to deadlock.</p>
 <p>Mac OS X 10.6.8 doesn’t support <code>pthread_mutex_timedlock</code> yet, but FreeBSD 8.0, Linux 3.2.0, and Solaris 10 do support it.</p>
-<h4 id="readerwriter-locks">Reader–Writer Locks</h4>
+<h4 id="readerwriter-locks">Reader–Writer Locks<a class="headerlink" href="#readerwriter-locks" title="Permanent link">&para;</a></h4>
 <p>The state of a mutex is either locked or unlocked, and only one thread can lock it at a time. A reader–writer lock (also called shared–exclusive lock) has three possible states:</p>
 <ul>
 <li>Locked in read mode (also called locked in shared mode)</li>
@@ -1451,7 +1451,7 @@ Only one thread at a time can hold a reader–writer lock in write mode, but mul
 
 
 <p>In this example, we lock the queue’s reader–writer lock in write mode whenever we need to add a job to the queue or remove a job from the queue. Whenever we search the queue, we grab the lock in read mode, allowing all the worker threads to search the queue concurrently. Using a reader–writer lock will improve performance in this case only if threads search the queue much more frequently than they add or remove jobs. The worker threads take only those jobs that match their thread ID off the queue. Since the job structures are used only by one thread at a time, they don’t need any extra locking.</p>
-<h4 id="readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts</h4>
+<h4 id="readerwriter-locking-with-timeouts">Reader–Writer Locking with Timeouts<a class="headerlink" href="#readerwriter-locking-with-timeouts" title="Permanent link">&para;</a></h4>
 <p>As with mutexes, the SUS provides functions to lock reader–writer locks with a timeout to give applications a way to avoid blocking
 indefinitely while trying to acquire a reader–writer lock.</p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp"></span>
@@ -1466,7 +1466,7 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 
 
 <p>The <em>tsptr</em> argument points to a <code>timespec</code> structure specifying the time at which the thread should stop blocking. If they can’t acquire the lock, these functions return the <code>ETIMEDOUT</code> error when the timeout expires. Like the <code>pthread_mutex_timedlock</code> function, the timeout specifies an absolute time, not a relative one.</p>
-<h4 id="condition-variables">Condition Variables</h4>
+<h4 id="condition-variables">Condition Variables<a class="headerlink" href="#condition-variables" title="Permanent link">&para;</a></h4>
 <p>Condition variables are another synchronization mechanism available to threads. These synchronization objects provide a place for threads to rendezvous. When used with mutexes, condition variables allow threads to wait in a race-free way for arbitrary conditions to occur.</p>
 <p>The condition itself is protected by a mutex. A thread must first lock the mutex to change the condition state. Other threads will not notice the change until they acquire the mutex, because the mutex must be locked to be able to evaluate the condition.</p>
 <p>A condition variable, represented by the pthread_cond_t data type, must be initialized and can be initialized in two ways:</p>
@@ -1583,7 +1583,7 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <li>When we put a message on the work queue, we need to hold the mutex, but we don’t need to hold the mutex when we signal the waiting threads.</li>
 <li>As long as it is okay for a thread to pull the message off the queue before we call <code>pthread_cond_signal</code>, we can do this after releasing the mutex. Since we check the condition in a <code>while</code> loop, this doesn’t present a problem; a thread will wake up, find that the queue is still empty, and go back to waiting again. If the code couldn’t tolerate this race, we would need to hold the mutex when we signal the threads.</li>
 </ul>
-<h4 id="spin-locks">Spin Locks</h4>
+<h4 id="spin-locks">Spin Locks<a class="headerlink" href="#spin-locks" title="Permanent link">&para;</a></h4>
 <p>A <strong>spin lock</strong> is like a mutex, except that instead of blocking a process by sleeping, the process is blocked by busy-waiting (spinning) until the lock can be acquired. <u>A spin lock could be used in situations where locks are held for short periods of times and threads don’t want to incur the cost of being descheduled.</u></p>
 <p>Spin locks are often used as low-level primitives to implement other types of locks. They can be implemented efficiently using <a href="https://en.wikipedia.org/wiki/Test-and-set">test-and-set</a> instructions. Although efficient, they can lead to wasting CPU resources: while a thread is spinning and waiting for a lock to become available, the CPU can’t do anything else. <u>This is why spin locks should be held only for short periods of time.</u></p>
 <ul>
@@ -1629,7 +1629,7 @@ indefinitely while trying to acquire a reader–writer lock.</p>
 <li>If we try to unlock a spin lock that is not locked, the results are also undefined.</li>
 </ul>
 <p><u>If either <code>pthread_spin_lock</code> or <code>pthread_spin_trylock</code> returns 0, then the spin lock is locked. We need to be careful not to call any functions that might sleep while holding the spin lock. Otherwise, other threads trying to acquire it will spin, wasting CPU resources.</u></p>
-<h4 id="barriers">Barriers</h4>
+<h4 id="barriers">Barriers<a class="headerlink" href="#barriers" title="Permanent link">&para;</a></h4>
 <p>Barriers are a synchronization mechanism to coordinate multiple threads working in parallel. A barrier allows each thread to wait until all cooperating
 threads have reached the same point, and then continue executing from there. The <code>pthread_join</code> function acts as a barrier to allow one thread to wait until another thread exits.</p>
 <p>Barrier objects are more general. They allow an arbitrary number of threads to wait until all of the threads have completed processing, but <u>the threads don’t have to exit. They can continue working after all threads have reached the barrier.</u></p>
@@ -1800,16 +1800,16 @@ threads have reached the same point, and then continue executing from there. The
 </em> We don’t need to use the <code>PTHREAD_BARRIER_SERIAL_THREAD</code> return value from <code>pthread_barrier_wait</code> to decide which thread merges the results, because we use the main thread for this task. That is why <u>we specify the barrier count as one more than the number of worker threads; the main thread counts as one waiter.</u></p>
 <p>This example shows the use of a barrier in a simplified situation where the threads perform only one task. In more realistic situations, the worker threads will continue with other activities after the call to <code>pthread_barrier_wait</code> returns.</p>
 <p>[p422]</p>
-<h3 id="summary">Summary</h3>
+<h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>This chapter introduces the concept of threads and discussed the POSIX.1 primitives available to create and destroy them. We also introduced the problem of thread synchronization. We discussed five fundamental synchronization mechanisms: mutexes, reader–writer locks, condition variables, spin locks, and barriers; and we saw how to use them to protect shared resources.</p>
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p409-410-on-readerwriter-locks"><strong>p409-410 on Reader–Writer Locks</strong></h5>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
+<h5 id="p409-410-on-readerwriter-locks"><strong>p409-410 on Reader–Writer Locks</strong><a class="headerlink" href="#p409-410-on-readerwriter-locks" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>If we free the memory backing a reader–writer lock without first calling <code>pthread_rwlock_destroy</code>, any resources assigned to the lock will be lost.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: "any resources assigned to the lock will be lost" probably means a form of <a href="https://en.wikipedia.org/wiki/Resource_leak">resource leak</a>.</p>
-<h5 id="p409-on-pthread_barrier_serial_thread"><strong>p409 on <code>PTHREAD_BARRIER_SERIAL_THREAD.</code></strong></h5>
+<h5 id="p409-on-pthread_barrier_serial_thread"><strong>p409 on <code>PTHREAD_BARRIER_SERIAL_THREAD.</code></strong><a class="headerlink" href="#p409-on-pthread_barrier_serial_thread" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>To one arbitrary thread, it will appear as if the <code>pthread_barrier_wait</code> function returned a value of <code>PTHREAD_BARRIER_SERIAL_THREAD</code>. The remaining threads see a return value of 0.</p>
 </blockquote>

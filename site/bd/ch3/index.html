@@ -468,7 +468,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-3-data-model-for-big-data-illustration"><strong>Chapter 3. Data model for Big Data: Illustration</strong></h3>
+<h3 id="chapter-3-data-model-for-big-data-illustration"><strong>Chapter 3. Data model for Big Data: Illustration</strong><a class="headerlink" href="#chapter-3-data-model-for-big-data-illustration" title="Permanent link">&para;</a></h3>
 <p>The last chapter discusses the principles of forming a data model:</p>
 <ul>
 <li>The value of raw data</li>
@@ -476,19 +476,19 @@
 <li>Importance of immutability</li>
 </ul>
 <p>This chapter is the first <em>illustration chapter</em>, which demonstrates the concepts of the previous chapter using real-world tools.</p>
-<h3 id="why-a-serialization-framework">Why a serialization framework?</h3>
+<h3 id="why-a-serialization-framework">Why a serialization framework?<a class="headerlink" href="#why-a-serialization-framework" title="Permanent link">&para;</a></h3>
 <p>Schemaless format, like JSON, is easy to get started. However, it quickly leads to problems due to bugs or misunderstandings between different developer and data corruption inevitably occurs. Data corruption errors are some of the most time-consuming to debug.</p>
-<h4 id="data-corruption">Data corruption *</h4>
+<h4 id="data-corruption">Data corruption *<a class="headerlink" href="#data-corruption" title="Permanent link">&para;</a></h4>
 <p>Data corruption issues are hard to debug because there's very little context on how the corruption occurred. Typically the problem is noticed when there's an error downstream in the processing, long after the corrupt data was written.</p>
 <p>For example, you might get a null pointer exception due to a mandatory field being missing. You'll quickly realize that the problem is a missing field, but you'll have absolutely no information about how that data got there in the first place.</p>
-<h4 id="enforcing-schema">Enforcing schema *</h4>
+<h4 id="enforcing-schema">Enforcing schema *<a class="headerlink" href="#enforcing-schema" title="Permanent link">&para;</a></h4>
 <p>Creating an enforceable schema is good because:</p>
 <ul>
 <li>You get errors at the time of writing the data, giving you full context as to how and why the data became invalid (like a <a href="https://en.wikipedia.org/wiki/Stack_trace">stack trace</a>).</li>
 <li>The error prevents the program from corrupting the master dataset by writing that data.</li>
 </ul>
 <p>Serialization frameworks are an easy approach to making an enforceable schema. They generate code for any languages for reading, writing, and validating objects that match your schema.</p>
-<h3 id="apache-thrift">Apache Thrift</h3>
+<h3 id="apache-thrift">Apache Thrift<a class="headerlink" href="#apache-thrift" title="Permanent link">&para;</a></h3>
 <p><a href="https://en.wikipedia.org/wiki/Apache_Thrift">Apache Thrift</a> (<a href="http://thrift.apache.org/">http://thrift.apache.org/</a>) is a tool that can be used to define statically typed, enforceable schemas. It provides an interface definition language to describe the schema in terms of generic data types, and this description can later be used to automatically generate the actual implementation in multiple programming languages.</p>
 <p>Other tools similar to Apache Thrift include <a href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protocol Buffers</a> and <a href="https://en.wikipedia.org/wiki/Apache_Avro">Avro</a>.</p>
 <p>The primary elements of Thrif are <em>struct</em> and <em>union</em> <a href="https://thrift.apache.org/docs/idl#definition">type definitions</a>. They're composed
@@ -504,7 +504,7 @@ of other fields, such as:</p>
 <li>Edges: structs are natural representations of edges.</li>
 <li>Properties: combination of both.</li>
 </ul>
-<h4 id="nodes">Nodes</h4>
+<h4 id="nodes">Nodes<a class="headerlink" href="#nodes" title="Permanent link">&para;</a></h4>
 <p>In the SuperWebAnalytics.com example, an individual is identified either by a user ID or a browser cookie, but not both. This pattern is common for nodes matches with a union data type: a single value that may have any of several representations.  In Thrift, unions are defined by listing all possible representations. For example:</p>
 <div class="codehilite"><pre><span class="kd">union</span><span class="w"> </span><span class="nc">PersonID</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">cookie</span><span class="p">;</span><span class="w"></span>
@@ -518,7 +518,7 @@ of other fields, such as:</p>
 
 
 <p>Unions can also be used for nodes with a single representation, which allows the schema to evolve as the data evolves.</p>
-<h4 id="edges">Edges</h4>
+<h4 id="edges">Edges<a class="headerlink" href="#edges" title="Permanent link">&para;</a></h4>
 <p><u>Each edge can be represented as a struct containing two nodes.</u> The name of an edge struct indicates the relationship it represents, and the fields in the edge struct contain the entities involved in the relationship. For example:</p>
 <div class="codehilite"><pre><span class="kd">struct</span><span class="w"> </span><span class="nc">EquivEdge</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="n">PersonID</span><span class="w"> </span><span class="n">id1</span><span class="p">;</span><span class="w"></span>
@@ -534,7 +534,7 @@ of other fields, such as:</p>
 
 
 <p>The fields of a Thrift struct can be denoted as <code>required</code> or <code>optional</code>. If a field is defined as required, then a value for that field must be provided, or else Thrift will give an error upon serialization or deserialization. Because each edge in a graph schema must have two nodes, they are required fields in this example.</p>
-<h4 id="properties">Properties</h4>
+<h4 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h4>
 <p>A property contains a node and a value for the property. The value can be one of many types, so it's best represented using a union structure. For example:</p>
 <div class="codehilite"><pre><span class="kd">union</span><span class="w"> </span><span class="nc">PagePropertyValue</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="n">page_views</span><span class="p">;</span><span class="w"></span>
@@ -573,7 +573,7 @@ of other fields, such as:</p>
 
 
 <p>In the location struct, the city, state, and country fields could have been stored as separate pieces of data. In this case, they're closely related so it makes sense to put them all into one struct as optional fields.</p>
-<h4 id="tying-everything-together-into-data-objects">Tying everything together into data objects</h4>
+<h4 id="tying-everything-together-into-data-objects">Tying everything together into data objects<a class="headerlink" href="#tying-everything-together-into-data-objects" title="Permanent link">&para;</a></h4>
 <p>At this point, the edges and properties are defined as separate types. However, it is ideal to store all of the data together because:</p>
 <ol>
 <li>It provides a single interface to access your information.</li>
@@ -603,7 +603,7 @@ of other fields, such as:</p>
 <li>The pedigree contains the timestamp for the information, but could also potentially contain debugging information or the source of the data.</li>
 <li>The final <code>Data</code> struct corresponds to a fact from the fact-based model.</li>
 </ul>
-<h4 id="evolving-your-schema">Evolving your schema</h4>
+<h4 id="evolving-your-schema">Evolving your schema<a class="headerlink" href="#evolving-your-schema" title="Permanent link">&para;</a></h4>
 <p>Thrift is designed so that schemas can evolve over time. The key to evolving Thrift schemas is the numeric identifiers associated with each field. Those IDs are used to identify fields in their serialized form. When you want to change the schema but still be backward compatible with existing data, you must obey the following rules:</p>
 <ul>
 <li><strong>Fields may be renamed</strong>, because the serialized form of an object uses the field IDs, not the names, to identify fields.</li>
@@ -642,7 +642,7 @@ union DataUnit {
 </pre>
 
 <p>Adding a new age property is done by adding it to the corresponding union structure, and a new edge is incorporated by adding it into the <code>DataUnit</code> union.</p>
-<h3 id="limitations-of-serialization-frameworks">Limitations of serialization frameworks</h3>
+<h3 id="limitations-of-serialization-frameworks">Limitations of serialization frameworks<a class="headerlink" href="#limitations-of-serialization-frameworks" title="Permanent link">&para;</a></h3>
 <p>Serialization frameworks only check that all required fields are present and are of the expected type, but are unable to check richer properties like "Ages should be nonnegative" or "true-as-of timestamps should not be in the future". Data not matching these properties would indicate a problem in your system, and you wouldn't want them written to your master dataset.</p>
 <p>[p52-53]</p>
 <p>There are two approaches you can take to work around these limitations with a serialization framework like Apache Thrift:</p>
@@ -658,12 +658,12 @@ union DataUnit {
 </li>
 </ul>
 <p>Neither approach is ideal, and you have to decide whether you'd rather maintain the same logic in multiple languages or lose the context in which corruption was introduced. [p53]</p>
-<h3 id="summary">Summary</h3>
+<h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>Implementing the enforceable graph schema for SuperWebAnalytics.com was mostly straightforward. The friction appears when using a serialization framework for this purpose: the inability to enforce every property you care about. The tooling will rarely work perfectly, but <u>it's important to know what would be possible with ideal tools, so you're cognizant of the trade-offs you're making and can keep an eye out for better tools (or make your own).</u></p>
 <p>The next chapter discusses how to physically store a master dataset in the batch layer so that it can be processed easily and efficiently.</p>
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p54-on-limitations-of-serialization-frameworks"><strong>p54 on limitations of serialization frameworks </strong></h5>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
+<h5 id="p54-on-limitations-of-serialization-frameworks"><strong>p54 on limitations of serialization frameworks </strong><a class="headerlink" href="#p54-on-limitations-of-serialization-frameworks" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>This approach doesn't prevent the invalid data from being written to the master dataset and doesn't help with determining the context in which the corruption happened.</p>
 </blockquote>

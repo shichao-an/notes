@@ -529,8 +529,8 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-8-process-control"><strong>Chapter 8. Process Control</strong></h3>
-<h3 id="process-identifiers">Process Identifiers</h3>
+<h3 id="chapter-8-process-control"><strong>Chapter 8. Process Control</strong><a class="headerlink" href="#chapter-8-process-control" title="Permanent link">&para;</a></h3>
+<h3 id="process-identifiers">Process Identifiers<a class="headerlink" href="#process-identifiers" title="Permanent link">&para;</a></h3>
 <p>Every process has a unique process ID, a non-negative integer. As processes terminate, their IDs can be reused. <u>Most UNIX systems implement algorithms to delay reuse so that newly created processes are assigned IDs different from those used by processes that terminated recently. This prevents a new process from being mistaken for the previous process to have used the same ID.</u></p>
 <p>There are some special processes, but the details differ from implementation to implementation:</p>
 <ul>
@@ -568,7 +568,7 @@
 
 
 <p>None of these functions has an error return.</p>
-<h3 id="fork-function"><code>fork</code> Function</h3>
+<h3 id="fork-function"><code>fork</code> Function<a class="headerlink" href="#fork-function" title="Permanent link">&para;</a></h3>
 <p>An existing process can create a new one by calling the <code>fork</code> function.</p>
 <p><small><a href="https://gist.github.com/shichao-an/1d1bfd83197d3c929164">apue_fork.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
@@ -648,7 +648,7 @@ pid = 431, glob = 6, var = 88
 </ul>
 </li>
 </ul>
-<h4 id="file-sharing">File Sharing</h4>
+<h4 id="file-sharing">File Sharing<a class="headerlink" href="#file-sharing" title="Permanent link">&para;</a></h4>
 <p>One characteristic of <code>fork</code> is that all file descriptors that are open in the parent are duplicated in the child, because it’s as if the <code>dup</code> function had been called for each descriptor. The parent and the child shareafile table entry for every open descriptor.</p>
 <p>For a process that has three different files opened for standard input, standard output, and standard error, on return from <code>fork</code>, we have the arrangement shown below:</p>
 <p><a href="../figure_8.2.png" title="Figure 8.2 Sharing of open files between parent and child after fork"><img alt="Figure 8.2 Sharing of open files between parent and child after fork" src="../figure_8.2_600.png" /></a></p>
@@ -686,12 +686,12 @@ pid = 431, glob = 6, var = 88
 <li>Pending alarms are cleared for the child.</li>
 <li>The set of pending signals for the child is set to the empty set</li>
 </ul>
-<h4 id="the-two-main-reasons-for-fork-to-fail">The two main reasons for <code>fork</code> to fail</h4>
+<h4 id="the-two-main-reasons-for-fork-to-fail">The two main reasons for <code>fork</code> to fail<a class="headerlink" href="#the-two-main-reasons-for-fork-to-fail" title="Permanent link">&para;</a></h4>
 <ol>
 <li>If too many processes are already in the system, which usually means that something else is wrong</li>
 <li>If the total number of processes for this real user ID exceeds the system’s limit. (<code>CHILD_MAX</code> specifies the maximum number of simultaneous processes per real user ID.)</li>
 </ol>
-<h4 id="the-two-uses-for-fork">The two uses for <code>fork</code></h4>
+<h4 id="the-two-uses-for-fork">The two uses for <code>fork</code><a class="headerlink" href="#the-two-uses-for-fork" title="Permanent link">&para;</a></h4>
 <ol>
 <li>When a process wants to duplicate itself so that the parent and the child can each execute different sections of code at the same time.<ul>
 <li>This is common for network servers—the parent waits for a service request from a client. When the request arrives, the parent calls <code>fork</code> and lets the child handle the request. The parent goes back to waiting for the next service request to arrive.</li>
@@ -703,7 +703,7 @@ pid = 431, glob = 6, var = 88
 </li>
 </ol>
 <p>Some operating systems combine the operations from step 2, a <code>fork</code> followed by an <code>exec</code>, into a single operation called a <code>spawn</code>. The UNIX System separates the two, as there are numerous cases where it is useful to <code>fork</code> without doing an <code>exec</code>. Also, separating the two operations allows the child to change the per-process attributes between the <code>fork</code> and the <code>exec</code>, such as I/O redirection, user ID, signal disposition, and so on</p>
-<h3 id="vfork-function"><code>vfork</code> Function</h3>
+<h3 id="vfork-function"><code>vfork</code> Function<a class="headerlink" href="#vfork-function" title="Permanent link">&para;</a></h3>
 <p>The function <code>vfork</code> has the same calling sequence and same return values as <code>fork</code>, but the semantics of the two functions differ.</p>
 <p>The <code>vfork</code> function was intended to create a new process for the purpose of executing a new program (step 2 at the end of the previous section). <u>The <code>vfork</code> function creates the new process, just like <code>fork</code>, without copying the address space of the parent into the child</u>, as the child won’t reference that address space; the child simply calls <code>exec</code> (or <code>exit</code>) right after the <code>vfork</code>. Instead, <u>the child runs in the address space of the parent until it calls either <code>exec</code> or <code>exit</code>.</u></p>
 <p>This optimization is more efficient on some implementations of the UNIX System, but leads to undefined results if the child:</p>
@@ -761,7 +761,7 @@ pid = 29039, glob = 7, var = 89
 </li>
 </ul>
 <p>Most modern implementations of <code>exit</code> do not close the streams. Because the process is about to exit, the kernel will close all the file descriptors open in the process. Closing them in the library simply adds overhead without any benefit.</p>
-<h3 id="exit-functions"><code>exit</code> Functions</h3>
+<h3 id="exit-functions"><code>exit</code> Functions<a class="headerlink" href="#exit-functions" title="Permanent link">&para;</a></h3>
 <p>A process can terminate normally in five ways (as described in <a href="../ch7/#process-termination">Section 7.3</a>):</p>
 <ol>
 <li>Executing a return from the <code>main</code> function. This is equivalent to calling <code>exit</code>.</li>
@@ -795,27 +795,27 @@ pid = 29039, glob = 7, var = 89
 </ol>
 <p>Regardless of how a process terminates, the same code in the kernel is eventually executed. This kernel code closes all the open descriptors for the process, releases the memory that it was using, and so on.</p>
 <p>The terminating process is to be able to notify its parent how it terminated by by passing an exit status as the argument to one of the three exit functions. In the case of an abnormal termination, the kernel (not the process) generates a termination status to indicate the reason for the abnormal termination. In any case, the parent of the process can obtain the termination status from either the <code>wait</code> or the <code>waitpid</code> function.</p>
-<h4 id="exit-status-vs-termination-status">Exit status vs. termination status</h4>
+<h4 id="exit-status-vs-termination-status">Exit status vs. termination status<a class="headerlink" href="#exit-status-vs-termination-status" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong>Exit status</strong>: is the argument to one of the three exit functions or the return value from main.</li>
 <li><strong>Termination status</strong>: the exit status is converted into a termination status by the kernel when <code>_exit</code> is finally called. If the child terminated normally, the parent can obtain the exit status of the child.</li>
 </ul>
-<h4 id="orphan-process">Orphan process</h4>
+<h4 id="orphan-process">Orphan process<a class="headerlink" href="#orphan-process" title="Permanent link">&para;</a></h4>
 <p><strong>Orphan process</strong> (or <strong>orphaned child process</strong>) is any process whose parent terminates.</p>
 <p>The child has a parent process after the call to <code>fork</code>. What happens if the parent terminates before the child? The answer is the <code>init</code> process becomes the parent process of any process whose parent terminates. This is called "the process has been inherited by <code>init</code>". Whenever a process terminates, the kernel goes through all active processes to see whether the terminating process is the parent of any process that still exists. If so, the parent process ID of the surviving process is changed to be 1 (the process ID of <code>init</code>). This way, it's guaranteed that every process has a parent.</p>
-<h4 id="zombie-process">Zombie process</h4>
+<h4 id="zombie-process">Zombie process<a class="headerlink" href="#zombie-process" title="Permanent link">&para;</a></h4>
 <p><strong>Zombie process</strong> is a process that has terminated, but whose parent has not yet waited for it. The <code>ps(1)</code> command prints the state of a zombie process
 as <em>Z</em>.</p>
 <p>What happens when a child terminates before its parent?</p>
 <p>If the child completely disappeared, the parent wouldn’t be able to fetch its termination status when and if the parent was finally ready to check if the child had terminated. The kernel keeps a small amount of information for every terminating process, so that the information is available when the parent of the terminating process calls <code>wait</code> or <code>waitpid</code>. This information consists of the process ID, the termination status of the process, and the amount of CPU time taken by the process. The kernel can discard all the memory used by the process and close its open files.</p>
-<h4 id="inits-children"><code>init</code>'s children</h4>
+<h4 id="inits-children"><code>init</code>'s children<a class="headerlink" href="#inits-children" title="Permanent link">&para;</a></h4>
 <p>What happens when a process that has been inherited by <code>init</code> terminates? It does not become a zombie. <code>init</code> is written so that whenever one of its children terminates, <code>init</code> calls one of the <code>wait</code> functions to fetch the termination status. By doing this, init prevents the system from being clogged by zombies.</p>
 <p>One of init’s children refers to either of the following:</p>
 <ul>
 <li>A process that <code>init</code> generates directly (e.g. <code>getty</code>)</li>
 <li>A process whose parent has terminated and has been subsequently inherited by <code>init</code>.</li>
 </ul>
-<h3 id="wait-and-waitpid-functions"><code>wait</code> and <code>waitpid</code> Functions</h3>
+<h3 id="wait-and-waitpid-functions"><code>wait</code> and <code>waitpid</code> Functions<a class="headerlink" href="#wait-and-waitpid-functions" title="Permanent link">&para;</a></h3>
 <p><u>When a process terminates, either normally or abnormally, the kernel notifies the parent by sending the <code>SIGCHLD</code> signal to the parent.</u> Because the termination of a child is an asynchronous event (it can happen at any time while the parent is running). This signal is the asynchronous notification from the kernel to the parent. The parent can choose to ignore this signal, or it can provide a function that is called when the signal occurs: a signal handler. <u>The default action for this signal is to be ignored.</u></p>
 <p>A process that calls <code>wait</code> or <code>waitpid</code> can:</p>
 <ul>
@@ -951,7 +951,7 @@ abnormal termination, signal number = 8 (core file generated)
 
 
 <p>We print the signal number from <code>WTERMSIG</code>. We can look at the <code>&lt;signal.h&gt;</code> header to verify that <code>SIGABRT</code> has a value of 6 and that <code>SIGFPE</code> has a value of 8.</p>
-<h4 id="wait-for-a-specific-process-waitpid"><code>wait</code> for a specific process: <code>waitpid</code></h4>
+<h4 id="wait-for-a-specific-process-waitpid"><code>wait</code> for a specific process: <code>waitpid</code><a class="headerlink" href="#wait-for-a-specific-process-waitpid" title="Permanent link">&para;</a></h4>
 <p>If we have more than one child, <code>wait</code> returns on termination of any of the children. If we want to wait for a specific process to terminate (assuming we know which process ID we want to wait for), in older versions of the UNIX System, we would have to call <code>wait</code> and compare the returned process ID with the one we’re interested in. The POSIX.1 <code>waitpid</code> function can be used to wait for a specific process.</p>
 <p>The interpretation of the pid argument for waitpid depends on its value:</p>
 <ul>
@@ -961,12 +961,12 @@ abnormal termination, signal number = 8 (core file generated)
 <li><em>pid</em> &lt; −1 - Waits for any child whose process group ID equals the absolute value of <em>pid</em>.</li>
 </ul>
 <p>The <code>waitpid</code> function returns the process ID of the child that terminated and stores the child’s termination status in the memory location pointed to by <em>statloc</em>.</p>
-<h5 id="errors-of-wait-and-waitpid">Errors of <code>wait</code> and <code>waitpid</code></h5>
+<h5 id="errors-of-wait-and-waitpid">Errors of <code>wait</code> and <code>waitpid</code><a class="headerlink" href="#errors-of-wait-and-waitpid" title="Permanent link">&para;</a></h5>
 <ul>
 <li>With <code>wait</code>, the only real error is if the calling process has no children. (Another error return is possible, in case the function call is interrupted by a signal) [p242]</li>
 <li>With <code>waitpid</code>, it’s possible to get an error if the specified process or process group does not exist or is not a child of the calling process</li>
 </ul>
-<h5 id="options-argument-of-waitpid"><em>options</em> argument of <code>waitpid</code></h5>
+<h5 id="options-argument-of-waitpid"><em>options</em> argument of <code>waitpid</code><a class="headerlink" href="#options-argument-of-waitpid" title="Permanent link">&para;</a></h5>
 <p>The <em>options</em> argument either is 0 or is constructed from the bitwise OR of the constants in the table below.</p>
 <p>The <em>options</em> constants for <code>waitpid</code>:</p>
 <table>
@@ -997,7 +997,7 @@ abnormal termination, signal number = 8 (core file generated)
 <li>The <code>waitpid</code> function provides a nonblocking version of <code>wait</code>. There are times when we want to fetch a child’s status, but we don’t want to block.</li>
 <li>The <code>waitpid</code> function provides support for job control with the <code>WUNTRACED</code> and <code>WCONTINUED</code> options.</li>
 </ol>
-<h5 id="fork-twice"><code>fork</code> twice</h5>
+<h5 id="fork-twice"><code>fork</code> twice<a class="headerlink" href="#fork-twice" title="Permanent link">&para;</a></h5>
 <p>Example (<a href="https://github.com/shichao-an/apue.3e/blob/master/proc/fork2.c">fork2.c</a>)</p>
 <p>If we want to write a process so that it <code>fork</code>s a child but we don’t want to wait for the child to complete and we don’t want the child to become a zombie until we terminate, <u>the trick is to call <code>fork</code> twice.</u></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&quot;apue.h&quot;</span><span class="cp"></span>
@@ -1048,7 +1048,7 @@ $ second child, parent pid = 1
 <p>Analysis:</p>
 <p>We call <code>sleep</code> in the second child to ensure that the first child terminates before printing the parent process ID. After a <code>fork</code>, either the parent or the child can continue executing; we never know which will resume execution first. If we didn’t put the second child to sleep, and if it resumed execution after the <code>fork</code> before its parent, the parent process ID that it printed would be that of its parent, not process ID 1.</p>
 <p><u>Note that the shell prints its prompt when the original process terminates, which is before the second child prints its parent process ID.</u></p>
-<h3 id="waitid-function"><code>waitid</code> Function</h3>
+<h3 id="waitid-function"><code>waitid</code> Function<a class="headerlink" href="#waitid-function" title="Permanent link">&para;</a></h3>
 <p>The Single UNIX Specification includes an additional <code>waitid</code> function to retrieve the exit status of a process.</p>
 <p><small><a href="https://gist.github.com/shichao-an/30873cd97704d1465d3f">apue_waitid.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/wait.h&gt;</span><span class="cp"></span>
@@ -1124,7 +1124,7 @@ $ second child, parent pid = 1
 <p>The <em>infop</em> argument is a pointer to a <code>siginfo</code> structure. This structure contains detailed information about the signal generated that caused the state change in the child process (Section 10.14)</p>
 </li>
 </ul>
-<h3 id="wait3-and-wait4-functions"><code>wait3</code> and <code>wait4</code> Functions</h3>
+<h3 id="wait3-and-wait4-functions"><code>wait3</code> and <code>wait4</code> Functions<a class="headerlink" href="#wait3-and-wait4-functions" title="Permanent link">&para;</a></h3>
 <p>Most UNIX system implementations provide two additional functions: <code>wait3</code> and <code>wait4</code>, with an additional argument <em>rusage</em> that allows the kernel to return a summary of the resources used by the terminated process and all its child processes.</p>
 <p><small><a href="https://gist.github.com/shichao-an/5cb7ed8df3666337a292">apue_wait3.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;sys/types.h&gt;</span><span class="cp"></span>
@@ -1140,7 +1140,7 @@ $ second child, parent pid = 1
 
 
 <p>The resource information includes such statistics as the amount of user CPU time, amount of system CPU time, number of page faults, number of signals received, and the like. Refer to the <code>getrusage(2)</code> manual page for additional details.</p>
-<h3 id="race-conditions">Race Conditions</h3>
+<h3 id="race-conditions">Race Conditions<a class="headerlink" href="#race-conditions" title="Permanent link">&para;</a></h3>
 <p>A <strong>race condition</strong> occurs when multiple processes are trying to do something with shared data and the final outcome depends on the order in which the processes run. The <code>fork</code> function is a lively breeding ground for race conditions, <u>if any of the logic after the <code>fork</code> depends on whether the parent or child runs first. In general, we cannot predict which process runs first. Even if we knew which process would run first, what happens after that process starts running depends on the system load and the kernel’s scheduling algorithm.</u></p>
 <p>We saw a potential race condition in the program in <a href="#fork-twice">Figure 8.8</a> when the second child printed its parent process ID.</p>
 <ul>
@@ -1272,7 +1272,7 @@ We set the standard output unbuffered, so every character output generates a wri
 </pre></div>
 
 
-<h3 id="exec-functions"><code>exec</code> Functions</h3>
+<h3 id="exec-functions"><code>exec</code> Functions<a class="headerlink" href="#exec-functions" title="Permanent link">&para;</a></h3>
 <p>One use of the <code>fork</code> function is to create a new process (the child) that then causes another program to be executed by calling one of the <code>exec</code> functions.</p>
 <ul>
 <li>When a process calls one of the <code>exec</code> functions, that process is completely replaced by the new program which starts executing at its <code>main</code> function.</li>
@@ -1339,7 +1339,7 @@ If either <code>execlp</code> or <code>execvp</code> finds an executable file us
 </pre></div>
 
 
-<h4 id="differences-among-the-seven-exec-functions">Differences among the seven <code>exec</code> functions</h4>
+<h4 id="differences-among-the-seven-exec-functions">Differences among the seven <code>exec</code> functions<a class="headerlink" href="#differences-among-the-seven-exec-functions" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -1483,7 +1483,7 @@ If either <code>execlp</code> or <code>execvp</code> finds an executable file us
 <code>opendir</code> function calling <code>fcntl</code> to set the close-on-exec flag.</li>
 </ul>
 <p>The real user ID and the real group ID remain the same across the <code>exec</code>, but the effective IDs can change, depending on the status of the set-user-ID and the setgroup-ID bits for the program file that is executed. If the set-user-ID bit is set for the new program, the effective user ID becomes the owner ID of the program file.  Otherwise, the effective user ID is not changed (it’s not set to the real user ID). The group ID is handled in the same way.</p>
-<h4 id="exec-library-functions-and-system-call"><code>exec</code> library functions and system call</h4>
+<h4 id="exec-library-functions-and-system-call"><code>exec</code> library functions and system call<a class="headerlink" href="#exec-library-functions-and-system-call" title="Permanent link">&para;</a></h4>
 <p>In many UNIX system implementations, only one of these seven functions, <code>execve</code>, is a system call within the kernel. The other six are just library functions that eventually invoke this system call.</p>
 <p>Relationship of the seven <code>exec</code> functions:</p>
 <p><a href="../figure_8.15.png" title="Figure 8.15 Relationship of the seven exec functions"><img alt="Figure 8.15 Relationship of the seven exec functions" src="../figure_8.15_600.png" /></a></p>
@@ -1573,7 +1573,7 @@ HOME=/home/sar
 </li>
 <li>The shell prompt (<code>$</code>) appeared before the printing of <code>argv[0]</code> from the second exec. This occurred because the parent did not wait for this child process to finish.</li>
 </ul>
-<h3 id="changing-user-ids-and-group-ids">Changing User IDs and Group IDs</h3>
+<h3 id="changing-user-ids-and-group-ids">Changing User IDs and Group IDs<a class="headerlink" href="#changing-user-ids-and-group-ids" title="Permanent link">&para;</a></h3>
 <p>In the UNIX System, privileges and access control are on user and group IDs. When programs need additional privileges or access to unallowed resources, they need to change their user or group ID to an ID that has the appropriate privilege or access. It is similar when the programs need to lower their privileges or prevent access to certain resources. [p255]</p>
 <p>When designing applications, we try to use the <strong>least-privilege</strong> model, which means our programs should use the least privilege necessary to accomplish any given task. This reduces the risk that security might be compromised by a malicious user trying to trick our programs into using their privileges in unintended ways.</p>
 <p>We can set the real user ID and effective user ID with the <code>setuid</code> function and set the real group ID and the effective group ID with the <code>setgid</code> function.</p>
@@ -1611,7 +1611,7 @@ HOME=/home/sar
 <p>The following figure summarizes the various ways these three user IDs can be changed:</p>
 <p><a href="../figure_8.18.png" title="Figure 8.18 Ways to change the three user IDs"><img alt="Figure 8.18 Ways to change the three user IDs" src="../figure_8.18_600.png" /></a></p>
 <p>We can obtain only the current value of the real user ID and the effective user ID with the functions <code>getuid</code> and <code>geteuid</code> (<a href="https://gist.github.com/shichao-an/4afacfab973219fb4721">apue_getpid.h</a>). There is no portable way to obtain the current value of the saved set-user-ID. FreeBSD 8.0 and LINUX 3.2.0 provide the <code>getresuid</code> and <code>getresgid</code> functions, which can be used to get the saved set-user-ID and saved set-group-ID, respectively.</p>
-<h4 id="setreuid-and-setregid-functions"><code>setreuid</code> and <code>setregid</code> Functions</h4>
+<h4 id="setreuid-and-setregid-functions"><code>setreuid</code> and <code>setregid</code> Functions<a class="headerlink" href="#setreuid-and-setregid-functions" title="Permanent link">&para;</a></h4>
 <p>Historically, BSD supported the swapping of the real user ID and the effective user ID with the setreuid function.</p>
 <p><small><a href="https://gist.github.com/shichao-an/2228040fa94d5bf40fb9">apue_setreuid.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
@@ -1629,7 +1629,7 @@ HOME=/home/sar
 <li>When the saved set-user-ID feature was introduced with POSIX.1, the rule was enhanced to also allow an unprivileged user to set its effective user ID to its saved set-user-ID.</li>
 </ul>
 <p>[p257]</p>
-<h4 id="seteuid-and-setegid-functions"><code>seteuid</code> and <code>setegid</code> Functions</h4>
+<h4 id="seteuid-and-setegid-functions"><code>seteuid</code> and <code>setegid</code> Functions<a class="headerlink" href="#seteuid-and-setegid-functions" title="Permanent link">&para;</a></h4>
 <p>POSIX.1 includes <code>seteuid</code> and <code>setegid</code> that only change the effective user ID or effective group ID.</p>
 <p><small><a href="https://gist.github.com/shichao-an/e6ef350b0f660b11e2ba">apue_seteuid.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
@@ -1647,9 +1647,9 @@ HOME=/home/sar
 </ul>
 <p>The figure below summarizes all the functions that we’ve described here that modify the three user IDs:</p>
 <p><a href="../figure_8.19.png" title="Figure 8.19 Summary of all the functions that set the various user IDs"><img alt="Figure 8.19 Summary of all the functions that set the various user IDs" src="../figure_8.19_600.png" /></a></p>
-<h4 id="group-ids">Group IDs</h4>
+<h4 id="group-ids">Group IDs<a class="headerlink" href="#group-ids" title="Permanent link">&para;</a></h4>
 <p>Everything covered so far for user IDs in this section also applies in a similar fashion to group IDs. The <a href="../ch6/#supplementary-group-ids">supplementary group IDs</a> are not affected by <code>setgid</code>, <code>setregid</code>, or <code>setegid</code>.</p>
-<h4 id="example-of-set-user-id-programs-at">Example of set-user-ID programs: <code>at</code></h4>
+<h4 id="example-of-set-user-id-programs-at">Example of set-user-ID programs: <code>at</code><a class="headerlink" href="#example-of-set-user-id-programs-at" title="Permanent link">&para;</a></h4>
 <p>On Linux 3.2.0, the <code>at</code> program is installed set-user-ID to user <code>daemon</code> and the programs are run by the <code>atd(8)</code> daemon. This allows the at command to write privileged files owned by the daemon that will run the commands on behalf of the user running the <code>at</code> command.</p>
 <p>To prevent privilege breach, the daemon that run the commands on users's behalf have to switch between sets of privileges: users and those of the daemon. The following steps take place [p259-260]:</p>
 <ol>
@@ -1686,7 +1686,7 @@ HOME=/home/sar
 </ol>
 <p>Then the daemon safely executes commands on our behalf, because it can access only the files to which we normally have access.</p>
 <p>By using the saved set-user-ID in this fashion, we can use the extra privileges granted to us by the set-user-ID of the program file only when we need elevated privileges. Any other time, however, the process runs with our normal permissions. [p260]</p>
-<h3 id="interpreter-files">Interpreter Files</h3>
+<h3 id="interpreter-files">Interpreter Files<a class="headerlink" href="#interpreter-files" title="Permanent link">&para;</a></h3>
 <p>On contemporary UNIX systems, <strong>interpreter files</strong> are text files that begin with a line of the form (<a href="https://en.wikipedia.org/wiki/Shebang_(Unix)">shebang</a>):</p>
 <div class="codehilite"><pre><span class="ch">#! pathname [ optional-argument ]</span>
 </pre></div>
@@ -1702,13 +1702,13 @@ HOME=/home/sar
 <li>The recognition of interpreter files is done within the kernel as part of processing the <code>exec</code> system call</li>
 <li>The actual file that gets executed by the kernel is not the interpreter file, but rather the file specified by the <em>pathname</em> on the first line of the interpreter file.</li>
 </ul>
-<h5 id="interpreter-file-vs-interpreter">Interpreter file vs. Interpreter</h5>
+<h5 id="interpreter-file-vs-interpreter">Interpreter file vs. Interpreter<a class="headerlink" href="#interpreter-file-vs-interpreter" title="Permanent link">&para;</a></h5>
 <ul>
 <li>Interpreter file: is a text file that begins with <code>#!</code>.</li>
 <li>Interpreter: is specified by the <em>pathname</em> on the first line of the interpreter file.</li>
 </ul>
 <p>Be aware that systems place a size limit on the first line of an interpreter file. This limit includes the <code>#!</code>, the <em>pathname</em>, the optional argument, the terminating newline, and any spaces. On Linux 3.2.0, the limit is 128 bytes.</p>
-<h5 id="example-a-program-that-execs-an-interpreter-file">Example: A program that <code>exec</code>s an interpreter file</h5>
+<h5 id="example-a-program-that-execs-an-interpreter-file">Example: A program that <code>exec</code>s an interpreter file<a class="headerlink" href="#example-a-program-that-execs-an-interpreter-file" title="Permanent link">&para;</a></h5>
 <ul>
 <li><a href="https://github.com/shichao-an/apue.3e/blob/master/proc/exec2.c">exec2.c</a></li>
 </ul>
@@ -1756,7 +1756,7 @@ argv[4]: MY ARG2
 <li>Both <code>argv[1]</code> and <code>argv[2]</code> from the call to <code>execl</code> have been shifted right two positions.</li>
 <li>The kernel takes the <em>pathname</em> from the <code>execl</code> call instead of the first argument (<code>testinterp</code>), on the assumption that the <em>pathname</em> might contain more information than the first argument.</li>
 </ul>
-<h5 id="example-awk">Example: <code>awk</code></h5>
+<h5 id="example-awk">Example: <code>awk</code><a class="headerlink" href="#example-awk" title="Permanent link">&para;</a></h5>
 <p>A common use for the optional argument following the interpreter pathname is to specify the <code>-f</code> option for programs that support this option. For example, an <code>awk(1)</code> program can be executed as:</p>
 <div class="codehilite"><pre>awk -f myfile
 </pre></div>
@@ -1814,7 +1814,7 @@ ARGV[3] = f3
 <li>The shell correctly runs the script, but to run the <code>awk</code> programs, the shell does <code>fork</code>, <code>exec</code> and <code>wait</code>.</li>
 </ol>
 <p>Third, interpreter scripts let us write shell scripts using shells other than <code>/bin/sh</code>. When it finds an executable file that isn’t a machine executable, <code>execlp</code> has to choose a shell to invoke, and it always uses <code>/bin/sh</code>.</p>
-<h3 id="system-function"><code>system</code> Function</h3>
+<h3 id="system-function"><code>system</code> Function<a class="headerlink" href="#system-function" title="Permanent link">&para;</a></h3>
 <p>It is convenient to execute a command string from within a program.</p>
 <p><small><a href="https://gist.github.com/shichao-an/37133deff99ae0661101">apue_system.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
@@ -1870,12 +1870,12 @@ ARGV[3] = f3
 <li><code>_exit</code> is called instead of <code>exit</code>. This prevents any standard I/O buffers, which would have been copied from the parent to the child across the <code>fork</code>, from being flushed in the child.</li>
 </ul>
 <p>[p266-267]</p>
-<h4 id="set-user-id-programs">Set-User-ID Programs</h4>
+<h4 id="set-user-id-programs">Set-User-ID Programs<a class="headerlink" href="#set-user-id-programs" title="Permanent link">&para;</a></h4>
 <p><u>Calling <code>system</code> from a set-user-ID program creates a security hole and should never be attempted.</u></p>
 <p>[p267-269]</p>
 <p>The superuser permissions that we gave the set-user-ID program are retained across the <code>fork</code> and <code>exec</code> that are done by <code>system</code>.</p>
 <p>If it is running with special permissions (set-user-ID or set-group-ID), and wants to spawn another process, a process should use <code>fork</code> and <code>exec</code> directly, being certain to change back to normal permissions after the <code>fork</code>, before calling <code>exec</code>. The <code>system</code> function should never be used from a set-user-ID or a set-group-ID program.</p>
-<h3 id="process-accounting">Process Accounting</h3>
+<h3 id="process-accounting">Process Accounting<a class="headerlink" href="#process-accounting" title="Permanent link">&para;</a></h3>
 <p>On UNIX systems, process accounting can be enabled so that kernel writes an accounting record each time a process terminates, which typically contain a small amount of binary data with the name of the command, the amount of CPU time used, the user ID and group ID, the starting time.</p>
 <p>The function <code>acct</code> enables and disables process accounting. The only use of this function is from the <code>accton(8)</code> command.</p>
 <p>A superuser executes accton with a pathname argument to enable accounting. The accounting records are written to the specified file, which is usually <code>/var/account/acct</code> on FreeBSD and Mac OS X, <code>/var/log/account/pacct</code> on Linux, and <code>/var/adm/pacct</code> on Solaris. Accounting is turned off by executing accton without any arguments.</p>
@@ -1978,7 +1978,7 @@ ARGV[3] = f3
 <li>The order of the records in the accounting file corresponds to the termination order of the processes, not the order in which they were started. [p270]. We can’t reconstruct the exact starting order of various processes, given the data in the accounting file.</li>
 </ul>
 <p>The accounting records correspond to processes, not programs. A new record is initialized by the kernel for the child after a <code>fork</code>, not when a new program is executed. Although exec doesn’t create a new accounting record, the command name changes, and the <code>AFORK</code> flag is cleared. For example, if A <code>exec</code>s B, then B <code>exec</code>s C, and C <code>exit</code>, only a single accounting record is written.  The command name in the record corresponds to program C, but the CPU times are the sum for programs A, B, and C.</p>
-<h3 id="user-identification">User Identification</h3>
+<h3 id="user-identification">User Identification<a class="headerlink" href="#user-identification" title="Permanent link">&para;</a></h3>
 <p>Any process can find out its real and effective user ID and group ID. <code>getpwuid(getuid())</code> can be used to find out the login name of the user who’s running the program. However, a single user can have multiple login names, that is, a person might have multiple entries in the password file with the same user ID to have a different login shell for each entry. The system normally keeps track of the name we log in under the <code>utmp</code> file (see <a href="../../apue/ch6/#login-accounting">Section 6.8</a>), and the <code>getlogin</code> function provides a way to fetch that login name.</p>
 <p><small><a href="https://gist.github.com/shichao-an/c77a9e8660a3405a983c">apue_getlogin.h</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
@@ -1992,7 +1992,7 @@ ARGV[3] = f3
 <p>This function can fail if the process is not attached to a terminal that a user logged in to. We normally call these processes <strong>daemons</strong>.</p>
 <p>Given the login name, we can then use it to look up the user in the password file (e.g. to determine the login shell) using <code>getpwnam</code>.</p>
 <p>The environment variable <code>LOGNAME</code> is usually initialized with the user’s login name by <code>login(1)</code> and inherited by the login shell. However, a user can modify an environment variable, so we shouldn’t use <code>LOGNAME</code> to validate the user in any way. Instead, we should use <code>getlogin</code>.</p>
-<h3 id="process-scheduling">Process Scheduling</h3>
+<h3 id="process-scheduling">Process Scheduling<a class="headerlink" href="#process-scheduling" title="Permanent link">&para;</a></h3>
 <p>Historically, the UNIX System provided processes with only coarse control over their scheduling priority. The scheduling policy and priority were determined by the kernel.</p>
 <ul>
 <li>A process could choose to run with lower priority by adjusting its <strong>nice value</strong><ul>
@@ -2054,7 +2054,7 @@ ARGV[3] = f3
 
 <p>The <em>which</em> and <em>who</em> arguments are the same as in the <em>getpriority</em> function. The <em>value</em> is added to <code>NZERO</code> and this becomes the new nice value.</p>
 <p>A child process inherits the nice value from its parent process in FreeBSD 8.0, Linux 3.2.0, Mac OS X 10.6.8, and Solaris 10.</p>
-<h3 id="process-times">Process Times</h3>
+<h3 id="process-times">Process Times<a class="headerlink" href="#process-times" title="Permanent link">&para;</a></h3>
 <p>Three times can be measured:</p>
 <ul>
 <li><strong>Wall clock time</strong></li>
@@ -2107,12 +2107,12 @@ ARGV[3] = f3
 </pre></div>
 
 
-<h3 id="summary">Summary</h3>
+<h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>A thorough understanding of process control is essential for advanced UNIX programming. There are only a few functions to master: <code>fork</code>, the <code>exec</code> family, <code>_exit</code>, <code>wait</code>, and <code>waitpid</code>. These primitives are used in many applications.</p>
 <p>Examination of the <code>system</code> function and process accounting gave us another look at all these process control functions.</p>
 <p>An understanding of the various user IDs and group IDs that are provided (real, effective, and saved) is critical to writing safe set-user-ID programs.</p>
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
 <p>p235 on <code>vfork</code></p>
 <blockquote>
 <p>If we call <code>exit</code> instead, the results are indeterminate. Depending on the implementation of the standard I/O library, we might see no difference in the output, or we might find that the output from the first <code>printf</code> in the parent has disappeared.</p>

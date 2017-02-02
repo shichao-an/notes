@@ -496,7 +496,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-8-bottom-halves-and-deferring-work"><strong>Chapter 8. Bottom Halves and Deferring Work</strong></h3>
+<h3 id="chapter-8-bottom-halves-and-deferring-work"><strong>Chapter 8. Bottom Halves and Deferring Work</strong><a class="headerlink" href="#chapter-8-bottom-halves-and-deferring-work" title="Permanent link">&para;</a></h3>
 <p>Interrupt handlers, discussed in the <a href="../ch7/">previous chapter</a>, can form only the first half of any interrupt processing solution, with the following limitations:</p>
 <ul>
 <li>Interrupt handlers run asynchronously and interrupt other potentially important code, including other interrupt handlers. Therefore, to avoid stalling the interrupted code for too long, interrupt handlers need to run as quickly as possible.</li>
@@ -519,7 +519,7 @@
 <li>The first part, interrupt handlers (<strong>top halves</strong>), are executed by the kernel asynchronously in immediate response to a hardware interrupt, as discussed in the previous chapter.</li>
 <li>This chapter looks at the second part of the interrupt solution, <strong>bottom halves</strong>.</li>
 </ol>
-<h3 id="bottom-halves">Bottom Halves</h3>
+<h3 id="bottom-halves">Bottom Halves<a class="headerlink" href="#bottom-halves" title="Permanent link">&para;</a></h3>
 <p>The job of bottom halves is to perform any interrupt-related work not performed by the interrupt handler. You want the interrupt handler to perform as little work as possible and in turn be as fast as possible. By offloading as much work as possible to the bottom half, the interrupt handler can return control of the system to whatever it interrupted as quickly as possible.</p>
 <p>However, the interrupt handler must perform some work; if the work is timing-sensitive, it makes sense to perform it in the interrupt handler. For example, the interrupt handler almost assuredly needs to acknowledge to the hardware the receipt of the interrupt. It may need to copy data to or from the hardware.</p>
 <p>Almost anything else can be performed in the bottom half. For example, if you copy data from the hardware into memory in the top half, it makes sense to process it in the bottom half.</p>
@@ -532,7 +532,7 @@
 <li>For everything else, consider performing the work in the bottom half.</li>
 </ul>
 <p>When attempting to write your own device driver, looking at other interrupt handlers and their corresponding bottom halves can help. When deciding how to divide your interrupt processing work between the top and bottom half, ask yourself what <em>must</em> be in the top half and what <em>can</em> be in the bottom half. Generally, the quicker the interrupt handler executes, the better.</p>
-<h4 id="why-bottom-halves">Why Bottom Halves?</h4>
+<h4 id="why-bottom-halves">Why Bottom Halves?<a class="headerlink" href="#why-bottom-halves" title="Permanent link">&para;</a></h4>
 <p>It is crucial to understand:</p>
 <ul>
 <li>Why to defer work</li>
@@ -545,7 +545,7 @@
 </ul>
 <p>Thus, minimizing the time spent with interrupts disabled is important for system response and performance.</p>
 <p>Besides, interrupt handlers run asynchronously with respect to other code, even other interrupt handlers. Therefore you should work to minimize how long interrupt handlers run. Processing incoming network traffic should not prevent the kernel's receipt of keystrokes.The solution is to defer some of the work until later.</p>
-<h5 id="when-is-later"><strong>When is "later"?</strong> *</h5>
+<h5 id="when-is-later"><strong>When is "later"?</strong> *<a class="headerlink" href="#when-is-later" title="Permanent link">&para;</a></h5>
 <p><em>Later</em> is often simply <em>not now</em>. <u>The point of a bottom half is not to do work at some specific point in the future, but simply to defer work until any point in the future when the system is less busy and interrupts are again enabled.</u> Often, bottom halves run immediately after the interrupt returns. The key is that they run with all interrupts enabled.</p>
 <p>Linux is not the only operating systems that separates the processing of hardware interrupts into two parts.</p>
 <ul>
@@ -553,9 +553,9 @@
 <li>The bottom half (however it is implemented) runs later with all interrupts enabled.</li>
 </ul>
 <p>This design keeps system latency low by running with interrupts disabled for as little time as necessary.</p>
-<h4 id="a-world-of-bottom-halves">A World of Bottom Halves</h4>
+<h4 id="a-world-of-bottom-halves">A World of Bottom Halves<a class="headerlink" href="#a-world-of-bottom-halves" title="Permanent link">&para;</a></h4>
 <p>While the top half is implemented entirely via the interrupt handler, multiple mechanisms are available for implementing a bottom half. These mechanisms are different interfaces and subsystems that enable you to implement bottom halves. This chapter discusses multiple methods of implementing bottom halves. [p135]</p>
-<h5 id="the-original-bottom-half"><strong>The Original "Bottom Half"</strong></h5>
+<h5 id="the-original-bottom-half"><strong>The Original "Bottom Half"</strong><a class="headerlink" href="#the-original-bottom-half" title="Permanent link">&para;</a></h5>
 <p>In the beginning, Linux provided only the "bottom half" for implementing bottom halves. This name was logical because at the time that was the only means available for deferring work. The infrastructure was also known as <em>BH</em> to avoid confusion with the generic term <em>bottom half</em>.</p>
 <p>The BH interface was simple.</p>
 <ul>
@@ -564,7 +564,7 @@
 <li>Each BH was globally synchronized. No two could run at the same time, even on different processors.</li>
 </ul>
 <p>This was simple and easy to use, but was also inflexible and a bottleneck.</p>
-<h5 id="task-queues"><strong>Task Queues</strong></h5>
+<h5 id="task-queues"><strong>Task Queues</strong><a class="headerlink" href="#task-queues" title="Permanent link">&para;</a></h5>
 <p>The kernel developers later introduced <em>task queues</em> both as a method of deferring work and as a replacement for the BH mechanism.</p>
 <p>The kernel defined a family of queues.</p>
 <ul>
@@ -573,7 +573,7 @@
 <li>Drivers could register their bottom halves in the appropriate queue.</li>
 </ul>
 <p>This worked fairly well, but it was still too inflexible to replace the BH interface entirely. It also was not lightweight enough for performance-critical subsystems, such as networking.</p>
-<h5 id="softirqs-and-tasklets"><strong>Softirqs and Tasklets</strong></h5>
+<h5 id="softirqs-and-tasklets"><strong>Softirqs and Tasklets</strong><a class="headerlink" href="#softirqs-and-tasklets" title="Permanent link">&para;</a></h5>
 <p>The <em>softirqs</em> and <em>tasklets</em> were introduced during the 2.3 development series, to completely replace the BH interface.</p>
 <ul>
 <li>Softirqs are a set of statically defined bottom halves that can run simultaneously on any processor; even two of the same type can run concurrently.</li>
@@ -590,10 +590,10 @@
 <li>tasklets</li>
 <li>Work queues</li>
 </ul>
-<h5 id="kernel-timers"><strong>Kernel Timers</strong> *</h5>
+<h5 id="kernel-timers"><strong>Kernel Timers</strong> *<a class="headerlink" href="#kernel-timers" title="Permanent link">&para;</a></h5>
 <p><em>Kernel timers</em> is another mechanism for deferring work. Unlike the mechanisms discussed in the chapter, timers defer work for a specified amount of time. That is, although the tools discussed in this chapter are useful to defer work to any time but now, you use timers to defer work until at least a specific time has elapsed.</p>
 <p>Therefore, timers have different uses than the general mechanisms discussed in this chapter.  A full discussion of timers is given in <a href="../ch11/">Chapter 11 Timers and Time Management</a>.</p>
-<h5 id="dispelling-the-confusion"><strong>Dispelling the Confusion</strong></h5>
+<h5 id="dispelling-the-confusion"><strong>Dispelling the Confusion</strong><a class="headerlink" href="#dispelling-the-confusion" title="Permanent link">&para;</a></h5>
 <p><em>Bottom half</em> is a generic operating system term referring to the deferred portion of interrupt processing. All the kernel's mechanisms for deferring work are "bottom halves". Some people also confusingly call all bottom halves "softirqs".</p>
 <p>Bottom half also refers to the original deferred work mechanism in Linux. This mechanism is also known as a BH, so we call it by that name now and leave the former as a generic description. The BH mechanism was deprecated a while back and fully removed in the 2.5 development kernel series.</p>
 <p>In the current three methods that exist for deferring work, tasklets are built on softirqs and work queues are their own subsystem. The following table presents a history of bottom halves.</p>
@@ -627,9 +627,9 @@
 </tr>
 </tbody>
 </table>
-<h3 id="softirqs">Softirqs</h3>
+<h3 id="softirqs">Softirqs<a class="headerlink" href="#softirqs" title="Permanent link">&para;</a></h3>
 <p>Softirqs are rarely used directly; tasklets, which are built on softirqs are a much more common form of bottom half. The softirq code lives in the file <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/softirq.c">kernel/softirq.c</a> in the kernel source tree.</p>
-<h4 id="implementing-softirqs">Implementing Softirqs</h4>
+<h4 id="implementing-softirqs">Implementing Softirqs<a class="headerlink" href="#implementing-softirqs" title="Permanent link">&para;</a></h4>
 <p>Softirqs are statically allocated at compile time. Unlike tasklets, you cannot dynamically register and destroy softirqs. Softirqs are represented by the <code>softirq_action</code> structure, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h"><code>&lt;linux/interrupt.h&gt;</code></a>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L366">include/linux/interrupt.h#L366</a></small></p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">softirq_action</span>
@@ -645,7 +645,7 @@
 
 
 <p>Each registered softirq consumes one entry in the array. Consequently, there are <code>NR_SOFTIRQS</code> registered softirqs. The number of registered softirqs is statically determined at compile time and cannot be changed dynamically. The kernel enforces a limit of 32 registered softirqs. In the current kernel, only nine exist.</p>
-<h5 id="the-softirq-handler"><strong>The Softirq Handler</strong></h5>
+<h5 id="the-softirq-handler"><strong>The Softirq Handler</strong><a class="headerlink" href="#the-softirq-handler" title="Permanent link">&para;</a></h5>
 <p>The prototype of a softirq handler, <code>action</code>, looks like:</p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="nf">softirq_handler</span><span class="p">(</span><span class="k">struct</span> <span class="n">softirq_action</span> <span class="o">*</span><span class="p">);</span>
 </pre></div>
@@ -658,7 +658,7 @@
 
 <p>Note that the kernel passes the entire structure to the softirq handler. This trick enables future additions to the structure without requiring a change in every softirq handler.</p>
 <p>A softirq never preempts another softirq. The only event that can preempt a softirq is an interrupt handler. Another softirq (even the same one) can run on another processor, however.</p>
-<h5 id="executing-softirqs"><strong>Executing Softirqs</strong></h5>
+<h5 id="executing-softirqs"><strong>Executing Softirqs</strong><a class="headerlink" href="#executing-softirqs" title="Permanent link">&para;</a></h5>
 <p>A registered softirq must be marked before it will execute. This is called <em>raising the softirq</em>. Usually, an interrupt handler marks its softirq for execution before returning. Then, at a suitable time, the softirq runs. Pending softirqs are checked for and executed in the following places:</p>
 <ul>
 <li>In the return from hardware interrupt code path</li>
@@ -707,7 +707,7 @@
 </ul>
 </li>
 </ol>
-<h4 id="using-softirqs">Using Softirqs</h4>
+<h4 id="using-softirqs">Using Softirqs<a class="headerlink" href="#using-softirqs" title="Permanent link">&para;</a></h4>
 <p>Softirqs are reserved for the most timing-critical and important bottom-half processing on the system.</p>
 <p>Currently, only two subsystems directly use softirqs:</p>
 <ul>
@@ -716,7 +716,7 @@
 </ul>
 <p>Additionally, kernel timers and tasklets are built on top of softirqs.</p>
 <p>If you add a new softirq, you normally want to ask yourself why using a tasklet is insufficient. Tasklets are dynamically created and are simpler to use because of their weaker locking requirements, and they still perform quite well. Nonetheless, for timing-critical applications that can do their own locking in an efficient way, softirqs might be the correct solution.</p>
-<h5 id="assigning-an-index"><strong>Assigning an Index</strong></h5>
+<h5 id="assigning-an-index"><strong>Assigning an Index</strong><a class="headerlink" href="#assigning-an-index" title="Permanent link">&para;</a></h5>
 <p>Softirqs are declared statically at compile time via an <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L341"><code>enum</code></a> in <code>&lt;linux/interrupt.h&gt;</code>. The kernel uses this index, which starts at zero, as a relative priority. Softirqs with the lowest numerical priority execute before those with a higher numerical priority.</p>
 <p>Creating a new softirq includes adding a new entry to this <code>enum</code>. When adding a new softirq, you might not want to simply add your entry to the end of the list; instead, you need to insert the new entry depending on the priority you want to give it. By convention, <code>HI_SOFTIRQ</code> is always the first and <code>RCU_SOFTIRQ</code> is always the last entry. A new entry likely belongs in between <code>BLOCK_SOFTIRQ</code> and <code>TASKLET_SOFTIRQ</code>.</p>
 <p>The following table contains a list of the existing softirq types.</p>
@@ -776,7 +776,7 @@
 </tr>
 </tbody>
 </table>
-<h5 id="registering-your-handler"><strong>Registering Your Handler</strong></h5>
+<h5 id="registering-your-handler"><strong>Registering Your Handler</strong><a class="headerlink" href="#registering-your-handler" title="Permanent link">&para;</a></h5>
 <p>Next, the softirq handler is registered at run-time via <code>open_softirq()</code>, which takes two parameters: the softirq's index and its handler function. For example, the networking subsystem registers its softirqs like this, in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c">net/core/dev.c</a>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/net/core/dev.c#L6017">net/core/dev.c#L6017</a></small></p>
 <div class="codehilite"><pre><span class="n">open_softirq</span><span class="p">(</span><span class="n">NET_TX_SOFTIRQ</span><span class="p">,</span> <span class="n">net_tx_action</span><span class="p">);</span>
@@ -791,7 +791,7 @@
 </ul>
 <p>Here, locking is an important point, and it is the reason tasklets are usually preferred. Simply preventing your softirqs from running concurrently is not ideal. If a softirq obtained a lock to prevent another instance of itself from running simultaneously, there would be no reason to use a softirq. Consequently, most softirq handlers resort to per-processor data (data unique to each processor and thus not requiring locking) and other tricks to avoid explicit locking and provide excellent scalability.</p>
 <p>The reason for using softirqs is scalability. If you do not need to scale to infinitely many processors, then use a tasklet. Tasklets are essentially softirqs in which multiple instances of the same handler cannot run concurrently on multiple processors.</p>
-<h5 id="raising-your-softirq"><strong>Raising Your Softirq</strong></h5>
+<h5 id="raising-your-softirq"><strong>Raising Your Softirq</strong><a class="headerlink" href="#raising-your-softirq" title="Permanent link">&para;</a></h5>
 <p>After a handler is added to the <code>enum</code> list and registered via <code>open_softirq()</code>, it is ready to run. To mark it pending, so it is run at the next invocation of <code>do_softirq()</code>, call <code>raise_softirq()</code>. For example, the networking subsystem would call:</p>
 <div class="codehilite"><pre><span class="n">raise_softirq</span><span class="p">(</span><span class="n">NET_TX_SOFTIRQ</span><span class="p">);</span>
 </pre></div>
@@ -806,17 +806,17 @@
 
 
 <p>Softirqs are most often raised from within interrupt handlers. In the case of interrupt handlers, the interrupt handler performs the basic hardware-related work, raises the softirq, and then exits. When processing interrupts, the kernel invokes <code>do_softirq()</code>. The softirq then runs and picks up where the interrupt handler left off. In this example, the "top half" and "bottom half" naming should make sense.</p>
-<h3 id="tasklets">Tasklets</h3>
+<h3 id="tasklets">Tasklets<a class="headerlink" href="#tasklets" title="Permanent link">&para;</a></h3>
 <p>Tasklets are a bottom-half mechanism built on top of softirqs. As mentioned, they have nothing to do with tasks. Tasklets are similar in nature and behavior to softirqs, but have a simpler interface and relaxed locking rules.</p>
 <p>When writing a device driver, you almost always want to use tasklets. Softirqs are required only for high-frequency and highly threaded uses. Tasklets, on the other hand, work fine for the vast majority of cases and are very easy to use.</p>
-<h4 id="implementing-tasklets">Implementing Tasklets</h4>
+<h4 id="implementing-tasklets">Implementing Tasklets<a class="headerlink" href="#implementing-tasklets" title="Permanent link">&para;</a></h4>
 <p>Because tasklets are implemented on top of softirqs, they are softirqs. As discussed, tasklets are represented by two softirqs:</p>
 <ul>
 <li><code>HI_SOFTIRQ</code></li>
 <li><code>TASKLET_SOFTIRQ</code>.</li>
 </ul>
 <p>The only difference in these types is that the <code>HI_SOFTIRQ</code>-based tasklets run prior to the <code>TASKLET_SOFTIRQ</code>-based tasklets.</p>
-<h5 id="the-tasklet-structure"><strong>The Tasklet Structure</strong></h5>
+<h5 id="the-tasklet-structure"><strong>The Tasklet Structure</strong><a class="headerlink" href="#the-tasklet-structure" title="Permanent link">&para;</a></h5>
 <p>Tasklets are represented by the <code>tasklet_struct</code> structure. Each structure represents a unique tasklet. The structure is declared in <code>&lt;linux/interrupt.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/interrupt.h#L420">include/linux/interrupt.h#L420</a></small></p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">tasklet_struct</span> <span class="p">{</span>
@@ -842,7 +842,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="scheduling-tasklets"><strong>Scheduling Tasklets</strong></h5>
+<h5 id="scheduling-tasklets"><strong>Scheduling Tasklets</strong><a class="headerlink" href="#scheduling-tasklets" title="Permanent link">&para;</a></h5>
 <p>Scheduled tasklets (the equivalent of raised softirqs) are stored in two per-processor structures:</p>
 <ul>
 <li><code>tasklet_vec</code> (for regular tasklets)</li>
@@ -890,9 +890,9 @@
 <li>The special functions ensure that only one tasklet of a given type runs at the same time. However, other tasklets can run simultaneously.</li>
 </ol>
 <p>All this complexity is then hidden behind a clean and simple interface.</p>
-<h4 id="using-tasklets">Using Tasklets</h4>
+<h4 id="using-tasklets">Using Tasklets<a class="headerlink" href="#using-tasklets" title="Permanent link">&para;</a></h4>
 <p>In most cases, tasklets are the preferred mechanism with which to implement your bottom half for a normal hardware device. Tasklets are dynamically created, easy to use, and quick.</p>
-<h5 id="declaring-your-tasklet"><strong>Declaring Your Tasklet</strong></h5>
+<h5 id="declaring-your-tasklet"><strong>Declaring Your Tasklet</strong><a class="headerlink" href="#declaring-your-tasklet" title="Permanent link">&para;</a></h5>
 <p>You can create tasklets statically or dynamically, depending on whether you have (or want) a direct or indirect reference to the tasklet. If you are going to statically create the tasklet (and thus have a direct reference to it), use one of two macros in <code>&lt;linux/interrupt.h&gt;</code>:</p>
 <div class="codehilite"><pre><span class="n">DECLARE_TASKLET</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
 <span class="n">DECLARE_TASKLET_DISABLED</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
@@ -917,7 +917,7 @@
 </pre></div>
 
 
-<h5 id="writing-your-tasklet-handler"><strong>Writing Your Tasklet Handler</strong></h5>
+<h5 id="writing-your-tasklet-handler"><strong>Writing Your Tasklet Handler</strong><a class="headerlink" href="#writing-your-tasklet-handler" title="Permanent link">&para;</a></h5>
 <p>The tasklet handler must match the correct prototype:</p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="n">tasklet_handler</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">data</span><span class="p">)</span>
 </pre></div>
@@ -928,7 +928,7 @@
 <li>Tasklets also run with all interrupts enabled, so you must take precautions (for example, disable interrupts and obtain a lock) if your tasklet shares data with an interrupt handler.</li>
 <li>Unlike softirqs, two of the same tasklets never run concurrently, though two different tasklets can run at the same time on two different processors. If your tasklet shares data with another tasklet or softirq, you need to use proper locking (see <a href="../ch9/">Chapter 9. An Introduction to Kernel Synchronization</a> and <a href="../ch10/">Chapter 10. Kernel Synchronization Methods</a>).</li>
 </ul>
-<h5 id="scheduling-your-tasklet"><strong>Scheduling Your Tasklet</strong></h5>
+<h5 id="scheduling-your-tasklet"><strong>Scheduling Your Tasklet</strong><a class="headerlink" href="#scheduling-your-tasklet" title="Permanent link">&para;</a></h5>
 <p>To schedule a tasklet for execution, <code>tasklet_schedule()</code> is called and passed a pointer to the relevant <code>tasklet_struct</code>:</p>
 <div class="codehilite"><pre><span class="n">tasklet_schedule</span><span class="p">(</span><span class="o">&amp;</span><span class="n">my_tasklet</span><span class="p">);</span> <span class="cm">/* mark my_tasklet as pending */</span>
 </pre></div>
@@ -952,7 +952,7 @@
 
 
 <p>You can remove a tasklet from the pending queue via <code>tasklet_kill()</code>. This function receives a pointer as a lone argument to the tasklet's <code>tasklet_struct</code>. Removing a scheduled tasklet from the queue is useful when dealing with a tasklet that often reschedules itself. This function first waits for the tasklet to finish executing and then it removes the tasklet from the queue. Nothing stops some other code from rescheduling the tasklet. This function must not be used from interrupt context because it sleeps.</p>
-<h4 id="ksoftirqd">ksoftirqd</h4>
+<h4 id="ksoftirqd">ksoftirqd<a class="headerlink" href="#ksoftirqd" title="Permanent link">&para;</a></h4>
 <p>Softirq processing is aided by a set of per-processor kernel threads. These kernel threads help in the processing of softirqs when the system is overwhelmed with softirqs. Because tasklets are implemented using softirqs, the following discussion applies equally to softirqs and tasklets.</p>
 <p>As described, the kernel processes softirqs in a number of places, most commonly
 on return from handling an interrupt. There are two characteristics with softirqs:</p>
@@ -962,11 +962,11 @@ on return from handling an interrupt. There are two characteristics with softirq
 </ul>
 <p>The combination of these two can result in user-space programs being starved of processor time.</p>
 <p>Not processing the reactivated softirqs in a timely manner is unacceptable. When softirqs were first designed, this caused a dilemma that needed fixing, and neither of the two obvious solution was a good one, as discussed below:</p>
-<h5 id="first-solution-keep-processing"><strong>First solution: keep processing</strong> *</h5>
+<h5 id="first-solution-keep-processing"><strong>First solution: keep processing</strong> *<a class="headerlink" href="#first-solution-keep-processing" title="Permanent link">&para;</a></h5>
 <p>The first solution is simply to keep processing softirqs as they come in and to recheck and reprocess any pending softirqs before returning. This ensures that the kernel processes softirqs in a timely manner and, most important, that any reactivated softirqs are also immediately processed. The problem lies in high load environments, in which many softirqs continually reactivate themselves. The kernel might continually service softirqs without accomplishing much else. User-space is neglected; nothing but softirqs and interrupt handlers run. This approach might work fine if the system is never under intense load; if the system experiences moderate interrupt levels, this solution is not acceptable. User-space cannot be starved for significant periods.</p>
-<h5 id="second-solution-not-handle-reactivated-softirqs"><strong>Second solution: not handle reactivated softirqs</strong> *</h5>
+<h5 id="second-solution-not-handle-reactivated-softirqs"><strong>Second solution: not handle reactivated softirqs</strong> *<a class="headerlink" href="#second-solution-not-handle-reactivated-softirqs" title="Permanent link">&para;</a></h5>
 <p>The second solution is not to handle reactivated softirqs. On return from interrupt, the kernel merely looks at all pending softirqs and executes them as normal. If any softirqs reactivate themselves, however, they will not run until the next time the kernel handles pending softirqs. This is most likely not until the next interrupt occurs, which can equate to a lengthy amount of time before any new (or reactivated) softirqs are executed. Worse, on an otherwise idle system, it is beneficial to process the softirqs right away. Unfortunately, this approach is oblivious to which processes are runnable. Therefore, although this method prevents starving user-space, it does starve the softirqs and does not take good advantage of an idle system.</p>
-<h5 id="final-solution-compromise"><strong>Final solution: compromise</strong> *</h5>
+<h5 id="final-solution-compromise"><strong>Final solution: compromise</strong> *<a class="headerlink" href="#final-solution-compromise" title="Permanent link">&para;</a></h5>
 <p>The solution ultimately implemented in the kernel is to not immediately process reactivated softirqs. Instead, if the number of softirqs grows excessive, the kernel wakes up a family of kernel threads to handle the load. The kernel threads run with the lowest possible priority (nice value of 19), which ensures they do not run in lieu of anything important. The advantage it brings are:</p>
 <ul>
 <li>The concession prevents heavy softirq activity from completely starving user-space of processor time.</li>
@@ -997,10 +997,10 @@ on return from handling an interrupt. There are two characteristics with softirq
 <li>After each iteration, <code>schedule()</code> is called if needed, to enable more important processes to run.</li>
 <li>After all processing is complete, the kernel thread sets itself <code>TASK_INTERRUPTIBLE</code> and invokes the scheduler to select a new runnable process.</li>
 </ul>
-<h4 id="the-old-bh-mechanism">The Old BH Mechanism</h4>
+<h4 id="the-old-bh-mechanism">The Old BH Mechanism<a class="headerlink" href="#the-old-bh-mechanism" title="Permanent link">&para;</a></h4>
 <p>(skipped)
 [p148]</p>
-<h3 id="work-queues">Work Queues</h3>
+<h3 id="work-queues">Work Queues<a class="headerlink" href="#work-queues" title="Permanent link">&para;</a></h3>
 <p>Work queues are a different form of deferring work.  Work queues defer work into a kernel thread; this bottom half always runs in process context:</p>
 <ul>
 <li>Code deferred to a work queue has all the usual benefits of process context.</li>
@@ -1013,11 +1013,11 @@ on return from handling an interrupt. There are two characteristics with softirq
 </ul>
 <p>Indeed, the usual alternative to work queues is kernel threads. Because the kernel developers frown upon creating a new kernel thread, work queues are strongly preferred. They are also easy to use.</p>
 <p>If you need a schedulable entity to perform your bottom-half processing, you need work queues. They are the only bottom-half mechanisms that run in process context, and thus the only ones that can sleep. This means they are useful for situations in which you need to allocate a lot of memory, obtain a semaphore, or perform block I/O. If you do not need a kernel thread to handle your deferred work, consider a tasklet instead.</p>
-<h4 id="implementing-work-queues">Implementing Work Queues</h4>
+<h4 id="implementing-work-queues">Implementing Work Queues<a class="headerlink" href="#implementing-work-queues" title="Permanent link">&para;</a></h4>
 <p>In its most basic form, the work queue subsystem is an interface for creating kernel threads to handle work queued from elsewhere. These kernel threads are called <em>worker threads</em>. Work queues enables your driver to create a special worker thread to handle deferred work. The work queue subsystem, however, implements and provides a default worker thread for handling work. Therefore, in its most common form, a work queue is a simple interface for deferring work to a generic kernel thread.</p>
 <p>The default worker threads are called <code>events/n</code> where <code>n</code> is the processor number; there is one per processor. For example, on a uniprocessor system there is one thread, <code>events/0</code>. A dual processor system would additionally have an <code>events/1</code> thread. The default worker thread handles deferred work from multiple locations. Many drivers in the kernel defer their bottom-half work to the default thread. Unless a driver or subsystem has a strong requirement for creating its own thread, the default thread is preferred.</p>
 <p>Creating your own worker thread might be advantageous if you perform large amounts of processing in the worker thread. Processor-intense and performance-critical work might benefit from its own thread. This also lightens the load on the default threads, which prevents starving the rest of the queued work.</p>
-<h5 id="data-structures-representing-the-threads"><strong>Data Structures Representing the Threads</strong></h5>
+<h5 id="data-structures-representing-the-threads"><strong>Data Structures Representing the Threads</strong><a class="headerlink" href="#data-structures-representing-the-threads" title="Permanent link">&para;</a></h5>
 <p>The worker threads are represented by the <code>workqueue_struct</code> structure:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L59">linux/kernel/workqueue.c#L159</a></small></p>
 <div class="codehilite"><pre><span class="cm">/*</span>
@@ -1048,7 +1048,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 
 
 <p>Note that each type of worker thread has one <code>workqueue_struct</code> associated to it. Inside, there is one <code>cpu_workqueue_struct</code> for every thread and, thus, every processor, because there is one worker thread on each processor.</p>
-<h5 id="data-structures-representing-the-work"><strong>Data Structures Representing the Work</strong></h5>
+<h5 id="data-structures-representing-the-work"><strong>Data Structures Representing the Work</strong><a class="headerlink" href="#data-structures-representing-the-work" title="Permanent link">&para;</a></h5>
 <p>All worker threads are implemented as normal kernel threads running the <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/workqueue.c#L424"><code>worker_thread()</code></a> function. After initial setup, this function enters an infinite loop and goes to sleep. When work is queued, the thread is awakened and processes the work.  When there is no work left to process, it goes back to sleep.</p>
 <p>The work is represented by the <code>work_struct</code> structure, defined in <code>&lt;linux/workqueue.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/workqueue.h">include/linux/workqueue.h#L25</a></small></p>
@@ -1108,7 +1108,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <li>It invokes the function.</li>
 <li>Repeat.</li>
 </ol>
-<h5 id="work-queue-implementation-summary"><strong>Work Queue Implementation Summary</strong></h5>
+<h5 id="work-queue-implementation-summary"><strong>Work Queue Implementation Summary</strong><a class="headerlink" href="#work-queue-implementation-summary" title="Permanent link">&para;</a></h5>
 <p>The relationship between the different data structures is illustrated in the following graph:</p>
 <p><a href="../figure_8.1.png" title="Figure 8.1 The relationship between work, work queues, and the worker threads."><img alt="Figure 8.1 The relationship between work, work queues, and the worker threads." src="../figure_8.1_600.png" /></a></p>
 <p>Worker threads are at the highest level.</p>
@@ -1120,9 +1120,9 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <p>For example, assume that in addition to the generic <em>events</em> worker type, you also create a <em>falcon</em> worker type. If you have a four-processor computer, then there are four <em>events</em> threads (four <code>cpu_workqueue_struct</code> structures) and four <em>falcon</em> threads (four <code>cpu_workqueue_struct</code> structures). There is one <code>workqueue_struct</code> for the <em>events</em> type and one for the <em>falcon</em> type.</p>
 <p>The driver creates work, which it wants to defer to later. The <code>work_struct</code> structure represents this work. This structure contains a pointer to the function that handles the deferred work. The work is submitted to a specific worker thread (in this case, a specific <em>falcon</em> thread). The worker thread then wakes up and performs the queued work.</p>
 <p>Most drivers use the existing default worker threads, named <em>events</em>. They are easy and simple. Some more serious situations, however, demand their own worker threads. The <a href="https://en.wikipedia.org/wiki/XFS">XFS</a> filesystem, for example, creates two new types of worker threads.</p>
-<h4 id="using-work-queues">Using Work Queues</h4>
+<h4 id="using-work-queues">Using Work Queues<a class="headerlink" href="#using-work-queues" title="Permanent link">&para;</a></h4>
 <p>Using work queues is easy. This section covers the default <em>events</em> queue and creating new worker threads.</p>
-<h5 id="creating-work"><strong>Creating Work</strong></h5>
+<h5 id="creating-work"><strong>Creating Work</strong><a class="headerlink" href="#creating-work" title="Permanent link">&para;</a></h5>
 <p>The first step is actually creating some work to defer. To create the structure statically at runtime, use <code>DECLARE_WORK</code>:</p>
 <div class="codehilite"><pre><span class="n">DECLARE_WORK</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="p">),</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
 </pre></div>
@@ -1135,7 +1135,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 
 
 <p>This dynamically initializes the work queue pointed to by <code>work</code> with handler function <code>func</code> and argument <code>data</code>.</p>
-<h5 id="your-work-queue-handler"><strong>Your Work Queue Handler</strong></h5>
+<h5 id="your-work-queue-handler"><strong>Your Work Queue Handler</strong><a class="headerlink" href="#your-work-queue-handler" title="Permanent link">&para;</a></h5>
 <p>The prototype for the work queue handler is:</p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="n">work_handler</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
 </pre></div>
@@ -1144,7 +1144,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <p>A worker thread executes this function, so the function runs in <a href="../ch3/#process-context">process context</a>. By default, interrupts are enabled and no locks are held. If needed, the function can sleep.</p>
 <p>Despite running in process context, the work handlers cannot access user-space memory because there is no associated user-space memory map for <a href="../ch3/#kernel-threads">kernel threads</a>. The kernel can access user memory only when running on behalf of a user-space process, such as when executing a system call. Only then is user memory mapped in.</p>
 <p>Locking between work queues or other parts of the kernel is handled just as with any other process context code. This makes writing work handlers much easier.</p>
-<h5 id="scheduling-work"><strong>Scheduling Work</strong></h5>
+<h5 id="scheduling-work"><strong>Scheduling Work</strong><a class="headerlink" href="#scheduling-work" title="Permanent link">&para;</a></h5>
 <p>Now that the work is created, we can schedule it. To queue a given work's handler function with the default <em>events</em> worker threads, call:</p>
 <div class="codehilite"><pre><span class="n">schedule_work</span><span class="p">(</span><span class="o">&amp;</span><span class="n">work</span><span class="p">);</span>
 </pre></div>
@@ -1157,7 +1157,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 
 
 <p>In this case, the <code>work_struct</code> represented by <code>&amp;work</code> will not execute for at least <code>delay</code> timer ticks into the future. Using ticks as a unit of time is covered in <a href="../ch10/">Chapter 10</a>.</p>
-<h5 id="flushing-work"><strong>Flushing Work</strong></h5>
+<h5 id="flushing-work"><strong>Flushing Work</strong><a class="headerlink" href="#flushing-work" title="Permanent link">&para;</a></h5>
 <p>Queued work is executed when the worker thread next wakes up. Sometimes, you need to ensure that a given batch of work has completed before continuing. This is especially important because:</p>
 <ul>
 <li><a href="https://en.wikipedia.org/wiki/Loadable_kernel_module">Modules</a> almost certainly want to call this function before unloading.</li>
@@ -1178,7 +1178,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 
 
 <p>This function cancels the pending work, if any, associated with the given <code>work_struct</code>.</p>
-<h5 id="creating-new-work-queues"><strong>Creating New Work Queues</strong></h5>
+<h5 id="creating-new-work-queues"><strong>Creating New Work Queues</strong><a class="headerlink" href="#creating-new-work-queues" title="Permanent link">&para;</a></h5>
 <p>If the default queue is insufficient for your needs, you can create a new work queue and corresponding worker threads. Because this creates one worker thread per processor, you should create unique work queues only if your code needs the performance of a unique set of threads.</p>
 <p>You create a new work queue and the associated worker threads via a simple function:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">workqueue_struct</span> <span class="o">*</span><span class="nf">create_workqueue</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
@@ -1207,17 +1207,17 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 
 
 <p>As previously discussed, this function works identically to <code>flush_scheduled_work()</code>, except that it waits for the given queue to empty before returning.</p>
-<h4 id="the-old-task-queue-mechanism">The Old Task Queue Mechanism</h4>
+<h4 id="the-old-task-queue-mechanism">The Old Task Queue Mechanism<a class="headerlink" href="#the-old-task-queue-mechanism" title="Permanent link">&para;</a></h4>
 <p>(skipped) [p155-156]</p>
-<h3 id="which-bottom-half-should-i-use">Which Bottom Half Should I Use?</h3>
+<h3 id="which-bottom-half-should-i-use">Which Bottom Half Should I Use?<a class="headerlink" href="#which-bottom-half-should-i-use" title="Permanent link">&para;</a></h3>
 <p>The decision over which bottom half to use is important. The current 2.6 kernel provides three choices: softirqs, tasklets, and work queues. Tasklets are built on softirqs and, therefore, both are similar. The work queue mechanism is an entirely different creature and is built on kernel threads.</p>
-<h4 id="softirqs-least-serialization-for-highly-threaded-code">Softirqs: least serialization, for highly threaded code *</h4>
+<h4 id="softirqs-least-serialization-for-highly-threaded-code">Softirqs: least serialization, for highly threaded code *<a class="headerlink" href="#softirqs-least-serialization-for-highly-threaded-code" title="Permanent link">&para;</a></h4>
 <p>Softirqs, by design, provide the least serialization. <u>This requires softirq handlers to go through extra steps to ensure that shared data is safe because two or more softirqs of the same type may run concurrently on different processors.</u> If the code in question is already highly threaded, such as in a networking subsystem that is chest-deep in per-processor variables, softirqs make a good choice. They are certainly the fastest alternative for timing-critical and high-frequency uses.</p>
-<h4 id="tasklets-simple-interface-for-less-threaded-code">Tasklets: simple interface, for less threaded code *</h4>
+<h4 id="tasklets-simple-interface-for-less-threaded-code">Tasklets: simple interface, for less threaded code *<a class="headerlink" href="#tasklets-simple-interface-for-less-threaded-code" title="Permanent link">&para;</a></h4>
 <p>Tasklets make more sense if the code is not finely threaded. They have a simpler interface and, because two tasklets of the same type might not run concurrently, they are easier to implement. <u>Tasklets are effectively softirqs that do not run concurrently.</u> A driver developer should always choose tasklets over softirqs, unless prepared to utilize per-processor variables or similar magic to ensure that the softirq can safely run concurrently on multiple processors.</p>
-<h4 id="work-queues-process-context">Work queues: process context *</h4>
+<h4 id="work-queues-process-context">Work queues: process context *<a class="headerlink" href="#work-queues-process-context" title="Permanent link">&para;</a></h4>
 <p>If the deferred work needs to run in process context, the only choice of the three is work queues. If process context is not a requirements (specifically, if you have no need to sleep), softirqs or tasklets are perhaps better suited. Work queues involve the highest overhead because they involve kernel threads and, therefore, <a href="../ch4/#preemption-and-context-switching">context switching</a>. This doesn't mean they are inefficient, but in light of thousands of interrupts hitting per second (as the networking subsystem might experience), other methods make more sense. However, work queues are sufficient for most situations.</p>
-<h4 id="softirqs-vs-tasklets-vs-work-queues">Softirqs vs. tasklets vs. work queues</h4>
+<h4 id="softirqs-vs-tasklets-vs-work-queues">Softirqs vs. tasklets vs. work queues<a class="headerlink" href="#softirqs-vs-tasklets-vs-work-queues" title="Permanent link">&para;</a></h4>
 <p>In terms of ease of use, work queues wins. Using the default <em>events</em> queue is easy. Next come tasklets, which also have a simple interface. Coming in last are softirqs, which need to be statically created and require careful thinking with their implementation.</p>
 <p>The following table is a comparison between the three bottom-half interfaces.</p>
 <table>
@@ -1248,7 +1248,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 </table>
 <p>In short, normal driver writers have two choices:</p>
 <p>If you need a schedulable entity to perform your deferred work, and if fundamentally, you need to sleep for any reason, then work queues are your only option. Otherwise, tasklets are preferred. Only if scalability becomes a concern do you investigate softirqs.</p>
-<h3 id="locking-between-the-bottom-halves">Locking Between the Bottom Halves</h3>
+<h3 id="locking-between-the-bottom-halves">Locking Between the Bottom Halves<a class="headerlink" href="#locking-between-the-bottom-halves" title="Permanent link">&para;</a></h3>
 <p>Locking is not discussed yet, which is an expansive topic in the next two chapters. It is crucial to protect shared data from concurrent access while using bottom halves, even on a single processor machine. A bottom half can run at virtually any moment.</p>
 <p>One benefit of tasklets is that they are serialized with respect to themselves. The same tasklet will not run concurrently, even on two different processors. This means you do not have to worry about intra-tasklet concurrency issues. Inter-tasklet concurrency (when two different tasklets share the same data) requires proper locking.</p>
 <p>Because softirqs provide no serialization, (even two instances of the same softirq might run simultaneously), all shared data needs an appropriate lock.</p>
@@ -1267,7 +1267,7 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 <p>Any shared data in a work queue requires locking.</p>
 <p>The locking issues are no different from normal kernel code because work queues run in process context.</p>
 <p><a href="../ch9/">Chapter 9</a> provides a background on the issues surrounding concurrency, and <a href="../ch10/">Chapter 10</a> covers the kernel locking primitives. These chapters cover how to protect data that bottom halves use.</p>
-<h3 id="disabling-bottom-halves">Disabling Bottom Halves</h3>
+<h3 id="disabling-bottom-halves">Disabling Bottom Halves<a class="headerlink" href="#disabling-bottom-halves" title="Permanent link">&para;</a></h3>
 <p>It is normally not sufficient to only disable bottom halves. To safely protect shared data, you usually need to obtain a lock <em>and</em> disable bottom halves. You might use such methods in a driver, which are covered in <a href="../ch10/">Chapter 10</a>. If you are writing core kernel code, however, you might need to disable just the bottom halves.</p>
 <ul>
 <li>To disable all bottom-half processing (all softirqs and thus all tasklets), call <code>local_bh_disable()</code>.</li>
@@ -1327,17 +1327,17 @@ struct<span class="w"> </span>workqueue_struct<span class="w"> </span><span clas
 
 <p>These calls do not disable the execution of work queues.</p>
 <p>Because work queues run in process context, there are no issues with asynchronous execution, and thus, there is no need to disable them. However, because softirqs and tasklets can occur asynchronously (for example, on return from handling an interrupt), kernel code may need to disable them. With work queues, on the other hand, protecting shared data is the same as in any process context.  <a href="./">Chapters 8</a> and <a href="../ch9/">Chapter 9</a> give the details.</p>
-<h3 id="conclusion">Conclusion</h3>
+<h3 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h3>
 <p>This chapter covers the three mechanisms used to defer work in the Linux kernel: softirqs, tasklets, and work queues and goes over their design and implementation.  We also discussed a lot about synchronization and concurrency because such topics apply quite a bit to bottom halves. We even wrapped up the chapter with a discussion on disabling bottom halves for reasons of concurrency protection.</p>
 <p><a href="../ch9/">Chapter 9</a> discusses kernel synchronization and concurrency in the abstract, providing a foundation for understanding the issues at the heart of the problem. <a href="../ch10/">Chapter 10</a> discusses the specific interfaces provided by the kernel to solve these problems.</p>
-<h3 id="doubts-and-solution">Doubts and Solution</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p141-on-softirq"><strong>p141 on softirq</strong></h5>
+<h3 id="doubts-and-solution">Doubts and Solution<a class="headerlink" href="#doubts-and-solution" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
+<h5 id="p141-on-softirq"><strong>p141 on softirq</strong><a class="headerlink" href="#p141-on-softirq" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>This function (<code>raise_softirq()</code>) disables interrupts prior to actually raising the softirq and then restores them to their previous state.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: Why would <code>raise_softirq()</code> disable interrupt?</p>
-<h5 id="p145-on-scheduling-tasklets"><strong>p145 on scheduling tasklets</strong></h5>
+<h5 id="p145-on-scheduling-tasklets"><strong>p145 on scheduling tasklets</strong><a class="headerlink" href="#p145-on-scheduling-tasklets" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>After a tasklet is scheduled, it runs once at some time in the near future. If the same tasklet is scheduled again, before it has had a chance to run, it still runs only once. If it is already running, for example on another processor, the tasklet is rescheduled and runs again</p>
 </blockquote>

@@ -464,11 +464,11 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-10-packages-and-the-go-tool"><strong>Chapter 10. Packages and the Go Tool</strong></h3>
+<h3 id="chapter-10-packages-and-the-go-tool"><strong>Chapter 10. Packages and the Go Tool</strong><a class="headerlink" href="#chapter-10-packages-and-the-go-tool" title="Permanent link">&para;</a></h3>
 <p>In a program, the majority of the functions were written by others and made available for reuse through <strong>packages</strong>.</p>
 <p>Go has over 100 standard packages that provide the foundations for most applications.  The Go community has published many more, and you can find a searchable index of them at <a href="https://godoc.org/">https://godoc.org</a>. This chapter discusses how to use existing packages and create new ones.</p>
 <p>Go also comes with the <code>go</code> tool, a sophisticated but simple-to-use command for managing workspaces of Go packages. Since the beginning of the book, we’ve been showing how to use the <code>go</code> tool to download, build, and run example programs. This chapter studies the tools' underlying concepts and its capabilities, which include printing documentation and querying metadata about the packages in the workspace.</p>
-<h3 id="introduction">Introduction</h3>
+<h3 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
 <p>The purpose of any package system is to make the design and maintenance of large programs practical by grouping related features together into units that can be easily understood and changed, independent of the other packages of the program.</p>
 <p>This <a href="https://en.wikipedia.org/wiki/Modular_programming"><em>modularity</em></a> allows packages to be:</p>
 <ul>
@@ -490,7 +490,7 @@ be compiled separately and perhaps in parallel.</li>
 <li>The object file for a compiled Go package records export information not just for the package itself, but also for its dependencies. When compiling a package, the compiler must read one object file for each import but need
 not look beyond these files.</li>
 </ol>
-<h3 id="import-paths">Import Paths</h3>
+<h3 id="import-paths">Import Paths<a class="headerlink" href="#import-paths" title="Permanent link">&para;</a></h3>
 <p>Each package is identified by a unique string called its <a href="https://golang.org/doc/code.html#ImportPaths"><em>import path</em></a>. Import paths are the strings that appear in <code>import</code> declarations.</p>
 <div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
     <span class="s">&quot;fmt&quot;</span>
@@ -504,7 +504,7 @@ not look beyond these files.</li>
 
 <p>As mentioned in <a href="../ch2/#imports">Section 2.6.1</a>, the Go language specification doesn't define the meaning of these strings or how to determine a packages' import path, but leaves these issues to the tools.  This chapter discusses how the <code>go</code> tool interprets them, which is what the majority of Go programmers use for building, testing, and so on. However, other tools do exist. For example, Go programmers using Google's internal multi-language build system follow different rules for naming and locating packages, specifying tests, and so on, that more closely match the conventions of that system.</p>
 <p>For packages you intend to share or publish, import paths should be globally unique. To avoid conflicts, the import paths of all packages other than those from the standard library should start with the Internet domain name of the organization that owns or hosts the package; this also makes it possible to find packages.</p>
-<h3 id="the-package-declaration">The Package Declaration</h3>
+<h3 id="the-package-declaration">The Package Declaration<a class="headerlink" href="#the-package-declaration" title="Permanent link">&para;</a></h3>
 <p>A package declaration is required at the start of every Go source file. Its main purpose is to determine the default identifier for that package (called the <em>package name</em>) when it is imported by another package.</p>
 <p>For example, every file of the <code>math/rand</code> package starts with package <code>rand</code>, so when you import this package, you can access its members as <code>rand.Int</code>, <code>rand.Float64</code>, and so on.</p>
 <div class="codehilite"><pre><span class="kn">package</span> <span class="nx">main</span>
@@ -520,7 +520,7 @@ not look beyond these files.</li>
 </pre></div>
 
 
-<h4 id="the-last-segment-convention">The "Last Segment" Convention *</h4>
+<h4 id="the-last-segment-convention">The "Last Segment" Convention *<a class="headerlink" href="#the-last-segment-convention" title="Permanent link">&para;</a></h4>
 <p>Conventionally, the package name is the last segment of the import path, and as a result, two packages may have the same name even though their import paths differ. For example, the packages whose import paths are <code>math/rand</code> and <code>crypto/rand</code> both have the name rand. How to use both in the same program will be discussed in a moment.</p>
 <p>There are three major exceptions to the "last segment" convention.</p>
 <ol>
@@ -528,7 +528,7 @@ not look beyond these files.</li>
 <li>Some files in the directory may have the suffix <code>_test</code> on their package name if the file name ends with <code>_test.go</code>. Such a directory may define two packages: the usual one, plus another one called an <em>external test package</em>. The <code>_test</code> suffix signals to <code>go test</code> that it must build both packages, and it indicates which files belong to each package. External test packages are used to avoid cycles in the import graph arising from dependencies of the test; they are covered in more detail in <a href="ch11.md#external-test-packages">Section 11.2.4</a>.</li>
 <li>Some tools for dependency management append version number suffixes to package import paths, such as <code>"gopkg.in/yaml.v2"</code>. The package name excludes the suffix, so in this case it would be just <code>yaml</code>.</li>
 </ol>
-<h3 id="import-declarations">Import Declarations</h3>
+<h3 id="import-declarations">Import Declarations<a class="headerlink" href="#import-declarations" title="Permanent link">&para;</a></h3>
 <p>A Go source file may contain zero or more import declarations immediately after the package declaration and before the first non-import declaration. Each import declaration may specify the import path of a single package, or multiple packages in a parenthesized list. The two forms below are equivalent but the second form is more common.</p>
 <div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;fmt&quot;</span>
 <span class="kn">import</span> <span class="s">&quot;os&quot;</span>
@@ -569,7 +569,7 @@ not look beyond these files.</li>
 <li>Choosing an alternative name can help avoid conflicts with common local variable names. For example, in a file with many local variables named <code>path</code>, we might import the standard <code>"path"</code> package as <code>pathpkg</code>.</li>
 </ul>
 <p>Each import declaration establishes a dependency from the current package to the imported package. The <code>go build</code> tool reports an error if these dependencies form a cycle.</p>
-<h3 id="blank-imports">Blank Imports</h3>
+<h3 id="blank-imports">Blank Imports<a class="headerlink" href="#blank-imports" title="Permanent link">&para;</a></h3>
 <p>Within a file, it is an error to import a package but not refer to the name it defines.  However, on occasion we must import a package merely for the side effects of doing so: evaluation of the initializer expressions of its package-level variables and execution of its <code>init</code> functions (<a href="../ch2/#package-initialization">Section 2.6.2</a>). To suppress the "unused import" error, we must use a renaming import in which the alternative name is <code>_</code>, the blank identifier, which can never be referenced.</p>
 <div class="codehilite"><pre><span class="kn">import</span> <span class="nx">_</span> <span class="s">&quot;image/png&quot;</span> <span class="c1">// register PNG decoder</span>
 </pre></div>
@@ -658,7 +658,7 @@ not look beyond these files.</li>
 </pre></div>
 
 
-<h3 id="packages-and-naming">Packages and Naming</h3>
+<h3 id="packages-and-naming">Packages and Naming<a class="headerlink" href="#packages-and-naming" title="Permanent link">&para;</a></h3>
 <p>This section offers some advice on how to follow Go's distinctive conventions for naming packages and their members.</p>
 <p>The package name should be short, but not so short as to be cryptic. The most frequently used packages in the standard library are named <code>bufio</code>, <code>bytes</code>, <code>flag</code>, <code>fmt</code>, <code>http</code>, <code>io</code>, <code>json</code>, <code>os</code>, <code>sort</code>, <code>sync</code>, and <code>time</code>.</p>
 <p>Be descriptive and unambiguous where possible. For example, don't name a utility package <code>util</code> when a name such as <code>imageutil</code> or <code>ioutil</code> is specific yet still concise. Avoid choosing package names that are commonly used for related local variables, or you may compel the package's clients to use renaming imports, as with the <code>path</code> package.</p>
@@ -699,7 +699,7 @@ not look beyond these files.</li>
 
 <p>This can lead to repetition, as in <code>template.Template</code> or <code>rand.Rand</code>, which is why the names of these kinds of packages are often especially short.</p>
 <p>At the other extreme, there are packages like <code>net/http</code> that have a lot of names without a lot of structure, because they perform a complicated task. Despite having over twenty types and many more functions, the package's most important members have the simplest names: <code>Get</code>, <code>Post</code>, <code>Handle</code>, <code>Error</code>, <code>Client</code>, <code>Server</code>.</p>
-<h3 id="the-go-tool">The Go Tool</h3>
+<h3 id="the-go-tool">The Go Tool<a class="headerlink" href="#the-go-tool" title="Permanent link">&para;</a></h3>
 <p>The rest of this chapter concerns the <a href="https://golang.org/cmd/go/"><code>go</code></a> tool, which is used for downloading, querying, formatting, building, testing, and installing packages of Go code.</p>
 <p>The <code>go</code> tool combines the features of a diverse set of tools into one command set:</p>
 <ul>
@@ -733,7 +733,7 @@ Use &quot;go help [command]&quot; for more information about a command.
 <li>Given the import path of a package, the tool can find the corresponding directory in which it stores object files.</li>
 <li>It can also find the URL of the server that hosts the source code repository.</li>
 </ul>
-<h4 id="workspace-organization">Workspace Organization</h4>
+<h4 id="workspace-organization">Workspace Organization<a class="headerlink" href="#workspace-organization" title="Permanent link">&para;</a></h4>
 <p>The only configuration most users ever need is the <code>GOPATH</code> environment variable, which specifies the root of the workspace. When switching to a different workspace, users update the value of <code>GOPATH</code>. For example:</p>
 <div class="codehilite"><pre><span class="gp">$</span> <span class="nb">export</span> <span class="nv">GOPATH</span><span class="o">=</span>$HOME/gobook
 <span class="gp">$</span> go get gopl.io/...
@@ -783,7 +783,7 @@ Use &quot;go help [command]&quot; for more information about a command.
 </pre></div>
 
 
-<h4 id="downloading-packages">Downloading Packages</h4>
+<h4 id="downloading-packages">Downloading Packages<a class="headerlink" href="#downloading-packages" title="Permanent link">&para;</a></h4>
 <p>When using the go tool, a package's import path indicates not only where to find it in the local workspace, but where to find it on the Internet so that <code>go get</code> can retrieve and update it.</p>
 <p>The <code>go get</code> command can download a single package or an entire subtree or repository using the <code>...</code> notation, as in the previous section. The tool also computes and downloads all the dependencies of the initial packages, which is why the <code>golang.org/x/net/html</code> package appeared in the workspace in the previous example.</p>
 <p>Once <code>go get</code> has downloaded the packages, it builds them and then installs the libraries and commands.</p>
@@ -817,7 +817,7 @@ Use &quot;go help [command]&quot; for more information about a command.
 
 
 <p>If you specify the <code>-u</code> flag, <code>go get</code> will ensure that all packages it visits, including dependencies, are updated to their latest version before being built and installed. Without that flag, packages that already exist locally will not be updated.</p>
-<h5 id="vendor-directories"><strong>Vendor Directories</strong> *</h5>
+<h5 id="vendor-directories"><strong>Vendor Directories</strong> *<a class="headerlink" href="#vendor-directories" title="Permanent link">&para;</a></h5>
 <p>The <code>go get -u</code> command generally retrieves the latest version of each package, which is convenient when you're getting started but may be inappropriate for deployed projects, where precise control of dependencies is critical for release hygiene. The usual solution to this problem is to <em>vendor</em> the code, that is, to make a persistent local copy of all the necessary dependencies, and to update this copy carefully and deliberately. Prior to Go 1.5, this required changing those packages' import paths, so our copy of <code>golang.org/x/net/html</code> would become <code>gopl.io/vendor/golang.org/x/net/html</code>. More recent versions of the <code>go tool</code> support vendoring directly. See <a href="https://golang.org/cmd/go/#hdr-Vendor_Directories"><em>Vendor Directories</em></a> in the output of the <code>go help gopath</code> command.</p>
             </div>
         </div>
