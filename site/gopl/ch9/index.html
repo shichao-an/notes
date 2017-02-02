@@ -476,7 +476,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-9-concurrency-with-shared-variables"><strong>Chapter 9. Concurrency with Shared Variables</strong></h3>
+<h3 id="chapter-9-concurrency-with-shared-variables"><strong>Chapter 9. Concurrency with Shared Variables</strong><a class="headerlink" href="#chapter-9-concurrency-with-shared-variables" title="Permanent link">&para;</a></h3>
 <p>The previous chapter presented several programs that use goroutines and channels to
 express concurrency in a direct and natural way.</p>
 <p>This chapter looks at the mechanics of concurrency, and in particular discusses:</p>
@@ -486,7 +486,7 @@ express concurrency in a direct and natural way.</p>
 <li>The patterns for solving them.</li>
 <li>Some of the technical differences between goroutines and operating system threads.</li>
 </ul>
-<h3 id="race-conditions">Race Conditions</h3>
+<h3 id="race-conditions">Race Conditions<a class="headerlink" href="#race-conditions" title="Permanent link">&para;</a></h3>
 <p>In a sequential program, that is, a program with only one goroutine, the steps of the program happen in the familiar execution order determined by the program logic. For instance, in a sequence of statements, the first one happens before the second one, and so on.</p>
 <p>In a program with two or more goroutines, the steps within each goroutine happen in the familiar order, but in general we don't know whether an event <em>x</em> in one goroutine happens before an event <em>y</em> in another goroutine, or happens after it, or is simultaneous with it. When we cannot confidently say that one event <em>happens before</em> the other, then the events <em>x</em> and <em>y</em> are <em>concurrent</em>.</p>
 <p>Consider a function that works correctly in a sequential program. That function is <em>concurrency-safe</em> if it continues to work correctly even when called concurrently (called from two or more goroutines with no additional synchronization).</p>
@@ -558,9 +558,9 @@ express concurrency in a direct and natural way.</p>
 </ul>
 <p>Recall that there are three parts to a slice: the pointer, the length, and the capacity. If the pointer comes from the first call to <code>make</code> and the length comes from the second, <code>x</code> would be a slice whose nominal length is 1,000,000 but whose underlying array has only 10 elements. In this case, storing to element 999,999 would clobber an arbitrary faraway memory location, with consequences that are impossible to predict and hard to debug and localize. This semantic minefield is called <a href="https://en.wikipedia.org/wiki/Undefined_behavior"><em>undefined behavior</em></a> and is well known to C programmers; fortunately it is rarely as troublesome in Go as in C.</p>
 <p>Even the notion that a concurrent program is an interleaving of several sequential programs is a false intuition. <a href="#memory-synchronization">Section 9.4</a> will show that data races may have even stranger outcomes. Many programmers will occasionally offer justifications for known data races in their programs. The absence of problems on a given compiler and platform may give them false confidence. A good rule of thumb is that there is no such thing as a <em>benign data race</em>. So how do we avoid data races in our programs?</p>
-<h4 id="avoiding-a-data-race">Avoiding a data race *</h4>
+<h4 id="avoiding-a-data-race">Avoiding a data race *<a class="headerlink" href="#avoiding-a-data-race" title="Permanent link">&para;</a></h4>
 <p>There are three ways to avoid a data race.</p>
-<h5 id="avoid-writing-the-variable"><strong>Avoid writing the variable</strong> *</h5>
+<h5 id="avoid-writing-the-variable"><strong>Avoid writing the variable</strong> *<a class="headerlink" href="#avoid-writing-the-variable" title="Permanent link">&para;</a></h5>
 <p>The first way is not to write the variable. Consider the map below, which is lazily populated as each key is requested for the first time. If <code>Icon</code> is called sequentially, the program works fine, but if <code>Icon</code> is called concurrently, there is a data race accessing the map.</p>
 <div class="codehilite"><pre><span class="kd">var</span> <span class="nx">icons</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span><span class="p">)</span>
 
@@ -592,7 +592,7 @@ express concurrency in a direct and natural way.</p>
 
 
 <p>In the example above, the <code>icons</code> variable is assigned during package initialization, which happens before the program's <code>main</code> function starts running. Once initialized, <code>icons</code> is never modified. Data structures that are never modified or are immutable are inherently concurrency-safe and need no synchronization. This approach can be used if updates are essential.</p>
-<h5 id="avoid-accessing-the-variable-from-multiple-goroutines"><strong>Avoid accessing the variable from multiple goroutines</strong> *</h5>
+<h5 id="avoid-accessing-the-variable-from-multiple-goroutines"><strong>Avoid accessing the variable from multiple goroutines</strong> *<a class="headerlink" href="#avoid-accessing-the-variable-from-multiple-goroutines" title="Permanent link">&para;</a></h5>
 <p>The second way to avoid a data race is to avoid accessing the variable from multiple goroutines. This is the approach taken by many of the programs in the previous chapter, for example:</p>
 <ul>
 <li>The main goroutine in the concurrent web crawler (<a href="../ch8/#example-concurrent-web-crawler">Section 8.6</a>) is the sole goroutine that accesses the <code>seen</code> map.</li>
@@ -651,9 +651,9 @@ express concurrency in a direct and natural way.</p>
 </pre></div>
 
 
-<h5 id="allow-only-one-goroutine-to-access-the-variable-at-a-time"><strong>Allow only one goroutine to access the variable at a time</strong> *</h5>
+<h5 id="allow-only-one-goroutine-to-access-the-variable-at-a-time"><strong>Allow only one goroutine to access the variable at a time</strong> *<a class="headerlink" href="#allow-only-one-goroutine-to-access-the-variable-at-a-time" title="Permanent link">&para;</a></h5>
 <p>The third way to avoid a data race is to allow many goroutines to access the variable, but only one at a time. This approach is known as <a href="https://en.wikipedia.org/wiki/Mutual_exclusion"><em>mutual exclusion</em></a> and is the subject of the next section.</p>
-<h3 id="mutual-exclusion-syncmutex">Mutual Exclusion: <a href="https://golang.org/pkg/sync/#Mutex"><code>sync.Mutex</code></a></h3>
+<h3 id="mutual-exclusion-syncmutex">Mutual Exclusion: <a href="https://golang.org/pkg/sync/#Mutex"><code>sync.Mutex</code></a><a class="headerlink" href="#mutual-exclusion-syncmutex" title="Permanent link">&para;</a></h3>
 <p><a href="#example-concurrent-web-crawler">Section 8.6</a> uses a buffered channel as a <em>counting semaphore</em> to ensure that no more than 20 goroutines made simultaneous HTTP requests. With the same idea, we can use a channel of capacity 1 to ensure that at most one goroutine accesses a shared variable at a time. A semaphore that counts only to 1 is called a <a href="https://en.wikipedia.org/wiki/Semaphore_(programming)"><em>binary semaphore</em></a>.</p>
 <p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch9/bank2/bank.go">gopl.io/ch9/bank2/bank.go</a></small></p>
 <div class="codehilite"><pre><span class="kd">var</span> <span class="p">(</span>
@@ -793,7 +793,7 @@ express concurrency in a direct and natural way.</p>
 
 
 <p>Encapsulation (<a href="../ch6/#encapsulation">Section 6.6</a>), by reducing unexpected interactions in a program, helps us maintain data structure invariants. For the same reason, encapsulation also helps us maintain concurrency invariants. <u>When you use a mutex, make sure that both it and the variables it guards are not exported, whether they are package-level variables or the fields of a struct.</u></p>
-<h3 id="readwrite-mutexes-syncrwmutex">Read/Write Mutexes: <a href="https://golang.org/pkg/sync/#RWMutex"><code>sync.RWMutex</code></a></h3>
+<h3 id="readwrite-mutexes-syncrwmutex">Read/Write Mutexes: <a href="https://golang.org/pkg/sync/#RWMutex"><code>sync.RWMutex</code></a><a class="headerlink" href="#readwrite-mutexes-syncrwmutex" title="Permanent link">&para;</a></h3>
 <p>Since the <code>Balance</code> function only needs to read the state of the variable, it would actually be safe for multiple <code>Balance</code> calls to run concurrently, as long as no <code>Deposit</code> or <code>Withdraw</code> call is running. In this scenario we need a special kind of lock that allows read-only operations to proceed in parallel with each other, but write operations to have fully exclusive access. This lock is called a <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock"><em>multiple readers, single writer</em></a> lock, which is provided by <code>sync.RWMutex</code> in Go:</p>
 <div class="codehilite"><pre><span class="kd">var</span> <span class="nx">mu</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
 <span class="kd">var</span> <span class="nx">balance</span> <span class="kt">int</span>
@@ -812,7 +812,7 @@ express concurrency in a direct and natural way.</p>
 </ul>
 <p><code>RLock</code> can be used only if there are no writes to shared variables in the critical section. In general, we should not assume that logically read-only functions or methods don't also update some variables. For example, a method that appears to be a simple accessor might also increment an internal usage counter, or update a cache so that repeat calls are faster. If in doubt, use an exclusive <code>Lock</code>.</p>
 <p>It's only profitable to use an <code>RWMutex</code> when most of the goroutines that acquire the lock are readers, and the lock is under contention, that is, goroutines routinely have to wait to acquire it. An <code>RWMutex</code> requires more complex internal bookkeeping, making it slower than a regular mutex for uncontended locks.</p>
-<h3 id="memory-synchronization">Memory Synchronization</h3>
+<h3 id="memory-synchronization">Memory Synchronization<a class="headerlink" href="#memory-synchronization" title="Permanent link">&para;</a></h3>
 <p>From previous examples, it is seen that the <code>Balance</code> method needs mutual exclusion, either channel-based or mutex-based, even if it consists only of a single operation (unlike <code>Deposit</code> where there is no danger of another goroutine executing "in the middle" of it). There are two reasons we need a mutex:</p>
 <ol>
 <li>It's equally important that <code>Balance</code> not execute in the middle of some other operation like <code>Withdraw</code>.</li>
@@ -854,7 +854,7 @@ y:0 x:0
 <li>If the two goroutines execute on different CPUs, each with its own cache, writes by one goroutine are not visible to the other goroutine's <code>Print</code> until the caches are synchronized with main memory.</li>
 </ul>
 <p>All these concurrency problems can be avoided by the consistent use of simple, established patterns. Where possible, confine variables to a single goroutine; for all other variables, use mutual exclusion.</p>
-<h3 id="lazy-initialization-synconce">Lazy Initialization: <code>sync.Once</code></h3>
+<h3 id="lazy-initialization-synconce">Lazy Initialization: <code>sync.Once</code><a class="headerlink" href="#lazy-initialization-synconce" title="Permanent link">&para;</a></h3>
 <p>Initializing a variable up front increases the start-up latency of a program and is unnecessary if execution doesn't always reach the part of the program that uses that variable. Therefore, it is good practice to defer an expensive initialization step until it is needed. Consider the <code>icons</code> variable discussed <a href="#avoiding-a-data-race">earlier in the chapter</a>:</p>
 <div class="codehilite"><pre><span class="kd">var</span> <span class="nx">icons</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">image</span><span class="p">.</span><span class="nx">Image</span>
 </pre></div>
@@ -953,11 +953,11 @@ y:0 x:0
 
 
 <p>Each call to <code>Do(loadIcons)</code> locks the mutex and checks the boolean variable. In the first call, in which the variable is false, <code>Do</code> calls <code>loadIcons</code> and sets the variable to true. Subsequent calls do nothing, but the mutex synchronization ensures that the effects of <code>loadIcons</code> on memory (specifically, <code>icons</code>) become visible to all goroutines. Using <code>sync.Once</code> in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.</p>
-<h3 id="the-race-detector">The Race Detector</h3>
+<h3 id="the-race-detector">The Race Detector<a class="headerlink" href="#the-race-detector" title="Permanent link">&para;</a></h3>
 <p>The Go runtime and toolchain are equipped with a sophisticated and easy-to-use dynamic analysis tool, the <a href="https://golang.org/doc/articles/race_detector.html"><strong>race detector</strong></a>. Add the <code>-race</code> flag to your <code>go build</code>, <code>go run</code>, or <code>go test</code> command. This causes the compiler to build a modified version of your application or test with additional instrumentation that effectively records all accesses to shared variables that occurred during execution, along with the identity of the goroutine that read or wrote the variable. In addition, the modified program records all synchronization events, such as <code>go</code> statements, channel operations, and calls to <code>(*sync.Mutex).Lock</code>, <code>(*sync.WaitGroup).Wait</code>, and so on. The complete set of synchronization events is specified by the <a href="https://golang.org/ref/mem"><em>The Go Memory Model</em></a> document that accompanies the language specification.</p>
 <p>The race detector studies this stream of events, looking for cases in which <u>one goroutine reads or writes a shared variable that was most recently written by a different goroutine without an intervening synchronization operation.</u> This indicates a concurrent access to the shared variable, and thus a data race. The tool prints a report that includes the identity of the variable, and the stacks of active function calls in the reading goroutine and the writing goroutine. This is usually sufficient to pinpoint the problem. <a href="#example-concurrent-non-blocking-cache">Section 9.7</a> contains an example of race detector.</p>
 <p>The race detector reports all data races that were actually executed. However, it can only detect race conditions that occur during a run; it cannot prove that none will ever occur. For best results, make sure that your tests exercise your packages using concurrency. Due to extra bookkeeping, a program built with race detection needs more time and memory to run, but the overhead is tolerable even for many production jobs. For infrequently occurring race conditions, making the race detector do its job can save time of debugging.</p>
-<h3 id="example-concurrent-non-blocking-cache">Example: Concurrent Non-Blocking Cache</h3>
+<h3 id="example-concurrent-non-blocking-cache">Example: Concurrent Non-Blocking Cache<a class="headerlink" href="#example-concurrent-non-blocking-cache" title="Permanent link">&para;</a></h3>
 <p>This section talks about building a <em>concurrent non-blocking cache</em>, an abstraction that solves a problem in real-world concurrent programs but is not well addressed by existing libraries. This is the problem of <a href="https://en.wikipedia.org/wiki/Memoization"><em>memoizing</em></a> a function, which means caching the result of a function so that it need be computed only once.</p>
 <p>The solution will be concurrency-safe and will avoid the contention associated with designs based on a single lock for the whole cache. It'll use the <code>httpGetBody</code> function below as an example of the function to memoize. It makes an HTTP GET request and reads the request body. Calls to this function are relatively expensive, so we want to avoid repeating them unnecessarily.</p>
 <div class="codehilite"><pre><span class="kd">func</span> <span class="nx">httpGetBody</span><span class="p">(</span><span class="nx">url</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="kd">interface</span><span class="p">{},</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
@@ -1266,9 +1266,9 @@ two approaches without excessive complexity:</p>
 <li>Communicating sequential processes</li>
 </ul>
 <p>It's not always obvious which approach is preferable in a given situation, but it's worth knowing how they correspond. Sometimes switching from one approach to the other can make your code simpler.</p>
-<h3 id="goroutines-and-threads">Goroutines and Threads</h3>
+<h3 id="goroutines-and-threads">Goroutines and Threads<a class="headerlink" href="#goroutines-and-threads" title="Permanent link">&para;</a></h3>
 <p>The <a href="../ch8/">previous chapter</a> mentioned that the difference between goroutines and operating system (OS) threads could be ignored until later. Although the differences between them are essentially quantitative, a big enough quantitative difference becomes a qualitative one, and so it is with goroutines and threads.</p>
-<h4 id="growable-stacks">Growable Stacks</h4>
+<h4 id="growable-stacks">Growable Stacks<a class="headerlink" href="#growable-stacks" title="Permanent link">&para;</a></h4>
 <p>Each OS thread has a fixed-size block of memory (often as large as 2MB) for its <a href="https://en.wikipedia.org/wiki/Call_stack"><em>stack</em></a>, the work area where it saves the local variables of function calls that are in progress or temporarily suspended while another function is called.</p>
 <p>This fixed-size stack is simultaneously too much and too little:</p>
 <ul>
@@ -1277,7 +1277,7 @@ two approaches without excessive complexity:</p>
 </ul>
 <p>Changing the fixed size can improve space efficiency and allow more threads to be created, or it can enable more deeply recursive functions, but it cannot do both.</p>
 <p>In contrast, a goroutine starts life with a small stack, typically 2KB. A goroutine's stack, like the stack of an OS thread, holds the local variables of active and suspended function calls, but unlike an OS thread, a goroutine’s stack is not fixed; it grows and shrinks as needed. The size limit for a goroutine stack may be as much as 1GB, orders of magnitude larger than a typical fixed-size thread stack, though few goroutines use that much.</p>
-<h4 id="goroutine-scheduling">Goroutine Scheduling</h4>
+<h4 id="goroutine-scheduling">Goroutine Scheduling<a class="headerlink" href="#goroutine-scheduling" title="Permanent link">&para;</a></h4>
 <p>OS threads are scheduled by the OS kernel. Every few milliseconds, a hardware timer interrupts the processor, which causes a kernel function called the <em>scheduler</em> to be invoked. This function does the following things:</p>
 <ol>
 <li>Suspends the currently executing thread and saves its registers in memory.</li>
@@ -1293,7 +1293,7 @@ two approaches without excessive complexity:</p>
 <p>This operation is slow, due to its poor locality and the number of memory accesses required, and has historically only gotten worse as the number of CPU cycles required to access memory has increased.</p>
 <p>The Go runtime contains its own scheduler that uses a technique known as <em>m:n scheduling</em>, because it multiplexes (or schedules) <em>m</em> goroutines on <em>n</em> OS threads. The job of the Go scheduler is analogous to that of the kernel scheduler, but it is concerned only with the goroutines of a single Go program.</p>
 <p>Unlike the operating system's thread scheduler, the Go scheduler is not invoked periodically by a hardware timer, but implicitly by certain Go language constructs. For example, when a goroutine calls <code>time.Sleep</code> or blocks in a channel or mutex operation, the scheduler puts it to sleep and runs another goroutine until it is time to wake the first one up. Because it doesn't need a switch to kernel context, rescheduling a goroutine is much cheaper than rescheduling a thread.</p>
-<h4 id="gomaxprocs">GOMAXPROCS</h4>
+<h4 id="gomaxprocs">GOMAXPROCS<a class="headerlink" href="#gomaxprocs" title="Permanent link">&para;</a></h4>
 <p>The Go scheduler uses a parameter called <code>GOMAXPROCS</code> to determine how many OS threads may be actively executing Go code simultaneously. Its default value is the number of CPUs on the machine, so on a machine with 8 CPUs, the scheduler will schedule Go code on up to 8 OS threads at once. <code>GOMAXPROCS</code> is the <em>n</em> in <em>m</em>:<em>n</em> scheduling.</p>
 <ul>
 <li><u>Goroutines that are sleeping or blocked in a communication do not need a thread at all.</u></li>
@@ -1320,19 +1320,19 @@ $ GOMAXPROCS=2 go run hacker-cliché.go
 <li>In the second run, there were two OS threads available, so both goroutines ran simultaneously, printing digits at about the same rate.</li>
 </ol>
 <p>Note that many factors are involved in goroutine scheduling, and the runtime is constantly evolving, so your results may differ from the ones above.</p>
-<h4 id="goroutines-have-no-identity">Goroutines Have No Identity</h4>
+<h4 id="goroutines-have-no-identity">Goroutines Have No Identity<a class="headerlink" href="#goroutines-have-no-identity" title="Permanent link">&para;</a></h4>
 <p>In most operating systems and programming languages that support multithreading, the current thread has a distinct identity that can be easily obtained as an ordinary value, typically an integer or pointer. This makes it easy to build an abstraction called <a href="https://en.wikipedia.org/wiki/Thread-local_storage"><strong>thread-local storage</strong></a>, which is essentially a global map keyed by thread identity, so that each thread can store and retrieve values independent of other threads.</p>
 <p>Goroutines have no notion of identity that is accessible to the programmer. This is by design, since thread-local storage tends to be abused. For example, in a web server implemented in a language with thread-local storage, it's common for many functions to find information about the HTTP request on whose behalf they are currently working by looking in that storage. However, this can lead to an unhealthy "<a href="https://en.wikipedia.org/wiki/Action_at_a_distance_(computer_programming)">action at a distance</a>" in which the behavior of a function is not determined by its arguments alone, but by the identity of the thread in which it runs. Consequently, if the identity of the thread changes (e.g. some worker threads are enlisted to help) the function misbehaves mysteriously.</p>
 <p>Go encourages a simpler style of programming in which parameters that affect the behavior of a function are explicit. Not only does this make programs easier to read, but it facilitates us to freely assign subtasks of a given function to many different goroutines without worrying about their identity.</p>
 <p>At this point, all the language features needed for writing Go programs have been discussed. The next two chapters will step back to some of the practices and tools that support programming in the large: how to structure a project as a set of packages, and how to obtain, build, test, benchmark, profile, document, and share those packages.</p>
-<h3 id="doubts-and-solution">Doubts and Solution</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong></h5>
+<h3 id="doubts-and-solution">Doubts and Solution<a class="headerlink" href="#doubts-and-solution" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
+<h5 id="p265-on-mutexes"><strong>p265 on mutexes</strong><a class="headerlink" href="#p265-on-mutexes" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>Although a re-entrant mutex would ensure that no other goroutines are accessing the shared variables, it cannot protect the additional invariants of those variables.</p>
 </blockquote>
 <p><span class="text-danger">Question</span>: What does it mean?</p>
-<h5 id="p271-in-synconce"><strong>p271 in <code>sync.Once</code></strong></h5>
+<h5 id="p271-in-synconce"><strong>p271 in <code>sync.Once</code></strong><a class="headerlink" href="#p271-in-synconce" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>... the mutex synchronization ensures that the effects of <code>loadIcons</code> on memory (specifically, <code>icons</code>) become visible to all goroutines. Using <code>sync.Once</code> in this way, we can avoid sharing variables with other goroutines until they have been properly constructed.</p>
 </blockquote>

@@ -474,10 +474,10 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-14-the-block-io-layer"><strong>Chapter 14. The Block I/O Layer</strong></h3>
+<h3 id="chapter-14-the-block-io-layer"><strong>Chapter 14. The Block I/O Layer</strong><a class="headerlink" href="#chapter-14-the-block-io-layer" title="Permanent link">&para;</a></h3>
 <p><strong>Block devices</strong> are hardware devices distinguished by the random (not necessarily sequential) access of fixed-size chunks of data. The fixed-size chunks of data are called <strong>blocks</strong>. The most common block device is a hard disk, but many other block devices exist, such as floppy drives, Blu-ray readers, and flash memory. Notice how these are all devices on which you mount a filesystem; filesystems are the lingua franca of block devices.</p>
 <p>The other basic type of device is a <strong>character device</strong>. Character devices, or <em>char</em> devices, are accessed as a stream of sequential data, one byte after another. Example character devices are serial ports and keyboards.</p>
-<h4 id="character-device-vs-block-device">Character Device vs. Block Device *</h4>
+<h4 id="character-device-vs-block-device">Character Device vs. Block Device *<a class="headerlink" href="#character-device-vs-block-device" title="Permanent link">&para;</a></h4>
 <p><u>If the hardware device is accessed as a stream of data, it is implemented as a character device. On the other hand, if the device is accessed randomly (nonsequentially), it is a block device.</u></p>
 <p>The difference comes down to whether the device accesses data randomly, in other words, whether the device can <em>seek</em> to one position from another. [p289]</p>
 <ul>
@@ -487,22 +487,22 @@
 <p>Managing block devices in the kernel requires more care, preparation, and work than managing character devices. <u>Character devices have only one position, the current one, whereas block devices must be able to navigate back and forth between any location on the media.</u></p>
 <p>The kernel does not have to provide an entire subsystem dedicated to the management of character devices, but block devices receive exactly that. Such a subsystem is a necessity partly because of the complexity of block devices. A large reason for such extensive support is that block devices are quite performance sensitive; getting every last drop out of your hard disk is much more important than squeezing an extra percent of speed out of your keyboard. Furthermore, the complexity of block devices provides a lot of room for such optimizations.</p>
 <p>The topic of this chapter is how the kernel manages block devices and their requests. This part of the kernel is known as the <strong>block I/O layer</strong>.</p>
-<h3 id="anatomy-of-a-block-device">Anatomy of a Block Device</h3>
-<h4 id="sector">Sector *</h4>
+<h3 id="anatomy-of-a-block-device">Anatomy of a Block Device<a class="headerlink" href="#anatomy-of-a-block-device" title="Permanent link">&para;</a></h3>
+<h4 id="sector">Sector *<a class="headerlink" href="#sector" title="Permanent link">&para;</a></h4>
 <p>The smallest addressable unit on a block device is a <a href="https://en.wikipedia.org/wiki/Disk_sector"><strong>sector</strong></a>. Sector sizes are powers of two, but 512 bytes is the most common size. The sector size is a physical property of the device, and the sector is the fundamental unit of all block devices; the device cannot address or operate on a unit smaller than the sector, although many block devices can operate on multiple sectors at one time. Most block devices have 512-byte sectors, although other sizes are common. For example, many CD-ROM discs have 2-kilobyte sectors.</p>
-<h4 id="block">Block *</h4>
+<h4 id="block">Block *<a class="headerlink" href="#block" title="Permanent link">&para;</a></h4>
 <p>The <a href="https://en.wikipedia.org/wiki/Block_(data_storage)"><strong>block</strong></a> is the smallest logically addressable unit for software.</p>
 <p>The block is an abstraction of the filesystem; filesystems can be
 accessed only in multiples of a block. Although the physical device is addressable at the
 sector level, the kernel performs all disk operations in terms of blocks.</p>
-<h4 id="block-vs-sector">Block vs. Sector *</h4>
+<h4 id="block-vs-sector">Block vs. Sector *<a class="headerlink" href="#block-vs-sector" title="Permanent link">&para;</a></h4>
 <ul>
 <li>The block size can be no smaller than the sector and must be a multiple of a sector, because the device’s smallest addressable unit is the sector.</li>
 <li>The kernel (as with hardware and the sector) needs the block to be a power of two.</li>
 <li>The kernel also requires that a block be no larger than the page size (<a href="../ch12/">Chapter 12</a> and <a href="ch19.md">Chapter 19</a></li>
 </ul>
 <p>Therefore, block sizes are a power-of-two multiple of the sector size and are not greater than the page size. Common block sizes are 512 bytes, 1 kilobyte, and 4 kilobytes.</p>
-<h5 id="confusion-of-block-and-sector"><strong>Confusion of block and sector</strong> *</h5>
+<h5 id="confusion-of-block-and-sector"><strong>Confusion of block and sector</strong> *<a class="headerlink" href="#confusion-of-block-and-sector" title="Permanent link">&para;</a></h5>
 <p>Some people confusingly refer to sectors and blocks with different names:</p>
 <ul>
 <li>Sectors, the smallest addressable unit to the device, are sometimes called "hard sectors" or "device blocks".</li>
@@ -511,7 +511,7 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 <p>This chapter continues to call the two notions sectors and blocks, but you should keep these other terms in mind. Below is a diagram of the relationship between sectors and blocks:</p>
 <p><a href="../figure_14.1.png" title="Figure 14.1 Relationship between sectors and blocks."><img alt="Figure 14.1 Relationship between sectors and blocks." src="../figure_14.1.png" /></a></p>
 <p>Hard disk related terminology, such as clusters, <a href="https://en.wikipedia.org/wiki/Cylinder-head-sector">cylinders</a>, and heads are specific only to certain block devices and are mostly invisible to user-space software. The reason that the sector is important to the kernel is because all device I/O must be done in units of sectors. In turn, blocks, which is the higher-level concept used by the kernel, are built on top of sectors.</p>
-<h3 id="buffers-and-buffer-heads">Buffers and Buffer Heads</h3>
+<h3 id="buffers-and-buffer-heads">Buffers and Buffer Heads<a class="headerlink" href="#buffers-and-buffer-heads" title="Permanent link">&para;</a></h3>
 <p>When a block is stored in memory (e.g. after a read or pending a write), it is stored in a <strong>buffer</strong>.  Each buffer is associated with exactly one block.The buffer serves as the object that represents a disk block in memory. A block is composed of one or more sectors but is no more than a page in size,  a single page can hold one or more blocks in memory. Because the kernel requires some associated control information to accompany the data (such as from which block device and which specific block the buffer is), each buffer is associated with a descriptor. This descriptor is called a <strong>buffer head</strong> and is of type struct <code>buffer_head</code>. The <code>buffer_head</code> structure holds all the information that the kernel needs to manipulate buffers and is defined in <code>&lt;linux/buffer_head.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h">include/linux/buffer_head.h</a>).</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L61">include/linux/buffer_head.h#L61</a></small></p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">buffer_head</span> <span class="p">{</span>
@@ -531,7 +531,7 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 </pre></div>
 
 
-<h4 id="the-b_state-field-and-bh_state_bits-enumeration">The <code>b_state</code> field and <code>bh_state_bits</code> enumeration *</h4>
+<h4 id="the-b_state-field-and-bh_state_bits-enumeration">The <code>b_state</code> field and <code>bh_state_bits</code> enumeration *<a class="headerlink" href="#the-b_state-field-and-bh_state_bits-enumeration" title="Permanent link">&para;</a></h4>
 <p>The <code>b_state</code> field specifies the state of this particular buffer. It can be one or more of the flags in the following table. The legal flags are stored in the <code>bh_state_bits</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L19">include/linux/buffer_head.h#L19</a>) enumeration, which is defined in <code>&lt;linux/buffer_head.h&gt;</code>.</p>
 <table>
 <thead>
@@ -604,7 +604,7 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 </tbody>
 </table>
 <p>The <code>bh_state_bits</code> enumeration also contains a <code>BH_PrivateStart</code> flag (as the last value in the list). This is not a valid state flag but instead corresponds to the first usable bit of which other code can make use. All bit values equal to and greater than <code>BH_PrivateStart</code> are not used by the block I/O layer proper, so these bits are safe to use by individual drivers who want to store information in the <code>b_state</code> field. Drivers can base the bit values of their internal flags off this flag and rest assured that they are not encroaching on an official bit used by the block I/O layer.</p>
-<h4 id="b_count"><code>b_count</code></h4>
+<h4 id="b_count"><code>b_count</code><a class="headerlink" href="#b_count" title="Permanent link">&para;</a></h4>
 <p>The <code>b_count</code> field is the buffer’s usage count. The value is incremented and decremented by two inline functions defined in <code>&lt;linux/buffer_head.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/buffer_head.h#L252">include/linux/buffer_head.h#L252</a></small></p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">get_bh</span><span class="p">(</span><span class="k">struct</span> <span class="n">buffer_head</span> <span class="o">*</span><span class="n">bh</span><span class="p">)</span>
@@ -624,13 +624,13 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 <li>Before manipulating a buffer head, you must increment its reference count via <code>get_bh()</code> to ensure that the buffer head is not deallocated out from under you.</li>
 <li>When finished with the buffer head, decrement the reference count via <code>put_bh()</code>.</li>
 </ul>
-<h4 id="physical-block-page-and-buffer">Physical block, page and buffer *</h4>
+<h4 id="physical-block-page-and-buffer">Physical block, page and buffer *<a class="headerlink" href="#physical-block-page-and-buffer" title="Permanent link">&para;</a></h4>
 <ul>
 <li>The physical block on disk to which a given buffer corresponds is the <code>b_blocknr</code>-th logical block on the block device described by <code>b_bdev</code>.</li>
 <li>The physical page in memory to which a given buffer corresponds is the page pointed to by <code>b_page</code>. More specifically, <code>b_data</code> is a pointer directly to the block (that exists somewhere in <code>b_page</code>), which is <code>b_size</code> bytes in length. Therefore, the block is located in memory starting at address <code>b_data</code> and ending at address (<code>b_data</code> + <code>b_size</code>).</li>
 </ul>
 <p>The purpose of a buffer head is to describe this mapping between the on-disk block and the physical in-memory buffer (which is a sequence of bytes on a specific page). Acting as a descriptor of this buffer-to-block mapping is the data structure’s only role in the kernel.</p>
-<h4 id="problems-with-buffer-heads">Problems with buffer heads *</h4>
+<h4 id="problems-with-buffer-heads">Problems with buffer heads *<a class="headerlink" href="#problems-with-buffer-heads" title="Permanent link">&para;</a></h4>
 <p>Before the 2.6 kernel, the buffer head was an important data structure. It was the unit of I/O in the kernel:</p>
 <ul>
 <li>Described the disk-blockto-physical-page mapping,</li>
@@ -649,7 +649,7 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 </ul>
 </li>
 </ol>
-<h3 id="the-bio-structure">The <code>bio</code> Structure</h3>
+<h3 id="the-bio-structure">The <code>bio</code> Structure<a class="headerlink" href="#the-bio-structure" title="Permanent link">&para;</a></h3>
 <p>The <code>bio</code> structure is the basic container for block I/O within the kernel is the bio structure. Defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/bio.h"><code>&lt;linux/bio.h&gt;</code></a>, this structure represents block I/O operations that are in flight (active) as a list of <strong>segments</strong>. A segment is a chunk of a buffer that is contiguous in memory. Thus, individual buffers need not be contiguous in memory. By allowing the buffers to be described in chunks, the <code>bio</code> structure provides the capability for the kernel to perform block I/O operations of even a single buffer from multiple locations in memory. <a href="https://en.wikipedia.org/wiki/Vectored_I/O">Vector I/O</a> such as this is called <strong>scatter-gather I/O</strong>.</p>
 <p>The following is <code>struct bio</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/bio.h#L62">include/linux/bio.h#L62</a></small></p>
@@ -679,7 +679,7 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 
 <p>The primary purpose of a <code>bio</code> structure is to represent an in-flight (in progress) block I/O operation. To this end, the majority of the fields in the structure are housekeeping related. The most important fields are <code>bi_io_vec</code>, <code>bi_vcnt</code>, and <code>bi_idx</code>.  The following figure shows the relationship between <code>struct bio</code>, <code>struct bio_vec</code>, and <code>struct page</code>.</p>
 <p><a href="../figure_14.2.png" title="Figure 14.2 Relationship between struct bio, struct bio_vec, and struct page."><img alt="Figure 14.2 Relationship between struct bio, struct bio_vec, and struct page." src="../figure_14.2.png" /></a></p>
-<h4 id="io-vectors">I/O vectors</h4>
+<h4 id="io-vectors">I/O vectors<a class="headerlink" href="#io-vectors" title="Permanent link">&para;</a></h4>
 <p>The <code>bi_io_vec</code> field points to an array of <code>bio_vec</code> structures, each of which is used as a list of individual segments in this specific block I/O operation. The entire array of these vectors describes the entire buffer.</p>
 <p>Each <code>bio_vec</code> is treated as a vector of the form <code>&lt;page, offset, len&gt;</code>, which describes a specific segment:</p>
 <ul>
@@ -704,9 +704,9 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 <p>In each given block I/O operation, there are <code>bi_vcnt</code> vectors in the <code>bio_vec</code> array starting with <code>bi_io_vec</code>. As the block I/O operation is carried out, the <code>bi_idx</code> field is used to point to the current index into the array.</p>
 <p>[p295]</p>
 <p>Each block I/O request is represented by a <code>bio</code> structure. Each request is composed of one or more blocks, which are stored in an array of <code>bio_vec</code> structures. These structures act as vectors and describe each segment’s location in a physical page in memory. The first segment in the I/O operation is pointed to by <code>b_io_vec</code>. Each additional segment follows after the first, for a total of <code>bi_vcnt</code> segments in the list. As the block I/O layer submits segments in the request, the <code>bi_idx</code> field is updated to point to the current segment.</p>
-<h5 id="splitting-of-bio-structures-and-raid"><strong>Splitting of <code>bio</code> structures and RAID</strong> *</h5>
+<h5 id="splitting-of-bio-structures-and-raid"><strong>Splitting of <code>bio</code> structures and RAID</strong> *<a class="headerlink" href="#splitting-of-bio-structures-and-raid" title="Permanent link">&para;</a></h5>
 <p>The <code>bi_idx</code> field is used to point to the current <code>bio_vec</code> in the list, which helps the block I/O layer keep track of partially completed block I/O operations. More importantly, it allows the splitting of <code>bio</code> structures. With this feature, <a href="https://en.wikipedia.org/wiki/RAID">RAID</a> (a hard disk setup that enables single volumes to span multiple disks for performance and reliability purposes) drivers can take a single <code>bio</code> structure, initially intended for a single device and split it among the multiple hard drives in the RAID array. All the RAID driver needs to do is copy the <code>bio</code> structure and update the <code>bi_idx</code> field to point to where the individual drive should start its operation.</p>
-<h5 id="usage-count"><strong>Usage count</strong> *</h5>
+<h5 id="usage-count"><strong>Usage count</strong> *<a class="headerlink" href="#usage-count" title="Permanent link">&para;</a></h5>
 <p>The <code>bio</code> structure maintains a usage count in the <code>bi_cnt</code> field. When this field reaches zero, the structure is destroyed and the backing memory is freed. The following two functions manage the usage counters:</p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="n">bio_get</span><span class="p">(</span><span class="k">struct</span> <span class="n">bio</span> <span class="o">*</span><span class="n">bio</span><span class="p">)</span>
 <span class="kt">void</span> <span class="n">bio_put</span><span class="p">(</span><span class="k">struct</span> <span class="n">bio</span> <span class="o">*</span><span class="n">bio</span><span class="p">)</span>
@@ -715,13 +715,13 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 
 <p>The former increments the usage count, whereas the latter decrements the usage count (if the count reaches zero, destroys the bio structure). Before manipulating an in-flight <code>bio</code> structure, be sure to increment its usage count to make sure it does not complete and deallocate out. When you finish, decrement the usage count in turn.</p>
 <p>The <code>bi_private</code> field is a private field for the owner (creator) of the structure. As a rule, you can read or write this field only if you allocated the <code>bio</code> structure.</p>
-<h4 id="the-old-versus-the-new">The Old Versus the New</h4>
+<h4 id="the-old-versus-the-new">The Old Versus the New<a class="headerlink" href="#the-old-versus-the-new" title="Permanent link">&para;</a></h4>
 <p>The <code>bio</code> structure represents an I/O operation, which may include one or more pages in memory. On the other hand, the <code>buffer_head</code> structure represents a single buffer, which describes a single block on the disk.</p>
 <ul>
 <li>Since buffer heads are tied to a single disk block in a single page, buffer heads result in the unnecessary dividing of requests into block-sized chunks, only to later reassemble them.</li>
 <li>The <code>bio</code> structure is lightweight. It can describe discontiguous blocks and does not unnecessarily split I/O operations.</li>
 </ul>
-<h5 id="bio-structure-benefits"><strong><code>bio</code> structure benefits</strong> *</h5>
+<h5 id="bio-structure-benefits"><strong><code>bio</code> structure benefits</strong> *<a class="headerlink" href="#bio-structure-benefits" title="Permanent link">&para;</a></h5>
 <p>The <code>bio</code> structure also has the following benefits:</p>
 <ul>
 <li>It can easily represent high memory, because <code>struct bio</code> deals with only physical pages and not direct pointers.</li>
@@ -729,13 +729,13 @@ sector level, the kernel performs all disk operations in terms of blocks.</p>
 <li>It makes it easy to perform scatter-gather (vectored) block I/O operations, with the data involved in the operation originating from multiple physical pages.</li>
 <li>It is much more lightweight than a buffer head because it contains only the minimum information needed to represent a block I/O operation and not unnecessary information related to the buffer itself.</li>
 </ul>
-<h5 id="why-is-buffer-head-still-needed"><strong>Why is buffer head still needed?</strong> *</h5>
+<h5 id="why-is-buffer-head-still-needed"><strong>Why is buffer head still needed?</strong> *<a class="headerlink" href="#why-is-buffer-head-still-needed" title="Permanent link">&para;</a></h5>
 <p>The concept of buffer heads is still required. Buffer heads function as descriptors, mapping disk blocks to pages. The <code>bio</code> structure does not contain any information about the state of a buffer: it is simply an array of vectors describing one or more segments of data for a single block I/O operation, plus related information. In the current setup, the <code>buffer_head</code> structure is still needed to contain information about buffers while the <code>bio</code> structure describes in-flight I/O. Keeping the two structures separate enables each to remain as small as possible.</p>
-<h3 id="request-queues">Request Queues</h3>
+<h3 id="request-queues">Request Queues<a class="headerlink" href="#request-queues" title="Permanent link">&para;</a></h3>
 <p>Block devices maintain <strong>request queues</strong> to store their pending block I/O requests. The request queue is represented by the <code>request_queue</code> structure and is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/blkdev.h"><code>&lt;linux/blkdev.h&gt;</code></a>. The request queue contains a doubly linked list of requests and associated control information. Requests are added to the queue by higher-level code in the kernel, such as filesystems. As long as the request queue is nonempty, the block device driver associated with the queue grabs the request from the head of the queue and submits it to its associated block device. Each item in the queue’s request list is a single request, of type <code>struct request</code> (also defined in <code>&lt;linux/blkdev.h&gt;</code>).</p>
 <p><u>Each request can be composed of more than one <code>bio</code> structure because individual requests can operate on multiple consecutive disk blocks.</u> Note that although the blocks on the disk must be adjacent, the blocks in memory need not be; each <code>bio</code> structure can describe multiple segments (segments are contiguous chunks of a block in memory) and the request can be composed of multiple <code>bio</code> structures.</p>
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
 <p>p294 on the <code>bio</code> structure:</p>
 <blockquote>
 <p>The <code>bio</code> structure is the basic container for block I/O within the kernel is the bio structure. Defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/bio.h"><code>&lt;linux/bio.h&gt;</code></a>, this structure represents block I/O operations that are in flight (active) as a list of <strong>segments</strong>. A segment is a chunk of a buffer that is contiguous in memory. Thus, individual buffers need not be contiguous in memory. By allowing the buffers to be described in chunks, the <code>bio</code> structure provides the capability for the kernel to perform block I/O operations of even a single buffer from multiple locations in memory. Vector I/O such as this is called <strong>scatter-gather I/O</strong>.</p>
