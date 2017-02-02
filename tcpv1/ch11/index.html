@@ -485,7 +485,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-11-name-resolution-and-the-domain-name-system-dns"><strong>Chapter 11. Name Resolution and the Domain Name System (DNS)</strong></h3>
+<h3 id="chapter-11-name-resolution-and-the-domain-name-system-dns"><strong>Chapter 11. Name Resolution and the Domain Name System (DNS)</strong><a class="headerlink" href="#chapter-11-name-resolution-and-the-domain-name-system-dns" title="Permanent link">&para;</a></h3>
 <p>To identify hosts, IP addresses (especially IPv6 addresses) are cumbersome for humans to use and remember. The Internet supports the use of <strong>host names</strong> to identify hosts, both clients and servers. In order to be used by protocols such as TCP and IP, host names are converted into IP addresses using a process known as name resolution. There are different forms of name resolution in the Internet, but the most prevalent and important one uses a distributed database system known as the <strong>Domain Name System</strong> (DNS). DNS runs as an application on the Internet, using IPv4 or IPv6 (or both). For scalability, DNS names are hierarchical, as are the servers that support name resolution.</p>
 <p>DNS is a distributed client/server networked database used by TCP/IP applications to map between host names and IP addresses (and vice versa), to provide capabilities like electronic mail routing information and service naming. The DNS provides the protocol that allows clients and servers to communicate
 with each other and also a protocol for allowing servers to exchange information. [p511]</p>
@@ -496,7 +496,7 @@ with each other and also a protocol for allowing servers to exchange information
 <li>How resolvers and servers communicate using the Internet protocols (mainly UDP)</li>
 <li>Some other resolution mechanisms used in Internet environments.</li>
 </ul>
-<h3 id="the-dns-name-space">The DNS Name Space</h3>
+<h3 id="the-dns-name-space">The DNS Name Space<a class="headerlink" href="#the-dns-name-space" title="Permanent link">&para;</a></h3>
 <p>The DNS <strong>name space</strong> is the set of all names used with DNS. This space is partitioned hierarchically and is case insensitive.</p>
 <p>The current DNS name space is a tree of domains with an unnamed root at the top. The top echelons of the tree are the so-called
 top-level domains (TLDs), which include:</p>
@@ -518,15 +518,15 @@ top-level domains (TLDs), which include:</p>
 <p>The generic gTLDs (<em>generic</em> appears twice) are open for unrestricted use. The others (generic-restricted and sponsored) are limited to various sorts of uses or are constrained as to what entity may assign names from the domain.</p>
 <p>There is a "new gTLD" program in the works that may significantly expand the current set, possibly to several hundred or even thousand. This program and policies relating to TLD management in general are maintained by the <a href="https://en.wikipedia.org/wiki/ICANN">Internet Corporation for Assigned Names and Numbers</a> (ICANN).</p>
 <p>Because some of these two-letter country codes of ccTLDs are suggestive of other uses and meanings, various countries have been able to find commercial windfalls from selling names within their ccTLDs. For example, the domain name <code>cnn.tv</code> is really a registration in the Pacific island of Tuvalu, which has been selling domain names associated with the television entertainment industry. This is called a <a href="https://en.wikipedia.org/wiki/Domain_hack"><strong>domain hack</strong></a>.</p>
-<h3 id="dns-naming-syntax">DNS Naming Syntax</h3>
+<h3 id="dns-naming-syntax">DNS Naming Syntax<a class="headerlink" href="#dns-naming-syntax" title="Permanent link">&para;</a></h3>
 <p>The names below a TLD in the DNS name tree are further partitioned into <strong>subdomains</strong>, which is very common practice, especially for the ccTLDs.</p>
-<h4 id="fully-qualified-domain-name-fqdn">Fully qualified domain name (FQDN) *</h4>
+<h4 id="fully-qualified-domain-name-fqdn">Fully qualified domain name (FQDN) *<a class="headerlink" href="#fully-qualified-domain-name-fqdn" title="Permanent link">&para;</a></h4>
 <p>The example names we have seen so far are known as <a href="https://en.wikipedia.org/wiki/Fully_qualified_domain_name"><strong>fully qualified domain names</strong></a> (FQDNs). They are sometimes written more formally with a trailing period (e.g., <code>mit.edu.</code>). This trailing period indicates that the name is complete; no additional information should be added to the name when performing a name resolution.</p>
-<h4 id="unqualified-domain-name">Unqualified domain name *</h4>
+<h4 id="unqualified-domain-name">Unqualified domain name *<a class="headerlink" href="#unqualified-domain-name" title="Permanent link">&para;</a></h4>
 <p>An <strong>unqualified domain name</strong>, which is used in combination with a default domain or domain search list set during system configuration, has one or more strings appended to the end. During configuration, system is typically assigned a default domain extension and search list using DHCP. For example, the default domain <code>cs.berkeley.edu</code> might be configured in systems at the computer science department at UC Berkeley. If a user on one of these machines types in the name <code>vangogh</code>, the local resolver software converts this name to the FQDN <code>vangogh.cs.berkeley.edu</code>. before invoking a resolver to determine <code>vangogh</code>’s IP address.</p>
 <p>A domain name consists of a sequence of <em>labels</em> separated by periods. The name represents a location in the name hierarchy, where the period is the hierarchy delimiter and descending down the tree takes place from right to left in the name.</p>
 <p><u>The hierarchical structure of the DNS name space allows different administrative authorities to manage different parts of the name space.</u> For example, creating a new DNS name <code>elevator.cs.berkeley.edu</code> wouldrequire dealing with the owner of the <code>cs.berkeley.edu</code> subdomain only. The <code>berkeley.edu</code> and <code>edu</code> portions of the name space would not require alteration, so the owners of those would not need to be bothered. <u>This feature of DNS is one key aspect of its <em>scalability</em>. No single entity is required to administer all the changes for the entire DNS name space.</u> [p516]</p>
-<h3 id="name-servers-and-zones">Name Servers and Zones</h3>
+<h3 id="name-servers-and-zones">Name Servers and Zones<a class="headerlink" href="#name-servers-and-zones" title="Permanent link">&para;</a></h3>
 <p>A person responsible for managing part of the active DNS name space is supposed to arrange for at least two <strong>name servers</strong> or <strong>DNS servers</strong> to hold information about the name space so that Internet users can perform queries on the names.</p>
 <p>The DNS (formed by servers) is a distributed system whose primary job is to provide name-to-address mappings; however, it can also provide a wide array of additional information.</p>
 <p>A <em>zone</em>, as the unit of administrative delegation, is a subtree of the DNS name space that can be administered separately from other zones. Every domain name exists within some zone (even the TLDs that exist in the root zone). Whenever a new record is added to a zone, the DNS administrator for the zone allocates a name and additional information (usually an IP address) for the new entry into the name server’s database. For example:</p>
@@ -536,7 +536,7 @@ top-level domains (TLDs), which include:</p>
 </ul>
 <p>A DNS server can contain information for more than one zone. At any hierarchical change point in a domain name (i.e., wherever a period appears), a different zone and containing server may be accessed to provide information for the name. This is called a <em>delegation</em>. A common delegation approach uses a zone for implementing a second-level domain name, such as <code>berkeley.edu</code>. In this domain, there may be individual hosts (e.g., <code>www.berkeley.edu</code>) or other domains (e.g., <code>cs.berkeley.edu</code>). <u>Each zone has a designated owner or responsible party who is given authority to manage the names, addresses, and subordinate zones within the zone. Often this person manages not only the contents of the zone but also the name servers that contain the zone’s database(s).</u></p>
 <p>For redundancy, zone information is supposed to exist in at least two places: there should be at least two servers containing information for each zone. All of these servers contain identical information about a zone. Among the servers, a primary server contains the zone database in a disk file, and one or more secondary servers obtain copies from the primary using a process called a <a href="../zone transfer"><strong>zone transfer</strong></a>. DNS has a special protocol for performing zone transfers, but copies of a zone’s contents can also be obtained using other means (e.g., the <code>rsync</code> utility).</p>
-<h3 id="caching">Caching</h3>
+<h3 id="caching">Caching<a class="headerlink" href="#caching" title="Permanent link">&para;</a></h3>
 <p>Name servers contain information (e.g. name-to-IP-address mappings) that
 may be obtained from three sources:</p>
 <ol>
@@ -549,10 +549,10 @@ may be obtained from three sources:</p>
 <p>Each DNS record has its own TTL, which are set and altered by the zone administrator when necessary. If a zone changes, there still may exist cached data within the network, leading to incorrect DNS resolution behavior until expiry of the TTL. For this reason, some zone administrators, anticipating a change to the zone contents, first reduce the TTL before implementing the change. This reduces the window for incorrect cached data to be present in the network.</p>
 <p>Caching is applied both for successful and unsuccessful resolutions (called <a href="https://en.wikipedia.org/wiki/Negative_cache"><strong>negative caching</strong></a>). <u>If a request for a particular domain name fails to return a record, this fact is also cached. This reduces Internet traffic when errant applications repeatedly make requests for names that do not exist.</u></p>
 <p>In some network configurations, the cache is maintained in a nearby name server, not in the resolvers resident in the clients. Placing the cache in the server allows any hosts on the LAN that use the nearby server to benefit from the server’s cache but implies a small delay in accessing the cache over the local network. In Windows and more recent systems, the client can maintain a cache, and it is made available to all applications running on the same system. In Windows, this happens by default, and in Linux, it is a service that can be enabled or disabled.</p>
-<h4 id="nscd8-and-nsswitchconf5"><code>nscd(8)</code> and <code>nsswitch.conf(5)</code> *</h4>
+<h4 id="nscd8-and-nsswitchconf5"><code>nscd(8)</code> and <code>nsswitch.conf(5)</code> *<a class="headerlink" href="#nscd8-and-nsswitchconf5" title="Permanent link">&para;</a></h4>
 <p>In Linux , the <strong>Name Service Caching Daemon</strong> (NSCD) provides a client-side caching capability. It is controlled by the <code>/etc/nscd.conf</code> file that can indicate which types of resolutions (for DNS and some other services) are cached, along with some cache parameters such as TTL settings. T</p>
 <p>The file <code>/etc/nsswitch.conf</code> controls how name resolution for applications takes place. It also controls whether local files, the DNS protocol, and/or NSCD is employed for mappings.</p>
-<h3 id="the-dns-protocol">The DNS Protocol</h3>
+<h3 id="the-dns-protocol">The DNS Protocol<a class="headerlink" href="#the-dns-protocol" title="Permanent link">&para;</a></h3>
 <p>The DNS protocol consists of two main parts:</p>
 <ul>
 <li>Query/response protocol used for performing queries against the DNS for particular names</li>
@@ -570,7 +570,7 @@ may be obtained from three sources:</p>
 <li>13 gTLD servers named by <em>A</em> through <em>M</em>; 2 of them have IPv6 addresses.</li>
 </ul>
 <p>Some of them are not a single physical server but a group of servers (over 50 for the J root server) that use the same IP address (i.e., using IP anycast addressing; <a href="../ch2/#anycast-addresses">Chapter 2</a>).</p>
-<h4 id="recursive-query">Recursive query *</h4>
+<h4 id="recursive-query">Recursive query *<a class="headerlink" href="#recursive-query" title="Permanent link">&para;</a></h4>
 <p>A full resolution that is unable to benefit from preexisting cached entries takes place among several entities, as shown in the figure below:</p>
 <p><a href="../figure_11-2.png" title=" A typical recursive DNS query for EXAMPLE.COM from A.HOME involves up to ten messages. The local recursive server (GW.HOME here) uses a DNS server provided by its ISP. That server, in turn, uses an Internet root name server and a gTLD server (for COM and NET TLDs) to find the name server for the EXAMPLE.COM domain. That name server (A.IANA-SERVERS.NET here) provides the required IP address for the host EXAMPLE.COM. All of the recursive servers cache any information learned for later use. "><img alt=" A typical recursive DNS query for EXAMPLE.COM from A.HOME involves up to ten messages. The local recursive server (GW.HOME here) uses a DNS server provided by its ISP. That server, in turn, uses an Internet root name server and a gTLD server (for COM and NET TLDs) to find the name server for the EXAMPLE.COM domain. That name server (A.IANA-SERVERS.NET here) provides the required IP address for the host EXAMPLE.COM. All of the recursive servers cache any information learned for later use. " src="../figure_11-2_600.png" /></a></p>
 <p>Here's what happened:</p>
@@ -590,9 +590,9 @@ may be obtained from three sources:</p>
 </li>
 </ul>
 <p>From A.HOME's side it seems the local name server was able to perform the request. What really happened is a <strong>recursive query</strong>, where the GW.HOME and ISP-provided servers in turn made additional DNS requests to satisfy A.HOME’s query. In general, most name servers perform recursive queries such as this. The notable exceptions are the root servers and other TLD servers that do not perform recursive queries. These servers are a relatively precious resource, so encumbering them with recursive queries for every machine that performs a DNS query would lead to poor global Internet performance.</p>
-<h4 id="default-domain-search-list">Default domain search list *</h4>
+<h4 id="default-domain-search-list">Default domain search list *<a class="headerlink" href="#default-domain-search-list" title="Permanent link">&para;</a></h4>
 <p>In the previous query example, if the A.HOME system is configured with a default domain search list, there may be additional queries. For example, if .HOME is a default search domain used by A.HOME, the first DNS query may be for the name EXAMPLE.COM.HOME, which will fail at the GW.HOME name server, which is authoritative for .HOME. A subsequent query will typically remove the default extension, resulting in a query for EXAMPLE.COM.</p>
-<h4 id="dns-message-format">DNS Message Format</h4>
+<h4 id="dns-message-format">DNS Message Format<a class="headerlink" href="#dns-message-format" title="Permanent link">&para;</a></h4>
 <p>There is one basic DNS message format used for all DNS operations (queries, responses, zone transfers, notifications, and dynamic updates), as illustrated in the figure below:</p>
 <p><a href="../figure_11-3.png" title="The DNS message format has a fixed 12-byte header. The entire message is usually carried in a UDP/IPv4 datagram and limited to 512 bytes. DNS UPDATE (DNS with dynamic updates) uses the field names ZOCOUNT, PRCOUNT, UPCOUNT, and ADCOUNT. A special extension format (called EDNS0) allows messages to be larger than 512 bytes, which is required for DNSSEC (see Chapter 18). "><img alt="The DNS message format has a fixed 12-byte header. The entire message is usually carried in a UDP/IPv4 datagram and limited to 512 bytes. DNS UPDATE (DNS with dynamic updates) uses the field names ZOCOUNT, PRCOUNT, UPCOUNT, and ADCOUNT. A special extension format (called EDNS0) allows messages to be larger than 512 bytes, which is required for DNSSEC (see Chapter 18). " src="../figure_11-3_600.png" /></a></p>
 <p>The basic DNS message begins with a fixed 12-byte header followed by four variable-length sections:</p>
@@ -713,7 +713,7 @@ may be obtained from three sources:</p>
 <li>For a reply, the number of answers is at least 1.</li>
 </ul>
 <p>Questions have a name, type, and class. All of the other sections contain zero or more RRs. RRs contain a name, type, and class information, but also the TTL value that controls how long the data can be cached. [p521]</p>
-<h5 id="names-and-labels"><strong>Names and Labels</strong></h5>
+<h5 id="names-and-labels"><strong>Names and Labels</strong><a class="headerlink" href="#names-and-labels" title="Permanent link">&para;</a></h5>
 <p>The variable-length sections at the end of a DNS message contain a collection of:</p>
 <ul>
 <li>Questions.</li>
@@ -726,14 +726,14 @@ may be obtained from three sources:</p>
 <li><strong>Data labels</strong> contain characters that constitute a label.</li>
 <li><strong>Compression labels</strong> act as pointers to other labels, which helps save space in a DNS message when multiple copies of the same string of characters are present across multiple labels.</li>
 </ul>
-<h5 id="data-labels"><strong>Data Labels</strong></h5>
+<h5 id="data-labels"><strong>Data Labels</strong><a class="headerlink" href="#data-labels" title="Permanent link">&para;</a></h5>
 <p>Each data label begins with a 1-byte count that specifies the number of bytes that immediately follow. The name is terminated with a byte containing the value 0, which is a label with a length of 0 (the label of the root).</p>
 <p><a href="../figure_11-4.png" title="DNS names are encoded as a sequence of labels. This example encodes the name www.pearson.com, which (technically) has four labels. The end of the name is identified by a 0-length label of the nameless root."><img alt="DNS names are encoded as a sequence of labels. This example encodes the name www.pearson.com, which (technically) has four labels. The end of the name is identified by a 0-length label of the nameless root." src="../figure_11-4.png" /></a></p>
 <ul>
 <li>Each label Length byte must be in the range of 0 to 63, as labels are limited to 63 bytes.</li>
 <li>The labels contain non-ASCII values, but this is uncommon and not recommended. It is suggested that labels start with a letter, end with a letter or digit, and have as interior characters only letters, digits and hyphen. [p523]</li>
 </ul>
-<h5 id="compression-labels"><strong>Compression Labels</strong></h5>
+<h5 id="compression-labels"><strong>Compression Labels</strong><a class="headerlink" href="#compression-labels" title="Permanent link">&para;</a></h5>
 <p>A DNS response may carry information in the answer, authority, and additional information sections relating to the same domain name. For data labels the same characters would be repeated in the DNS message when referring to the same name. To avoid this redundancy and save space, a compression scheme is used.</p>
 <p>The following figure illustrates how to encode the domain names <code>usc.edu</code> and <code>ucla.edu</code> using compression labels.</p>
 <p><a href="../figure_11-5.png" title=" A compression label can reference other labels to save space. This is accomplished by setting the 2 high-order bits of the byte preceding the label contents. This signals that the following 14 bits are used in providing an offset for the replacement label. In this example, usc.edu and ucla.edu share the edu label."><img alt=" A compression label can reference other labels to save space. This is accomplished by setting the 2 high-order bits of the byte preceding the label contents. This signals that the following 14 bits are used in providing an offset for the replacement label. In this example, usc.edu and ucla.edu share the edu label." src="../figure_11-5.png" /></a></p>
@@ -744,11 +744,11 @@ may be obtained from three sources:</p>
 <li>The label <code>edu</code> of <code>ucla.edu</code> may be reused from the encoding of <code>usc.edu</code>. This is accomplished by setting the 2 high-order bits of the label <strong>Type</strong> byte to 1 and encoding the offset of <code>edu</code> in the remaining 14 bits. Because the first occurrence of <code>edu</code> is at offset 4, we only need to set the first byte to 192 (6 bits of 0) and the next byte to 4.</li>
 </ul>
 <p>This example shows a savings of only 4 bytes, but it is clear how compression of larger common labels can result in more substantial savings.</p>
-<h4 id="the-dns-extension-format-edns0">The DNS Extension Format (EDNS0)</h4>
+<h4 id="the-dns-extension-format-edns0">The DNS Extension Format (EDNS0)<a class="headerlink" href="#the-dns-extension-format-edns0" title="Permanent link">&para;</a></h4>
 <p>An extension mechanism called <strong>EDNS0</strong> (because there could be future extensions beyond the index 0) is specified in [RFC2671]. It is necessary for supporting DNS security (<a href="https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions">DNSSEC</a>; see <a href="../ch18/">Chapter 18</a>).</p>
 <p>EDNS0 specifies a particular type of RR (called an <strong>OPT pseudo-RR</strong> or <strong>meta-RR</strong>) that is added to the additional data section of a request or response to indicate the use of EDNS0; at most one such record may be present in any DNS message. If a UDP DNS message includes an OPT RR, it is permitted to exceed the 512-byte length limitation and may contain an expanded set of error codes.</p>
 <p>EDNS0 also defines an extended label type (extending beyond the data labels and compression labels mentioned earlier). Extended labels have their first 2 bits in the label Type/Length byte set to 01, corresponding to values between 64 and 127 (inclusive). [p525]</p>
-<h4 id="udp-or-tcp">UDP or TCP</h4>
+<h4 id="udp-or-tcp">UDP or TCP<a class="headerlink" href="#udp-or-tcp" title="Permanent link">&para;</a></h4>
 <p>The well-known port number for DNS is 53, for both UDP and TCP.  The most common format uses the UDP/IPv4 datagram structure is shown below:</p>
 <p><a href="../figure_11-6.png" title="DNS messages are typically encapsulated in a UDP/IPv4 datagram and are limited to 512 bytes in size unless TCP and/or EDNS0 is used. Each section (except the question section) contains a set of resource records"><img alt="DNS messages are typically encapsulated in a UDP/IPv4 datagram and are limited to 512 bytes in size unless TCP and/or EDNS0 is used. Each section (except the question section) contains a set of resource records" src="../figure_11-6.png" /></a></p>
 <ul>
@@ -761,7 +761,7 @@ may be obtained from three sources:</p>
 <li>Incremental zone transfers, where only the updated entries are transferred, may use UDP at first but switch to TCP if the response is too large, just like a conventional query.</li>
 </ul>
 <p>When UDP is used, both the resolver and the server application software must perform their own timeout and retransmission. RFC1536 suggests starting with a timeout of at least 4s, and that subsequent timeouts result in an exponential increase of the timeout (a bit like TCP’s algorithms; see <a href="../ch14/">Chapter 14</a>). Linux and UNIX-like systems allow a change to be made to the retransmission timeout parameters by altering the contents of the <code>/etc/resolv.conf</code> file (by setting the timeout and attempts options).</p>
-<h4 id="question-query-and-zone-section-format">Question (Query) and Zone Section Format</h4>
+<h4 id="question-query-and-zone-section-format">Question (Query) and Zone Section Format<a class="headerlink" href="#question-query-and-zone-section-format" title="Permanent link">&para;</a></h4>
 <p>The question or query section of a DNS message lists the question(s) being referenced. The format of each question in the question section is shown the figure below. There is normally just one, although the protocol can support more. The same structure is also used for the zone section in dynamic updates (<a href="#dynamic-updates-dns-update">Section 11.5.7</a>), but with different names.</p>
 <ul>
 <li>The <strong>Query Name</strong> is the domain name being looked up (using the encoding for labels discussed earlier)</li>
@@ -777,7 +777,7 @@ may be obtained from three sources:</p>
 </ul>
 </li>
 </ul>
-<h4 id="answer-authority-and-additional-information-section-formats">Answer, Authority, and Additional Information Section Formats</h4>
+<h4 id="answer-authority-and-additional-information-section-formats">Answer, Authority, and Additional Information Section Formats<a class="headerlink" href="#answer-authority-and-additional-information-section-formats" title="Permanent link">&para;</a></h4>
 <p>The answer, authority, and additional information (final sections in the DNS message) sections contain sets of RRs. RRs in these sections can, for the most part, have wildcard domain names as owning names. These are domain names in which the asterisk label (a data label containing only the asterisk character) appears first.</p>
 <p><a href="../figure_11-8.png" title="The format of a DNS resource record. For DNS in the Internet, the Class field always contains the value 1. The TTL field gives the maximum amount of time the RR can be cached (in seconds)."><img alt="The format of a DNS resource record. For DNS in the Internet, the Class field always contains the value 1. The TTL field gives the maximum amount of time the RR can be cached (in seconds)." src="../figure_11-8.png" /></a></p>
 <ul>
@@ -788,7 +788,7 @@ may be obtained from three sources:</p>
 <li>The <strong>Resource Data Length</strong> (<strong>RDLENGTH</strong>) field specifies the number of bytes contained in the <strong>Resource Data</strong> (<strong>RDATA</strong>) field. The format of this data depends on the type. For example, A records (type 1) have a 32-bit IPv4 address in the RDATA area.</li>
 </ul>
 <p>The <strong>Resource Record Set</strong> (RRSet) is a set of resource records that share the same name, class, and type but not the same data. For example, <u>RRSet occurs when a host has more than one address record for its name (e.g., because it has more than one IP address). TTLs for RRs in the same RRSet must be equal.</u></p>
-<h4 id="resource-record-types">Resource Record Types</h4>
+<h4 id="resource-record-types">Resource Record Types<a class="headerlink" href="#resource-record-types" title="Permanent link">&para;</a></h4>
 <p>There are many types of resource records and a single name may have multiple matching RRs. The following table provides a listing of the most common RR types used with conventional DNS (i.e., DNS without the DNSSEC security extensions).</p>
 <table>
 <thead>
@@ -886,12 +886,12 @@ may be obtained from three sources:</p>
 </tr>
 </tbody>
 </table>
-<h4 id="dynamic-updates-dns-update">Dynamic Updates (DNS UPDATE)</h4>
-<h4 id="zone-transfers-and-dns-notify">Zone Transfers and DNS NOTIFY</h4>
-<h5 id="full-zone-transfers-axfr-messages"><strong>Full Zone Transfers (AXFR Messages)</strong></h5>
-<h5 id="incremental-zone-transfers-ixfr-messages"><strong>Incremental Zone Transfers (IXFR Messages)</strong></h5>
-<h5 id="dns-notify"><strong>DNS NOTIFY</strong></h5>
-<h3 id="sort-lists-round-robin-and-split-dns">Sort Lists, Round-Robin, and Split DNS</h3>
+<h4 id="dynamic-updates-dns-update">Dynamic Updates (DNS UPDATE)<a class="headerlink" href="#dynamic-updates-dns-update" title="Permanent link">&para;</a></h4>
+<h4 id="zone-transfers-and-dns-notify">Zone Transfers and DNS NOTIFY<a class="headerlink" href="#zone-transfers-and-dns-notify" title="Permanent link">&para;</a></h4>
+<h5 id="full-zone-transfers-axfr-messages"><strong>Full Zone Transfers (AXFR Messages)</strong><a class="headerlink" href="#full-zone-transfers-axfr-messages" title="Permanent link">&para;</a></h5>
+<h5 id="incremental-zone-transfers-ixfr-messages"><strong>Incremental Zone Transfers (IXFR Messages)</strong><a class="headerlink" href="#incremental-zone-transfers-ixfr-messages" title="Permanent link">&para;</a></h5>
+<h5 id="dns-notify"><strong>DNS NOTIFY</strong><a class="headerlink" href="#dns-notify" title="Permanent link">&para;</a></h5>
+<h3 id="sort-lists-round-robin-and-split-dns">Sort Lists, Round-Robin, and Split DNS<a class="headerlink" href="#sort-lists-round-robin-and-split-dns" title="Permanent link">&para;</a></h3>
 <p>Consider what data is returned and in what order in response to a DNS query. A DNS server could return all matching data to any client in whatever order the server finds most convenient. However, special configuration options and behaviors are available in most DNS server software to achieve certain operational, privacy, or performance goals. Consider the the topology shown below:</p>
 <p><a href="../figure_11-24.png" title="In a small enterprise topology, DNS may be configured to return different addresses depending on the requesting IP address."><img alt="In a small enterprise topology, DNS may be configured to return different addresses depending on the requesting IP address." src="../figure_11-24.png" /></a></p>
 <p>A host wishing to contact M performs a DNS lookup that returns two addresses: one associated with the internal network and one with the DMZ. <u>It would be more efficient if A, B, and R reached M via the DMZ and C reached M via the internal network, which happens if the DNS server orders its returned address records based on the source IP address of the request</u> (It could also use the destination IP address, especially if M uses multiple IP addresses from different subnets on the same network interface.):</p>
@@ -899,7 +899,7 @@ may be obtained from three sources:</p>
 <li>If the requesting system uses a source IP address with the same network prefix as the source of a returning address record, the DNS server places the set of such matching records early in the returned message. This behavior encourages the client to find the "closest" IP address for a particular server it is attempting to contact, because most simple applications attempt to contact the first address found among the returned address records.</li>
 <li>The precise behavior can usually be controlled using a so-called <code>sortlist</code> or <code>rrset-order</code> directive (options used in configuration files for resolvers and servers). Such sorting behavior may also happen automatically if performed by the DNS server software by default.</li>
 </ul>
-<h4 id="load-balancing">Load-balancing *</h4>
+<h4 id="load-balancing">Load-balancing *<a class="headerlink" href="#load-balancing" title="Permanent link">&para;</a></h4>
 <p>A related situation arises when one service is offered using more than one server such that the incoming connections are load-balanced (i.e., divided among the servers).</p>
 <p>In the preceding example, imagine that a service is offered on both A and B and such a service may be identified by the URL <code>http://www.example.com</code>:</p>
 <ul>
@@ -911,7 +911,7 @@ may be obtained from three sources:</p>
 <li>When records are cached, the desired effect may not occur because of reuse of existing cached address records.</li>
 <li>In addition, this scheme may balance the number of connections well across servers, but not the load. Different connections can have radically different processing requirements, so the true processing load is likely to remain unbalanced unless the particular service always has the same processing requirements.</li>
 </ul>
-<h4 id="split-dns">Split DNS</h4>
+<h4 id="split-dns">Split DNS<a class="headerlink" href="#split-dns" title="Permanent link">&para;</a></h4>
 <p>A final consideration regarding the data returned by a DNS server is support for privacy. In the previous example, we may wish to arrange for hosts within the enterprise to be able to retrieve resource records for every computer in the network, while we limit the set of systems that remain visible to R.</p>
 <p><a href="https://en.wikipedia.org/wiki/Split-horizon_DNS"><strong>Split DNS</strong></a> is a technique for implementing this goal. In split DNS, the set of resource records returned in response to a query is dependent on the identity of the client and possibly query destination address. Most often, the client is identified by IP address or address prefix. With split DNS, we could arrange for any host in the enterprise (i.e., those sharing a set of prefixes) to be provided with the entire DNS database, whereas those outside are given visibility only to A and B, where the main Web service is offered.</p>
             </div>

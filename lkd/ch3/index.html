@@ -491,9 +491,9 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-3-process-management"><strong>Chapter 3. Process Management</strong></h3>
+<h3 id="chapter-3-process-management"><strong>Chapter 3. Process Management</strong><a class="headerlink" href="#chapter-3-process-management" title="Permanent link">&para;</a></h3>
 <p>This chapter introduces the concept of the <strong>process</strong>. The process management is a crucial part of any operating system kernel, including Linux.</p>
-<h3 id="the-process">The Process</h3>
+<h3 id="the-process">The Process<a class="headerlink" href="#the-process" title="Permanent link">&para;</a></h3>
 <p>A process is a program (object code stored on some media) in the midst of execution.</p>
 <p>Besides the executing program code (<em>text section</em> in Unix), processes also include a set of resources:</p>
 <ul>
@@ -505,7 +505,7 @@
 <li><strong>Thread(s) of execution</strong></li>
 <li>Data section containing global variables</li>
 </ul>
-<h4 id="threads-of-execution">Threads of execution</h4>
+<h4 id="threads-of-execution">Threads of execution<a class="headerlink" href="#threads-of-execution" title="Permanent link">&para;</a></h4>
 <p>Threads of execution, often shortened to <strong>threads</strong>,  are the objects of activity within the process.</p>
 <p>Each thread includes:</p>
 <ul>
@@ -514,20 +514,20 @@
 <li>Set of processor registers</li>
 </ul>
 <p>The kernel schedules individual threads, not processes. <u>Linux does not differentiate between threads and processes. To Linux, a thread is just a special kind of process.</u></p>
-<h4 id="virtualized-processor-and-virtual-memory">Virtualized processor and virtual memory</h4>
+<h4 id="virtualized-processor-and-virtual-memory">Virtualized processor and virtual memory<a class="headerlink" href="#virtualized-processor-and-virtual-memory" title="Permanent link">&para;</a></h4>
 <p>On modern operating systems, processes provide two virtualizations: a <strong>virtualized processor</strong> and <strong>virtual memory</strong>.</p>
 <ul>
 <li>The virtual processor gives the process the illusion that it alone monopolizes the system, despite possibly sharing the processor among hundreds of other processes. See <a href="../ch4/">Chapter 4. Process Scheduling</a>.</li>
 <li>Virtual memory lets the process allocate and manage memory as if it alone owned all the memory in the system. See <a href="../ch12/">Chapter 12. Memory Management</a></li>
 </ul>
 <p><u>Threads share the virtual memory abstraction</u>, whereas each receives its own virtualized processor.</p>
-<h4 id="life-of-a-process">Life of a process</h4>
+<h4 id="life-of-a-process">Life of a process<a class="headerlink" href="#life-of-a-process" title="Permanent link">&para;</a></h4>
 <p>A process is an active program and related resources:</p>
 <ul>
 <li>Two or more processes can exist that are executing the <em>same</em> program.</li>
 <li>Two or more processes can exist that share various resources, such as open files or an address space.</li>
 </ul>
-<h4 id="fork-exec-exit-and-wait">fork, exec, exit and wait</h4>
+<h4 id="fork-exec-exit-and-wait">fork, exec, exit and wait<a class="headerlink" href="#fork-exec-exit-and-wait" title="Permanent link">&para;</a></h4>
 <p>In Linux, the <code>fork()</code> system call creates a new process by duplicating an existing one.</p>
 <ul>
 <li>The process that calls <code>fork()</code> is the parent, whereas the new process is the child.</li>
@@ -536,13 +536,13 @@
 </ul>
 <p>The <code>exec()</code> family of function calls creates a new address space and loads a new program into the newborn child immediately after a fork. In contemporary Linux kernels, <u><code>fork()</code> is actually implemented via the <code>clone()</code> system call</u>, which is discussed in a following section.</p>
 <p>The <code>exit()</code> system call terminates the process and frees all its resources. A parent process can inquire about the status of a terminated child via the <code>wait4()</code> system call. A process can wait for the termination of a specific process. <u>When a process exits, it is placed into a special zombie state that represents terminated processes until the parent calls <code>wait()</code> or <code>waitpid()</code>.</u> The kernel implements the <code>wait4()</code> system call. Linux systems, via the C library, typically provide the <code>wait()</code>, <code>waitpid()</code>, <code>wait3()</code>, and <code>wait4()</code> functions.</p>
-<h3 id="process-descriptor-and-the-task-structure">Process Descriptor and the Task Structure</h3>
+<h3 id="process-descriptor-and-the-task-structure">Process Descriptor and the Task Structure<a class="headerlink" href="#process-descriptor-and-the-task-structure" title="Permanent link">&para;</a></h3>
 <p>Another name for a process is a <strong>task</strong>. The Linux kernel internally refers to processes as tasks. In this book, the terms are used interchangeably, though <u>"task" generally refers to a process from the kernel's point of view.</u></p>
 <p>The kernel stores the list of processes in a circular doubly linked list called the <strong>task list</strong>.</p>
 <p>A <strong>process descriptor</strong> of the type <code>struct task_struct</code> (defined in <code>&lt;linux/sched.h&gt;</code>) is an element in the task list. It contains all the information about a specific process.</p>
 <p>The <code>task_struct</code> is a relatively large data structure, at around 1.7 kilobytes on a 32-bit machine. The process descriptor contains the data that describes the executing program: open files, the process's address space, pending signals, the process's state, etc. See the figure below.</p>
 <p><a href="../figure_3.1.png" title="Figure 3.1 The process descriptor and task list."><img alt="Figure 3.1 The process descriptor and task list." src="../figure_3.1.png" /></a></p>
-<h4 id="allocating-the-process-descriptor">Allocating the Process Descriptor</h4>
+<h4 id="allocating-the-process-descriptor">Allocating the Process Descriptor<a class="headerlink" href="#allocating-the-process-descriptor" title="Permanent link">&para;</a></h4>
 <p>The <code>task_struct</code> structure is allocated via the <strong>slab allocator</strong> to provide object reuse and cache coloring (see <a href="../ch12/">Chapter 12</a>). The structure <code>struct thread_info</code> lives at the bottom of the stack (for stacks that grow down) and at the top of the stack (for stacks that grow up)</p>
 <p><a href="../figure_3.2.png" title="Figure 3.2 The process descriptor and kernel stack."><img alt="Figure 3.2 The process descriptor and kernel stack." src="../figure_3.2.png" /></a></p>
 <p><a href="http://www.crashcourse.ca/wiki/index.php/Updates_to_LKD3#Figure_3.2_.28p._26.29">Errata</a>: "struct thread_struct" should read "struct thread_info"</p>
@@ -565,7 +565,7 @@
 </pre></div>
 
 
-<h4 id="storing-the-process-descriptor">Storing the Process Descriptor</h4>
+<h4 id="storing-the-process-descriptor">Storing the Process Descriptor<a class="headerlink" href="#storing-the-process-descriptor" title="Permanent link">&para;</a></h4>
 <p>The <strong>process identification</strong> (PID) is numerical value, represented by the <a href="https://en.wikipedia.org/wiki/Opaque_data_type">opaque type</a> <code>pid_t</code> (typically <code>int</code>), for the system to identify processes. The default maximum value is only 32,768 (that of a <code>short int</code>), although the value optionally can be increased as high as four million (this is controlled in <code>&lt;linux/threads.h&gt;</code>). The kernel stores this value as <code>pid</code> inside each process descriptor. [p26]</p>
 <p>Large servers may require many more than 32,768 (maximum value) processes. <u>The lower the value, the sooner the values will wrap around, destroying the useful notion that higher values indicate later-run processes than lower values.</u> The administrator may increase the maximum value via <code>/proc/sys/kernel/pid_max</code>.</p>
 <p>Inside the kernel, tasks are typically referenced directly by a pointer to their <code>task_struct</code> structure. In fact, most kernel code that deals with processes works directly with <code>struct task_struct</code>. Consequently, it is useful to be able to quickly look up the process descriptor of the currently executing task, which is done via the <code>current</code> macro. This macro must be independently implemented by each architecture:</p>
@@ -573,7 +573,7 @@
 <li>Some architectures save a pointer to the <code>task_struct</code> structure of the currently running process in a register, enabling for efficient access.</li>
 <li>Other architectures, such as x86 (which has few registers to waste), make use of the fact that struct <code>thread_info</code> is stored on the kernel stack to calculate the location of <code>thread_info</code> and subsequently the <code>task_struct</code>.</li>
 </ul>
-<h5 id="the-current_thread_info-function">The <code>current_thread_info()</code> function</h5>
+<h5 id="the-current_thread_info-function">The <code>current_thread_info()</code> function<a class="headerlink" href="#the-current_thread_info-function" title="Permanent link">&para;</a></h5>
 <p>On x86, <code>current</code> is calculated by masking out the 13 least-significant bits of the stack pointer to obtain the <code>thread_info</code> structure. This is done by the <code>current_thread_info()</code> function (<a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/arch/x86/include/asm/thread_info.h#L184">arch/x86/include/asm/thread_info.h#L184</a>). The assembly is shown here:</p>
 <div class="codehilite"><pre><span class="nf">movl</span> <span class="kc">$</span><span class="o">-</span><span class="mi">8192</span><span class="p">,</span> <span class="o">%</span><span class="nb">eax</span>
 <span class="nf">andl</span> <span class="o">%</span><span class="nb">esp</span><span class="p">,</span> <span class="o">%</span><span class="nb">eax</span>
@@ -589,7 +589,7 @@
 </pre></div>
 
 
-<h4 id="process-state">Process State</h4>
+<h4 id="process-state">Process State<a class="headerlink" href="#process-state" title="Permanent link">&para;</a></h4>
 <p>The <code>state</code> field of the process descriptor describes the current condition of the process.</p>
 <p><a href="../figure_3.3.png" title="Figure 3.3 Flow chart of process states."><img alt="Figure 3.3 Flow chart of process states." src="../figure_3.3_600.png" /></a></p>
 <p>Each process on the system is in exactly one of five different states. This value is represented by one of five flags:</p>
@@ -600,7 +600,7 @@
 <li><code>__TASK_TRACED</code>: The process is being traced by another process, such as a debugger, via <strong>ptrace</strong>.</li>
 <li><code>__TASK_STOPPED</code>: Process execution has stopped; the task is not running nor is it eligible to run. This occurs if the task receives the <code>SIGSTOP</code>, <code>SIGTSTP</code>, <code>SIGTTIN</code>, or <code>SIGTTOU</code> signal or if it receives any signal while it is being debugged.</li>
 </ul>
-<h4 id="manipulating-the-current-process-state">Manipulating the Current Process State</h4>
+<h4 id="manipulating-the-current-process-state">Manipulating the Current Process State<a class="headerlink" href="#manipulating-the-current-process-state" title="Permanent link">&para;</a></h4>
 <p>Kernel code often needs to change a process's state. The preferred mechanism is using:</p>
 <div class="codehilite"><pre><span class="n">set_task_state</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">state</span><span class="p">);</span> <span class="cm">/* set task ‘task’ to state ‘state’ */</span>
 </pre></div>
@@ -615,7 +615,7 @@
 <ul>
 <li><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L226">include/linux/sched.h#L226</a></li>
 </ul>
-<h4 id="process-context">Process Context</h4>
+<h4 id="process-context">Process Context<a class="headerlink" href="#process-context" title="Permanent link">&para;</a></h4>
 <p>The program code is read in from an <strong>executable file</strong> and executed within the program's address space.</p>
 <ul>
 <li><strong>User-space</strong>: Normal program execution occurs in user-space.</li>
@@ -630,7 +630,7 @@
 <li>System calls</li>
 <li>Exception handlers</li>
 </ul>
-<h4 id="the-process-family-tree">The Process Family Tree</h4>
+<h4 id="the-process-family-tree">The Process Family Tree<a class="headerlink" href="#the-process-family-tree" title="Permanent link">&para;</a></h4>
 <p>All processes are descendants of the <code>init</code> process (PID 1). The kernel starts init in the last step of the boot process. The init process reads the system <strong>initscripts</strong> and executes more programs, eventually completing the boot process.</p>
 <ul>
 <li>Every process on the system has exactly one <strong>parent</strong>.</li>
@@ -708,13 +708,13 @@
 <li><code>for_each_process</code>: <a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/sched.h#L2139">include/linux/sched.h#L2139</a></li>
 </ul>
 <p>It is expensive to iterate over every task in a system with many processes; code should have good reason (and no alternative) before doing so.</p>
-<h3 id="process-creation">Process Creation</h3>
+<h3 id="process-creation">Process Creation<a class="headerlink" href="#process-creation" title="Permanent link">&para;</a></h3>
 <p>Most operating systems implement a <strong>spawn</strong> mechanism to create a new process in a new address space, read in an executable, and begin executing it. Unix separates these steps into two distinct functions: <code>fork()</code> and <code>exec()</code>.</p>
 <ul>
 <li><code>fork()</code>: creates a child process that is a copy of the current task. It differs from the parent only in its PID, its PPID (parent's PID), and certain resources and statistics (e.g. pending signals) which are not inherited.</li>
 <li><code>exec()</code>: loads a new executable into the address space and begins executing it.</li>
 </ul>
-<h4 id="copy-on-write">Copy-on-Write</h4>
+<h4 id="copy-on-write">Copy-on-Write<a class="headerlink" href="#copy-on-write" title="Permanent link">&para;</a></h4>
 <p>If upon <code>fork()</code> all resources owned by the parent are duplicated and the copy is given to the child, it is naive and inefficient in that it copies much data that might otherwise be shared. Worse still, if the new process were to immediately execute a new image, all that copying would go to waste.</p>
 <p>In Linux, <code>fork()</code> is implemented through the use of copy-on-write pages.</p>
 <p><strong>Copy-on-write</strong> (COW) can delay or prevent copying data. Rather than duplicating the process address space, the parent and the child can share a single copy.</p>
@@ -723,7 +723,7 @@
 <li>In the case that the pages are never written (if <code>exec()</code> is called immediately after <code>fork()</code>), they never need to be copied.</li>
 </ul>
 <p>The only overhead incurred by <code>fork()</code> is the duplication of the parent's page tables and the creation of a unique process descriptor for the child. In the common case that a process executes a new executable image immediately after forking, this optimization prevents the wasted copying of large amounts of data (with the address space, easily tens of megabytes). This is an important optimization because the Unix philosophy encourages quick process execution.</p>
-<h4 id="forking">Forking</h4>
+<h4 id="forking">Forking<a class="headerlink" href="#forking" title="Permanent link">&para;</a></h4>
 <p>Linux implements <code>fork()</code> via the <code>clone()</code> system call which takes a series of flags that specify which resources the parent and child process should share.</p>
 <ul>
 <li>The <code>fork()</code>, <code>vfork()</code>, and <code>__clone()</code> library calls all invoke the <code>clone()</code> system call with the requisite flags.</li>
@@ -769,7 +769,7 @@
 </ol>
 <p>Back in <code>do_fork()</code>, if <code>copy_process()</code> returns successfully, the new child is woken up and run.</p>
 <p><u>Deliberately, the kernel runs the child process first. In the case of the child calling <code>exec()</code> immediately, this eliminates any copy-on-write overhead that would occur if the parent ran first and began writing to the address space.</u></p>
-<h4 id="vfork"><code>vfork()</code></h4>
+<h4 id="vfork"><code>vfork()</code><a class="headerlink" href="#vfork" title="Permanent link">&para;</a></h4>
 <p>The <code>vfork()</code> system call has the same effect as <code>fork()</code>, except that the page table entries of the parent process are not copied. The child executes as the sole thread in the parent's address space, and the parent is blocked until the child either calls <code>exec()</code> or exits. The child is not allowed to write to the address space. [p33]</p>
 <p>Today, with copy-on-write and child-runs-first semantics, the only benefit to <code>vfork()</code> is not copying the parent page tables entries. [p33]</p>
 <p>The <code>vfork()</code> system call is implemented via a special flag to the <code>clone()</code> system call:</p>
@@ -781,7 +781,7 @@
 <li>Back in <code>do_fork()</code>, the parent wakes up and returns.</li>
 </ol>
 <p>If this all goes as planned, the child is now executing in a new address space, and the parent is again executing in its original address space. The overhead is lower, but the implementation is not pretty.</p>
-<h3 id="the-linux-implementation-of-threads">The Linux Implementation of Threads</h3>
+<h3 id="the-linux-implementation-of-threads">The Linux Implementation of Threads<a class="headerlink" href="#the-linux-implementation-of-threads" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Threads are a programming abstraction that provide multiple threads of execution within the same program in a shared memory address space.</li>
 <li>Threads can also share open files and other resources.</li>
@@ -794,7 +794,7 @@
 <li>Each thread has a unique <code>task_struct</code> and appears to the kernel as a normal process. Threads just happen to share resources, such as an address space, with other processes.</li>
 </ul>
 <p>This approach to threads contrasts greatly with operating systems such as Microsoft Windows or Sun Solaris, which have explicit kernel support for threads (and sometimes call threads lightweight processes). [p34]</p>
-<h4 id="creating-threads">Creating Threads</h4>
+<h4 id="creating-threads">Creating Threads<a class="headerlink" href="#creating-threads" title="Permanent link">&para;</a></h4>
 <p>Threads are created the same as normal tasks, with the exception that the <code>clone()</code> system call is passed flags corresponding to the specific resources to be shared:</p>
 <div class="codehilite"><pre><span class="n">clone</span><span class="p">(</span><span class="n">CLONE_VM</span> <span class="o">|</span> <span class="n">CLONE_FS</span> <span class="o">|</span> <span class="n">CLONE_FILES</span> <span class="o">|</span> <span class="n">CLONE_SIGHAND</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
 </pre></div>
@@ -894,7 +894,7 @@
 </tr>
 </tbody>
 </table>
-<h4 id="kernel-threads">Kernel Threads</h4>
+<h4 id="kernel-threads">Kernel Threads<a class="headerlink" href="#kernel-threads" title="Permanent link">&para;</a></h4>
 <p><strong>Kernel threads</strong> are standard processes that exist solely in kernel-space. They are useful for the kernel to perform some operations in the background.</p>
 <p>Difference from normal threads:</p>
 <ul>
@@ -951,7 +951,7 @@
 </pre></div>
 
 
-<h3 id="process-termination">Process Termination</h3>
+<h3 id="process-termination">Process Termination<a class="headerlink" href="#process-termination" title="Permanent link">&para;</a></h3>
 <p>When a process terminates, the kernel releases the resources owned by the process and notifies the child's parent of its demise.</p>
 <p>Self-induced process termination occurs when the process calls the <code>exit()</code> system call, which is either:</p>
 <ul>
@@ -986,7 +986,7 @@
 <li>The only memory it occupies is its kernel stack, the <code>thread_info</code> structure, and the <code>task_struct</code> structure.</li>
 <li><u>The task exists solely to provide information to its parent. After the parent retrieves the information, or notifies the kernel that it is uninterested, the remaining memory held by the process is freed and returned to the system for use.</u></li>
 </ul>
-<h4 id="removing-the-process-descriptor">Removing the Process Descriptor</h4>
+<h4 id="removing-the-process-descriptor">Removing the Process Descriptor<a class="headerlink" href="#removing-the-process-descriptor" title="Permanent link">&para;</a></h4>
 <p>After <code>do_exit()</code> completes, the process descriptor for the terminated process still exists, but the process is a zombie and is unable to run.</p>
 <p>Cleaning up after a process and removing its process descriptor are separate steps. This enables the system to obtain information about a child process after it has terminated.</p>
 <p>The terminated child's <code>task_struct</code> is deallocated after any of the following:</p>
@@ -1004,7 +1004,7 @@
 <li><code>release_task()</code> calls <code>put_task_struct()</code> to free the pages containing the process's kernel stack and <code>thread_info</code> structure and deallocate the slab cache containing the <code>task_struct</code>.</li>
 </ol>
 <p>At this point, the process descriptor and all resources belonging solely to the process have been freed.</p>
-<h4 id="the-dilemma-of-the-parentless-task">The Dilemma of the Parentless Task</h4>
+<h4 id="the-dilemma-of-the-parentless-task">The Dilemma of the Parentless Task<a class="headerlink" href="#the-dilemma-of-the-parentless-task" title="Permanent link">&para;</a></h4>
 <p><u>If a parent exits before its children, any of its child tasks must be reparented to a new process, otherwise parentless terminated processes would forever remain zombies, wasting system memory.</u></p>
 <p>The solution is to reparent a task's children on exit to another process in the current thread group, or (if that fails) the init process.</p>
 <p><code>do_exit()</code> calls <code>exit_notify()</code>, which calls <code>forget_original_parent()</code>, which calls <code>find_new_reaper()</code> to perform the reparenting:</p>
@@ -1083,8 +1083,8 @@
 <p>When a task is <em>ptraced</em>, it is temporarily reparented to the debugging process. When the task's parent exits, however, it must be reparented along with its other siblings. In previous kernels, this resulted in a loop over every process in the system looking for children. The solution is simply to keep a separate list of a process's children being ptraced, reducing the search for one's children from every process to just two relatively small lists</p>
 <p>After the process are successfully reparented, there is no risk of stray zombie processes. The <code>init</code> process routinely calls <code>wait()</code> on its children, cleaning up any zombies assigned to it.</p>
 <hr />
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
 <blockquote>
 <p>These two routines are provided by the macros <code>next_task(task)</code> and <code>prev_task(task)</code>, respectively.</p>
 </blockquote>

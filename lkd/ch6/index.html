@@ -464,7 +464,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-6-kernel-data-structures"><strong>Chapter 6. Kernel Data Structures</strong></h3>
+<h3 id="chapter-6-kernel-data-structures"><strong>Chapter 6. Kernel Data Structures</strong><a class="headerlink" href="#chapter-6-kernel-data-structures" title="Permanent link">&para;</a></h3>
 <p>This chapter introduces several built-in data structures for use in Linux kernel code: [p85]</p>
 <ul>
 <li>Linked lists</li>
@@ -473,10 +473,10 @@
 <li>Binary trees</li>
 </ul>
 <p>These generic data structures are provided to encourage code reuse. Kernel developers should use these data structures whenever possible and not "roll your own" solutions.</p>
-<h3 id="linked-lists">Linked Lists</h3>
+<h3 id="linked-lists">Linked Lists<a class="headerlink" href="#linked-lists" title="Permanent link">&para;</a></h3>
 <p>As the simplest and most common data structure in the Linux kernel, a <strong>linked list</strong> is a data structure that allows the storage and manipulation of a variable number of <em>elements</em>, called the <em>nodes</em> of the list.</p>
 <p>Unlike in a static array, the elements in a linked list are dynamically created and inserted into the list, which enables the management of a varying number of elements unknown at compile time. The elements do not necessarily occupy contiguous regions in memory and thus need to be linked together (each element in the list contains a pointer to the <em>next</em> element).</p>
-<h4 id="singly-and-doubly-linked-lists">Singly and Doubly Linked Lists</h4>
+<h4 id="singly-and-doubly-linked-lists">Singly and Doubly Linked Lists<a class="headerlink" href="#singly-and-doubly-linked-lists" title="Permanent link">&para;</a></h4>
 <p>The simplest data structure for a linked list is like:</p>
 <div class="codehilite"><pre><span class="cm">/* an element in a linked list */</span>
 <span class="k">struct</span> <span class="n">list_element</span> <span class="p">{</span>
@@ -504,13 +504,13 @@
 
 <p>The following figure shows doubly linked list:</p>
 <p><a href="../figure_6.2.png" title="Figure 6.2 A doubly linked list."><img alt="Figure 6.2 A doubly linked list." src="../figure_6.2.png" /></a></p>
-<h4 id="circular-linked-lists">Circular Linked Lists</h4>
+<h4 id="circular-linked-lists">Circular Linked Lists<a class="headerlink" href="#circular-linked-lists" title="Permanent link">&para;</a></h4>
 <p>Normally, the last element in a linked list has no next element, so it is set to point to a special value, such as <code>NULL</code>. In a <strong>circular linked list</strong>, last element does not point to a special value, but points back to the first value.</p>
 <p><u>Circular linked lists can come in both doubly and singly linked versions. In a circular doubly linked list, the first node's "previous" pointer points at the last node.</u></p>
 <p>The following two figures are singly and doubly circular linked lists, respectively:</p>
 <p><a href="../figure_6.3.png" title="Figure 6.3 A circular singly linked list."><img alt="Figure 6.3 A circular singly linked list." src="../figure_6.3.png" /></a>
 <a href="../figure_6.4.png" title="Figure 6.4 A circular doubly linked list."><img alt="Figure 6.4 A circular doubly linked list." src="../figure_6.4.png" /></a></p>
-<h4 id="moving-through-a-linked-list">Moving Through a Linked List</h4>
+<h4 id="moving-through-a-linked-list">Moving Through a Linked List<a class="headerlink" href="#moving-through-a-linked-list" title="Permanent link">&para;</a></h4>
 <p>To move through a linked list, simply follow the next pointer of an element, and visit the next element. This is linear movement.</p>
 <p><u>Linked lists are ill-suited for use cases where random access is an important operation.</u> Instead, you use linked lists when iterating over the whole list is important and the dynamic addition and removal of elements is required.</p>
 <p>In linked list implementations:</p>
@@ -520,7 +520,7 @@
 <li>In a circular-linked list, the last element is delineated because it points to the <em>head</em> element.</li>
 </ul>
 <p>[p87-88]</p>
-<h4 id="the-linux-kernels-implementation">The Linux Kernel's Implementation</h4>
+<h4 id="the-linux-kernels-implementation">The Linux Kernel's Implementation<a class="headerlink" href="#the-linux-kernels-implementation" title="Permanent link">&para;</a></h4>
 <p>The Linux kernel's implementation is unique, in comparison to most linked list implementations including those described in the previous sections.</p>
 <p>The common pattern for storing this structure in a linked list is to embed the list pointer in the structure. For example, to describe that member of the <a href="https://en.wikipedia.org/wiki/Canidae"><em>Canidae</em></a> family:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
@@ -534,7 +534,7 @@
 
 
 <p>The Linux kernel approach is different. Instead of turning the structure into a linked list, the Linux approach is to "<u>embed a linked list node in the structure</u>".</p>
-<h5 id="the-linked-list-structure"><strong>The Linked List Structure</strong></h5>
+<h5 id="the-linked-list-structure"><strong>The Linked List Structure</strong><a class="headerlink" href="#the-linked-list-structure" title="Permanent link">&para;</a></h5>
 <p>The linked-list code is declared in the header file <code>&lt;linux/list.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h#L19">include/linux/list.h#L19</a>) and the data structure is simple:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">next</span>
@@ -570,7 +570,7 @@
 
 
 <p>With <code>list_entry()</code>, the kernel provides routines manipulate linked lists without knowing anything about the structures that the <code>list_head</code> resides within.</p>
-<h5 id="defining-a-linked-list"><strong>Defining a Linked List</strong></h5>
+<h5 id="defining-a-linked-list"><strong>Defining a Linked List</strong><a class="headerlink" href="#defining-a-linked-list" title="Permanent link">&para;</a></h5>
 <p>A <code>list_head</code> is normally embedded inside your own structure:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">fox</span> <span class="p">{</span>
     <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">tail_length</span><span class="p">;</span> <span class="cm">/* length in centimeters of tail */</span>
@@ -600,7 +600,7 @@
 </pre></div>
 
 
-<h5 id="list-heads"><strong>List Heads</strong></h5>
+<h5 id="list-heads"><strong>List Heads</strong><a class="headerlink" href="#list-heads" title="Permanent link">&para;</a></h5>
 <p>But before we can use kernel's linked list routines to manage our structure, we need a canonical pointer to refer to the list as a whole: a <em>head</em> pointer.</p>
 <p>Since each contains a <code>list_head</code>, and we can iterate from any one node to the next. We need a special pointer that refers to your linked list, without being a list node itself. This special node is in fact a normal <code>list_head</code>: [p90]</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="nf">LIST_HEAD</span><span class="p">(</span><span class="n">fox_list</span><span class="p">);</span>
@@ -608,10 +608,10 @@
 
 
 <p>This defines and initializes a <code>list_head</code> named <code>fox_list</code>. The majority of the linked list routines accept one or two parameters: the <code>head</code> node or the <code>head</code> node plus an actual list node.</p>
-<h4 id="manipulating-linked-lists">Manipulating Linked Lists</h4>
+<h4 id="manipulating-linked-lists">Manipulating Linked Lists<a class="headerlink" href="#manipulating-linked-lists" title="Permanent link">&para;</a></h4>
 <p>The kernel provides a family of functions to manipulate linked lists. They all take pointers to one or more <code>list_head</code> structures. The functions are implemented as inline functions in generic C and can be found in <code>&lt;linux/list.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/list.h">include/linux/list.h</a>).</p>
 <p>All these functions are <code>O(1)</code>. This means they execute in constant time, regardless of the size of the list or any other inputs</p>
-<h5 id="adding-a-node-to-a-linked-list"><strong>Adding a Node to a Linked List</strong></h5>
+<h5 id="adding-a-node-to-a-linked-list"><strong>Adding a Node to a Linked List</strong><a class="headerlink" href="#adding-a-node-to-a-linked-list" title="Permanent link">&para;</a></h5>
 <p>To add a node to a linked list:</p>
 <p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L64">include/linux/list.h#L64</a></small></p>
 <div class="codehilite"><pre><span class="n">list_add</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">new</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
@@ -631,7 +631,7 @@
 
 
 <p>If you pass the "first" element as <code>head</code>, this function can be used to implement a stack.</p>
-<h5 id="deleting-a-node-from-a-linked-list"><strong>Deleting a Node from a Linked List</strong></h5>
+<h5 id="deleting-a-node-from-a-linked-list"><strong>Deleting a Node from a Linked List</strong><a class="headerlink" href="#deleting-a-node-from-a-linked-list" title="Permanent link">&para;</a></h5>
 <p>To delete a node from a linked list, use <code>list_del()</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L103">include/linux/list.h#L103</a></small></p>
 <div class="codehilite"><pre><span class="n">list_del</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">entry</span><span class="p">)</span>
@@ -666,7 +666,7 @@
 
 
 <p>This function behaves the same as <code>list_del()</code>, except it also reinitializes the given <code>list_head</code> with the rationale that you no longer want the entry in the list, but you can reuse the data structure itself.</p>
-<h5 id="moving-and-splicing-linked-list-nodes"><strong>Moving and Splicing Linked List Nodes</strong></h5>
+<h5 id="moving-and-splicing-linked-list-nodes"><strong>Moving and Splicing Linked List Nodes</strong><a class="headerlink" href="#moving-and-splicing-linked-list-nodes" title="Permanent link">&para;</a></h5>
 <p>To move a node from one list to another:</p>
 <p><small><a href="https://github.com/shichao-an/linux-2.6.34.7/blob/master/include/linux/list.h#L151">include/linux/list.h#L151</a></small></p>
 <div class="codehilite"><pre><span class="n">list_move</span><span class="p">(</span><span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">list</span><span class="p">,</span> <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
@@ -703,11 +703,11 @@
 
 <p>This function works the same as <code>list_splice()</code>, except that the emptied list pointed to by <code>list</code> is reinitialized.</p>
 <p>If you already have the <code>next</code> and <code>prev</code> pointers available, you can save a couple cycles (specifically, the dereferences to get the pointers) by calling the internal list functions directly. For example, rather than call <code>list_del(list)</code>, you can call <code>__list_del(prev, next)</code>. [p92]</p>
-<h3 id="queues">Queues</h3>
-<h3 id="maps">Maps</h3>
-<h3 id="binary-trees">Binary Trees</h3>
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
+<h3 id="queues">Queues<a class="headerlink" href="#queues" title="Permanent link">&para;</a></h3>
+<h3 id="maps">Maps<a class="headerlink" href="#maps" title="Permanent link">&para;</a></h3>
+<h3 id="binary-trees">Binary Trees<a class="headerlink" href="#binary-trees" title="Permanent link">&para;</a></h3>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
 <p>p91 on <code>list_add</code> and <code>list_add_tail</code>:</p>
 <blockquote>
 <p>If you do pass the "last" element, however, this function (<code>list_add</code>) can be used to implement a stack

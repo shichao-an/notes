@@ -462,12 +462,12 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-13-daemon-processes"><strong>Chapter 13. Daemon Processes</strong></h3>
-<h3 id="introduction">Introduction</h3>
+<h3 id="chapter-13-daemon-processes"><strong>Chapter 13. Daemon Processes</strong><a class="headerlink" href="#chapter-13-daemon-processes" title="Permanent link">&para;</a></h3>
+<h3 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
 <p>Daemons are processes that are often started when the system is bootstrapped and terminate only when the system is shut down. Because they don’t
 have a controlling terminal, they run in the background. UNIX systems have numerous daemons that perform day-to-day activities.</p>
 <p>This chapter details the process structure of daemons and explores how to write a daemon. Since a daemon does not have a controlling terminal, we need to see how a daemon can report error conditions when something goes wrong.</p>
-<h3 id="daemon-characteristics">Daemon Characteristics</h3>
+<h3 id="daemon-characteristics">Daemon Characteristics<a class="headerlink" href="#daemon-characteristics" title="Permanent link">&para;</a></h3>
 <p>This section describes some common system daemons with the concepts of process groups, controlling terminals, and sessions as described in <a href="../ch9/">Chapter 9</a>.</p>
 <div class="codehilite"><pre>ps -axj
 </pre></div>
@@ -559,7 +559,7 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <li>None of the daemons has a controlling terminal: the terminal name is set to a question mark. The kernel daemons are started without a controlling terminal. The lack of a controlling terminal in the user-level daemons is probably the result of the daemons having called <code>setsid</code>. Most of the user-level daemons are process group leaders and session leaders, and are the only processes in their process group and session. (The one exception is <code>rsyslogd</code>.)</li>
 <li>The parent of the user-level daemons is the <code>init</code> process.</li>
 </ul>
-<h3 id="coding-rules">Coding Rules</h3>
+<h3 id="coding-rules">Coding Rules<a class="headerlink" href="#coding-rules" title="Permanent link">&para;</a></h3>
 <p>This section states basic rules to coding a daemon prevent unwanted interactions from happening, followed by a function <code>daemonize</code>, that implements these rules.</p>
 <ol>
 <li><strong>Call <code>umask</code> to set the file mode creation mask</strong> to a known value, usually 0.<ul>
@@ -684,7 +684,7 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 
 
 <p>We can also use ps to verify that no active process exists with ID 13799. This means that our daemon is in an orphaned process group and is not a session leader and, therefore, has no chance of allocating a controlling terminal. This is a result of performing the second <code>fork</code> in the <code>daemonize</code> function. We can see that our daemon has been initialized correctly.</p>
-<h3 id="error-logging">Error Logging</h3>
+<h3 id="error-logging">Error Logging<a class="headerlink" href="#error-logging" title="Permanent link">&para;</a></h3>
 <p>One problem a daemon has is how to handle error messages. It cannot (simply) write to:</p>
 <ul>
 <li>Standard error: it shouldn't have a controlling terminal.</li>
@@ -924,7 +924,7 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 
 
 <p>Most <code>syslogd</code> implementations will queue messages for a short time. If a duplicate message arrives during this period, the syslog daemon will not write it to the log. Instead, the daemon prints a message similar to "last message repeated N times".</p>
-<h4 id="example-of-syslog">Example of <code>syslog</code></h4>
+<h4 id="example-of-syslog">Example of <code>syslog</code><a class="headerlink" href="#example-of-syslog" title="Permanent link">&para;</a></h4>
 <p>In a line printer spooler daemon, you might encounter the sequence:</p>
 <div class="codehilite"><pre><span class="n">openlog</span><span class="p">(</span><span class="s">&quot;lpd&quot;</span><span class="p">,</span> <span class="n">LOG_PID</span><span class="p">,</span> <span class="n">LOG_LPR</span><span class="p">);</span>
 <span class="n">syslog</span><span class="p">(</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="s">&quot;open error for %s: %m&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">);</span>
@@ -937,11 +937,11 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 
 
 <p>Here, we specify the <em>priority</em> argument as a combination of a <em>level</em> and a <em>facility</em>.</p>
-<h3 id="single-instance-daemons">Single-Instance Daemons</h3>
+<h3 id="single-instance-daemons">Single-Instance Daemons<a class="headerlink" href="#single-instance-daemons" title="Permanent link">&para;</a></h3>
 <p>Some daemons are implemented so that only a single copy of the daemon should be running at a time for proper operation. This kind of daemon might need exclusive access to a device. For example of the <code>cron</code> daemon, if multiple instances were running, each copy might try to start a single scheduled operation, resulting in duplicate operations and probably an error.</p>
 <p>The file- and record-locking mechanism (<a href="../ch14/#record-locking">Section 14.3</a>) is a way to ensure that only one copy of a daemon is running. If each daemon creates a file with a fixed name and places a write lock on the entire file, only one such write lock will be allowed to be created. Successive attempts to create write locks will fail, serving as an indication to successive copies of the daemon that another instance is already running.</p>
 <p>[p473]</p>
-<h4 id="example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon</h4>
+<h4 id="example-of-using-file-locking-to-ensure-single-copy-of-daemon">Example of using file locking to ensure single copy of daemon<a class="headerlink" href="#example-of-using-file-locking-to-ensure-single-copy-of-daemon" title="Permanent link">&para;</a></h4>
 <p><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/single.c">daemons/single.c</a></small></p>
 <div class="codehilite"><pre><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
@@ -986,7 +986,7 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 
 <p>Each copy of the daemon will try to create a file and write its process ID in the file.  This will allow administrators to identify the process easily. If the file is already locked, the lockfile function will fail with <code>errno</code> set to <code>EACCES</code> or <code>EAGAIN</code>, so we return 1, indicating that the daemon is already running. Otherwise, we truncate the file, write our process ID to it, and return 0.</p>
 <p>[p474]</p>
-<h3 id="daemon-conventions">Daemon Conventions</h3>
+<h3 id="daemon-conventions">Daemon Conventions<a class="headerlink" href="#daemon-conventions" title="Permanent link">&para;</a></h3>
 <p>Common conventions are followed by daemons in the UNIX System.</p>
 <ul>
 <li>The lock file is usually stored in <code>/var/run</code>.<ul>
@@ -1009,7 +1009,7 @@ root    28775   1   28775   28775   ?   /usr/sbin/rpc.mountd --manage-gids
 <li><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread.c">daemons/reread.c</a></small></li>
 <li><small><a href="https://github.com/shichao-an/apue.3e/blob/master/daemons/reread2.c">daemons/reread2.c</a></small></li>
 </ul>
-<h3 id="clientserver-model">Client–Server Model</h3>
+<h3 id="clientserver-model">Client–Server Model<a class="headerlink" href="#clientserver-model" title="Permanent link">&para;</a></h3>
 <p>A common use for a daemon process is as a server process. syslogd process (<a href="../figure_13.2.png">Figure 13.2</a>) is a server that has messages sent to it by user processes (clients) using a UNIX domain datagram socket.</p>
 <p>A <strong>server</strong> is a process that waits for a <strong>client</strong> to contact it, requesting some type of service. The service provided by the <code>syslogd</code> server is the logging of an error message.</p>
 <p>Servers usually <code>fork</code> and <code>exec</code> another program to provide service to a client. These servers often manage multiple file descriptors (e.g. communication endpoints, configuration files, log files). It would be careless to leave these file descriptors open in the child process, because they probably won’t be used in the program executed by the child, especially if the program is unrelated to the server. At worst, leaving them open could pose a security problem: the program executed could do something malicious, such as change the server’s configuration file or trick the client into thinking it is communicating with the server, thereby gaining access to unauthorized information.</p>

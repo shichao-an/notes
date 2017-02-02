@@ -454,7 +454,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-3-processes"><strong>Chapter 3. Processes</strong></h3>
+<h3 id="chapter-3-processes"><strong>Chapter 3. Processes</strong><a class="headerlink" href="#chapter-3-processes" title="Permanent link">&para;</a></h3>
 <p>The concept of a process is fundamental to any multiprogramming operating system.</p>
 <ul>
 <li>A process is usually defined as an instance of a program in execution<ul>
@@ -470,7 +470,7 @@
 <li>How processes can be created and destroyed</li>
 <li>How Linux supports multithreaded applications. As mentioned in <a href="../ch1/">Chapter 1</a>, it relies on so-called <a href="https://en.wikipedia.org/wiki/Light-weight_process">lightweight processes</a> (LWP).</li>
 </ul>
-<h3 id="processes-lightweight-processes-and-threads">Processes, Lightweight Processes, and Threads</h3>
+<h3 id="processes-lightweight-processes-and-threads">Processes, Lightweight Processes, and Threads<a class="headerlink" href="#processes-lightweight-processes-and-threads" title="Permanent link">&para;</a></h3>
 <p>A <strong>process</strong> is an instance of a program in execution. You might think of it as the collection of data structures that fully describes how far the execution of the program has progressed.</p>
 <p>Processes have a more or less significant life, optionally generate one or more child processes, and eventually die. Each process has just one parent.</p>
 <p>From the kernel's point of view, the purpose of a process is to act as an entity to which system resources (CPU time, memory, etc.) are allocated.</p>
@@ -480,7 +480,7 @@
 <li>It receives a (logical) copy of the parent's address space and executes the same code as the parent, beginning at the next instruction following the process creation system call.</li>
 <li>Although the parent and child may share the pages containing the program code (text), they have separate copies of the data (stack and heap), so that changes by the child to a memory location are invisible to the parent (and vice versa).</li>
 </ul>
-<h4 id="multithreaded-applications">Multithreaded Applications *</h4>
+<h4 id="multithreaded-applications">Multithreaded Applications *<a class="headerlink" href="#multithreaded-applications" title="Permanent link">&para;</a></h4>
 <p>Modern Unix systems support <em>multithreaded applications</em>:</p>
 <ul>
 <li>Multithreaded applications are user programs that have many relatively independent execution flows sharing a large portion of the application data structures.</li>
@@ -512,7 +512,7 @@
 <li>IBM's Next Generation Posix Threading Package (NGPT)</li>
 </ul>
 <p>POSIX-compliant multithreaded applications are best handled by kernels that support "thread groups". In Linux, a <em>thread group</em> is basically a set of lightweight processes that implement a multithreaded application and act as a whole with regards to some system calls such as <code>getpid()</code>, <code>kill()</code>, and <code>_exit()</code>.</p>
-<h3 id="process-descriptor">Process Descriptor</h3>
+<h3 id="process-descriptor">Process Descriptor<a class="headerlink" href="#process-descriptor" title="Permanent link">&para;</a></h3>
 <p>To manage processes, the kernel must have a clear picture of what each process is doing, such as:</p>
 <ul>
 <li>The process's priority</li>
@@ -524,7 +524,7 @@
 <p>The process descriptor is rather complex. In addition to a large number of fields containing process attributes, the process descriptor contains several pointers to other data structures that, in turn, contain pointers to other structures. The following figure describes the Linux process descriptor schematically.</p>
 <p><a href="../figure_3-1.png" title="Figure 3-1. The Linux process descriptor"><img alt="Figure 3-1. The Linux process descriptor" src="../figure_3-1_600.png" /></a></p>
 <p>The six data structures on the right side of the figure refer to specific resources owned by the process. Most of these resources will be covered in future chapters. This chapter focuses on two types of fields that refer to the process state and to process parent/child relationships.</p>
-<h4 id="process-state">Process State</h4>
+<h4 id="process-state">Process State<a class="headerlink" href="#process-state" title="Permanent link">&para;</a></h4>
 <p>The <code>state</code> field of the process descriptor describes what is currently happening to the process. It consists of an array of flags, each of which describes a possible process state. In the current Linux version, these states are mutually exclusive: exactly one flag of state always is set and the remaining flags are cleared.</p>
 <p>The following are the possible process states:</p>
 <ul>
@@ -551,11 +551,11 @@
 
 
 <p>The kernel also uses the <code>set_task_state</code> and <code>set_current_state</code> macros: they set the state of a specified process and of the process currently executed, respectively. Moreover, these macros ensure that the assignment operation is not mixed with other instructions by the compiler or the CPU control unit. Mixing the instruction order may sometimes lead to catastrophic results (see <a href="ch5.md">Chapter 5</a>).</p>
-<h4 id="identifying-a-process">Identifying a Process</h4>
+<h4 id="identifying-a-process">Identifying a Process<a class="headerlink" href="#identifying-a-process" title="Permanent link">&para;</a></h4>
 <p>Each execution context that can be independently scheduled must have its own process descriptor. Even lightweight processes, which share a large portion of their kernel data structures, have their own <code>task_struct</code> structures.</p>
-<h5 id="process-descriptor-pointers"><strong>Process descriptor pointers</strong> *</h5>
+<h5 id="process-descriptor-pointers"><strong>Process descriptor pointers</strong> *<a class="headerlink" href="#process-descriptor-pointers" title="Permanent link">&para;</a></h5>
 <p>The strict one-to-one correspondence between the process and process descriptor makes the 32-bit address of the <code>task_struct</code> structure a useful means for the kernel to identify processes. These addresses are referred to as <em>process descriptor pointers</em>. Most of the references to processes that the kernel makes are through process descriptor pointers.</p>
-<h5 id="process-id"><strong>Process ID</strong> *</h5>
+<h5 id="process-id"><strong>Process ID</strong> *<a class="headerlink" href="#process-id" title="Permanent link">&para;</a></h5>
 <p>On the other hand, Unix-like operating systems allow users to identify processes by means of a number called the <strong>Process ID</strong> (or <strong>PID</strong>), which is stored in the <code>pid</code> field of the process descriptor.</p>
 <ul>
 <li>PIDs are numbered sequentially: the PID of a newly created process is normally the PID of the previously created process increased by one.</li>
@@ -566,7 +566,7 @@
 </li>
 </ul>
 <p>When recycling PID numbers, the kernel must manage a <code>pidmap_array</code> bitmap that denotes which are the PIDs currently assigned and which are the free ones. Because a page frame contains 32,768 bits, in 32-bit architectures the <code>pidmap_array</code> bitmap is stored in a single page. In 64-bit architectures, however, additional pages can be added to the bitmap when the kernel assigns a PID number too large for the current bitmap size. These pages are never released.</p>
-<h5 id="thread-groups-and-pid"><strong>Thread groups and PID</strong> *</h5>
+<h5 id="thread-groups-and-pid"><strong>Thread groups and PID</strong> *<a class="headerlink" href="#thread-groups-and-pid" title="Permanent link">&para;</a></h5>
 <p>Linux associates a different PID with each process or lightweight process in the system. There is a tiny exception on multiprocessor systems, which is disussed later this chapter. This approach allows the maximum flexibility, because every execution context in the system can be uniquely identified.</p>
 <p>On the other hand, Unix programmers expect threads in the same group to have a common PID. For instance, it should be possible to a send a signal specifying a PID that affects all threads in the group. In fact, the POSIX 1003.1c standard states that all threads of a multithreaded application must have the same PID.</p>
 <p>To comply with this standard, Linux makes use of thread groups. The identifier shared by the threads is the PID of the <em>thread group leader</em>:</p>
@@ -577,9 +577,9 @@
 <p>The <a href="http://man7.org/linux/man-pages/man2/getpid.2.html"><code>getpid()</code></a> system call returns the value of <code>tgid</code> relative to the current process instead of the value of <code>pid</code>, so all the threads of a multithreaded application share the same identifier.</p>
 <p>Most processes belong to a thread group which consists of a single member; as thread group leaders, they have the <code>tgid</code> field equal to the <code>pid</code> field, thus the <code>getpid()</code> system call works as usual for this kind of process.</p>
 <p>Later this section shows how it is possible to derive a true process descriptor pointer efficiently from its respective PID. Efficiency is important because many system calls such as <code>kill()</code> use the PID to denote the affected process.</p>
-<h3 id="doubts-and-solution">Doubts and Solution</h3>
-<h4 id="verbatim">Verbatim</h4>
-<h5 id="p83-on-process-state"><strong>p83 on process state</strong></h5>
+<h3 id="doubts-and-solution">Doubts and Solution<a class="headerlink" href="#doubts-and-solution" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
+<h5 id="p83-on-process-state"><strong>p83 on process state</strong><a class="headerlink" href="#p83-on-process-state" title="Permanent link">&para;</a></h5>
 <blockquote>
 <p>Moreover, these macros ensure that the assignment operation is not mixed with other instructions by the compiler or the CPU control unit.</p>
 </blockquote>

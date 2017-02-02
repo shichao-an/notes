@@ -486,7 +486,7 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-15-the-process-address-space"><strong>Chapter 15. The Process Address Space</strong></h3>
+<h3 id="chapter-15-the-process-address-space"><strong>Chapter 15. The Process Address Space</strong><a class="headerlink" href="#chapter-15-the-process-address-space" title="Permanent link">&para;</a></h3>
 <p><a href="../ch12/">Chapter 12 Memory Management</a> covers how the kernel manages physical memory.  In addition to managing its own memory, the kernel also has to manage the memory of user-space processes. This memory is called the <strong>process address space</strong>, which is the representation of memory given to each user-space process on the system.</p>
 <p>Linux is a virtual memory operating system:</p>
 <ul>
@@ -494,12 +494,12 @@
 <li>More important, the address space of even a single process can be much larger than physical memory.</li>
 </ul>
 <p>This chapter discusses how the kernel manages the process address space.</p>
-<h3 id="address-spaces">Address Spaces</h3>
-<h4 id="flat-and-segmented-address-space">Flat and segmented address space *</h4>
+<h3 id="address-spaces">Address Spaces<a class="headerlink" href="#address-spaces" title="Permanent link">&para;</a></h3>
+<h4 id="flat-and-segmented-address-space">Flat and segmented address space *<a class="headerlink" href="#flat-and-segmented-address-space" title="Permanent link">&para;</a></h4>
 <p>The process address space consists of the virtual memory addressable by a process and the addresses within the virtual memory that the process is allowed to use. Each process is given a flat 32- or 64-bit address space, with the size depending on the architecture. The term <em>flat</em> denotes that the address space exists in a single range. (For example, a 32-bit address space extends from the address 0 to 4294967295.)</p>
 <p>Some operating systems provide a <strong>segmented address space</strong>, with addresses existing not in a single linear range, but instead in multiple segments. Modern virtual memory operating systems generally have a flat memory model and not a segmented one.</p>
 <p>In the flat memory model, the flat address space is unique to each process. A memory address in one process's address space is completely unrelated to that same memory address in another process's address space. Both processes can have different data at the same address in their respective address spaces. Alternatively, processes can elect to share their address space with other processes; these processes are known as as <strong>threads</strong>.</p>
-<h4 id="memory-areas">Memory areas*</h4>
+<h4 id="memory-areas">Memory areas*<a class="headerlink" href="#memory-areas" title="Permanent link">&para;</a></h4>
 <p>A memory address is a given value within the address space, such as <code>4021f000</code>. This particular value identifies a specific byte in a process's 32-bit address space. Although a process can address up to 4GB of memory (with a 32-bit address space), it doesn't have permission to access all of it.</p>
 <p>These intervals of legal addresses (the process has permission to access), such as <code>08048000-0804c000</code> are called <strong>memory areas</strong>. The process, through the kernel, can dynamically add and remove memory areas to its address space.</p>
 <p>The process can access a memory address only in a valid memory area. Memory areas have associated permissions, such as readable, writable, and executable, that the associated process must respect. If a process accesses a memory address not in a valid memory area, or if it accesses a valid area in an invalid manner, the kernel kills the process with the dreaded "<a href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation Fault</a>" message.</p>
@@ -518,7 +518,7 @@
 <li>Any shared memory segments.</li>
 <li>Any anonymous memory mappings, such as those associated with <code>malloc()</code> (newer versions of glibc implement <code>malloc()</code> via <code>mmap()</code>, in addition to <code>brk()</code>).</li>
 </ul>
-<h3 id="the-memory-descriptor">The Memory Descriptor</h3>
+<h3 id="the-memory-descriptor">The Memory Descriptor<a class="headerlink" href="#the-memory-descriptor" title="Permanent link">&para;</a></h3>
 <p>The kernel represents a process's address space with a data structure called the <strong>memory descriptor</strong>. This structure contains all the information related to the process address space.</p>
 <p>The memory descriptor is represented by <code>struct mm_struct</code> and defined in <code>&lt;linux/mm_types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h">include/linux/mm_types.h</a>):</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm_types.h#L222">include/linux/mm_types.h#L222</a></small></p>
@@ -586,7 +586,7 @@
 </ul>
 <p>The kernel isn't duplicating the <code>mm_struct</code> structures; just the containing objects. Overlaying a linked list onto a tree, and using both to access the same set of data, is sometimes called a <a href="https://en.wikipedia.org/wiki/Threaded_binary_tree"><strong>threaded tree</strong></a>.</p>
 <p>All of the <code>mm_struct</code> structures are strung together in a doubly linked list via the <code>mmlist</code> field. The initial element in the list is the <code>init_mm</code> memory descriptor, which describes the address space of the <code>init</code> process. The list is protected from concurrent access via the <code>mmlist_lock</code>, which is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/fork.c">kernel/fork.c</a>.</p>
-<h4 id="allocating-a-memory-descriptor">Allocating a Memory Descriptor</h4>
+<h4 id="allocating-a-memory-descriptor">Allocating a Memory Descriptor<a class="headerlink" href="#allocating-a-memory-descriptor" title="Permanent link">&para;</a></h4>
 <p>The memory descriptor associated with a given task is stored in the <code>mm</code> field of the task's process descriptor:</p>
 <ul>
 <li>The process descriptor is represented by the <code>task_struct</code> structure, defined in <code>&lt;linux/sched.h&gt;</code>. Thus, <code>current-&gt;mm</code> is the current process's memory descriptor.</li>
@@ -607,9 +607,9 @@
 </pre></div>
 
 
-<h4 id="destroying-a-memory-descriptor">Destroying a Memory Descriptor</h4>
+<h4 id="destroying-a-memory-descriptor">Destroying a Memory Descriptor<a class="headerlink" href="#destroying-a-memory-descriptor" title="Permanent link">&para;</a></h4>
 <p>When the process associated with a specific address space exits, <code>exit_mm()</code>, defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/kernel/exit.c">kernel/exit.c</a>, is invoked. This function performs some housekeeping and updates some statistics. It then calls <code>mmput()</code>, which decrements the memory descriptor's <code>mm_users</code> user counter. If the user count reaches zero, <code>mmdrop()</code> is called to decrement the <code>mm_count</code> usage counter. If that counter is finally zero, the <code>free_mm()</code> macro is invoked to return the <code>mm_struct</code> to the <code>mm_cachep</code> slab cache via <code>kmem_cache_free()</code>, because the memory descriptor does not have any users.</p>
-<h4 id="the-mm_struct-and-kernel-threads">The <code>mm_struct</code> and Kernel Threads</h4>
+<h4 id="the-mm_struct-and-kernel-threads">The <code>mm_struct</code> and Kernel Threads<a class="headerlink" href="#the-mm_struct-and-kernel-threads" title="Permanent link">&para;</a></h4>
 <p><u>Kernel threads do not have a process address space and therefore do not have an associated memory descriptor.</u> Thus, the <code>mm</code> field of a kernel thread's process descriptor is <code>NULL</code>.  This is the definition of a kernel thread: processes that have no user context.</p>
 <p>Kernel threads do not ever access any userspace memory. Because kernel threads do not have any pages in user-space, they do not deserve their own memory descriptor and <a href="#page-tables">page tables</a> (discussed later in the chapter). However, kernel threads need some of the data, such as the page tables, even to access kernel memory. To provide kernel threads the needed data, without wasting memory on a memory descriptor and page tables, or wasting processor cycles to switch to a new address space whenever a kernel thread begins running, kernel threads use the memory descriptor of whatever task ran previously:</p>
 <ul>
@@ -617,7 +617,7 @@
 <li>Kernel threads do not have an address space and <code>mm</code> is <code>NULL</code>. Therefore, when a kernel thread is scheduled, the kernel notices that <code>mm</code> is <code>NULL</code> and keeps the previous process's address space loaded. The kernel then updates the <code>active_mm</code> field of the kernel thread's process descriptor to refer to the previous process's memory descriptor.</li>
 <li>The kernel thread can then use the previous process's page tables as needed. Because kernel threads do not access user-space memory, they make use of only the information in the address space pertaining to kernel memory, which is the same for all processes.</li>
 </ul>
-<h3 id="virtual-memory-areas">Virtual Memory Areas</h3>
+<h3 id="virtual-memory-areas">Virtual Memory Areas<a class="headerlink" href="#virtual-memory-areas" title="Permanent link">&para;</a></h3>
 <p>The memory area structure <code>vm_area_struct</code> represents memory areas, defined in <code>&lt;linux/mm_types.h&gt;</code>. In the Linux kernel, memory areas are often called <strong>virtual memory areas</strong> (<strong>VMA</strong>s).</p>
 <p>The <code>vm_area_struct</code> structure describes a single memory area over a contiguous interval in a given address space:</p>
 <ul>
@@ -663,7 +663,7 @@
 <li>Therefore, even if two separate processes map the same file into their respective address spaces, each has a unique <code>vm_area_struct</code> to identify its unique memory area.</li>
 <li>Conversely, two threads that share an address space also share all the <code>vm_area_struct</code> structures therein.</li>
 </ul>
-<h4 id="vma-flags">VMA Flags</h4>
+<h4 id="vma-flags">VMA Flags<a class="headerlink" href="#vma-flags" title="Permanent link">&para;</a></h4>
 <p>The <code>vm_flags</code> field contains bit flags, defined in <code>&lt;linux/mm.h&gt;</code>, that specify the behavior of and provide information about the pages contained in the memory area. Unlike permissions associated with a specific physical page, the VMA flags specify behavior for which the kernel is responsible, not the hardware. <code>vm_flags</code> contains information that relates to the memory area as a whole (each page), not specific individual pages.</p>
 <p>The following table is a listing of the possible <code>vm_flags</code> values.</p>
 <table>
@@ -790,7 +790,7 @@
 <li>Read-ahead is the act of reading sequentially ahead of requested data, in hopes that the additional data will be needed soon. This is beneficial if applications are reading data sequentially.</li>
 <li>If data access patterns are random, however, read-ahead is not effective.</li>
 </ul>
-<h4 id="vma-operations">VMA Operations</h4>
+<h4 id="vma-operations">VMA Operations<a class="headerlink" href="#vma-operations" title="Permanent link">&para;</a></h4>
 <p>The <code>vm_ops</code> field in the <code>vm_area_struct</code> structure points to the table of operations associated with a given memory area, which the kernel can invoke to manipulate the VMA. The <code>vm_area_struct</code> acts as a generic object for representing any type of memory area, and the operations table describes the specific methods that can operate on this particular instance of the object.</p>
 <p>The operations table is represented by struct <code>vm_operations_struct</code> and is defined in <code>&lt;linux/mm.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L185">include/linux/mm.h#L185</a></small></p>
@@ -813,7 +813,7 @@ address space.</li>
 <li><code>int page_mkwrite(struct vm_area_sruct *area, struct vm_fault *vmf)</code>. This function is invoked by the page fault handler when a page that was read-only is being made writable.</li>
 <li><code>int access(struct vm_area_struct *vma, unsigned long address, void *buf, int len, int write)</code>. This function is invoked by <code>access_process_vm()</code> when <code>get_user_pages()</code> fails.</li>
 </ul>
-<h4 id="lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas</h4>
+<h4 id="lists-and-trees-of-memory-areas">Lists and Trees of Memory Areas<a class="headerlink" href="#lists-and-trees-of-memory-areas" title="Permanent link">&para;</a></h4>
 <p>As discussed earlier, memory areas are accessed via both the <code>mmap</code> and the <code>mm_rb</code> fields of the memory descriptor. These two data structures independently point to all the memory area objects associated with the memory descriptor. They both contain pointers to the same <code>vm_area_struct</code> structures, represented in different ways.</p>
 <p>The first field, <code>mmap</code>, links together all the memory area objects in a singly linked list:</p>
 <ul>
@@ -839,7 +839,7 @@ address space.</li>
 <li>The linked list is used when every node needs to be traversed.</li>
 <li>The red-black tree is used when locating a specific memory area in the address space.</li>
 </ul>
-<h4 id="memory-areas-in-real-life">Memory Areas in Real Life</h4>
+<h4 id="memory-areas-in-real-life">Memory Areas in Real Life<a class="headerlink" href="#memory-areas-in-real-life" title="Permanent link">&para;</a></h4>
 <p>This section discusses a particular process's address space and the memory areas inside, with the useful <code>/proc</code> filesystem and the <code>pmap(1)</code> utility. The example is a simple userspace program which does nothing:</p>
 <div class="codehilite"><pre><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
 <span class="p">{</span>
@@ -906,10 +906,10 @@ mapped: 1340 KB writable/private: 40 KB shared: 0 KB
 <p>The entire address space takes up about 1340KB, but only 40KB are writable and private. If a memory region is shared or nonwritable, the kernel keeps only one copy of the backing file in memory. Since a nonwritable mapping can never be changed (the mapping is only read from), it is safe to load the image only once into memory. Therefore, the C library needs to occupy only 1212KB in physical memory (not 1212KB multiplied by every process using the library). Because this process has access to about 1340KB worth of data and code, yet consumes only about 40KB of physical memory, the space savings from such sharing is substantial.</p>
 <p>The memory areas without a mapped file on device <code>00:00</code> and inode zero are the zero pages, each of which is a mapping that consists of all zeros. By mapping the zero page over a writable memory area, the area is in effect "initialized" to all zeros. This is important in that it provides a zeroed memory area, which is expected by the bss and stack. Because the mapping is not shared, as soon as the process writes to this data, a copy is made (à la <a href="https://en.wikipedia.org/wiki/Copy-on-write">copy-on-write</a>) and the value updated from zero.</p>
 <p>Each of the memory areas associated with the process corresponds to a <code>vm_area_struct</code> structure. Because the process was not a thread, it has a unique <code>mm_struct</code> structure referenced from its <code>task_struct</code>.</p>
-<h3 id="manipulating-memory-areas">Manipulating Memory Areas</h3>
+<h3 id="manipulating-memory-areas">Manipulating Memory Areas<a class="headerlink" href="#manipulating-memory-areas" title="Permanent link">&para;</a></h3>
 <p>The kernel often has to perform operations on a memory area, e.g. checking whether a given address exists in a given VMA. These operations are frequent and form the basis of the <code>mmap()</code> routine (discussed later). Helper functions are defined to assist these jobs.</p>
 <p>These functions are all declared in <code>&lt;linux/mm.h&gt;</code>.</p>
-<h4 id="find_vma"><code>find_vma()</code></h4>
+<h4 id="find_vma"><code>find_vma()</code><a class="headerlink" href="#find_vma" title="Permanent link">&para;</a></h4>
 <p>The kernel provides a function <code>find_vma()</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1335">include/linux/mm.h#L1335</a>) for searching for the VMA in which a given memory address resides. It is defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a>:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="nf">find_vma</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">);</span>
 </pre></div>
@@ -968,7 +968,7 @@ mapped: 1340 KB writable/private: 40 KB shared: 0 KB
 </ul>
 </li>
 </ul>
-<h4 id="find_vma_prev"><code>find_vma_prev()</code></h4>
+<h4 id="find_vma_prev"><code>find_vma_prev()</code><a class="headerlink" href="#find_vma_prev" title="Permanent link">&para;</a></h4>
 <p>The <code>find_vma_prev()</code> function works the same as <code>find_vma()</code>, but it also returns the last VMA before addr. The function is also defined in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/mmap.c">mm/mmap.c</a> and declared in <code>&lt;linux/mm.h&gt;</code>:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span> <span class="n">find_vma_prev</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
                                       <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">**</span><span class="n">pprev</span><span class="p">)</span>
@@ -976,7 +976,7 @@ mapped: 1340 KB writable/private: 40 KB shared: 0 KB
 
 
 <p>The <code>pprev</code> argument stores a pointer to the VMA preceding <code>addr</code>.</p>
-<h4 id="find_vma_intersection"><code>find_vma_intersection()</code></h4>
+<h4 id="find_vma_intersection"><code>find_vma_intersection()</code><a class="headerlink" href="#find_vma_intersection" title="Permanent link">&para;</a></h4>
 <p>The <code>find_vma_intersection()</code> function returns the first VMA that overlaps a given address interval. The function is defined in <code>&lt;linux/mm.h&gt;</code> because it is inline:</p>
 <div class="codehilite"><pre><span class="k">static</span> <span class="kr">inline</span> <span class="k">struct</span> <span class="n">vm_area_struct</span> <span class="o">*</span>
 <span class="nf">find_vma_intersection</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span>
@@ -995,7 +995,7 @@ mapped: 1340 KB writable/private: 40 KB shared: 0 KB
 
 <p>The first parameter is the address space to search, <code>start_addr</code> is the start of the interval, and <code>end_addr</code> is the end of the interval.</p>
 <p>If <code>find_vma()</code> returns <code>NULL</code>, so would <code>find_vma_intersection()</code>. If <code>find_vma()</code> returns a valid VMA, however, <code>find_vma_intersection()</code> returns the same VMA only if it does not start after the end of the given address range. If the returned memory area does start after the end of the given address range, the function returns <code>NULL</code>.</p>
-<h3 id="mmap-and-do_mmap-creating-an-address-interval"><code>mmap()</code> and <code>do_mmap()</code>: Creating an Address Interval</h3>
+<h3 id="mmap-and-do_mmap-creating-an-address-interval"><code>mmap()</code> and <code>do_mmap()</code>: Creating an Address Interval<a class="headerlink" href="#mmap-and-do_mmap-creating-an-address-interval" title="Permanent link">&para;</a></h3>
 <p>The <code>do_mmap()</code> function creates a new linear address interval. This function does not technically create a new VMA, because:</p>
 <ul>
 <li>If the created address interval is adjacent to an existing address interval, and if they share the same permissions, the two intervals are merged into one.</li>
@@ -1127,7 +1127,7 @@ linked list and red-black tree of memory areas via the <code>vma_link()</code> f
 <li>The original <code>mmap()</code> took an offset in bytes as the last parameter; the current <code>mmap2()</code> receives the offset in pages. This enables larger files with larger offsets to be mapped.</li>
 <li>The original <code>mmap()</code>, as specified by POSIX, is available from the C library as <code>mmap()</code>, but is no longer implemented in the kernel proper, whereas the new version is available as <code>mmap2()</code>. Both library calls use the <code>mmap2()</code> system call, with the original <code>mmap()</code> converting the offset from bytes to pages.</li>
 </ul>
-<h3 id="munmap-and-do_munmap-removing-an-address-interval"><code>munmap()</code> and <code>do_munmap()</code>: Removing an Address Interval</h3>
+<h3 id="munmap-and-do_munmap-removing-an-address-interval"><code>munmap()</code> and <code>do_munmap()</code>: Removing an Address Interval<a class="headerlink" href="#munmap-and-do_munmap-removing-an-address-interval" title="Permanent link">&para;</a></h3>
 <p>The <code>do_munmap()</code> function removes an address interval from a specified process address space. The function is declared in <code>&lt;linux/mm.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/mm.h#L1284">include/linux/mm.h#L1284</a></small></p>
 <div class="codehilite"><pre><span class="kt">int</span> <span class="n">do_munmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">mm_struct</span> <span class="o">*</span><span class="n">mm</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">start</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span>
@@ -1154,7 +1154,7 @@ linked list and red-black tree of memory areas via the <code>vma_link()</code> f
 </pre></div>
 
 
-<h3 id="page-tables">Page Tables</h3>
+<h3 id="page-tables">Page Tables<a class="headerlink" href="#page-tables" title="Permanent link">&para;</a></h3>
 <p>Although applications operate on virtual memory mapped to physical addresses, processors operate directly on those physical addresses. Consequently, when an application accesses a virtual memory address, it must first be converted to a physical address before the processor can resolve the request. Performing this lookup is done via <strong>page tables</strong>. Page tables work by splitting the virtual address into chunks. Each chunk is used as an index into a table. The table points to either another table or the associated physical page.</p>
 <p>In Linux, the page tables consist of three levels. The multiple levels enable a sparsely populated address space, even on 64-bit machines. If the page tables were implemented as a single static array, their size on even 32-bit architectures would be enormous. Linux uses three levels of page tables even on architectures that do not support three levels in hardware. (For example, some hardware uses only two levels or implements a hash in hardware.) Using three levels is a sort of "greatest common denominator": architectures with a less complicated implementation can simplify the kernel page tables as needed with compiler optimizations.</p>
 <ul>
@@ -1177,13 +1177,13 @@ linked list and red-black tree of memory areas via the <code>vma_link()</code> f
 <li>Each process has its own page tables (threads share them). The <code>pgd</code> field of the memory descriptor points to the process's page global directory. Manipulating and traversing page tables requires the <code>page_table_lock</code>, which is located inside the associated memory descriptor.</li>
 <li>Page table data structures are quite architecture-dependent and thus are defined in <code>&lt;asm/page.h&gt;</code>.</li>
 </ul>
-<h4 id="translation-lookaside-buffer">Translation Lookaside Buffer *</h4>
+<h4 id="translation-lookaside-buffer">Translation Lookaside Buffer *<a class="headerlink" href="#translation-lookaside-buffer" title="Permanent link">&para;</a></h4>
 <p>Because nearly every access of a page in virtual memory must be resolved to its corresponding address in physical memory, the performance of the page tables is very critical. Unfortunately, looking up all these addresses in memory can not be done so quickly. To facilitate this, most processors implement a <a href="https://en.wikipedia.org/wiki/Translation_lookaside_buffer">translation lookaside buffer</a> (TLB), which acts as a hardware cache of virtual-to-physical mappings. When accessing a virtual address, the processor first checks whether the mapping is cached in the TLB:</p>
 <ul>
 <li>If there is a hit, the physical address is immediately returned.</li>
 <li>If there is a miss, the page tables are consulted for the corresponding physical address.</li>
 </ul>
-<h4 id="future-work-of-page-tables">Future work of page tables *</h4>
+<h4 id="future-work-of-page-tables">Future work of page tables *<a class="headerlink" href="#future-work-of-page-tables" title="Permanent link">&para;</a></h4>
 <p>Page table management is still a critical and evolving part of the kernel. Changes to this area in 2.6 include allocating parts of the page table out of high memory. Future possibilities include shared page tables with copy-on-write semantics. In that scheme, page tables would be shared between parent and child across a <code>fork()</code>. When the parent or the child attempted to modify a particular page table entry, a copy would be created, and the two processes would no longer share that entry. Sharing page tables would remove the overhead of copying the page table entries on <code>fork()</code>.</p>
             </div>
         </div>

@@ -502,9 +502,9 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-12-memory-management"><strong>Chapter 12. Memory Management</strong></h3>
+<h3 id="chapter-12-memory-management"><strong>Chapter 12. Memory Management</strong><a class="headerlink" href="#chapter-12-memory-management" title="Permanent link">&para;</a></h3>
 <p>Unlike user-space, the kernel is not always afforded the capability to easily allocate memory. This chapter discusses how the kernel handles memory and the methods used to obtain memory inside the kernel.</p>
-<h3 id="page">Page</h3>
+<h3 id="page">Page<a class="headerlink" href="#page" title="Permanent link">&para;</a></h3>
 <p>To kernel, physical pages are the basic unit of memory management. Although the processor’s smallest addressable unit is a byte or a word, the <a href="https://en.wikipedia.org/wiki/Memory_management_unit">memory management unit</a> (MMU, the hardware that manages memory and performs virtual to physical address translations) typically deals in pages. Therefore, the MMU maintains the system’s page tables with page-sized granularity. In terms of virtual memory, pages are the smallest unit.</p>
 <p>Each architecture defines its own page size. Many architectures even support multiple page sizes.</p>
 <ul>
@@ -549,7 +549,7 @@
 <li>Page cache.</li>
 </ul>
 <p>Since an instance of this structure is allocated for each physical page in the system. How bad (or good) the space consumption is from all these pages?  Assume <code>struct page</code> consumes 40 bytes of memory, the system has 8KB physical pages, and the system has 4GB of physical memory. In that case, there are about 524,288 pages and page structures on the system. The page structures consume 20MB: perhaps a surprisingly large number in absolute terms, but only a small fraction of a percent relative to the system’s 4GB. This is not too high a cost for managing all the system’s physical pages.</p>
-<h3 id="zones">Zones</h3>
+<h3 id="zones">Zones<a class="headerlink" href="#zones" title="Permanent link">&para;</a></h3>
 <p>The kernel cannot treat all pages as identical due to hardware limitations. Some pages, because of their physical address in memory, cannot be used for certain tasks. Thus, the kernel divides pages into different <em>zones</em>. The kernel uses the zones to group pages of similar properties.</p>
 <p>Linux has to deal with two shortcomings of hardware with respect to memory addressing:</p>
 <ul>
@@ -641,7 +641,7 @@
 <li>The <code>watermark</code> array holds the minimum, low, and high watermarks for this zone. The kernel uses watermarks to set benchmarks for suitable per-zone memory consumption. [p235]</li>
 <li>The <code>name</code> field is a NULL-terminated string representing the name of this zone. The kernel initializes this value during boot in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/page_alloc.c">mm/page_alloc.c</a>, and the three zones are given the names DMA, Normal, and HighMem.</li>
 </ul>
-<h3 id="getting-pages">Getting Pages</h3>
+<h3 id="getting-pages">Getting Pages<a class="headerlink" href="#getting-pages" title="Permanent link">&para;</a></h3>
 <p>This section discusses the interfaces the kernel implements to enable you to allocate and free memory within the kernel.</p>
 <p>The kernel provides one low-level mechanism for requesting memory, along with several interfaces to access it. All these interfaces allocate memory with page-sized granularity and are declared in <code>&lt;linux/gfp.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/gfp.h">include/linux/gfp.h</a>). The core function is:</p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span> <span class="n">alloc_pages</span><span class="p">(</span><span class="n">gfp_t</span> <span class="n">gfp_mask</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
@@ -668,7 +668,7 @@
 
 
 <p>These functions work the same but pass zero for the order (2<sup>0</sup> = one page).</p>
-<h4 id="getting-zeroed-pages">Getting Zeroed Pages</h4>
+<h4 id="getting-zeroed-pages">Getting Zeroed Pages<a class="headerlink" href="#getting-zeroed-pages" title="Permanent link">&para;</a></h4>
 <p>If you need the returned page filled with zeros, use the function:</p>
 <div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">get_zeroed_page</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">gfp_mask</span><span class="p">)</span>
 </pre></div>
@@ -706,7 +706,7 @@
 </tr>
 </tbody>
 </table>
-<h4 id="freeing-pages">Freeing Pages</h4>
+<h4 id="freeing-pages">Freeing Pages<a class="headerlink" href="#freeing-pages" title="Permanent link">&para;</a></h4>
 <p>A family of functions enables you to free allocated pages when you no longer need them:</p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="n">__free_pages</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
 <span class="kt">void</span> <span class="n">free_pages</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">order</span><span class="p">)</span>
@@ -738,7 +738,7 @@
 <p>The <code>GFP_KERNEL</code> parameter is an example of a <code>gfp_mask</code> flag (discussed shortly).</p>
 <p>A kernel allocation can fail, and your code must check for and handle such errors after the call to <code>__get_free_pages()</code>. <u>It therefore often makes sense to allocate your memory at the start of the routine to make handling the error easier.</u> [p237]</p>
 <p>These low-level page functions are useful when you need page-sized chunks of physically contiguous pages, especially if you need exactly a single page or two. For more general byte-sized allocations, the kernel provides <code>kmalloc()</code>.</p>
-<h3 id="kmalloc"><code>kmalloc()</code></h3>
+<h3 id="kmalloc"><code>kmalloc()</code><a class="headerlink" href="#kmalloc" title="Permanent link">&para;</a></h3>
 <p>The <code>kmalloc()</code> function is similar to user-space’s <code>malloc()</code>, with the exception of the additional flags parameter. The <code>kmalloc()</code> function is a simple interface for obtaining kernel memory in byte-sized chunks. If you need whole pages, the previously discussed interfaces might be a better choice. For most kernel allocations, <code>kmalloc()</code> is the preferred interface.</p>
 <p>The function is declared in <code>&lt;linux/slab.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab.h">include/linux/slab.h</a>):</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab_def.h#L128">include/linux/slab_def.h#L128</a></small></p>
@@ -756,7 +756,7 @@
 
 
 <p>If the <code>kmalloc()</code> call succeeds, <code>p</code> now points to a block of memory that is at least the requested size.The <code>GFP_KERNEL</code> flag specifies the behavior of the memory allocator while trying to obtain the memory to return to the caller of <code>kmalloc()</code>.</p>
-<h4 id="gfp_mask-flags"><code>gfp_mask</code> Flags</h4>
+<h4 id="gfp_mask-flags"><code>gfp_mask</code> Flags<a class="headerlink" href="#gfp_mask-flags" title="Permanent link">&para;</a></h4>
 <p>Flags are represented by the <code>gfp_t</code> type, which is defined in <code>&lt;linux/types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/types.h#L179">include/linux/types.h#L179</a>) as an <code>unsigned int</code>. <em>gfp</em> stands for <code>__get_free_pages()</code> (discussed earlier).</p>
 <p>The flags are broken up into three categories:</p>
 <ul>
@@ -764,7 +764,7 @@
 <li><strong>Zone modifiers</strong> specify from <em>where</em> (from which zones) to allocate memory.</li>
 <li><strong>Type</strong> specify a combination of action and zone modifiers for a certain type of memory allocation. This simplifies the specification of multiple modifiers; instead of providing a combination of action and zone modifiers, you can specify just one type flag. The <code>GFP_KERNEL</code> is a type flag, which is used for code in process context inside the kernel.</li>
 </ul>
-<h5 id="action-modifiers"><strong>Action Modifiers</strong></h5>
+<h5 id="action-modifiers"><strong>Action Modifiers</strong><a class="headerlink" href="#action-modifiers" title="Permanent link">&para;</a></h5>
 <p>All the flags are declared in <code>&lt;linux/gfp.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/gfp.h">include/linux/gfp.h</a>). The file
 <code>&lt;linux/slab.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab.h">include/linux/slab.h</a>) includes this header.</p>
 <p>The table below is a list of the action modifiers.</p>
@@ -836,7 +836,7 @@
 
 
 <p>This call instructs the page allocator (ultimately <code>alloc_pages()</code>) that the allocation can block, perform I/O, and perform filesystem operations. This gives the kernel great freedom in how it can find the free memory to satisfy the allocation.</p>
-<h5 id="zone-modifiers"><strong>Zone Modifiers</strong></h5>
+<h5 id="zone-modifiers"><strong>Zone Modifiers</strong><a class="headerlink" href="#zone-modifiers" title="Permanent link">&para;</a></h5>
 <p>Zone modifiers specify from which memory zone the allocation should originate. Though allocations can be fulfilled from any zone, the kernel prefers <code>ZONE_NORMAL</code> to ensure that the other zones have free pages when they are needed.</p>
 <p>There are only three zone modifiers because there are only three zones other than <code>ZONE_NORMAL</code>, as in the following table:</p>
 <table>
@@ -868,7 +868,7 @@
 <p>If neither flag is specified, the kernel fulfills the allocation from either <code>ZONE_DMA</code> or <code>ZONE_NORMAL</code>, with a strong preference to satisfy the allocation from <code>ZONE_NORMAL</code>.</p>
 <p>You cannot specify <code>__GFP_HIGHMEM</code> to either <code>__get_free_pages()</code> or <code>kmalloc()</code>, because these both return a logical address, and not a <code>page</code> structure. It is possible that these functions would allocate memory not currently mapped in the kernel’s virtual address space and thus, does not have a logical address. Only <code>alloc_pages()</code> can allocate high memory.</p>
 <p>The majoriy of allocations will not specify a zone modifier because <code>ZONE_NORMAL</code> is sufficient.</p>
-<h5 id="type-flags"><strong>Type Flags</strong></h5>
+<h5 id="type-flags"><strong>Type Flags</strong><a class="headerlink" href="#type-flags" title="Permanent link">&para;</a></h5>
 <p>The type flags specify the required action and zone modifiers to fulfill a particular type of transaction. Therefore, kernel code tends to use the correct type flag and not specify the myriad of other flags it might need. This is both simpler and less error-prone.</p>
 <p>The table below is a list of the type flags:</p>
 <table>
@@ -999,7 +999,7 @@
 </tr>
 </tbody>
 </table>
-<h4 id="kfree"><code>kfree()</code></h4>
+<h4 id="kfree"><code>kfree()</code><a class="headerlink" href="#kfree" title="Permanent link">&para;</a></h4>
 <p>The counterpart to <code>kmalloc()</code> is <code>kfree()</code>, declared in <code>&lt;linux/slab.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/slab.h#L144">include/linux/slab.h#L144</a></small></p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="n">kfree</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
@@ -1010,7 +1010,7 @@
 <p>Do not call this function on memory not previously allocated with <code>kmalloc(</code>), or on memory that has already been freed. Doing so is a bug, resulting in bad behavior such as freeing memory belonging to another part of the kernel.</p>
 <p>As in user-space, be careful to balance your allocations with your deallocations to prevent memory leaks and other bugs.  <code>kfree(NULL)</code> is explicitly checked for and safe.</p>
 <p>[p243]</p>
-<h3 id="vmalloc"><code>vmalloc()</code></h3>
+<h3 id="vmalloc"><code>vmalloc()</code><a class="headerlink" href="#vmalloc" title="Permanent link">&para;</a></h3>
 <p>The <code>vmalloc()</code> function works in a similar fashion to <code>kmalloc()</code>, except <code>vmalloc()</code> allocates memory that is only virtually contiguous and not necessarily physically contiguous. This is similar to user-space <code>malloc()</code>, the returned pages by which are contiguous within the virtual address space, but necessarily contiguous in physical RAM.</p>
 <p>The <code>vmalloc()</code> function ensures that the pages are physically contiguous by by allocating potentially noncontiguous chunks of physical memory and "fixing up" the page tables to map the memory into a contiguous chunk of the logical address space.</p>
 <ul>
@@ -1041,8 +1041,8 @@
 <li>It has no return value</li>
 </ul>
 <p>[p245]</p>
-<h3 id="slab-layer">Slab Layer</h3>
-<h4 id="free-lists">Free Lists *</h4>
+<h3 id="slab-layer">Slab Layer<a class="headerlink" href="#slab-layer" title="Permanent link">&para;</a></h3>
+<h4 id="free-lists">Free Lists *<a class="headerlink" href="#free-lists" title="Permanent link">&para;</a></h4>
 <p>To facilitate frequent allocations and deallocations of data, programmers often introduce <strong>free lists</strong>. A free list contains a block of available, already allocated, data structures:</p>
 <ul>
 <li>When code requires a new instance of a data structure, it can grab one of the structures off the free list rather than allocate the sufficient amount of memory and set it up for the data structure.</li>
@@ -1050,7 +1050,7 @@
 </ul>
 <p>In this sense, the free list acts as an object cache, caching a frequently used type of object.</p>
 <p>A main problem with free lists in the kernel is that there exists no global control. When available memory is low, there is no way for the kernel to communicate to every free list that it should shrink the sizes of its cache to free up memory. The kernel has no understanding of the random free lists at all.To remedy this and to consolidate code, the Linux kernel provides the <strong>slab layer</strong> (also called the <strong>slab allocator</strong>). The slab layer acts as a generic data structure-caching layer.</p>
-<h4 id="slab-layer-generic-data-structure-caching-layer">Slab Layer: generic data structure-caching layer *</h4>
+<h4 id="slab-layer-generic-data-structure-caching-layer">Slab Layer: generic data structure-caching layer *<a class="headerlink" href="#slab-layer-generic-data-structure-caching-layer" title="Permanent link">&para;</a></h4>
 <p>The concept of a slab allocator was first implemented in Sun Microsystem’s SunOS 5.4 operating system. The Linux data structure caching layer shares the same name and basic design.</p>
 <p>The slab layer attempts to leverage several basic tenets:</p>
 <ul>
@@ -1063,7 +1063,7 @@
 <li>Stored objects can be colored to prevent multiple objects from mapping to the same cache lines.</li>
 </ul>
 <p>The slab layer in Linux was designed and implemented with these premises in mind.</p>
-<h4 id="design-of-the-slab-layer">Design of the Slab Layer</h4>
+<h4 id="design-of-the-slab-layer">Design of the Slab Layer<a class="headerlink" href="#design-of-the-slab-layer" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong>Caches</strong>. The slab layer divides different objects into groups called caches, each of which stores a different type of object. <u>There is one cache per object type.</u><ul>
 <li>For example, one cache is for process descriptors (a free list of <code>task_struct</code> structures), whereas another cache is for inode objects (<code>struct inode</code>).</li>
@@ -1183,7 +1183,7 @@ cache:</p>
 <p>Memory is freed by <code>kmem_freepages()</code>, which calls <code>free_pages()</code> on the given cache’s pages.</p>
 <p>The point of the slab layer is to refrain from allocating and freeing pages. In turn, the slab layer invokes the page allocation function only when there does not exist any partial or empty slabs in a given cache.The freeing function is called only when available memory grows low and the system is attempting to free memory, or when a cache is explicitly destroyed.</p>
 <p>The slab layer is managed on a per-cache basis through a simple interface, which is exported to the entire kernel. The interface enables the creation and destruction of new caches and the allocation and freeing of objects within the caches. The sophisticated management of caches and the slabs within is entirely handled by the internals of the slab layer. After you create a cache, the slab layer works just like a specialized allocator for the specific type of object.</p>
-<h4 id="slab-allocator-interface">Slab Allocator Interface</h4>
+<h4 id="slab-allocator-interface">Slab Allocator Interface<a class="headerlink" href="#slab-allocator-interface" title="Permanent link">&para;</a></h4>
 <p>A new cache is created via <code>kmem_cache_create()</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c#L2098">/mm/slab.c#L2098</a></small></p>
 <div class="codehilite"><pre><span class="k">struct</span> <span class="n">kmem_cache</span> <span class="o">*</span> <span class="nf">kmem_cache_create</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
@@ -1224,38 +1224,38 @@ reside in <code>ZONE_DMA</code>; otherwise do not set it.</li>
 <li>All slabs in the cache are empty. Indeed, if an object in one of the slabs were still allocated and in use, how could the cache be destroyed?</li>
 <li>No one accesses the cache during and after a call to <code>kmem_cache_destroy()</code>. The caller must ensure this synchronization</li>
 </ul>
-<h5 id="allocating-from-the-cache"><strong>Allocating from the Cache</strong></h5>
+<h5 id="allocating-from-the-cache"><strong>Allocating from the Cache</strong><a class="headerlink" href="#allocating-from-the-cache" title="Permanent link">&para;</a></h5>
 <p>[p250]</p>
-<h4 id="example-of-using-the-slab-allocator"><strong>Example of Using the Slab Allocator</strong></h4>
+<h4 id="example-of-using-the-slab-allocator"><strong>Example of Using the Slab Allocator</strong><a class="headerlink" href="#example-of-using-the-slab-allocator" title="Permanent link">&para;</a></h4>
 <p>[p251]</p>
-<h3 id="statically-allocating-on-the-stack">Statically Allocating on the Stack</h3>
+<h3 id="statically-allocating-on-the-stack">Statically Allocating on the Stack<a class="headerlink" href="#statically-allocating-on-the-stack" title="Permanent link">&para;</a></h3>
 <p>User-space can afforded large, dynamically growing stack, whereas the the kernel’s stack is small and fixed.</p>
 <p>The size of the per-process kernel stacks depends on both the architecture and a compile-time option. Historically, the kernel stack has been two pages per process.This is usually:</p>
 <ul>
 <li>8KB for 32-bit architectures (with 4KB pages)</li>
 <li>16KB for 64-bit architectures (wtih 8KB pages)</li>
 </ul>
-<h4 id="single-page-kernel-stacks">Single-Page Kernel Stacks</h4>
+<h4 id="single-page-kernel-stacks">Single-Page Kernel Stacks<a class="headerlink" href="#single-page-kernel-stacks" title="Permanent link">&para;</a></h4>
 <p>Early in the 2.6 kernel series, an option was introduced to move to single-page kernel stacks, where each process is given only a single page (4KB on 32-bit architectures and 8KB on 64-bit architectures). This was done for two reasons:</p>
 <ol>
 <li>It results in a page with less memory consumption per process.</li>
 <li>As uptime increases, it becomes increasingly hard to find two physically contiguous unallocated pages. Physical memory becomes fragmented, and the resulting VM pressure from allocating a single new process is expensive.</li>
 </ol>
 <p>There is one more complication. <u>Each process’s entire call chain has to fit in its kernel stack.</u> Historically, however, interrupt handlers also used the kernel stack of the process they interrupted, thus they too had to fit. This was efficient and simple, but it placed even tighter constraints on the already meager kernel stack. When the stack moved to only a single page, interrupt handlers no longer fit.</p>
-<h5 id="interrupt-stacks"><strong>Interrupt stacks</strong></h5>
+<h5 id="interrupt-stacks"><strong>Interrupt stacks</strong><a class="headerlink" href="#interrupt-stacks" title="Permanent link">&para;</a></h5>
 <p>To rectify this problem, the kernel developers implemented a new feature: interrupt stacks. <u>Interrupt stacks provide a single per-processor stack used for interrupt handlers. With this option, interrupt handlers no longer share the kernel stack of the interrupted process. </u> Instead, they use their own stacks. This consumes only a single page per processor.</p>
 <p>To summarize, kernel stacks are either one or two pages, depending on compile-time configuration options. The stack can therefore range from 4KB to 16KB. Historically, interrupt handlers shared the stack of the interrupted process. When single page stacks are enabled, interrupt handlers are given their own stacks. In any case, unbounded recursion and <code>alloca()</code> are obviously not allowed.</p>
-<h4 id="playing-fair-on-the-stack">Playing Fair on the Stack</h4>
+<h4 id="playing-fair-on-the-stack">Playing Fair on the Stack<a class="headerlink" href="#playing-fair-on-the-stack" title="Permanent link">&para;</a></h4>
 <p>In any given function, you must keep stack usage to a minimum. You should keep the sum of all local (automatic) variables in a function to a maximum of a couple hundred bytes. Performing a large static allocation on the stack (e.g. a large array or structure) is dangerous. Otherwise, stack allocations are performed in the kernel just as in user-space.</p>
 <p>Stack overflows occur silently and will
 undoubtedly result in problems. Because the kernel does not make any effort to manage
 the stack, when the stack overflows, the excess data simply spills into whatever exists at
 the tail end of the stack, the first thing of which is the <code>thread_info</code> structure, which is allocated at the end of each process’s kernel stack (<a href="../ch3/">Chapter 3</a>).</p>
 <p>Beyond the stack, any kernel data might lurk.At best, the machine will crash when the stack overflows. At worst, the overflow will silently corrupt data. Therefore, it is wise to use a dynamic allocation scheme (discussed perviouly in this chapter) for any large memory allocations.</p>
-<h3 id="high-memory-mappings">High Memory Mappings</h3>
+<h3 id="high-memory-mappings">High Memory Mappings<a class="headerlink" href="#high-memory-mappings" title="Permanent link">&para;</a></h3>
 <p>By definition, pages in high memory might not be permanently mapped into the kernel’s (virtual) address space. Thus, pages obtained via <code>alloc_pages()</code> with the <code>__GFP_HIGHMEM</code> flag might not have a logical address (see relevant text in <a href="#zone-modifiers">Zone Modifers</a> subsection).</p>
 <p>On the x86 architecture, all physical memory beyond the 896MB mark is high memory and is not permanently or automatically mapped into the kernel’s address space, despite x86 processors being capable of physically addressing up to 4GB (64GB with <a href="https://en.wikipedia.org/wiki/Physical_Address_Extension">PAE</a>) of physical RAM. After they are allocated, these pages must be mapped into the kernel’s logical address space. On x86, pages in high memory are mapped somewhere between the 3GB and 4GB mark.</p>
-<h4 id="permanent-mappings">Permanent Mappings</h4>
+<h4 id="permanent-mappings">Permanent Mappings<a class="headerlink" href="#permanent-mappings" title="Permanent link">&para;</a></h4>
 <p>To map a given page structure into the kernel’s address space, use this function, declared in <code>&lt;linux/highmem.h&gt;</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/highmem.h#L58">include/linux/highmem.h#L58</a></small></p>
 <div class="codehilite"><pre><span class="kt">void</span> <span class="o">*</span><span class="n">kmap</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">)</span>
@@ -1273,7 +1273,7 @@ the tail end of the stack, the first thing of which is the <code>thread_info</co
 </pre></div>
 
 
-<h4 id="temporary-mappings">Temporary Mappings</h4>
+<h4 id="temporary-mappings">Temporary Mappings<a class="headerlink" href="#temporary-mappings" title="Permanent link">&para;</a></h4>
 <p>When a mapping must be created but the current context cannot sleep, the kernel provides <strong>temporary mappings</strong> (also called <strong>atomic mappings</strong>). The kernel can atomically map a high memory page into one of the reserved mappings (which can hold temporary mappings). Consequently, a temporary mapping can be used in places that cannot sleep, such as interrupt handlers, because obtaining the mapping never blocks.</p>
 <p>Setting up a temporary mapping is done via <code>kmap_atomic()</code>:</p>
 <p><small><a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/highmem.h#L68">include/linux/highmem.h#L68</a></small></p>
@@ -1318,7 +1318,7 @@ the tail end of the stack, the first thing of which is the <code>thread_info</co
 
 
 <p>This function also does not block. In many architectures it does not do anything at all except enable kernel preemption, because a temporary mapping is valid only until the next temporary mapping. Thus, the kernel can just "forget about" the <code>kmap_atomic()</code> mapping, and <code>kunmap_atomic()</code> does not need to do anything special. The next atomic mapping then simply overwrites the previous one.</p>
-<h3 id="per-cpu-allocations">Per-CPU Allocations</h3>
+<h3 id="per-cpu-allocations">Per-CPU Allocations<a class="headerlink" href="#per-cpu-allocations" title="Permanent link">&para;</a></h3>
 <p>Modern SMP-capable operating systems use per-CPU data (data that is unique to a given processor). Typically, per-CPU data is stored in an array. Each item in the array corresponds to a possible processor on the system. The current processor number indexes this array (from 2.4 to 2.6 kernel). [p255] You declare the data as:</p>
 <div class="codehilite"><pre><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">my_percpu</span><span class="p">[</span><span class="n">NR_CPUS</span><span class="p">];</span>
 </pre></div>
@@ -1341,11 +1341,11 @@ the tail end of the stack, the first thing of which is the <code>thread_info</co
 <li>If another task preempts your code, it can concurrently access <code>my_percpu</code> on the same processor, which is a race condition.</li>
 </ul>
 <p>The call <code>get_cpu()</code>, on top of returning the current processor number, also disables kernel preemption. The corresponding call to <code>put_cpu()</code> enables kernel preemption. If you use a call to <code>smp_processor_id()</code> to get the current processor number, kernel preemption is not disabled. Always use the aforementioned methods to remain safe.</p>
-<h3 id="the-new-percpu-interface">The New <code>percpu</code> Interface</h3>
+<h3 id="the-new-percpu-interface">The New <code>percpu</code> Interface<a class="headerlink" href="#the-new-percpu-interface" title="Permanent link">&para;</a></h3>
 <p>The 2.6 kernel introduced a new interface, <code>percpu</code>, for creating and manipulating per-CPU data. This interface generalizes the previous example. Creation and manipulation of per-CPU data is simplified with this new approach.</p>
 <p>The previously discussed method of creating and accessing per-CPU data is still valid and accepted. This new interface, however, grew out of the needs for a simpler and more powerful method for manipulating per-CPU data on large symmetrical multiprocessing computers.</p>
 <p>The header <code>&lt;linux/percpu.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/percpu.h">include/linux/percpu.h</a>) declares all the routines. You can find the actual definitions there, in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/mm/slab.c">mm/slab.c</a>, and in <code>&lt;asm/percpu.h&gt;</code>.</p>
-<h4 id="per-cpu-data-at-compile-time">Per-CPU Data at Compile-Time</h4>
+<h4 id="per-cpu-data-at-compile-time">Per-CPU Data at Compile-Time<a class="headerlink" href="#per-cpu-data-at-compile-time" title="Permanent link">&para;</a></h4>
 <p>Define a per-CPU variable at compile time:</p>
 <div class="codehilite"><pre><span class="n">DEFINE_PER_CPU</span><span class="p">(</span><span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
 </pre></div>
@@ -1369,9 +1369,9 @@ the tail end of the stack, the first thing of which is the <code>thread_info</co
 
 <p>You need to be careful with this approach because <code>per_cpu()</code> neither disables kernel preemption nor provides any sort of locking mechanism.The lockless nature of per-CPU data exists only if the current processor is the only manipulator of the data. If other processors touch other processors’ data, you need locks. <a href="../ch9/">Chapter 9</a> and <a href="../ch10/">Chapter 10</a> discuss locking.</p>
 <p>These compile-time per-CPU examples do not work for modules because the linker actually creates them in a unique executable section (<code>.data.percpu</code>). If you need to access per-CPU data from modules, or if you need to create such data dynamically, you cannot use compile-time per-CPU data.</p>
-<h4 id="per-cpu-data-at-runtime">Per-CPU Data at Runtime</h4>
-<h3 id="doubts-and-solutions">Doubts and Solutions</h3>
-<h4 id="verbatim">Verbatim</h4>
+<h4 id="per-cpu-data-at-runtime">Per-CPU Data at Runtime<a class="headerlink" href="#per-cpu-data-at-runtime" title="Permanent link">&para;</a></h4>
+<h3 id="doubts-and-solutions">Doubts and Solutions<a class="headerlink" href="#doubts-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="verbatim">Verbatim<a class="headerlink" href="#verbatim" title="Permanent link">&para;</a></h4>
 <p>p235 on zones:</p>
 <blockquote>
 <p>A specific lock does not protect individual pages, although parts of the kernel may lock the data that happens to reside in said pages.</p>
