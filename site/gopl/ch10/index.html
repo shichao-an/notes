@@ -458,6 +458,8 @@
         
             <li><a href="#downloading-packages">Downloading Packages</a></li>
         
+            <li><a href="#building-packages">Building Packages</a></li>
+        
     
     </ul>
 </div></div>
@@ -819,6 +821,96 @@ Use &quot;go help [command]&quot; for more information about a command.
 <p>If you specify the <code>-u</code> flag, <code>go get</code> will ensure that all packages it visits, including dependencies, are updated to their latest version before being built and installed. Without that flag, packages that already exist locally will not be updated.</p>
 <h5 id="vendor-directories"><strong>Vendor Directories</strong> *<a class="headerlink" href="#vendor-directories" title="Permanent link">&para;</a></h5>
 <p>The <code>go get -u</code> command generally retrieves the latest version of each package, which is convenient when you're getting started but may be inappropriate for deployed projects, where precise control of dependencies is critical for release hygiene. The usual solution to this problem is to <em>vendor</em> the code, that is, to make a persistent local copy of all the necessary dependencies, and to update this copy carefully and deliberately. Prior to Go 1.5, this required changing those packages' import paths, so our copy of <code>golang.org/x/net/html</code> would become <code>gopl.io/vendor/golang.org/x/net/html</code>. More recent versions of the <code>go tool</code> support vendoring directly. See <a href="https://golang.org/cmd/go/#hdr-Vendor_Directories"><em>Vendor Directories</em></a> in the output of the <code>go help gopath</code> command.</p>
+<h4 id="building-packages">Building Packages<a class="headerlink" href="#building-packages" title="Permanent link">&para;</a></h4>
+<p>The <code>go build</code> command compiles each argument package.</p>
+<ul>
+<li><u>If the package is a library, the result is discarded;</u> this merely checks that the package is free of compile errors.</li>
+<li>If the package is named <code>main</code>, <code>go build</code> invokes the linker to create an executable in the current directory; the name of the executable is taken from the last segment of the package's import path.</li>
+</ul>
+<p>Since each directory contains one package, each executable program, or <em>command</em> in Unix terminology, requires its own directory. These directories are sometimes children of a directory named <code>cmd</code>, such as the <a href="https://godoc.org/golang.org/x/tools/cmd/godoc"><code>golang.org/x/tools/cmd/godoc</code></a> command which serves Go package documentation through a web interface (<a href="#documenting-packages">Section 10.7.4</a>).</p>
+<p>Packages may be specified by their import paths, or by a relative directory name, which must start with a <code>.</code> or <code>..</code> segment even if this would not ordinarily be required. If no argument is provided, the current directory is assumed. Thus the following commands build the same package, though each writes the executable to the directory in which <code>go build</code> is run:</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">cd</span> $GOPATH/src/gopl.io/ch1/helloworld
+<span class="gp">$</span> go build
+</pre></div>
+
+
+<p>and:</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">cd</span> anywhere
+<span class="gp">$</span> go build gopl.io/ch1/helloworld
+</pre></div>
+
+
+<p>and:</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">cd</span> $GOPATH
+<span class="gp">$</span> go build ./src/gopl.io/ch1/helloworld
+</pre></div>
+
+
+<p>but not:</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">cd</span> $GOPATH
+<span class="gp">$</span> go build src/gopl.io/ch1/helloworld
+<span class="go">Error: cannot find package &quot;src/gopl.io/ch1/helloworld&quot;.</span>
+</pre></div>
+
+
+<p>Packages may also be specified as a list of file names, though this tends to be used only for small programs and one-off experiments. If the package name is <code>main</code>, the executable name comes from the basename of the first <code>.go</code> file.</p>
+<div class="codehilite"><pre><span class="gp">$</span> cat quoteargs.go
+<span class="go">package main</span>
+<span class="go">import (</span>
+<span class="go">    &quot;fmt&quot;</span>
+<span class="go">    &quot;os&quot;</span>
+<span class="go">)</span>
+<span class="go">func main() {</span>
+<span class="go">    fmt.Printf(&quot;%q\n&quot;, os.Args[1:])</span>
+<span class="go">}</span>
+<span class="gp">$</span> go build quoteargs.go
+<span class="gp">$</span> ./quoteargs one <span class="s2">&quot;two three&quot;</span> four<span class="se">\ </span>five
+<span class="go">[&quot;one&quot; &quot;two three&quot; &quot;four five&quot;]</span>
+</pre></div>
+
+
+<p>For throwaway programs like this one, we can run the executable as soon as we've built it. The <a href="https://golang.org/cmd/go/#hdr-Compile_and_run_Go_program"><code>go run</code></a> command combines these two steps:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go run quoteargs.go one <span class="s2">&quot;two three&quot;</span> four<span class="se">\ </span>five
+<span class="go">[&quot;one&quot; &quot;two three&quot; &quot;four five&quot;]</span>
+</pre></div>
+
+
+<p>By default, the <code>go build</code> command builds the requested package and all its dependencies, then throws away all the compiled code except the final executable, if any. Both the dependency analysis and the compilation are surprisingly fast, but as projects grow to dozens of packages and hundreds of thousands of lines of code, the time to recompile dependencies can become noticeable, potentially several seconds, even when those dependencies haven't changed at all.</p>
+<p>The <a href="https://golang.org/cmd/go/#hdr-Compile_and_install_packages_and_dependencies"><code>go install</code></a> command is very similar to <code>go build</code>, except that it saves the compiled code for each package and command instead of throwing it away. Compiled packages are saved beneath the <code>$GOPATH/pkg</code> directory corresponding to the <code>src</code> directory in which the source resides, and command executables are saved in the <code>$GOPATH/bin</code> directory. Thereafter, <code>go build</code> and <code>go install</code> do not run the compiler for those packages and commands if they have not changed, making subsequent builds much faster. For convenience, <code>go build -i</code> installs the packages that are dependencies of the build target.</p>
+<p>Since compiled packages vary by platform and architecture, <code>go install</code> saves them beneath a subdirectory whose name incorporates the values of the <code>GOOS</code> and <code>GOARCH</code> environment variables. For example, on a Mac the <code>golang.org/x/net/html</code> package is compiled and installed in the file <code>golang.org/x/net/html.a</code> under <code>$GOPATH/pkg/darwin_amd64</code>.</p>
+<p>It is straightforward to <a href="https://en.wikipedia.org/wiki/Cross_compiler"><em>cross-compile</em></a> a Go program, that is, to build an executable intended for a different operating system or CPU. This can be done by setting the <code>GOOS</code> or <code>GOARCH</code> variables during the build. The <code>cross</code> program below prints the operating system and architecture for which it was built:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch10/cross/main.go">gopl.io/ch10/cross/main.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">runtime</span><span class="p">.</span><span class="nx">GOOS</span><span class="p">,</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">GOARCH</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following commands produce 64-bit and 32-bit executables respectively:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go build gopl.io/ch10/cross
+<span class="gp">$</span> ./cross
+<span class="go">darwin amd64</span>
+<span class="gp">$</span> <span class="nv">GOARCH</span><span class="o">=</span><span class="m">386</span> go build gopl.io/ch10/cross
+<span class="gp">$</span> ./cross
+<span class="go">darwin 386</span>
+</pre></div>
+
+
+<p>Some packages may need to compile different versions of the code for certain platforms or processors, for example, to deal with low-level portability issues or to provide optimized versions of important routines. If a file name includes an operating system or processor architecture name like <code>net_linux.go</code> or <code>asm_amd64.s</code>, then the <code>go</code> tool will compile the file only when building for that target.</p>
+<p>Special comments called build tags give more fine-grained control. For example, if a file contains the following comment before the package declaration (and its doc comment):</p>
+<div class="codehilite"><pre>// +build linux darwin
+</pre></div>
+
+
+<p><code>go build</code> will compile it only when building for Linux or Mac OS X.</p>
+<p>The following comment says never to compile the file:</p>
+<div class="codehilite"><pre>// +build ignore
+</pre></div>
+
+
+<p>For more details, see the <a href="https://golang.org/pkg/go/build/#hdr-Build_Constraints"><em>Build Constraints</em></a> section of the <a href="https://golang.org/pkg/go/build/"><code>go/build</code></a> package's documentation:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go doc go/build
+</pre></div>
             </div>
         </div>
 
