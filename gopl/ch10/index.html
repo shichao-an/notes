@@ -460,6 +460,8 @@
         
             <li><a href="#building-packages">Building Packages</a></li>
         
+            <li><a href="#documenting-packages">Documenting Packages</a></li>
+        
     
     </ul>
 </div></div>
@@ -911,6 +913,72 @@ Use &quot;go help [command]&quot; for more information about a command.
 <p>For more details, see the <a href="https://golang.org/pkg/go/build/#hdr-Build_Constraints"><em>Build Constraints</em></a> section of the <a href="https://golang.org/pkg/go/build/"><code>go/build</code></a> package's documentation:</p>
 <div class="codehilite"><pre><span class="gp">$</span> go doc go/build
 </pre></div>
+
+
+<h4 id="documenting-packages">Documenting Packages<a class="headerlink" href="#documenting-packages" title="Permanent link">&para;</a></h4>
+<p>Go style strongly encourages good documentation of package APIs. Each declaration of an exported package member and the package declaration itself should be immediately preceded by a comment explaining its purpose and usage.</p>
+<p>Go <em>doc comments</em> are always complete sentences, and the first sentence is usually a summary that starts with the name being declared. Function parameters and other identifiers are mentioned without quotation or markup. For example, the following is the doc comment for <code>fmt.Fprintf</code>:</p>
+<div class="codehilite"><pre><span class="c1">// Fprintf formats according to a format specifier and writes to w.</span>
+<span class="c1">// It returns the number of bytes written and any write error encountered.</span>
+<span class="kd">func</span> <span class="nx">Fprintf</span><span class="p">(</span><span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">,</span> <span class="nx">format</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">a</span> <span class="o">...</span><span class="kd">interface</span><span class="p">{})</span> <span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The details of <code>Fprintf</code>'s formatting are explained in a doc comment associated with the <code>fmt</code> package itself. A comment immediately preceding a package declaration is considered the doc comment for the package as a whole. There must be only one, though it may appear in any file. Longer package comments may warrant a file of their own. For example, <code>fmt</code>'s package comment is over 300 lines. This file is usually called <code>doc.go</code> (e.g. <a href="https://golang.org/src/fmt/doc.go"><code>fmt/doc.go</code></a>).</p>
+<p>Go's conventions favor brevity and simplicity in documentation as in all things, since documentation also requires maintenance just like code. Many declarations can be explained in one well-worded sentence, and if the behavior is truly obvious, no comment is needed.</p>
+<p>Two tools can help you find better examples as you browse the standard library.</p>
+<h5 id="go-doc"><strong><code>go doc</code></strong> *<a class="headerlink" href="#go-doc" title="Permanent link">&para;</a></h5>
+<p>The <code>go doc</code> tool prints the declaration and doc comment of the entity specified on the command line, which may be a package:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go doc <span class="nb">time</span>
+<span class="go">package time // import &quot;time&quot;</span>
+
+<span class="go">Package time provides functionality for measuring and displaying time.</span>
+
+<span class="go">const Nanosecond Duration = 1 ...</span>
+<span class="go">func After(d Duration) &lt;-chan Time</span>
+<span class="go">func Sleep(d Duration)</span>
+<span class="go">func Since(t Time) Duration</span>
+<span class="go">func Now() Time</span>
+<span class="go">type Duration int64</span>
+<span class="go">type Time struct { ... }</span>
+<span class="go">...</span>
+</pre></div>
+
+
+<p>or a package member:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go doc time.Since
+<span class="go">func Since(t Time) Duration</span>
+
+<span class="go">    Since returns the time elapsed since t.</span>
+<span class="go">    It is shorthand for time.Now().Sub(t).</span>
+</pre></div>
+
+
+<p>or a method:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go doc time.Duration.Seconds
+<span class="go">func (d Duration) Seconds() float64</span>
+
+<span class="go">    Seconds returns the duration as a floating-point number of seconds.</span>
+</pre></div>
+
+
+<p>The tool does not need complete import paths or correct identifier case. For example, this command prints the documentation of <code>(*json.Decoder).Decode</code> from the <code>encoding/json</code> package:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go doc json.decode
+<span class="go">func (dec *Decoder) Decode(v interface{}) error</span>
+
+<span class="go">    Decode reads the next JSON-encoded value from its input and stores</span>
+<span class="go">    it in the value pointed to by v.</span>
+</pre></div>
+
+
+<h5 id="godoc"><strong><code>godoc</code></strong> *<a class="headerlink" href="#godoc" title="Permanent link">&para;</a></h5>
+<p>The second tool, confusingly named <a href="https://godoc.org/golang.org/x/tools/cmd/godoc"><code>godoc</code></a>, serves cross-linked HTML pages that provide the same information as <code>go doc</code> and much more. The godoc server at <a href="https://golang.org/pkg">https://golang.org/pkg</a> covers the standard library. The godoc server at <a href="https://godoc.org">https://godoc.org</a> has a searchable index of thousands of open-source packages.</p>
+<p>You can also run an instance of <code>godoc</code> in your workspace if you want to browse your own packages. Visit <a href="http://localhost:8000/pkg">http://localhost:8000/pkg</a> in your browser while running this command:</p>
+<div class="codehilite"><pre><span class="gp">$</span> godoc -http :8000
+</pre></div>
+
+
+<p>Its <code>-analysis=type</code> and <code>-analysis=pointer</code> flags augment the documentation and the source code with the results of advanced static analysis.</p>
             </div>
         </div>
 
