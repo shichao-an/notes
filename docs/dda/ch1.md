@@ -146,3 +146,62 @@ The best systems combine several approaches in spite of unreliable humans:
 Bugs in business applications cause lost productivity (and legal risks if figures are reported incor‐ rectly), and outages of e-commerce sites can have huge costs in terms of lost revenue and reputation. Even in "non-critical" applications we have a responsibility to our users.
 
 There are situations in which we may choose to sacrifice reliability in order to reduce development cost (e.g. when developing a prototype product for an unproven market) or operational cost (e.g. for a service with a very narrow profit margin), but we should be very conscious of when we are cutting corners.
+
+### Scalability
+
+That a system is working reliably today doesn't mean it will necessarily work
+reliably in future. One common reason for degradation is increased load:
+
+* Perhaps it has grown from 10,000 concurrent users to 100,000 concurrent users.
+* Perhaps it is processing much larger volumes of data than it did before.
+
+Scalability is the term to describe a system's ability to cope with increased load. It is not a one-dimensional label that we can attach to a system: it is meaningless to say "X is scalable" or "Y doesn't scale". Rather, discussing scalability means to discuss the question: if the system grows in a particular way, what are our options for coping with the growth? How can we add computing resources to handle the additional load?
+
+#### Describing load
+
+Load can be described with a few numbers which we call *load parameters*. The best choice of parameters depends on the architecture of your system. For example, it can be:
+
+* Requests per second to a webserver
+* Ratio of reads to writes in a database
+* The number of simultaneously active users in a chat room
+* The hit rate on a cache
+
+Perhaps the average case is what matters for you, or perhaps your bottleneck is dominated by a small number of extreme cases.
+
+Consider Twitter as an example, using data published in November 2012. Two of Twitter's main operations are:
+
+* *Post tweet*. A user can publish a new message to their followers (4.6 k requests/sec on average, over 12 k requests/sec at peak).
+* *Home timeline*. A user can view tweets recently published by the people they follow (300 k requests/sec).
+
+Simply handling 12,000 writes per second (the peak rate for posting tweets) would be fairly easy. However, Twitter's scaling challenge is not primarily due to tweet volume, but due to [fan-out](https://en.wikipedia.org/wiki/Fan-out_(software)) (In transaction processing systems, we use it to describe the number of requests to other services that we need to make in order to serve one incoming request): each user follows many people, and each user is followed by many people.
+
+There are broadly two approaches to implementing these two operations:
+
+Approach 1: posting a tweet inserts the new tweet into a global collection of tweets. When a user requests home timeline:
+
+1. Look up all the people they follow.
+2. Find all recent tweets for each of those users
+3. Merge them (sorted by time).
+
+In a relational database like the one in the following figure:
+
+[![Figure 1-2. Simple relational schema for implementing a Twitter home timeline.](figure_1-2_600.png)](figure_1-2.png "Figure 1-2. Simple relational schema for implementing a Twitter home timeline.")
+
+The SQL query of it would be like:
+
+```sql
+SELECT tweets.*, users.* FROM tweets
+ JOIN users ON tweets.sender_id = users.id
+ JOIN follows ON follows.followee_id = users.id
+ WHERE follows.follower_id = current_user
+```
+
+Approach 2: maintain a cache for each user's home timeline (see figure below). When a user posts a tweet, look up all the people who follow that user, and insert the new tweet into each of their home timeline caches. The request to read the home timeline is cheap, because its result has been computed ahead of time.
+
+[![Figure 1-3. Twitter's data pipeline for delivering tweets to followers, with load parameters as of November 2012](figure_1-3_600.png)](figure_1-3.png "Figure 1-3. Twitter's data pipeline for delivering tweets to followers, with load parameters as of November 2012")
+
+The first version of Twitter used approach 1, but the systems struggled to keep up with the load of home timeline queries, so the company switched to approach 2. This works better because the average rate of published tweets is almost two orders of magnitude lower than the rate of home timeline reads, so it's preferable to do more work at write time and less at read time.
+
+However, the downside of approach 2 is that posting a tweet now requires a lot of extra work. A tweet is delivered to about 75 followers on average, so 4.6 k tweets per second become 345 k writes per second to the home timeline caches. However, the number of followers per user varies wildly, and some users have over 30 million followers. This means that a single tweet may result in over 30 million writes to home timelines. It is a significant challenge to deliver tweets to followers in a timely manner.
+
+In Twitter, the distribution of followers per user (maybe weighted by how often those users tweet) is a key load parameter for discussing scalability, since it determines the fan-out load. Now that approach 2 is robustly implemented, Twitter is moving to a hybrid of both approaches. Most users' tweets continue to be fanned out to home timelines at the time when they are posted, but a small number of users with a very large number of followers are excepted from this fan-out. Instead, when the home timeline is read, the tweets from celebrities followed by the user are fetched separately and merged with the home timeline when the timeline is read, like in approach 1. This hybrid approach is able to deliver consistently good performance.
