@@ -382,6 +382,10 @@
                             <a href="./">Chapter 10. Packages and the Go Tool</a>
                         </li>
                       
+                        <li>
+                            <a href="../ch11/">Chapter 11. Testing</a>
+                        </li>
+                      
                     </ul>
                 </li>
             <li class="dropdown">
@@ -462,6 +466,10 @@
         
             <li><a href="#documenting-packages">Documenting Packages</a></li>
         
+            <li><a href="#internal-packages">Internal Packages</a></li>
+        
+            <li><a href="#querying-packages">Querying Packages</a></li>
+        
     
     </ul>
 </div></div>
@@ -529,7 +537,7 @@ not look beyond these files.</li>
 <p>There are three major exceptions to the "last segment" convention.</p>
 <ol>
 <li>A package defining a command (an executable Go program) always has the name <code>main</code>, regardless of the packages' import path. This is a signal to <code>go build</code> (<a href="./#building-packages">Section 10.7.3</a>) that it must invoke the linker to make an executable file.</li>
-<li>Some files in the directory may have the suffix <code>_test</code> on their package name if the file name ends with <code>_test.go</code>. Such a directory may define two packages: the usual one, plus another one called an <em>external test package</em>. The <code>_test</code> suffix signals to <code>go test</code> that it must build both packages, and it indicates which files belong to each package. External test packages are used to avoid cycles in the import graph arising from dependencies of the test; they are covered in more detail in <a href="ch11.md#external-test-packages">Section 11.2.4</a>.</li>
+<li>Some files in the directory may have the suffix <code>_test</code> on their package name if the file name ends with <code>_test.go</code>. Such a directory may define two packages: the usual one, plus another one called an <em>external test package</em>. The <code>_test</code> suffix signals to <code>go test</code> that it must build both packages, and it indicates which files belong to each package. External test packages are used to avoid cycles in the import graph arising from dependencies of the test; they are covered in more detail in <a href="../ch11/#external-test-packages">Section 11.2.4</a>.</li>
 <li>Some tools for dependency management append version number suffixes to package import paths, such as <code>"gopkg.in/yaml.v2"</code>. The package name excludes the suffix, so in this case it would be just <code>yaml</code>.</li>
 </ol>
 <h3 id="import-declarations">Import Declarations<a class="headerlink" href="#import-declarations" title="Permanent link">&para;</a></h3>
@@ -709,7 +717,7 @@ not look beyond these files.</li>
 <ul>
 <li>It is a package manager (analogous to <code>apt</code> or <code>rpm</code>) that answers queries about its inventory of packages, computes their dependencies, and downloads them from remote version-control systems.</li>
 <li>It is a build system that computes file dependencies and invokes compilers, assemblers, and linkers, although it is intentionally less complete than the standard Unix <a href="https://en.wikipedia.org/wiki/Make_(software)"><code>make</code></a>.</li>
-<li>It is a test driver (discussed in <a href="ch11.md">Chapter 11</a>).</li>
+<li>It is a test driver (discussed in <a href="../ch11/">Chapter 11</a>).</li>
 </ul>
 <p>Its command-line interface uses the "Swiss army knife" style, with over a dozen subcommands, some of which we have already seen, like <code>get</code>, <code>run</code>, <code>build</code>, and <code>fmt</code>. You can run <code>go help</code> to see the index of its built-in documentation. The most commonly used commands are:</p>
 <div class="codehilite"><pre>$ go
@@ -979,6 +987,110 @@ Use &quot;go help [command]&quot; for more information about a command.
 
 
 <p>Its <code>-analysis=type</code> and <code>-analysis=pointer</code> flags augment the documentation and the source code with the results of advanced static analysis.</p>
+<h4 id="internal-packages">Internal Packages<a class="headerlink" href="#internal-packages" title="Permanent link">&para;</a></h4>
+<p>The package is the most important mechanism for encapsulation in Go programs.</p>
+<ul>
+<li>Unexported identifiers are visible only within the same package.</li>
+<li>Exported identifiers are visible to the world.</li>
+</ul>
+<p>Sometimes a middle ground would be helpful, a way to define identifiers that are visible to a small set of trusted packages, but not to everyone. For example:</p>
+<ul>
+<li>When we're breaking up a large package into more manageable parts, we may not want to reveal the interfaces between those parts to other packages.</li>
+<li>We may want to share utility functions across several packages of a project without exposing them more widely.</li>
+<li>We want to experiment with a new package without prematurely committing to its API, by putting it "on probation" with a limited set of clients.</li>
+</ul>
+<p>To address these needs, the <code>go build</code> tool treats a package specially if its import path contains a path segment named <code>internal</code>. Such packages are called <a href="https://golang.org/doc/go1.4#internalpackages"><em>internal packages</em></a>. An internal package may be imported only by another package that is inside the tree rooted at the parent of the internal directory. For example, given the packages below, <code>net/http/internal/chunked</code> can be imported from <code>net/http/httputil</code> or <code>net/http</code>, but not from <code>net/url</code>. However, <code>net/url</code> may import <code>net/http/httputil</code>.</p>
+<div class="codehilite"><pre>net/http
+net/http/internal/chunked
+net/http/httputil
+net/url
+</pre></div>
+
+
+<h4 id="querying-packages">Querying Packages<a class="headerlink" href="#querying-packages" title="Permanent link">&para;</a></h4>
+<p>The <a href="https://golang.org/cmd/go/#hdr-List_packages"><code>go list</code></a> tool reports information about available packages. In its simplest form, <code>go list</code> tests whether a package is present in the workspace and prints its import path if so:</p>
+<div class="codehilite"><pre><span class="err">$</span> <span class="k">go</span> <span class="nx">list</span> <span class="nx">github</span><span class="p">.</span><span class="nx">com</span><span class="o">/</span><span class="k">go</span><span class="o">-</span><span class="nx">sql</span><span class="o">-</span><span class="nx">driver</span><span class="o">/</span><span class="nx">mysql</span>
+<span class="nx">github</span><span class="p">.</span><span class="nx">com</span><span class="o">/</span><span class="k">go</span><span class="o">-</span><span class="nx">sql</span><span class="o">-</span><span class="nx">driver</span><span class="o">/</span><span class="nx">mysql</span>
+</pre></div>
+
+
+<p>An argument to go list may contain the "<code>...</code>" wildcard, which matches any substring of a package's import path. We can use it to enumerate all the packages within a Go workspace:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list ...
+<span class="go">archive/tar</span>
+<span class="go">archive/zip</span>
+<span class="go">bufio</span>
+<span class="go">bytes</span>
+<span class="go">cmd/addr2line</span>
+<span class="go">cmd/api</span>
+<span class="go">...</span>
+</pre></div>
+
+
+<p>Or within a specific subtree:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list gopl.io/ch3/...
+<span class="go">gopl.io/ch3/basename1</span>
+<span class="go">gopl.io/ch3/basename2</span>
+<span class="go">gopl.io/ch3/comma</span>
+<span class="go">gopl.io/ch3/mandelbrot</span>
+<span class="go">gopl.io/ch3/netflag</span>
+<span class="go">gopl.io/ch3/printints</span>
+<span class="go">gopl.io/ch3/surface</span>
+</pre></div>
+
+
+<p>Or related to a particular topic:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list ...xml...
+<span class="go">encoding/xml</span>
+<span class="go">gopl.io/ch7/xmlselect</span>
+</pre></div>
+
+
+<p>The <code>go list</code> command obtains the complete metadata for each package. The <code>-json</code> flag causes <code>go list</code> to print the entire record of each package in JSON format:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list -json <span class="nb">hash</span>
+<span class="go">{</span>
+<span class="go">    &quot;Dir&quot;: &quot;/home/gopher/go/src/hash&quot;,</span>
+<span class="go">    &quot;ImportPath&quot;: &quot;hash&quot;,</span>
+<span class="go">    &quot;Name&quot;: &quot;hash&quot;,</span>
+<span class="go">    &quot;Doc&quot;: &quot;Package hash provides interfaces for hash functions.&quot;,</span>
+<span class="go">    &quot;Target&quot;: &quot;/home/gopher/go/pkg/darwin_amd64/hash.a&quot;,</span>
+<span class="go">    &quot;Goroot&quot;: true,</span>
+<span class="go">    &quot;Standard&quot;: true,</span>
+<span class="go">    &quot;Root&quot;: &quot;/home/gopher/go&quot;,</span>
+<span class="go">    &quot;GoFiles&quot;: [</span>
+<span class="go">        &quot;hash.go&quot;</span>
+<span class="go">    ],</span>
+<span class="go">    &quot;Imports&quot;: [</span>
+<span class="go">        &quot;io&quot;</span>
+<span class="go">    ],</span>
+<span class="go">    &quot;Deps&quot;: [</span>
+<span class="go">        &quot;errors&quot;,</span>
+<span class="go">        &quot;io&quot;,</span>
+<span class="go">        &quot;runtime&quot;,</span>
+<span class="go">        &quot;sync&quot;,</span>
+<span class="go">        &quot;sync/atomic&quot;,</span>
+<span class="go">        &quot;unsafe&quot;</span>
+<span class="go">    ]</span>
+<span class="go">}</span>
+</pre></div>
+
+
+<p>The <code>-f</code> flag customizes the output format using the template language of package <a href="https://golang.org/pkg/text/template/"><code>text/template</code></a> (<a href="../ch4/#text-and-html-templates">Section 4.6</a>). The following command prints the transitive dependencies of the <code>strconv</code> package, separated by spaces:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list -f <span class="s1">&#39;{{join .Deps &quot; &quot;}}&#39;</span> strconv
+<span class="go">errors math runtime unicode/utf8 unsafe</span>
+</pre></div>
+
+
+<p>The following command prints the direct imports of each package in the compress subtree of the standard library:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list -f <span class="s1">&#39;{{.ImportPath}} -&gt; {{join .Imports &quot; &quot;}}&#39;</span> compress/...
+<span class="go">compress/bzip2 -&gt; bufio io sort</span>
+<span class="go">compress/flate -&gt; bufio fmt io math sort strconv</span>
+<span class="go">compress/gzip -&gt; bufio compress/flate errors fmt hash hash/crc32 io time</span>
+<span class="go">compress/lzw -&gt; bufio errors fmt io</span>
+<span class="go">compress/zlib -&gt; bufio compress/flate errors fmt hash hash/adler32 io</span>
+</pre></div>
+
+
+<p>The <code>go list</code> command is useful for both one-off interactive queries and for build and test automation scripts. It will be used again in <a href="../ch11/#external-test-packages">Section 11.2.4</a>. For more information, including the set of available fields and their meaning, see the output of <code>go help list</code>.</p>
             </div>
         </div>
 

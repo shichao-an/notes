@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/spec/ch9/">
+        <link rel="canonical" href="https://notes.shichao.io/gopl/ch11/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 9. Disks - Shichao's Notes</title>
+	<title>Chapter 11. Testing - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -334,56 +334,56 @@
                       
                     </ul>
                 </li>
-            <li class="dropdown">
+            <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li>
-                            <a href="../../gopl/">Contents</a>
+                            <a href="../">Contents</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                            <a href="../ch1/">Chapter 1. Tutorial</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                            <a href="../ch2/">Chapter 2. Program Structure</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch3/">Chapter 3. Basic Data Types</a>
+                            <a href="../ch3/">Chapter 3. Basic Data Types</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch4/">Chapter 4. Composite Types</a>
+                            <a href="../ch4/">Chapter 4. Composite Types</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch5/">Chapter 5. Functions</a>
+                            <a href="../ch5/">Chapter 5. Functions</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch6/">Chapter 6. Methods</a>
+                            <a href="../ch6/">Chapter 6. Methods</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch7/">Chapter 7. Interfaces</a>
+                            <a href="../ch7/">Chapter 7. Interfaces</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch8/">Chapter 8. Goroutines and Channels</a>
+                            <a href="../ch8/">Chapter 8. Goroutines and Channels</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch9/">Chapter 9. Concurrency with Shared Variables</a>
+                            <a href="../ch9/">Chapter 9. Concurrency with Shared Variables</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch10/">Chapter 10. Packages and the Go Tool</a>
+                            <a href="../ch10/">Chapter 10. Packages and the Go Tool</a>
                         </li>
                       
-                        <li>
-                            <a href="../../gopl/ch11/">Chapter 11. Testing</a>
+                        <li class="active">
+                            <a href="./">Chapter 11. Testing</a>
                         </li>
                       
                     </ul>
@@ -415,7 +415,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/spec/ch9.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/gopl/ch11.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -433,7 +433,10 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-9-disks">Chapter 9. Disks</a></li>
+        <li class="main active"><a href="#chapter-11-testing">Chapter 11. Testing</a></li>
+        
+    
+        <li class="main "><a href="#the-go-test-tool">The go test Tool</a></li>
         
     
     </ul>
@@ -441,7 +444,27 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-9-disks"><strong>Chapter 9. Disks</strong><a class="headerlink" href="#chapter-9-disks" title="Permanent link">&para;</a></h3>
+<h3 id="chapter-11-testing"><strong>Chapter 11. Testing</strong><a class="headerlink" href="#chapter-11-testing" title="Permanent link">&para;</a></h3>
+<p>[p301]</p>
+<p>Programs today are far larger and more complex than in <a href="https://en.wikipedia.org/wiki/Maurice_Wilkes">Maurice Wilkes</a>'s time, and a great deal of effort has been spent on techniques to make this complexity manageable. Two techniques in particular stand out for their effectiveness:</p>
+<ol>
+<li>Routine peer review of programs before they are deployed.</li>
+<li>Testing.</li>
+</ol>
+<p>Testing, by which we implicitly mean automated testing, is the practice of writing small programs that check that the code under test (the production code) behaves as expected for certain inputs, which are usually either carefully chosen to exercise certain features or randomized to ensure broad coverage.</p>
+<p>[p301]</p>
+<p>Go's approach to testing is rather low-tech in. It relies on one command, <code>go test</code>, and a set of conventions for writing test functions that <code>go test</code> can run. The comparatively lightweight mechanism is effective for pure testing, and it extends naturally to benchmarks and systematic examples for documentation.</p>
+<p>In practice, writing test code is not much different from writing the original program itself.  We write short functions that focus on one part of the task. We have to be careful of boundary conditions, think about data structures, and reason about what results a computation should produce from suitable inputs. But this is the same process as writing ordinary Go code.</p>
+<h3 id="the-go-test-tool">The <code>go test</code> Tool<a class="headerlink" href="#the-go-test-tool" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://golang.org/cmd/go/#hdr-Description_of_testing_flags"><code>go test</code></a> subcommand is a test driver for Go packages that are organized according to certain conventions. In a package directory, files whose names end with <code>_test.go</code> are not part of the package ordinarily built by <code>go build</code> but are a part of it when built by <code>go test</code>.</p>
+<p>Within <code>*_test.go</code> files, three kinds of functions are treated specially: tests, benchmarks, and
+examples.</p>
+<ul>
+<li>A <em>test function</em> is a function whose name begins with <code>Test</code>. It exercises some program logic for correct behavior; <code>go test</code> calls the test function and reports the result, which is either <code>PASS</code> or <code>FAIL</code>.</li>
+<li>A <em>benchmark function</em> has a name beginning with <code>Benchmark</code> and measures the performance of some operation; <code>go test</code> reports the mean execution time of the operation.</li>
+<li>A <em>example function</em>, whose name starts with <code>Example</code>, provides machine-checked documentation.</li>
+</ul>
+<p>The <code>go test</code> tool scans the <code>*_test.go</code> files for these special functions, generates a temporary <code>main</code> package that calls them all in the proper way, builds and runs it, reports the results, and then cleans up.</p>
             </div>
         </div>
 
