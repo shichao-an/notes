@@ -2,7 +2,7 @@
 
 <small>Back to [Roadmap](index.md).</small>
 
-### OKR-1: April 30, 2017
+### OKR: April 30, 2017
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
@@ -18,7 +18,7 @@ Priority | Category | Primary Book | Secondary Book(s) | Key Results
 3 | Networks | TCPv1 | TCPIP | TBD
 3 | Security | CNSPP | - | TBD
 
-#### OKR-1 Progress
+#### Progress
 
 Book | Chapter/Part | #Pass | Start | End
 ---- | ------------ | ----- | ----- | ---
@@ -27,7 +27,8 @@ GOPL | ch6 | 1 | 2016-05-11 | 2016-05-18
 GOPL | ch7 | 1 | 2016-05-18 | 2016-08-13
 GOPL | ch8 | 1 | 2016-08-15 | 2016-09-19
 GOPL | ch9 | 1 | 2016-09-21 | 2016-12-09
-GOPL | ch10 | 1 | 2016-12-22 |
+GOPL | ch10 | 1 | 2016-12-22 | 2016-02-06
+GOPL | ch11 | 1 | 2016-02-06 |
 CSN  | part1 | 1 | 2016-01-15 | 2016-05-24
 CSN  | part2 | 1 | 2016-05-25 |
 LKD  | ch8 | 1 | 2016-04-15 | 2016-11-17
