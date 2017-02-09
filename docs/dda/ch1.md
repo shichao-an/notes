@@ -205,3 +205,42 @@ The first version of Twitter used approach 1, but the systems struggled to keep 
 However, the downside of approach 2 is that posting a tweet now requires a lot of extra work. A tweet is delivered to about 75 followers on average, so 4.6 k tweets per second become 345 k writes per second to the home timeline caches. However, the number of followers per user varies wildly, and some users have over 30 million followers. This means that a single tweet may result in over 30 million writes to home timelines. It is a significant challenge to deliver tweets to followers in a timely manner.
 
 In Twitter, the distribution of followers per user (maybe weighted by how often those users tweet) is a key load parameter for discussing scalability, since it determines the fan-out load. Now that approach 2 is robustly implemented, Twitter is moving to a hybrid of both approaches. Most users' tweets continue to be fanned out to home timelines at the time when they are posted, but a small number of users with a very large number of followers are excepted from this fan-out. Instead, when the home timeline is read, the tweets from celebrities followed by the user are fetched separately and merged with the home timeline when the timeline is read, like in approach 1. This hybrid approach is able to deliver consistently good performance.
+
+#### Describing performance
+
+Once you have described the load on our system, you can investigate what happens when the load increases in two ways:
+
+* When you increase a load parameter, and keep the system resources (CPU, memory, network bandwidth, etc.) unchanged, how is performance of your system affected?
+* When you increase a load parameter, how much do you need to increase the resources if you want to keep performance unchanged?
+
+Both questions require performance numbers.
+
+In a batch-processing system such as Hadoop, we usually care about [*throughput*](https://en.wikipedia.org/wiki/Throughput): the number of records we can process per second, or the total time it takes to run a job on a dataset of a certain size.
+
+* In an ideal world, the running time of a batch job is the size of the dataset divided by throughput.
+* In practice, the running time is often longer, due to skew (data not being spread evenly across worker processes) or waiting for the slowest task to complete.
+
+In online systems, the [*response time*](https://en.wikipedia.org/wiki/Response_time_(technology)) of a service is usually more important. It is time between a client sending a request and receiving a response.
+
+##### **Latency vs. Response Time** *
+
+[Latency](https://en.wikipedia.org/wiki/Latency_(engineering)) and response time are often used synonymously, but they are not the same.
+
+* The response time is what the client sees: besides the actual time to process the request (the service time), it includes network delays and queueing delays.
+* Latency is the duration that a request is waiting to be handled, during which it is latent, awaiting service.
+
+Even if you only make the same request over and over again, you will get a slightly different response time on every try. In practice, in a system handling a variety of requests, the response time can vary a lot. Therefore, we need to think of response time not as a single number, but as a distribution of values that you can measure.
+
+In the following figure, each gray bar represents a request to a service, and its height shows how long that request took.
+
+[![Figure 1-4. Illustrating mean and percentiles: response times for a sample of 100 requests to a service](figure_1-4_600.png)](figure_1-4.png "Figure 1-4. Illustrating mean and percentiles: response times for a sample of 100 requests to a service")
+
+Most requests are reasonably fast, but there are occasional [*outliers*](https://en.wikipedia.org/wiki/Outlier) that take much longer. The slow requests may be intrinsically more expensive, e.g. because they process more data. But even in a scenario where all requests should take the same time, you get variation, where random additional latency could be introduced by:
+
+* A context switch to a background process
+* The loss of a network packet and TCP retransmission
+* A garbage collection pause
+* A page fault forcing a read from disk
+* Mechanical vibrations in the server rack
+* Many other things
+
