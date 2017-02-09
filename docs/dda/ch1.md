@@ -244,3 +244,16 @@ Most requests are reasonably fast, but there are occasional [*outliers*](https:/
 * Mechanical vibrations in the server rack
 * Many other things
 
+##### **Percentiles: p50, p95, p99 and p99.9** *
+
+It's common to use the *average* response. Strictly speaking, the term *average* doesn't refer to any particular formula, but in practice it is usually understood as the [arithmetic mean](https://en.wikipedia.org/wiki/Arithmetic_mean): sum the *n* values and divide by *n*.) However, the mean is not a very good metric to know the "typical" response time, because it doesn't tell how many users actually experienced that delay.
+
+Usually it is better to use [*percentiles*](https://en.wikipedia.org/wiki/Percentile). If you take your list of response times and sort it, from fastest to slowest, then the median is the half-way point: for example, if your median response time is 200 ms, that means half your requests return in less than 200 ms, and half your requests take longer than that.
+
+<u>This makes the median a good metric if you want to know how long users typically have to wait</u>: half of user requests are served in less than the median response time, and the other half take longer than the median. The median is also known as **50th percentile**, and sometimes abbreviated as **p50**. Note that the median is the half-way point for a single request; if the user makes several requests (over the course of a session, or because several resources are included in a single page), the probability that at least one of them is slower than the median is much greater than 50%.
+
+In order to figure out how bad your outliers are, you can look at higher percentiles: the **95th**, **99th** and **99.9th percentile** are common (abbreviated **p95**, **p99** and **p99.9**). They are the response time thresholds at which 95%, 99% or 99.9% of requests are faster than that particular threshold. For example, if the 95th percentile response time is 1.5 seconds, that means 95 out of 100 requests take less than 1.5 seconds, and 5 out of 100 requests take 1.5 seconds or more.
+
+<u>High percentiles are important because they directly affect user experience of the service.</u> For example, Amazon describes response time requirements for internal services in terms of the 99.9th percentile, even though it only affects 1 in 1,000 requests. This is because the customers with the slowest requests are often those who have made many purchases, i.e. the most valuable customers. It's important to keep those customers happy by ensuring the website is fast for them: Amazon has also observed that a 100 ms increase in response time reduces sales by 1% and others report that a 1-second slowdown reduces a customer satisfaction metric by 16%.
+
+On the other hand, optimizing the 99.99th percentile (the slowest 1 in 10,000 requests) was deemed too expensive and not yield enough benefit for Amazon's purposes. Reducing response times at very high percentiles is difficult because they are easily affected by random events outside of your control, and the benefits are diminishing.
