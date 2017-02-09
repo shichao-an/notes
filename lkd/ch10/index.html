@@ -436,12 +436,88 @@
         <li class="main active"><a href="#chapter-10-kernel-synchronization-methods">Chapter 10. Kernel Synchronization Methods</a></li>
         
     
+        <li class="main "><a href="#atomic-operations">Atomic Operations</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
               
 
 <h3 id="chapter-10-kernel-synchronization-methods"><strong>Chapter 10. Kernel Synchronization Methods</strong><a class="headerlink" href="#chapter-10-kernel-synchronization-methods" title="Permanent link">&para;</a></h3>
+<p>The previous chapter discussed the sources of and solutions to race conditions. The Linux kernel provides a family of synchronization methods, which enable developers to write efficient and race-free code. This chapter discusses these methods and their interfaces, behavior, and use</p>
+<h3 id="atomic-operations">Atomic Operations<a class="headerlink" href="#atomic-operations" title="Permanent link">&para;</a></h3>
+<p>As the foundation on which other synchronization methods are built, atomic operations provide instructions that execute atomically, without interruption. Atomic operators are indivisible instructions. For example, an atomic increment can read and increment a variable by one in a single indivisible and uninterruptible step. Recall the simple race in incrementing an integer that we discussed in the previous chapter:</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>get <code>i</code> (7)</td>
+<td>get <code>i</code> (7)</td>
+</tr>
+<tr>
+<td>increment <code>i</code> (7 -&gt; 8)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>—</td>
+<td>increment <code>i</code> (7 -&gt; 8)</td>
+</tr>
+<tr>
+<td>write back <code>i</code> (8)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>—</td>
+<td>write back <code>i</code> (8)</td>
+</tr>
+</tbody>
+</table>
+<p>With atomic operators, this race does cannot—occur. Instead, the outcome is always one of the following:</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>get, increment, and store <code>i</code> (7 -&gt; 8)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>—</td>
+<td>get, increment, and store <code>i</code> (8 -&gt; 9)</td>
+</tr>
+</tbody>
+</table>
+<p>Or:</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>get, increment, and store <code>i</code> (7 -&gt; 8)</td>
+</tr>
+<tr>
+<td>get, increment, and store <code>i</code> (8 -&gt; 9)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>The ultimate value, always nine, is correct. It is never possible for the two atomic operations to occur on the same variable concurrently. Therefore, it is not possible for the increments to race.</p>
+<p>The kernel provides two sets of interfaces for atomic operations: one that operates on integers and another that operates on individual bits. These interfaces are implemented on every architecture that Linux supports. Most architectures contain instructions that provide atomic versions of simple arithmetic operations. Other architectures, lacking direct atomic operations, provide an operation to lock the memory bus for a single operation, thus guaranteeing that another memory-affecting operation cannot occur simultaneously.</p>
             </div>
         </div>
 
