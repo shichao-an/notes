@@ -438,6 +438,8 @@
     
         <li class="main "><a href="#atomic-operations">Atomic Operations</a></li>
         
+            <li><a href="#atomic-integer-operations">Atomic Integer Operations</a></li>
+        
     
     </ul>
 </div></div>
@@ -518,6 +520,119 @@
 </table>
 <p>The ultimate value, always nine, is correct. It is never possible for the two atomic operations to occur on the same variable concurrently. Therefore, it is not possible for the increments to race.</p>
 <p>The kernel provides two sets of interfaces for atomic operations: one that operates on integers and another that operates on individual bits. These interfaces are implemented on every architecture that Linux supports. Most architectures contain instructions that provide atomic versions of simple arithmetic operations. Other architectures, lacking direct atomic operations, provide an operation to lock the memory bus for a single operation, thus guaranteeing that another memory-affecting operation cannot occur simultaneously.</p>
+<h4 id="atomic-integer-operations">Atomic Integer Operations<a class="headerlink" href="#atomic-integer-operations" title="Permanent link">&para;</a></h4>
+<p>The atomic integer methods operate on a special data type, <code>atomic_t</code>. This special type is used, as opposed to having the functions work directly on the C <code>int</code> type, for several reasons:</p>
+<ol>
+<li>Having the atomic functions accept only the <code>atomic_t</code> type ensures that the atomic operations are used only with these special types. Likewise, it also ensures that the data types are not passed to any non-atomic functions. Indeed, what good would atomic operations be if they were not consistently used on the data?</li>
+<li>The use of <code>atomic_t</code> ensures the compiler does not (erroneously but cleverly) optimize access to the value—it is important the atomic operations receive the correct memory address and not an alias.</li>
+<li>Use of <code>atomic_t</code> can hide any architecture-specific differences in its implementation.</li>
+</ol>
+<p>The <code>atomic_t</code> type is defined in <code>&lt;linux/types.h&gt;</code> (<a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/linux/types.h#L192">include/linux/types.h#L192</a>):</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="k">volatile</span> <span class="kt">int</span> <span class="n">counter</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">atomic_t</span><span class="p">;</span>
+</pre></div>
+
+
+<p>Despite being an integer, and thus 32 bits on all the machines that Linux supports, developers and their code once had to assume that an <code>atomic_t</code> was no larger than 24 bits in size. The SPARC port in Linux has an odd implementation of atomic operations: A lock was embedded in the lower 8 bits of the 32-bit int, like in the following figure:</p>
+<p><a href="../figure_10.1.png" title="Figure 10.1 Old layout of the 32-bit atomic_t on SPARC."><img alt="Figure 10.1 Old layout of the 32-bit atomic_t on SPARC." src="../figure_10.1.png" /></a></p>
+<p>The lock was used to protect concurrent access to the atomic type because the SPARC architecture lacks appropriate support at the instruction level. Consequently, only 24 usable bits were available on SPARC machines. Although code that assumed that the full 32-bit range existed would work on other machines; it would have failed in strange and subtle ways on SPARC machines. Recently, clever hacks have allowed SPARC to provide a fully usable 32-bit <code>atomic_t</code>, and this limitation is no more.</p>
+<p>The declarations needed to use the atomic integer operations are in <code>&lt;asm/atomic.h&gt;</code>.  Some architectures provide additional methods that are unique to that architecture, but all architectures provide at least a minimum set of operations that are used throughout the kernel. When you write kernel code, you can ensure that these operations are correctly implemented on all architectures.</p>
+<p>Defining an <code>atomic_t</code> is done in the usual manner. Optionally, you can set it to an initial value:</p>
+<div class="codehilite"><pre><span class="n">atomic_t</span> <span class="n">v</span><span class="p">;</span>                   <span class="cm">/* define v */</span>
+<span class="n">atomic_t</span> <span class="n">u</span> <span class="o">=</span> <span class="n">ATOMIC_INIT</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>  <span class="cm">/* define u and initialize it to zero */</span>
+</pre></div>
+
+
+<p>Operations are all simple:</p>
+<div class="codehilite"><pre><span class="n">atomic_set</span><span class="p">(</span><span class="o">&amp;</span><span class="n">v</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="cm">/* v = 4 (atomically) */</span>
+<span class="n">atomic_add</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">v</span><span class="p">);</span>  <span class="cm">/* v = v + 2 = 6 (atomically) */</span>
+<span class="n">atomic_inc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">v</span><span class="p">);</span>     <span class="cm">/* v = v + 1 = 7 (atomically) */</span>
+</pre></div>
+
+
+<p>If you ever need to convert an <code>atomic_t</code> to an <code>int</code>, use <code>atomic_read()</code>:</p>
+<div class="codehilite"><pre><span class="n">printk</span><span class="p">(</span><span class="err">“</span><span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="err">”</span><span class="p">,</span> <span class="n">atomic_read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">v</span><span class="p">));</span> <span class="cm">/* will print &quot;7&quot; */</span>
+</pre></div>
+
+
+<p>A common use of the atomic integer operations is to implement counters. Protecting a sole counter with a complex locking scheme is overkill, so instead developers use <code>atomic_inc()</code> and <code>atomic_dec()</code>, which are much lighter in weight.</p>
+<p>Another use of the atomic integer operators is atomically performing an operation and testing the result. A common example is the atomic decrement and test:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">atomic_dec_and_test</span><span class="p">(</span><span class="n">atomic_t</span> <span class="o">*</span><span class="n">v</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This function decrements by one the given atomic value. If the result is zero, it returns true; otherwise, it returns false. The following table is a full listing of the standard atomic integer operations (those found on all architectures). All the operations implemented on a specific architecture can be found in <a href="https://github.com/shichao-an/linux/blob/v2.6.34/include/asm-generic/atomic.h"><code>&lt;asm/atomic.h&gt;</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Atomic Integer Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ATOMIC_INIT(int i)</code></td>
+<td>At declaration, initialize to <code>i</code>.</td>
+</tr>
+<tr>
+<td><code>int atomic_read(atomic_t *v)</code></td>
+<td>Atomically read the integer value of <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic_set(atomic_t *v, int i)</code></td>
+<td>Atomically set <code>v</code> equal to <code>i</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic_add(int i, atomic_t *v)</code></td>
+<td>Atomically add <code>i</code> to <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic_sub(int i, atomic_t *v)</code></td>
+<td>Atomically subtract <code>i</code> from <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic_inc(atomic_t *v)</code></td>
+<td>Atomically add one to <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic_dec(atomic_t *v)</code></td>
+<td>Atomically subtract one from <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>int atomic_sub_and_test(int i, atomic_t *v)</code></td>
+<td>Atomically subtract <code>i</code> from <code>v</code> and return true if the result is zero; otherwise false.</td>
+</tr>
+<tr>
+<td><code>int atomic_add_negative(int i, atomic_t *v)</code></td>
+<td>Atomically add <code>i</code> to <code>v</code> and return true if the result is negative; otherwise false.</td>
+</tr>
+<tr>
+<td><code>int atomic_add_return(int i, atomic_t *v)</code></td>
+<td>Atomically add <code>i</code> to <code>v</code> and return the result.</td>
+</tr>
+<tr>
+<td><code>int atomic_sub_return(int i, atomic_t *v)</code></td>
+<td>Atomically subtract <code>i</code> from <code>v</code> and return the result.</td>
+</tr>
+<tr>
+<td><code>int atomic_inc_return(int i, atomic_t *v)</code></td>
+<td>Atomically increment <code>v</code> by one and return the result.</td>
+</tr>
+<tr>
+<td><code>int atomic_dec_return(int i, atomic_t *v)</code></td>
+<td>Atomically decrement <code>v</code> by one and return the result.</td>
+</tr>
+<tr>
+<td><code>int atomic_dec_and_test(atomic_t *v)</code></td>
+<td>Atomically decrement <code>v</code> by one and return true if zero; false otherwise.</td>
+</tr>
+<tr>
+<td><code>int atomic_inc_and_test(atomic_t *v)</code></td>
+<td>Atomically increment <code>v</code> by one and return true if the result is zero; false otherwise.</td>
+</tr>
+</tbody>
+</table>
             </div>
         </div>
 
