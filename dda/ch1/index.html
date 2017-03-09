@@ -456,6 +456,8 @@
         
             <li><a href="#describing-performance">Describing performance</a></li>
         
+            <li><a href="#approaches-for-coping-with-load">Approaches for coping with load</a></li>
+        
     
     </ul>
 </div></div>
@@ -672,6 +674,30 @@ reliably in future. One common reason for degradation is increased load:</p>
 <p>Even if only a small percentage of backend calls are slow, the chance of getting a slow call increases if an end-user request requires multiple backend calls, and so a higher proportion of end-user requests end up being slow.</p>
 <p>If you want to add response time percentiles to the monitoring dashboards for your services, you need to efficiently calculate them on an ongoing basis. For example, you may want to keep a rolling window of response times of requests in the last ten minutes. Every minute, you calculate the median and various percentiles over the values in that window, and plot those metrics on a graph.</p>
 <p>The naive implementation is to keep a list of response times for all requests within the time window, and to sort that list every minute. If that is too inefficient for you, there are algorithms which can calculate a good approximation of percentiles at minimal CPU and memory cost, such as forward decay, <a href="https://github.com/tdunning/t-digest">t-digest</a> or <a href="http://hdrhistogram.github.io/HdrHistogram/">HdrHistogram</a>. Beware that averaging percentiles, e.g. to reduce the time resolution or to combine data from several machines, is mathematically meaningless. The right way of aggregating response time data is to add the histograms</p>
+<h4 id="approaches-for-coping-with-load">Approaches for coping with load<a class="headerlink" href="#approaches-for-coping-with-load" title="Permanent link">&para;</a></h4>
+<p>An architecture that is appropriate for one level of load is unlikely to cope with ten times that load. For a fast-growing service, it is likely that you will need to re-think your architecture on every order of magnitude load increase or even more often than that.</p>
+<p>The dichotomy between the following two is often discussed:</p>
+<ul>
+<li><strong>Scaling up</strong>: vertical scaling, moving to a more powerful machine</li>
+<li><strong>Scaling out</strong>: horizontal scaling, distributing the load across multiple smaller machines</li>
+</ul>
+<p>Distributing load across multiple machines is also known as a <a href="https://en.wikipedia.org/wiki/Shared_nothing_architecture">shared nothing architecture</a>. A system that can run on a single machine is often simpler, but high-end machines can become very expensive, so very intensive workloads often can't avoid scaling out. In reality, good architectures usually involve a pragmatic mixture of approaches: for example, several fairly powerful machines can still be simpler and cheaper than a large number of small virtual machines.</p>
+<p>Some systems are <a href="https://en.wikipedia.org/wiki/Elasticity_(cloud_computing)"><em>elastic</em></a>, meaning that they can automatically add computing resources when they detect a load increase, whereas other systems are scaled manually (a human analyzes the capacity and decides to add more machines to the system). An elastic system can be useful if load is highly unpredictable, but manually scaled systems are simpler and may have fewer operational surprises.</p>
+<p>While distributing stateless services across multiple machines is fairly straightforward, taking stateful data systems from a single node to a distributed setup can introduce a lot of additional complexity. For this reason, common wisdom until recently was to keep your database on a single node (scale up) until scaling cost or high-availability requirements forced you to make it distributed.</p>
+<p>As the tools and abstractions for distributed systems get better, this common wisdom may change, at least for some kinds of application. <u>It is conceivable that distributed data systems will become the default in future, even for use cases that don't handle large volumes of data or traffic.</u> This book covers distributed data systems in terms of scalability, but also ease of use and maintainability.</p>
+<p>The architecture of systems that operate at large scale is usually highly specific to the application. There is no such thing as a generic, one-size-fits-all scalable architecture. The problem may be:</p>
+<ul>
+<li>The volume of reads</li>
+<li>The volume of writes</li>
+<li>The volume of data to store</li>
+<li>The complexity of the data</li>
+<li>The response time requirements</li>
+<li>The access patterns</li>
+<li>Some mixture of all of these plus many more issues.</li>
+</ul>
+<p>For example, a system that is designed to handle 100,000 requests per second, each 1 kB in size, looks very different from a system that is designed for three requests per minute, each 2 GB in size, even though the two systems have the same data throughput.</p>
+<p>An architecture that scales well for a particular application is built around assumptions of which operations will be common and which will be rare (the <a href="#describing-load">load parameters</a>). If those assumptions turn out to be wrong, the engineering effort for scaling is at best wasted, and at worst counter-productive. <u>In an early-stage startup or an unproven product it's usually more important to be able to iterate quickly on product features than to scale to some hypothetical future load.</u></p>
+<p>Even though they are specific to a particular application, scalable architectures are nevertheless usually built from general-purpose building blocks, arranged in familiar patterns.</p>
             </div>
         </div>
 
