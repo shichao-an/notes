@@ -277,3 +277,36 @@ Even if only a small percentage of backend calls are slow, the chance of getting
 If you want to add response time percentiles to the monitoring dashboards for your services, you need to efficiently calculate them on an ongoing basis. For example, you may want to keep a rolling window of response times of requests in the last ten minutes. Every minute, you calculate the median and various percentiles over the values in that window, and plot those metrics on a graph.
 
 The naive implementation is to keep a list of response times for all requests within the time window, and to sort that list every minute. If that is too inefficient for you, there are algorithms which can calculate a good approximation of percentiles at minimal CPU and memory cost, such as forward decay, [t-digest](https://github.com/tdunning/t-digest) or [HdrHistogram](http://hdrhistogram.github.io/HdrHistogram/). Beware that averaging percentiles, e.g. to reduce the time resolution or to combine data from several machines, is mathematically meaningless. The right way of aggregating response time data is to add the histograms
+
+#### Approaches for coping with load
+
+An architecture that is appropriate for one level of load is unlikely to cope with ten times that load. For a fast-growing service, it is likely that you will need to re-think your architecture on every order of magnitude load increase or even more often than that.
+
+The dichotomy between the following two is often discussed:
+
+* **Scaling up**: vertical scaling, moving to a more powerful machine
+* **Scaling out**: horizontal scaling, distributing the load across multiple smaller machines
+
+Distributing load across multiple machines is also known as a [shared nothing architecture](https://en.wikipedia.org/wiki/Shared_nothing_architecture). A system that can run on a single machine is often simpler, but high-end machines can become very expensive, so very intensive workloads often can't avoid scaling out. In reality, good architectures usually involve a pragmatic mixture of approaches: for example, several fairly powerful machines can still be simpler and cheaper than a large number of small virtual machines.
+
+Some systems are [*elastic*](https://en.wikipedia.org/wiki/Elasticity_(cloud_computing)), meaning that they can automatically add computing resources when they detect a load increase, whereas other systems are scaled manually (a human analyzes the capacity and decides to add more machines to the system). An elastic system can be useful if load is highly unpredictable, but manually scaled systems are simpler and may have fewer operational surprises.
+
+While distributing stateless services across multiple machines is fairly straightforward, taking stateful data systems from a single node to a distributed setup can introduce a lot of additional complexity. For this reason, common wisdom until recently was to keep your database on a single node (scale up) until scaling cost or high-availability requirements forced you to make it distributed.
+
+As the tools and abstractions for distributed systems get better, this common wisdom may change, at least for some kinds of application. <u>It is conceivable that distributed data systems will become the default in future, even for use cases that don't handle large volumes of data or traffic.</u> This book covers distributed data systems in terms of scalability, but also ease of use and maintainability.
+
+The architecture of systems that operate at large scale is usually highly specific to the application. There is no such thing as a generic, one-size-fits-all scalable architecture. The problem may be:
+
+* The volume of reads
+* The volume of writes
+* The volume of data to store
+* The complexity of the data
+* The response time requirements
+* The access patterns
+* Some mixture of all of these plus many more issues.
+
+For example, a system that is designed to handle 100,000 requests per second, each 1 kB in size, looks very different from a system that is designed for three requests per minute, each 2 GB in size, even though the two systems have the same data throughput.
+
+An architecture that scales well for a particular application is built around assumptions of which operations will be common and which will be rare (the [load parameters](#describing-load)). If those assumptions turn out to be wrong, the engineering effort for scaling is at best wasted, and at worst counter-productive. <u>In an early-stage startup or an unproven product it's usually more important to be able to iterate quickly on product features than to scale to some hypothetical future load.</u>
+
+Even though they are specific to a particular application, scalable architectures are nevertheless usually built from general-purpose building blocks, arranged in familiar patterns.
