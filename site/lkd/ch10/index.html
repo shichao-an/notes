@@ -633,6 +633,29 @@
 </tr>
 </tbody>
 </table>
+<p>The atomic operations are typically implemented as <a href="https://en.wikipedia.org/wiki/Inline_function">inline functions</a> with inline assembly. In the case where a specific function is inherently atomic, the given function is usually just a macro. For example, on most architectures, a word-sized read is always atomic.That is, a read of a single word cannot complete in the middle of a write to that word. The read always returns the word in a consistent state, either before or after the write completes, but never in the middle. Consequently, <code>atomic_read()</code> is usually just a macro returning the integer value of the <code>atomic_t</code>:</p>
+<div class="codehilite"><pre><span class="cm">/**</span>
+<span class="cm"> * atomic_read - read atomic variable</span>
+<span class="cm"> * @v: pointer of type atomic_t</span>
+<span class="cm"> *</span>
+<span class="cm"> * Atomically reads the value of @v.</span>
+<span class="cm"> */</span>
+<span class="k">static</span> <span class="kr">inline</span> <span class="kt">int</span> <span class="nf">atomic_read</span><span class="p">(</span><span class="k">const</span> <span class="n">atomic_t</span> <span class="o">*</span><span class="n">v</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">v</span><span class="o">-&gt;</span><span class="n">counter</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h5 id="atomicity-versus-ordering"><strong>Atomicity Versus Ordering</strong> *<a class="headerlink" href="#atomicity-versus-ordering" title="Permanent link">&para;</a></h5>
+<p>The preceding discussion on atomic reading begs a discussion on the differences between atomicity and ordering. As discussed, a word-sized read always occurs atomically. It never interleaves with a write to the same word; the read always returns the word in a consistent state: perhaps before the write completes, perhaps after, but never during. For example, if an integer is initially 42 and then set to 365, a read on the integer always returns 42 or 365 and never some commingling of the two values. We call this atomicity.</p>
+<p>However, your code might have more stringent requirements than this. Perhaps you require that the read always occurs before the pending write. This type of requirement is not atomicity, but <em>ordering</em>.</p>
+<ul>
+<li>Atomicity ensures that instructions occur without interruption and that they complete either in their entirety or not at all.</li>
+<li>Ordering, on the other hand, ensures that the desired, relative ordering of two or more instructions (even if they are to occur in separate threads of execution or even separate processors) is preserved.</li>
+</ul>
+<p>The atomic operations discussed in this section guarantee only atomicity. Ordering is enforced via <a href="https://en.wikipedia.org/wiki/Barrier_(computer_science)"><em>barrier operations</em></a>, which is discussed later in this chapter.</p>
+<p>In your code, it is usually preferred to choose atomic operations over more complicated locking mechanisms. On most architectures, <u>one or two atomic operations incur less overhead and less cache-line thrashing than a more complicated synchronization method.</u> However, testing multiple approaches is always smart, as with any performance-sensitive code.</p>
             </div>
         </div>
 
