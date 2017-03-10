@@ -310,3 +310,19 @@ For example, a system that is designed to handle 100,000 requests per second, ea
 An architecture that scales well for a particular application is built around assumptions of which operations will be common and which will be rare (the [load parameters](#describing-load)). If those assumptions turn out to be wrong, the engineering effort for scaling is at best wasted, and at worst counter-productive. <u>In an early-stage startup or an unproven product it's usually more important to be able to iterate quickly on product features than to scale to some hypothetical future load.</u>
 
 Even though they are specific to a particular application, scalable architectures are nevertheless usually built from general-purpose building blocks, arranged in familiar patterns.
+
+### Maintainability
+
+The majority of the cost of software is not in its initial development, but in its ongoing maintenance:
+
+* Fixing bugs
+* Keeping systems operational
+* Investigating failures
+* Adapting it to new platforms
+* Modifying it for new use cases
+* Repaying technical debt
+* Adding new features
+
+Unfortunately, many people working on software systems dislike maintenance of so-called [legacy systems](https://en.wikipedia.org/wiki/Legacy_system), which perhaps involves fixing other people's mistakes, or working with platforms that are now outdated, or systems that were forced to do things they were never intended for. Every legacy system is unpleasant in its own way, and so it is difficult to give general recommendations for dealing with them.
+
+However, we can and should design software in such a way that it will hopefully minimize pain during maintenance, and thus avoid creating legacy software ourselves. To this end, we will pay particular attention to three design principles for software systems:
