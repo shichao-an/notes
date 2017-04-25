@@ -361,3 +361,33 @@ Good operability means making routine tasks easy, allowing the operations team t
 * Good default behavior, but also giving administrators the freedom to override defaults when needed;
 * Self-healing where appropriate, but also giving administrators manual control over the system state when needed;
 * Predictable behavior, minimizing surprises.
+
+#### Simplicity: Managing Complexity
+
+Small software projects can have delightfully simple and expressive code, but as projects get larger, they often become very complex and difficult to understand. This complexity slows down everyone who needs to work on the system, which further increases the cost of maintenance. A software project mired in complexity is sometimes described as a [*big ball of mud*](https://en.wikipedia.org/wiki/Big_ball_of_mud).
+
+There are various possible symptoms of complexity:
+
+* Explosion of the state space
+* Tight coupling of modules
+* Tangled dependencies
+* Inconsistent naming and terminology
+* Hacks aimed at solving performance problems
+* Special-casing to work around issues elsewhere
+
+Complexity makes maintenance hard, and budgets and schedules are often overrun. In complex software, there is also a greater risk of introducing bugs when making a change: when the system is harder for developers to understand and reason about, hidden assumptions, unintended consequences, and unexpected interactions are more easily overlooked.
+
+Conversely, reducing complexity greatly improves the maintainability of software, and thus simplicity should be a key goal for the systems we build.
+
+Making a system simpler does not necessarily mean reducing its functionality; it can also mean removing [accidental complexity](https://en.wikipedia.org/wiki/No_Silver_Bullet). Complexity is defined as accidental if it is not inherent in the problem that the software solves (as seen by the users) but arises only from the implementation.
+
+[Abstraction](https://en.wikipedia.org/wiki/Abstraction_(software_engineering)) removes accidental complexity.
+
+* A good abstraction can hide implementation detail behind a clean, simple-to-understand [facade](https://en.wikipedia.org/wiki/Facade_pattern).
+* A good abstraction can also be used for a wide range of different applications.
+
+This reuse is more efficient than reimplementing a similar thing multiple times. It also leads to higher-quality software, as quality improvements in the abstracted component benefit all applications that use it.
+
+For example, high-level programming languages are abstractions that hide machine code, CPU registers, and syscalls. SQL is an abstraction that hides complex on-disk and in-memory data structures, concurrent requests from other clients, and inconsistencies after crashes.
+
+However, finding good abstractions is very hard. In the field of distributed systems, although there are many good algorithms, it is much less clear how we should be packaging them into abstractions that help us keep the complexity of the system at a manageable level.
