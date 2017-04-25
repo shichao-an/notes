@@ -440,6 +440,8 @@
         
             <li><a href="#atomic-integer-operations">Atomic Integer Operations</a></li>
         
+            <li><a href="#atomic-bitwise-operations">Atomic Bitwise Operations</a></li>
+        
     
     </ul>
 </div></div>
@@ -656,6 +658,85 @@
 </ul>
 <p>The atomic operations discussed in this section guarantee only atomicity. Ordering is enforced via <a href="https://en.wikipedia.org/wiki/Barrier_(computer_science)"><em>barrier operations</em></a>, which is discussed later in this chapter.</p>
 <p>In your code, it is usually preferred to choose atomic operations over more complicated locking mechanisms. On most architectures, <u>one or two atomic operations incur less overhead and less cache-line thrashing than a more complicated synchronization method.</u> However, testing multiple approaches is always smart, as with any performance-sensitive code.</p>
+<h4 id="atomic-bitwise-operations">Atomic Bitwise Operations<a class="headerlink" href="#atomic-bitwise-operations" title="Permanent link">&para;</a></h4>
+<p>With the rising prevalence of 64-bit architectures, it is no surprise that the Linux kernel developers augmented the 32-bit <code>atomic_t</code> type with a 64-bit variant, <code>atomic64_t</code>. For portability, the size of <code>atomic_t</code> cannot change between architectures, so <code>atomic_t</code> is 32-bit even on 64-bit architectures. Instead, the <code>atomic64_t</code> type provides a 64-bit atomic integer that functions otherwise identical to its 32-bit brother. Usage is exactly the same, except that the usable range of the integer is 64 bits, rather than 32 bits. Nearly all the classic 32-bit atomic operations are implemented in 64-bit variants; they are prefixed with <code>atomic64</code> in lieu of <code>atomic</code>. The following table is a full listing of the standard operations; some architectures implement more, but they are not portable. As with <code>atomic_t</code>, the <code>atomic64_t</code> type is just a simple wrapper around an integer type a <code>long</code>:</p>
+<div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="k">volatile</span> <span class="kt">long</span> <span class="n">counter</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">atomic64_t</span><span class="p">;</span>
+</pre></div>
+
+
+<table>
+<thead>
+<tr>
+<th>Atomic Integer Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ATOMIC64_INIT(long i)</code></td>
+<td>At declaration, initialize to <code>i</code>.</td>
+</tr>
+<tr>
+<td><code>long atomic64_read(atomic64_t *v)</code></td>
+<td>Atomically read the integer value of <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic64_set(atomic64_t *v, int i)</code></td>
+<td>Atomically set <code>v</code> equal to <code>i</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic64_add(int i, atomic64_t *v)</code></td>
+<td>Atomically add <code>i</code> to <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic64_sub(int i, atomic64_t *v)</code></td>
+<td>Atomically subtract <code>i</code> from v.</td>
+</tr>
+<tr>
+<td><code>void atomic64_inc(atomic64_t *v)</code></td>
+<td>Atomically add one to <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>void atomic64_dec(atomic64_t *v)</code></td>
+<td>Atomically subtract one from <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>int atomic64_sub_and_test(int i, atomic64_t *v)</code></td>
+<td>Atomically subtract <code>i</code> from <code>v</code> and return true if the result is zero; otherwise false.</td>
+</tr>
+<tr>
+<td><code>int atomic64_add_negative(int i, atomic64_t *v)</code></td>
+<td>Atomically add <code>i</code> to <code>v</code> and return true if the result is negative; otherwise false.</td>
+</tr>
+<tr>
+<td><code>long atomic64_add_return(int i, atomic64_t *v)</code></td>
+<td>Atomically add <code>i</code> to <code>v</code> and return the result.</td>
+</tr>
+<tr>
+<td><code>long atomic64_sub_return(int i, atomic64_t *v)</code></td>
+<td>Atomically subtract <code>i</code> from <code>v</code> and return the result.</td>
+</tr>
+<tr>
+<td><code>long atomic64_inc_return(int i, atomic64_t *v)</code></td>
+<td>Atomically increment <code>v</code> by one and return the result.</td>
+</tr>
+<tr>
+<td><code>long atomic64_dec_return(int i, atomic64_t *v)</code></td>
+<td>Atomically decrement <code>v</code> by one and return the result.</td>
+</tr>
+<tr>
+<td><code>int atomic64_dec_and_test(atomic64_t *v)</code></td>
+<td>Atomically decrement <code>v</code> by one and return true if zero; false otherwise.</td>
+</tr>
+<tr>
+<td><code>int atomic64_inc_and_test(atomic64_t *v)</code></td>
+<td>Atomically increment <code>v</code> by one and return true if the result is zero; false otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p>All 64-bit architectures provide <code>atomic64_t</code> and a family of arithmetic functions to operate on it. Most 32-bit architectures do not support <code>atomic64_t</code>, while <a href="https://en.wikipedia.org/wiki/IA-32">x86-32</a> is a notable exception. For portability between all Linux's supported architectures, developers should use the 32-bit <code>atomic_t</code> type. The 64-bit <code>atomic64_t</code> is reserved for code that is both architecture-specific and that requires 64-bits.</p>
             </div>
         </div>
 
