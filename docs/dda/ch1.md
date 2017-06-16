@@ -391,3 +391,21 @@ This reuse is more efficient than reimplementing a similar thing multiple times.
 For example, high-level programming languages are abstractions that hide machine code, CPU registers, and syscalls. SQL is an abstraction that hides complex on-disk and in-memory data structures, concurrent requests from other clients, and inconsistencies after crashes.
 
 However, finding good abstractions is very hard. In the field of distributed systems, although there are many good algorithms, it is much less clear how we should be packaging them into abstractions that help us keep the complexity of the system at a manageable level.
+
+#### Evolvability: Making Change Easy
+
+It's extremely unlikely that your system's requirements will remain unchanged forever. They are much more likely to be in constant flux:
+
+* You learn new facts
+* Previously unanticipated use cases emerge
+* Business priorities change
+* Users request new features
+* New platforms replace old platforms
+* Legal or regulatory requirements change
+* Growth of the system forces architectural changes
+
+In terms of organizational processes, [*Agile*](https://en.wikipedia.org/wiki/Agile_software_development) working patterns provide a framework for adapting to change. The Agile community has also developed technical tools and patterns that are helpful when developing software in a frequently changing environment, such as [test-driven development](https://en.wikipedia.org/wiki/Test-driven_development) (TDD) and [refactoring](https://en.wikipedia.org/wiki/Code_refactoring).
+
+In this book, we search for ways of increasing agility on the level of a larger data system, perhaps consisting of several different applications or services with different characteristics.
+
+The ease with which you can modify a data system, and adapt it to changing requirements, is closely linked to its simplicity and its abstractions: simple and easy-to-understand systems are usually easier to modify than complex ones. But since this is such an important idea, we will use a different word to refer to agility on a data system level: *evolvability*.
