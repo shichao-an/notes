@@ -439,6 +439,9 @@
         <li class="main "><a href="#the-go-test-tool">The go test Tool</a></li>
         
     
+        <li class="main "><a href="#test-functions">Test Functions</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -465,6 +468,204 @@ examples.</p>
 <li>A <em>example function</em>, whose name starts with <code>Example</code>, provides machine-checked documentation.</li>
 </ul>
 <p>The <code>go test</code> tool scans the <code>*_test.go</code> files for these special functions, generates a temporary <code>main</code> package that calls them all in the proper way, builds and runs it, reports the results, and then cleans up.</p>
+<h3 id="test-functions">Test Functions<a class="headerlink" href="#test-functions" title="Permanent link">&para;</a></h3>
+<p>Each test file must import the testing package. Test functions have the following signature:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">TestName</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Test function names must begin with <code>Test</code>; the optional suffix <code>Name</code> must begin with a capital letter:</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">TestSin</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">TestCos</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="nx">TestLog</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>The <code>t</code> parameter provides methods for reporting test failures and logging additional information.</p>
+<p>For example, the package <a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/word1/word.go">gopl.io/ch11/word1</a> contains a single function <code>IsPalindrome</code> that reports whether a string reads the same forward and backward.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/word1/word.go">gopl.io/ch11/word1/word.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Package word provides utilities for word games.</span>
+<span class="kn">package</span> <span class="nx">word</span>
+
+<span class="c1">// IsPalindrome reports whether s reads the same forward and backward.</span>
+<span class="c1">// (Our first attempt.)</span>
+<span class="kd">func</span> <span class="nx">IsPalindrome</span><span class="p">(</span><span class="nx">s</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">s</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">!=</span> <span class="nx">s</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="nx">i</span><span class="p">]</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">false</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In the same directory, the file <a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/word1/word_test.go">word_test.go</a> contains two test functions named <code>TestPalindrome</code> and <code>TestNonPalindrome</code>. Each checks that <code>IsPalindrome</code> gives the right answer for a single input and reports failures using <code>t.Error</code>:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">word</span>
+
+<span class="kn">import</span> <span class="s">&quot;testing&quot;</span>
+
+<span class="kd">func</span> <span class="nx">TestPalindrome</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">IsPalindrome</span><span class="p">(</span><span class="s">&quot;detartrated&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="s">`IsPalindrome(&quot;detartrated&quot;) = false`</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">IsPalindrome</span><span class="p">(</span><span class="s">&quot;kayak&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="s">`IsPalindrome(&quot;kayak&quot;) = false`</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">TestNonPalindrome</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">IsPalindrome</span><span class="p">(</span><span class="s">&quot;palindrome&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="s">`IsPalindrome(&quot;palindrome&quot;) = true`</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>A <code>go test</code> (or <code>go build</code>) command with no package arguments operates on the package in the current directory. We can build and run the tests with the following command.</p>
+<div class="codehilite"><pre><span class="gp">$</span> <span class="nb">cd</span> $GOPATH/src/gopl.io/ch11/word1
+<span class="gp">$</span> go <span class="nb">test</span>
+<span class="go">ok</span>
+<span class="go">gopl.io/ch11/word1 0.008s</span>
+</pre></div>
+
+
+<p>However, <code>IsPalindrome</code> cannot recognize some other palindrome strings such as "été" or "A man, a plan, a canal: Panama".</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">TestFrenchPalindrome</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">IsPalindrome</span><span class="p">(</span><span class="s">&quot;été&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="s">`IsPalindrome(&quot;été&quot;) = false`</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">TestCanalPalindrome</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">input</span> <span class="o">:=</span> <span class="s">&quot;A man, a plan, a canal: Panama&quot;</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">IsPalindrome</span><span class="p">(</span><span class="nx">input</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">`IsPalindrome(%q) = false`</span><span class="p">,</span> <span class="nx">input</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>To avoid writing the long input string twice, we use <code>Errorf</code>, which provides formatting like <code>Printf</code>.</p>
+<p>When the two new tests have been added, the <code>go test</code> command fails with informative error messages.</p>
+<div class="codehilite"><pre><span class="gp">$</span> go <span class="nb">test</span>
+<span class="go">--- FAIL: TestFrenchPalindrome (0.00s)</span>
+<span class="go">word_test.go:28: IsPalindrome(&quot;été&quot;) = false</span>
+<span class="go">--- FAIL: TestCanalPalindrome (0.00s)</span>
+<span class="go">word_test.go:35: IsPalindrome(&quot;A man, a plan, a canal: Panama&quot;) = false</span>
+<span class="go">FAIL</span>
+<span class="go">FAIL</span>
+</pre></div>
+
+
+<p>As a bonus, running <code>go test</code> is usually quicker than manually going through the steps described in the bug report, allowing us to iterate more rapidly. If the test suite contains many slow tests, we may make even faster progress if we're selective about which ones we run.</p>
+<p>The <code>-v</code> flag prints the name and execution time of each test in the package:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go <span class="nb">test</span> -v
+<span class="go">=== RUN TestPalindrome</span>
+<span class="go">--- PASS: TestPalindrome (0.00s)</span>
+<span class="go">=== RUN TestNonPalindrome</span>
+<span class="go">--- PASS: TestNonPalindrome (0.00s)</span>
+<span class="go">=== RUN TestFrenchPalindrome</span>
+<span class="go">--- FAIL: TestFrenchPalindrome (0.00s)</span>
+<span class="go">word_test.go:28: IsPalindrome(&quot;été&quot;) = false</span>
+<span class="go">=== RUN TestCanalPalindrome</span>
+<span class="go">--- FAIL: TestCanalPalindrome (0.00s)</span>
+<span class="go">word_test.go:35: IsPalindrome(&quot;A man, a plan, a canal: Panama&quot;) = false</span>
+<span class="go">FAIL</span>
+<span class="go">exit status 1</span>
+<span class="go">FAIL gopl.io/ch11/word1 0.017s</span>
+</pre></div>
+
+
+<p>The <code>-run</code> flag, whose argument is a regular expression, causes <code>go test</code> to run only those tests whose function name matches the pattern:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go <span class="nb">test</span> -v -run<span class="o">=</span><span class="s2">&quot;French|Canal&quot;</span>
+<span class="go">=== RUN TestFrenchPalindrome</span>
+<span class="go">--- FAIL: TestFrenchPalindrome (0.00s)</span>
+<span class="go">word_test.go:28: IsPalindrome(&quot;été&quot;) = false</span>
+<span class="go">=== RUN TestCanalPalindrome</span>
+<span class="go">--- FAIL: TestCanalPalindrome (0.00s)</span>
+<span class="go">word_test.go:35: IsPalindrome(&quot;A man, a plan, a canal: Panama&quot;) = false</span>
+<span class="go">FAIL</span>
+<span class="go">exit status 1</span>
+<span class="go">FAIL</span>
+</pre></div>
+
+
+<p>Once we've gotten the selected tests to pass, we should invoke <code>go test</code> with no flags to run the entire test suite one last time before we commit the change.</p>
+<p>A quick investigation reveals the cause of the first bug to be <code>IsPalindrome</code>'s use of byte sequences, not rune sequences, so that non-ASCII characters such as the é in "<code>été</code>" confuse it. The second bug arises from not ignoring spaces, punctuation, and letter case.</p>
+<p>Then we rewrite the function more carefully:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/word2/word.go">gopl.io/ch11/word2/word.go</a></small></p>
+<div class="codehilite"><pre><span class="go">// Package word provides utilities for word games.</span>
+<span class="go">package word</span>
+
+<span class="go">import &quot;unicode&quot;</span>
+
+<span class="go">// IsPalindrome reports whether s reads the same forward and backward.</span>
+<span class="go">// Letter case is ignored, as are non-letters.</span>
+<span class="go">func IsPalindrome(s string) bool {</span>
+<span class="go">    var letters []rune</span>
+<span class="go">    for _, r := range s {</span>
+<span class="go">        if unicode.IsLetter(r) {</span>
+<span class="go">            letters = append(letters, unicode.ToLower(r))</span>
+<span class="go">        }</span>
+<span class="go">    }</span>
+<span class="go">    for i := range letters {</span>
+<span class="go">        if letters[i] != letters[len(letters)-1-i] {</span>
+<span class="go">            return false</span>
+<span class="go">        }</span>
+<span class="go">    }</span>
+<span class="go">    return true</span>
+<span class="go">}</span>
+</pre></div>
+
+
+<p>We also write a more comprehensive set of test cases that combines all the previous ones and a number of new ones into a table.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">TestIsPalindrome</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">tests</span> <span class="p">=</span> <span class="p">[]</span><span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">input</span> <span class="kt">string</span>
+        <span class="nx">want</span>  <span class="kt">bool</span>
+    <span class="p">}{</span>
+        <span class="p">{</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;aa&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;ab&quot;</span><span class="p">,</span> <span class="kc">false</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;kayak&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;detartrated&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;A man, a plan, a canal: Panama&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;Evil I did dwell; lewd did I live.&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;Able was I ere I saw Elba&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;été&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;Et se resservir, ivresse reste.&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;palindrome&quot;</span><span class="p">,</span> <span class="kc">false</span><span class="p">},</span> <span class="c1">// non-palindrome</span>
+        <span class="p">{</span><span class="s">&quot;desserts&quot;</span><span class="p">,</span> <span class="kc">false</span><span class="p">},</span>   <span class="c1">// semi-palindrome</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">test</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tests</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nx">got</span> <span class="o">:=</span> <span class="nx">IsPalindrome</span><span class="p">(</span><span class="nx">test</span><span class="p">.</span><span class="nx">input</span><span class="p">);</span> <span class="nx">got</span> <span class="o">!=</span> <span class="nx">test</span><span class="p">.</span><span class="nx">want</span> <span class="p">{</span>
+            <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;IsPalindrome(%q) = %v&quot;</span><span class="p">,</span> <span class="nx">test</span><span class="p">.</span><span class="nx">input</span><span class="p">,</span> <span class="nx">got</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The new tests pass:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go <span class="nb">test</span> gopl.io/ch11/word2
+<span class="go">ok gopl.io/ch11/word2 0.015s</span>
+</pre></div>
+
+
+<p>This style of <a href="https://en.wikipedia.org/wiki/Keyword-driven_testing">table-driven testing</a> (see also <a href="https://github.com/golang/go/wiki/TableDrivenTests">TableDrivenTests</a>) is very common in Go. It is straightforward to add new table entries as needed.</p>
+<p>The output of a failing test does not include the entire stack trace at the moment of the call to <code>t.Errorf</code>. Nor does <code>t.Errorf</code> cause a panic or stop the execution of the test, unlike assertion failures in many test frameworks for other languages. Tests are independent of each other. If an early entry in the table causes the test to fail, later table entries will still be checked, and thus we may learn about multiple failures during a single run.</p>
+<p>When we really must stop a test function, perhaps because some initialization code failed or to prevent a failure already reported from causing a confusing cascade of others, we use <code>t.Fatal</code> or <code>t.Fatalf</code>. <u>These must be called from the same goroutine as the <code>Test</code> function, not from another one created during the test.</u></p>
+<p>Test failure messages are usually of the form "<code>f(x) = y, want z</code>", where <code>f(x)</code> explains the attempted operation and its input, <code>y</code> is the actual result, and <code>z</code> the expected result:</p>
+<ul>
+<li>Where convenient, actual Go syntax is used for the <code>f(x)</code> part.</li>
+<li>Displaying <code>x</code> is particularly important in a table-driven test, since a given assertion is executed many times with different values.</li>
+<li>Avoid boilerplate and redundant information. When testing a boolean function such as <code>IsPalindrome</code>, omit the <code>want z</code> part since it adds no information. If <code>x</code>, <code>y</code>, or <code>z</code> is lengthy, print a concise summary of the relevant parts instead.</li>
+<li>The author of a test should strive to help the programmer who must diagnose a test failure.</li>
+</ul>
             </div>
         </div>
 
