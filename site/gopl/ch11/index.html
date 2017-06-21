@@ -441,6 +441,10 @@
     
         <li class="main "><a href="#test-functions">Test Functions</a></li>
         
+            <li><a href="#randomized-testing">Randomized Testing</a></li>
+        
+            <li><a href="#testing-a-command">Testing a Command</a></li>
+        
     
     </ul>
 </div></div>
@@ -666,6 +670,148 @@ examples.</p>
 <li>Avoid boilerplate and redundant information. When testing a boolean function such as <code>IsPalindrome</code>, omit the <code>want z</code> part since it adds no information. If <code>x</code>, <code>y</code>, or <code>z</code> is lengthy, print a concise summary of the relevant parts instead.</li>
 <li>The author of a test should strive to help the programmer who must diagnose a test failure.</li>
 </ul>
+<h4 id="randomized-testing">Randomized Testing<a class="headerlink" href="#randomized-testing" title="Permanent link">&para;</a></h4>
+<p>Table-driven tests are convenient for checking that a function works on inputs which are carefully selected to exercise interesting cases in the logic. Another approach, <a href="https://en.wikipedia.org/wiki/Random_testing"><em>randomized testing</em></a>, explores a broader range of inputs by constructing inputs at random.</p>
+<p>How do we know what output to expect from our function, given a random input? There are two strategies:</p>
+<ol>
+<li>Write an alternative implementation of the function that uses a less efficient but simpler and clearer algorithm, and check that both implementations give the same result.</li>
+<li>Create input values according to a pattern so that we know what output to expect.</li>
+</ol>
+<p>The example below uses the second approach: the <code>randomPalindrome</code> function generates words that are known to be palindromes by construction.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="s">&quot;math/rand&quot;</span>
+
+<span class="c1">// randomPalindrome returns a palindrome whose length and contents</span>
+<span class="c1">// are derived from the pseudo-random number generator rng.</span>
+<span class="kd">func</span> <span class="nx">randomPalindrome</span><span class="p">(</span><span class="nx">rng</span> <span class="o">*</span><span class="nx">rand</span><span class="p">.</span><span class="nx">Rand</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="nx">n</span> <span class="o">:=</span> <span class="nx">rng</span><span class="p">.</span><span class="nx">Intn</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span> <span class="c1">// random length up to 24</span>
+    <span class="nx">runes</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">rune</span><span class="p">,</span> <span class="nx">n</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="p">(</span><span class="nx">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+      <span class="nx">r</span> <span class="o">:=</span> <span class="nb">rune</span><span class="p">(</span><span class="nx">rng</span><span class="p">.</span><span class="nx">Intn</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">))</span> <span class="c1">// random rune up to &#39;\u0999&#39;</span>
+      <span class="nx">runes</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">r</span>
+      <span class="nx">runes</span><span class="p">[</span><span class="nx">n</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">r</span>
+  <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">string</span><span class="p">(</span><span class="nx">runes</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">TestRandomPalindromes</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Initialize a pseudo-random number generator.</span>
+    <span class="nx">seed</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">().</span><span class="nx">UTC</span><span class="p">().</span><span class="nx">UnixNano</span><span class="p">()</span>
+    <span class="nx">t</span><span class="p">.</span><span class="nx">Logf</span><span class="p">(</span><span class="s">&quot;Random seed: %d&quot;</span><span class="p">,</span> <span class="nx">seed</span><span class="p">)</span>
+    <span class="nx">rng</span> <span class="o">:=</span> <span class="nx">rand</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nx">NewSource</span><span class="p">(</span><span class="nx">seed</span><span class="p">))</span>
+    <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+      <span class="nx">p</span> <span class="o">:=</span> <span class="nx">randomPalindrome</span><span class="p">(</span><span class="nx">rng</span><span class="p">)</span>
+      <span class="k">if</span> <span class="p">!</span><span class="nx">IsPalindrome</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;IsPalindrome(%q) = false&quot;</span><span class="p">,</span> <span class="nx">p</span><span class="p">)</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Since randomized tests are nondeterministic, it is critical the failing test logs sufficient information to reproduce the failure. In the above example, the input <code>p</code> to <code>IsPalindrome</code> is all we need to know, but for functions that accept more complex inputs, it may be simpler to log the seed of the pseudo-random number generator (as we do above) than to dump the entire input data structure. With that seed value, we can easily modify the test to replay the failure deterministically.</p>
+<p>By using the current time as a source of randomness, the test will explore novel inputs each time it is run, over the entire course of its lifetime. This is especially valuable if your project uses an automated system to run all its tests periodically.</p>
+<h4 id="testing-a-command">Testing a Command<a class="headerlink" href="#testing-a-command" title="Permanent link">&para;</a></h4>
+<p>The <code>go test</code> tool is useful for testing library packages. We can use it to test commands as well. A package named <code>main</code> ordinarily produces an executable program, but it can also be imported as a library.</p>
+<p>Consider the <a href="https://github.com/shichao-an/gopl.io/blob/master/ch2/echo4/main.go"><code>echo</code></a> program of <a href="../ch2/#pointers">Section 2.3.2</a>. The program is split into two functions: <code>echo</code> does the real work, while <code>main</code> parses and reads the flag values and reports any errors returned by <code>echo</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/echo/echo.go">gopl.io/ch11/echo/echo.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">// Echo prints its command-line arguments.</span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;flag&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;io&quot;</span>
+    <span class="s">&quot;os&quot;</span>
+    <span class="s">&quot;strings&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">var</span> <span class="p">(</span>
+    <span class="nx">n</span> <span class="p">=</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">Bool</span><span class="p">(</span><span class="s">&quot;n&quot;</span><span class="p">,</span> <span class="kc">false</span><span class="p">,</span> <span class="s">&quot;omit trailing newline&quot;</span><span class="p">)</span>
+    <span class="nx">s</span> <span class="p">=</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;s&quot;</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">,</span> <span class="s">&quot;separator&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="kd">var</span> <span class="nx">out</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span> <span class="c1">// modified during testing</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">flag</span><span class="p">.</span><span class="nx">Parse</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">echo</span><span class="p">(!</span><span class="o">*</span><span class="nx">n</span><span class="p">,</span> <span class="o">*</span><span class="nx">s</span><span class="p">,</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">Args</span><span class="p">());</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span> <span class="s">&quot;echo: %v\n&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">echo</span><span class="p">(</span><span class="nx">newline</span> <span class="kt">bool</span><span class="p">,</span> <span class="nx">sep</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">args</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprint</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">args</span><span class="p">,</span> <span class="nx">sep</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nx">newline</span> <span class="p">{</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintln</span><span class="p">(</span><span class="nx">out</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We will write a test:</p>
+<ul>
+<li>It calls <code>echo</code> with a variety of arguments and flag settings and check that it prints the correct output in each case, so we've added parameters to <code>echo</code> to reduce its dependence on global variables.</li>
+<li>We've also introduced another global variable, <code>out</code>, the <code>io.Writer</code> to which the result will be written. By having <code>echo</code> write through this variable, not directly to <code>os.Stdout</code>, the tests can substitute a different <code>Writer</code> implementation that records what was written for later inspection.</li>
+</ul>
+<p>The test is in file <a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/echo/echo_test.go">echo_test.go</a>:</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;bytes&quot;</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;testing&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">TestEcho</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">tests</span> <span class="p">=</span> <span class="p">[]</span><span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">newline</span> <span class="kt">bool</span>
+        <span class="nx">sep</span>     <span class="kt">string</span>
+        <span class="nx">args</span>    <span class="p">[]</span><span class="kt">string</span>
+        <span class="nx">want</span>    <span class="kt">string</span>
+    <span class="p">}{</span>
+        <span class="p">{</span><span class="kc">true</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{},</span> <span class="s">&quot;\n&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="kc">false</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{},</span> <span class="s">&quot;&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="kc">true</span><span class="p">,</span> <span class="s">&quot;\t&quot;</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;one&quot;</span><span class="p">,</span> <span class="s">&quot;two&quot;</span><span class="p">,</span> <span class="s">&quot;three&quot;</span><span class="p">},</span> <span class="s">&quot;one\ttwo\tthree\n&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="kc">true</span><span class="p">,</span> <span class="s">&quot;,&quot;</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="s">&quot;b&quot;</span><span class="p">,</span> <span class="s">&quot;c&quot;</span><span class="p">},</span> <span class="s">&quot;a,b,c\n&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="kc">false</span><span class="p">,</span> <span class="s">&quot;:&quot;</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;1&quot;</span><span class="p">,</span> <span class="s">&quot;2&quot;</span><span class="p">,</span> <span class="s">&quot;3&quot;</span><span class="p">},</span> <span class="s">&quot;1:2:3&quot;</span><span class="p">},</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">test</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tests</span> <span class="p">{</span>
+        <span class="nx">descr</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;echo(%v, %q, %q)&quot;</span><span class="p">,</span>
+            <span class="nx">test</span><span class="p">.</span><span class="nx">newline</span><span class="p">,</span> <span class="nx">test</span><span class="p">.</span><span class="nx">sep</span><span class="p">,</span> <span class="nx">test</span><span class="p">.</span><span class="nx">args</span><span class="p">)</span>
+
+        <span class="nx">out</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="c1">// captured output</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">echo</span><span class="p">(</span><span class="nx">test</span><span class="p">.</span><span class="nx">newline</span><span class="p">,</span> <span class="nx">test</span><span class="p">.</span><span class="nx">sep</span><span class="p">,</span> <span class="nx">test</span><span class="p">.</span><span class="nx">args</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;%s failed: %v&quot;</span><span class="p">,</span> <span class="nx">descr</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="p">}</span>
+        <span class="nx">got</span> <span class="o">:=</span> <span class="nx">out</span><span class="p">.(</span><span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">).</span><span class="nx">String</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nx">got</span> <span class="o">!=</span> <span class="nx">test</span><span class="p">.</span><span class="nx">want</span> <span class="p">{</span>
+            <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;%s = %q, want %q&quot;</span><span class="p">,</span> <span class="nx">descr</span><span class="p">,</span> <span class="nx">got</span><span class="p">,</span> <span class="nx">test</span><span class="p">.</span><span class="nx">want</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Notice that the test code is in the same package as the production code. <u>Although the package name is <code>main</code> and it defines a <code>main</code> function, during testing this package acts as a library that exposes the function <code>TestEcho</code> to the test driver; its <code>main</code> function is ignored. By organizing the test as a table, we can easily add new test cases.</u> Let's see what happens when the test fails, by adding this line to the table:</p>
+<div class="codehilite"><pre><span class="p">{</span><span class="kc">true</span><span class="p">,</span> <span class="s">&quot;,&quot;</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="s">&quot;b&quot;</span><span class="p">,</span> <span class="s">&quot;c&quot;</span><span class="p">},</span> <span class="s">&quot;a b c\n&quot;</span><span class="p">},</span> <span class="c1">// NOTE: wrong expectation!</span>
+</pre></div>
+
+
+<p><code>go test</code> prints:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go <span class="nb">test</span> gopl.io/ch11/echo
+<span class="go">--- FAIL: TestEcho (0.00s)</span>
+<span class="go">echo_test.go:31: echo(true, &quot;,&quot;, [&quot;a&quot; &quot;b&quot; &quot;c&quot;]) = &quot;a,b,c&quot;, want &quot;a b c\n&quot;</span>
+<span class="go">FAIL</span>
+<span class="go">FAIL gopl.io/ch11/echo 0.006s</span>
+</pre></div>
+
+
+<p>The error message describes the attempted operation (using Go-like syntax), the actual behavior, and the expected behavior, in that order. With an informative error message such as this, you may have a pretty good idea about the root cause before you've even located the source code of the test.</p>
+<p>It's important that code being tested not call <code>log.Fatal</code> or <code>os.Exit</code>, since these will stop the process in its tracks; calling these functions should be regarded as the exclusive right of <code>main</code>. If something totally unexpected happens and a function panics, the test driver will recover, though the test will be considered a failure. Expected errors such as those resulting from bad user input, missing files, or improper configuration should be reported by returning a non-nil error value. However, our echo example is so simple that it will never return a non-nil error.</p>
             </div>
         </div>
 
