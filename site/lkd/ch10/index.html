@@ -440,6 +440,8 @@
         
             <li><a href="#atomic-integer-operations">Atomic Integer Operations</a></li>
         
+            <li><a href="#64-bit-atomic-operations">64-Bit Atomic Operations</a></li>
+        
             <li><a href="#atomic-bitwise-operations">Atomic Bitwise Operations</a></li>
         
     
@@ -658,7 +660,7 @@
 </ul>
 <p>The atomic operations discussed in this section guarantee only atomicity. Ordering is enforced via <a href="https://en.wikipedia.org/wiki/Barrier_(computer_science)"><em>barrier operations</em></a>, which is discussed later in this chapter.</p>
 <p>In your code, it is usually preferred to choose atomic operations over more complicated locking mechanisms. On most architectures, <u>one or two atomic operations incur less overhead and less cache-line thrashing than a more complicated synchronization method.</u> However, testing multiple approaches is always smart, as with any performance-sensitive code.</p>
-<h4 id="atomic-bitwise-operations">Atomic Bitwise Operations<a class="headerlink" href="#atomic-bitwise-operations" title="Permanent link">&para;</a></h4>
+<h4 id="64-bit-atomic-operations">64-Bit Atomic Operations<a class="headerlink" href="#64-bit-atomic-operations" title="Permanent link">&para;</a></h4>
 <p>With the rising prevalence of 64-bit architectures, it is no surprise that the Linux kernel developers augmented the 32-bit <code>atomic_t</code> type with a 64-bit variant, <code>atomic64_t</code>. For portability, the size of <code>atomic_t</code> cannot change between architectures, so <code>atomic_t</code> is 32-bit even on 64-bit architectures. Instead, the <code>atomic64_t</code> type provides a 64-bit atomic integer that functions otherwise identical to its 32-bit brother. Usage is exactly the same, except that the usable range of the integer is 64 bits, rather than 32 bits. Nearly all the classic 32-bit atomic operations are implemented in 64-bit variants; they are prefixed with <code>atomic64</code> in lieu of <code>atomic</code>. The following table is a full listing of the standard operations; some architectures implement more, but they are not portable. As with <code>atomic_t</code>, the <code>atomic64_t</code> type is just a simple wrapper around an integer type a <code>long</code>:</p>
 <div class="codehilite"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="k">volatile</span> <span class="kt">long</span> <span class="n">counter</span><span class="p">;</span>
@@ -737,6 +739,85 @@
 </tbody>
 </table>
 <p>All 64-bit architectures provide <code>atomic64_t</code> and a family of arithmetic functions to operate on it. Most 32-bit architectures do not support <code>atomic64_t</code>, while <a href="https://en.wikipedia.org/wiki/IA-32">x86-32</a> is a notable exception. For portability between all Linux's supported architectures, developers should use the 32-bit <code>atomic_t</code> type. The 64-bit <code>atomic64_t</code> is reserved for code that is both architecture-specific and that requires 64-bits.</p>
+<h4 id="atomic-bitwise-operations">Atomic Bitwise Operations<a class="headerlink" href="#atomic-bitwise-operations" title="Permanent link">&para;</a></h4>
+<p>In addition to atomic integer operations, the kernel also provides a family of functions that operate at the bit level, which are architecture-specific and are defined in <code>&lt;asm/bitops.h&gt;</code>.</p>
+<p>The bitwise functions have the following properties:</p>
+<ul>
+<li>They operate on generic memory addresses.</li>
+<li>The arguments are a pointer and a bit number.</li>
+<li>Bit zero is the least significant bit of the given address. On 32-bit machines, bit 31 is the most significant bit, and bit 32 is the least significant bit of the following word. There are no limitations on the bit number supplied; although, most uses of the functions provide a word and, consequently, a bit number between 0 and 31 on 32-bit machines and 0 and 63 on 64-bit machines.</li>
+</ul>
+<p>Because the functions operate on a generic pointer, there is no equivalent of the atomic integer's <code>atomic_t</code> type. Instead, you can work with a pointer to whatever data you want.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span class="n">set_bit</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">word</span><span class="p">);</span> <span class="cm">/* bit zero is now set (atomically) */</span>
+<span class="n">set_bit</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">word</span><span class="p">);</span> <span class="cm">/* bit one is now set (atomically) */</span>
+<span class="n">printk</span><span class="p">(</span><span class="s">&quot;%ul</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">word</span><span class="p">);</span> <span class="cm">/* will print &quot;3&quot; */</span>
+<span class="n">clear_bit</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">word</span><span class="p">);</span> <span class="cm">/* bit one is now unset (atomically) */</span>
+<span class="n">change_bit</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">word</span><span class="p">);</span> <span class="cm">/* bit zero is flipped; now it is unset (atomically) */</span>
+
+<span class="cm">/* atomically sets bit zero and returns the previous value (zero) */</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">test_and_set_bit</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">word</span><span class="p">))</span> <span class="p">{</span>
+    <span class="cm">/* never true ... */</span>
+<span class="p">}</span>
+
+<span class="cm">/* the following is legal; you can mix atomic bit instructions with normal C */</span>
+<span class="n">word</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
+</pre></div>
+
+
+<p>A listing of the standard atomic bit operations is in the following table:</p>
+<table>
+<thead>
+<tr>
+<th>Atomic Bitwise Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>void set_bit(int nr, void *addr)</code></td>
+<td>Atomically set the <code>nr</code>-th bit starting from <code>addr</code>.</td>
+</tr>
+<tr>
+<td><code>void clear_bit(int nr, void *addr)</code></td>
+<td>Atomically clear the <code>nr</code>-th bit starting from <code>addr</code>.</td>
+</tr>
+<tr>
+<td><code>void change_bit(int nr, void *addr)</code></td>
+<td>Atomically flip the value of the <code>nr</code>-th bit starting from <code>addr</code>.</td>
+</tr>
+<tr>
+<td><code>int test_and_set_bit(int nr, void *addr)</code></td>
+<td>Atomically set the <code>nr</code>-th bit starting from <code>addr</code> and return the previous value.</td>
+</tr>
+<tr>
+<td><code>int test_and_clear_bit(int nr, void *addr)</code></td>
+<td>Atomically clear the <code>nr</code>-th bit starting from <code>addr</code> and return the previous value.</td>
+</tr>
+<tr>
+<td><code>int test_and_change_bit(int nr, void *addr)</code></td>
+<td>Atomically flip the <code>nr</code>-th bit starting from <code>addr</code> and return the previous value.</td>
+</tr>
+<tr>
+<td><code>int test_bit(int nr, void *addr)</code></td>
+<td>Atomically return the value of the <code>nr</code>-th bit starting from <code>addr</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Conveniently, nonatomic versions of all the bitwise functions are also provided. They behave identically to their atomic siblings, except they do not guarantee atomicity, and their names are prefixed with double underscores. For example, the nonatomic form of <code>test_bit()</code> is <code>__test_bit()</code>. If you do not require atomicity (for example, because a lock already protects your data), these variants of the bitwise functions might be faster.</p>
+<h5 id="what-the-heck-is-a-nonatomic-bit-operation"><strong>What the Heck Is a Nonatomic Bit Operation?</strong> *<a class="headerlink" href="#what-the-heck-is-a-nonatomic-bit-operation" title="Permanent link">&para;</a></h5>
+<p>[p183]</p>
+<p>Atomicity requires that either instructions succeed in their entirety, uninterrupted, or instructions fail to execute at all. Therefore, if you issue two atomic bit operations, you expect two operations to succeed. After both operations complete, the bit needs to have the value as specified by the second operation. Moreover, however, at some point in time prior to the final operation, the bit needs to hold the value as specified by the first operation. Put more generally, real atomicity requires that all intermediate states be correctly realized.</p>
+<p>For example, assume you issue two atomic bit operations: Initially set the bit and then clear the bit. Without atomic operations, the bit might end up cleared, but it might never have been set. The set operation could occur simultaneously with the clear operation and fail. The clear operation would succeed, and the bit would emerge cleared as intended. With atomic operations, however, the set would actually occur: there would be a moment in time when a read would show the bit as set, and then the clear would execute and the bit would be zero.</p>
+<p>This behavior can be important, especially when ordering comes into play or when dealing with hardware registers.</p>
+<p>The kernel also provides routines to find the first set (or unset) bit starting at a given address:</p>
+<div class="codehilite"><pre><span class="kt">int</span> <span class="n">find_first_bit</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">size</span><span class="p">)</span>
+<span class="kt">int</span> <span class="n">find_first_zero_bit</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">size</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Both functions take a pointer as their first argument and the number of bits in total to search as their second. They return the bit number of the first set or first unset bit, respectively.  If your code is searching only a word, the routines <code>__ffs()</code> and <code>ffz()</code>, which take a single parameter of the word in which to search, are optimal.</p>
+<p>Unlike the atomic integer operations, code typically has no choice whether to use the bitwise operations; they are the only portable way to set a specific bit. The only question is whether to use the atomic or nonatomic variants. If your code is inherently safe from race conditions, you can use the nonatomic versions, which might be faster depending on the architecture.</p>
             </div>
         </div>
 
