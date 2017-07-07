@@ -445,6 +445,8 @@
         
             <li><a href="#testing-a-command">Testing a Command</a></li>
         
+            <li><a href="#white-box-testing">White-Box Testing</a></li>
+        
     
     </ul>
 </div></div>
@@ -812,6 +814,148 @@ examples.</p>
 
 <p>The error message describes the attempted operation (using Go-like syntax), the actual behavior, and the expected behavior, in that order. With an informative error message such as this, you may have a pretty good idea about the root cause before you've even located the source code of the test.</p>
 <p>It's important that code being tested not call <code>log.Fatal</code> or <code>os.Exit</code>, since these will stop the process in its tracks; calling these functions should be regarded as the exclusive right of <code>main</code>. If something totally unexpected happens and a function panics, the test driver will recover, though the test will be considered a failure. Expected errors such as those resulting from bad user input, missing files, or improper configuration should be reported by returning a non-nil error value. However, our echo example is so simple that it will never return a non-nil error.</p>
+<h4 id="white-box-testing">White-Box Testing<a class="headerlink" href="#white-box-testing" title="Permanent link">&para;</a></h4>
+<p>We can categorize tests by the level of knowledge required for the internal workings of the package under test:</p>
+<ul>
+<li>A <a href="https://en.wikipedia.org/wiki/Black-box_testing"><em>black-box test</em></a> assumes nothing about the package other than
+what is exposed by its API and specified by its documentation. The package's internals are opaque.</li>
+<li>In contrast, a <a href="https://en.wikipedia.org/wiki/White-box_testing"><em>white-box test</em></a> (or <em>clear box test</em>) has privileged access to the internal functions and data structures of the package and can make observations and changes that an ordinary client cannot. For example, a white-box test can check that the invariants of the package's data types are maintained after every operation.</li>
+</ul>
+<p>The two approaches are complementary:</p>
+<ul>
+<li>Black-box tests are usually more robust, needing fewer updates as the software evolves. They also help the author empathize with the client of the package and can reveal flaws in the API design.</li>
+<li>In contrast, white-box tests can provide more detailed coverage of the trickier parts of the implementation.</li>
+</ul>
+<p>In the previous examples:</p>
+<ul>
+<li><code>TestIsPalindrome</code> calls only the exported function <code>IsPalindrome</code> and is thus a black-box test.</li>
+<li><code>TestEcho</code> calls the <code>echo</code> function and updates the global variable <code>out</code>, both of which are unexported, making it a white-box test.</li>
+</ul>
+<p>While developing <code>TestEcho</code>, we modified the <code>echo</code> function to use the package-level variable <code>out</code> when writing its output, so that the test could replace the standard output with an alternative implementation that records the data for later inspection. Using the same technique, we can replace other parts of the production code with easy-to-test "fake" implementations. The advantage of fake implementations is that they can be simpler to configure, more predictable, more reliable, and easier to observe. They can also avoid undesirable side effects such as updating a production database or charging a credit card.</p>
+<p>The code below shows the quota-checking logic in a web service that provides networked storage to users. When users exceed 90% of their quota, the system sends them a warning email.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/storage1/storage.go">gopl.io/ch11/storage1/storage.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">storage</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;log&quot;</span>
+    <span class="s">&quot;net/smtp&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">bytesInUse</span><span class="p">(</span><span class="nx">username</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int64</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">0</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+
+<span class="c1">// Email sender configuration.</span>
+<span class="c1">// NOTE: never put passwords in source code!</span>
+<span class="kd">const</span> <span class="nx">sender</span> <span class="p">=</span> <span class="s">&quot;notifications@example.com&quot;</span>
+<span class="kd">const</span> <span class="nx">password</span> <span class="p">=</span> <span class="s">&quot;correcthorsebatterystaple&quot;</span>
+<span class="kd">const</span> <span class="nx">hostname</span> <span class="p">=</span> <span class="s">&quot;smtp.example.com&quot;</span>
+
+<span class="kd">const</span> <span class="nx">template</span> <span class="p">=</span> <span class="s">`Warning: you are using %d bytes of storage,</span>
+<span class="s">%d%% of your quota.`</span>
+
+<span class="kd">func</span> <span class="nx">CheckQuota</span><span class="p">(</span><span class="nx">username</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">used</span> <span class="o">:=</span> <span class="nx">bytesInUse</span><span class="p">(</span><span class="nx">username</span><span class="p">)</span>
+    <span class="kd">const</span> <span class="nx">quota</span> <span class="p">=</span> <span class="mi">1000000000</span> <span class="c1">// 1GB</span>
+    <span class="nx">percent</span> <span class="o">:=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nx">used</span> <span class="o">/</span> <span class="nx">quota</span>
+    <span class="k">if</span> <span class="nx">percent</span> <span class="p">&lt;</span> <span class="mi">90</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="c1">// OK</span>
+    <span class="p">}</span>
+    <span class="nx">msg</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="nx">template</span><span class="p">,</span> <span class="nx">used</span><span class="p">,</span> <span class="nx">percent</span><span class="p">)</span>
+    <span class="nx">auth</span> <span class="o">:=</span> <span class="nx">smtp</span><span class="p">.</span><span class="nx">PlainAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nx">sender</span><span class="p">,</span> <span class="nx">password</span><span class="p">,</span> <span class="nx">hostname</span><span class="p">)</span>
+    <span class="nx">err</span> <span class="o">:=</span> <span class="nx">smtp</span><span class="p">.</span><span class="nx">SendMail</span><span class="p">(</span><span class="nx">hostname</span><span class="o">+</span><span class="s">&quot;:587&quot;</span><span class="p">,</span> <span class="nx">auth</span><span class="p">,</span> <span class="nx">sender</span><span class="p">,</span>
+        <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">username</span><span class="p">},</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">msg</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;smtp.SendMail(%s) failed: %s&quot;</span><span class="p">,</span> <span class="nx">username</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>However, we don't want the test to send out real email. We can move the email logic into its own function and store that function in an unexported package-level variable, <code>notifyUser</code>.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/storage2/storage.go">gopl.io/ch11/storage2/storage.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">notifyUser</span> <span class="p">=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">username</span><span class="p">,</span> <span class="nx">msg</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">auth</span> <span class="o">:=</span> <span class="nx">smtp</span><span class="p">.</span><span class="nx">PlainAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nx">sender</span><span class="p">,</span> <span class="nx">password</span><span class="p">,</span> <span class="nx">hostname</span><span class="p">)</span>
+    <span class="nx">err</span> <span class="o">:=</span> <span class="nx">smtp</span><span class="p">.</span><span class="nx">SendMail</span><span class="p">(</span><span class="nx">hostname</span><span class="o">+</span><span class="s">&quot;:587&quot;</span><span class="p">,</span> <span class="nx">auth</span><span class="p">,</span> <span class="nx">sender</span><span class="p">,</span>
+        <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">username</span><span class="p">},</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">msg</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;smtp.SendEmail(%s) failed: %s&quot;</span><span class="p">,</span> <span class="nx">username</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">CheckQuota</span><span class="p">(</span><span class="nx">username</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">used</span> <span class="o">:=</span> <span class="nx">bytesInUse</span><span class="p">(</span><span class="nx">username</span><span class="p">)</span>
+    <span class="kd">const</span> <span class="nx">quota</span> <span class="p">=</span> <span class="mi">1000000000</span> <span class="c1">// 1GB</span>
+    <span class="nx">percent</span> <span class="o">:=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nx">used</span> <span class="o">/</span> <span class="nx">quota</span>
+    <span class="k">if</span> <span class="nx">percent</span> <span class="p">&lt;</span> <span class="mi">90</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="c1">// OK</span>
+    <span class="p">}</span>
+    <span class="nx">msg</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="nx">template</span><span class="p">,</span> <span class="nx">used</span><span class="p">,</span> <span class="nx">percent</span><span class="p">)</span>
+    <span class="nx">notifyUser</span><span class="p">(</span><span class="nx">username</span><span class="p">,</span> <span class="nx">msg</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>We can now write a test that substitutes a simple fake notification mechanism instead of sending real email. This one records the notified user and the contents of the message.</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch11/storage2/quota_test.go">gopl.io/ch11/storage2/quota_test.go</a></small></p>
+<div class="codehilite"><pre><span class="c1">//!+test</span>
+<span class="kn">package</span> <span class="nx">storage</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;strings&quot;</span>
+    <span class="s">&quot;testing&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">TestCheckQuotaNotifiesUser</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">notifiedUser</span><span class="p">,</span> <span class="nx">notifiedMsg</span> <span class="kt">string</span>
+    <span class="nx">notifyUser</span> <span class="p">=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">user</span><span class="p">,</span> <span class="nx">msg</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">notifiedUser</span><span class="p">,</span> <span class="nx">notifiedMsg</span> <span class="p">=</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">msg</span>
+    <span class="p">}</span>
+
+    <span class="kd">const</span> <span class="nx">user</span> <span class="p">=</span> <span class="s">&quot;joe@example.org&quot;</span>
+
+    <span class="c1">// Simulate a 980MB-used condition for this user.</span>
+    <span class="c1">// NOTE: this differs slightly from the printed version.</span>
+    <span class="nx">usage</span><span class="p">[</span><span class="s">&quot;joe@example.org&quot;</span><span class="p">]</span> <span class="p">=</span> <span class="mi">980000000</span>
+
+    <span class="nx">CheckQuota</span><span class="p">(</span><span class="nx">user</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">notifiedUser</span> <span class="o">==</span> <span class="s">&quot;&quot;</span> <span class="o">&amp;&amp;</span> <span class="nx">notifiedMsg</span> <span class="o">==</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;notifyUser not called&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nx">notifiedUser</span> <span class="o">!=</span> <span class="nx">user</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;wrong user (%s) notified, want %s&quot;</span><span class="p">,</span>
+            <span class="nx">notifiedUser</span><span class="p">,</span> <span class="nx">user</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="kd">const</span> <span class="nx">wantSubstring</span> <span class="p">=</span> <span class="s">&quot;98% of your quota&quot;</span>
+    <span class="k">if</span> <span class="p">!</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Contains</span><span class="p">(</span><span class="nx">notifiedMsg</span><span class="p">,</span> <span class="nx">wantSubstring</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;unexpected notification message &lt;&lt;%s&gt;&gt;, &quot;</span><span class="o">+</span>
+            <span class="s">&quot;want substring %q&quot;</span><span class="p">,</span> <span class="nx">notifiedMsg</span><span class="p">,</span> <span class="nx">wantSubstring</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>There's one problem: after this test function has returned, <code>CheckQuota</code> no longer works as it should because it's still using the test's fake implementation of <code>notifyUsers</code>. (There is always a risk of this kind when updating global variables.) We must modify the test to restore the previous value so that subsequent tests observe no effect, and we must do this on all execution paths, including test failures and panics. This naturally suggests <code>defer</code>.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">TestCheckQuotaNotifiesUser</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Save and restore original notifyUser.</span>
+    <span class="nx">saved</span> <span class="o">:=</span> <span class="nx">notifyUser</span>
+    <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">notifyUser</span> <span class="p">=</span> <span class="nx">saved</span> <span class="p">}()</span>
+    <span class="c1">// Install the test&#39;s fake notifyUser.</span>
+    <span class="kd">var</span> <span class="nx">notifiedUser</span><span class="p">,</span> <span class="nx">notifiedMsg</span> <span class="kt">string</span>
+    <span class="nx">notifyUser</span> <span class="p">=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">user</span><span class="p">,</span> <span class="nx">msg</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">notifiedUser</span><span class="p">,</span> <span class="nx">notifiedMsg</span> <span class="p">=</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">msg</span>
+    <span class="p">}</span>
+    <span class="c1">// ...rest of test...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This pattern can be used to do the following:</p>
+<ul>
+<li>Temporarily save and restore all kinds of global variables, including command-line flags, debugging options, and performance parameters</li>
+<li>Install and remove hooks that cause the production code to call some test code when something interesting happens</li>
+<li>Coax the production code into rare but important states, such as timeouts, errors, and even specific interleavings of concurrent activities.</li>
+</ul>
+<p>Using global variables in this way is safe only because <code>go test</code> does not normally run multiple tests concurrently.</p>
             </div>
         </div>
 
