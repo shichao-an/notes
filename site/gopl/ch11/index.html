@@ -447,6 +447,8 @@
         
             <li><a href="#white-box-testing">White-Box Testing</a></li>
         
+            <li><a href="#external-test-packages">External Test Packages</a></li>
+        
     
     </ul>
 </div></div>
@@ -956,6 +958,53 @@ what is exposed by its API and specified by its documentation. The package's int
 <li>Coax the production code into rare but important states, such as timeouts, errors, and even specific interleavings of concurrent activities.</li>
 </ul>
 <p>Using global variables in this way is safe only because <code>go test</code> does not normally run multiple tests concurrently.</p>
+<h4 id="external-test-packages">External Test Packages<a class="headerlink" href="#external-test-packages" title="Permanent link">&para;</a></h4>
+<p>Consider the following packages:</p>
+<ul>
+<li><a href="https://golang.org/pkg/net/url/"><code>net/url</code></a>, which provides a URL parser</li>
+<li><a href="https://golang.org/pkg/net/http/"><code>net/http</code></a>, which provides a web server and HTTP client library.</li>
+</ul>
+<p>The higher-level <code>net/http</code> depends on the lower-level <code>net/url</code>. However, one of the tests in <code>net/url</code> is an example demonstrating the interaction between URLs and the HTTP client library. In other words, a test of the lower-level package imports the higher-level package.</p>
+<p><a href="../figure_11.1.png" title="Figure 11.1. A test of net/url depends on net/http."><img alt="Figure 11.1. A test of net/url depends on net/http." src="../figure_11.1.png" /></a></p>
+<p>Declaring this test function in the <code>net/url</code> package would create a cycle in the package import graph, as depicted by the upwards arrow in figure above, but as we explained in <a href="../ch10/#introduction">Section 10.1</a>, the Go specification forbids import cycles.</p>
+<p>We resolve the problem by declaring the test function in an external test package, that is, in a file in the <code>net/url</code> directory whose package declaration reads package <code>url_test</code>. The extra suffix <code>_test</code> is a signal to <code>go test</code> that it should build an additional package containing just these files and run its tests. It may be helpful to think of this external test package as if it had the import path <code>net/url_test</code>, but it cannot be imported under this or any other name. See <a href="../ch10/#the-last-segment-convention">The Last Segment Convention</a> in Chapter 10 for details.</p>
+<p>Because external tests live in a separate package, they may import helper packages that also depend on the package being tested; an in-package test cannot do this. In terms of the design layers, the external test package is logically higher up than both of the packages it depends upon, as shown in the figure below.</p>
+<p><a href="../figure_11.2.png" title="Figure 11.2. External test packages break dependency cycles."><img alt="Figure 11.2. External test packages break dependency cycles." src="../figure_11.2.png" /></a></p>
+<p>By avoiding import cycles, external test packages allow tests, especially <a href="https://en.wikipedia.org/wiki/Integration_testing"><em>integration tests</em></a> (which test the interaction of several components), to import other packages freely, exactly as an application would.</p>
+<p>We can use the <code>go list</code> tool to summarize Go source files in a package directory to determine if they are one of the following:
+<em> production code
+</em> in-package tests
+* external tests.</p>
+<p>Use the <code>fmt</code> package as an example:</p>
+<p><code>GoFiles</code> is the list of files that contain the production code; these are the files that <code>go build</code> will include in your application:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list -f<span class="o">={{</span>.GoFiles<span class="o">}}</span> fmt
+<span class="go">[doc.go format.go print.go scan.go]</span>
+</pre></div>
+
+
+<p><code>TestGoFiles</code> is the list of files that also belong to the <code>fmt</code> package, but these files, whose names all end in <code>_test.go</code>, are included only when building tests:</p>
+<div class="codehilite"><pre><span class="gp">$</span> go list -f<span class="o">={{</span>.TestGoFiles<span class="o">}}</span> fmt
+<span class="go">[export_test.go]</span>
+</pre></div>
+
+
+<p>The package's tests would usually reside in these files, though unusually <code>fmt</code> has none. The purpose of <code>export_test.go</code> in a moment.</p>
+<p><code>XTestGoFiles</code> is the list of files that constitute the external test package, <code>fmt_test</code>, so these files must import the fmt package in order to use it; again, they are included only during testing:</p>
+<div class="codehilite"><pre><span class="err">$</span> <span class="k">go</span> <span class="nx">list</span> <span class="o">-</span><span class="nx">f</span><span class="p">={{.</span><span class="nx">XTestGoFiles</span><span class="p">}}</span> <span class="nx">fmt</span>
+<span class="p">[</span><span class="nx">fmt_test</span><span class="p">.</span><span class="k">go</span> <span class="nx">scan_test</span><span class="p">.</span><span class="k">go</span> <span class="nx">stringer_test</span><span class="p">.</span><span class="k">go</span><span class="p">]</span>
+</pre></div>
+
+
+<p>Sometimes an external test package may need privileged access to the internals of the package under test. For example, a white-box test must live in a separate package to avoid an import cycle. In such cases, we use a trick: we add declarations to an in-package <code>_test.go</code> file to expose the necessary internals to the external test. This file thus offers the test a "back door" to the package. If the source file exists only for this purpose and contains no tests itself, it is often called <code>export_test.go</code>.</p>
+<p>For example, the implementation of the <code>fmt</code> package needs the functionality of <a href="https://golang.org/pkg/unicode/#IsSpace"><code>unicode.IsSpace</code></a> as part of <a href="https://golang.org/pkg/fmt/#Scanf"><code>fmt.Scanf</code></a>. To avoid creating an undesirable dependency, <code>fmt</code> does not import the <code>unicode</code> package and its large tables of data; instead, it contains a simpler implementation, which it calls <code>isSpace</code>.</p>
+<p>To ensure that the behaviors of <code>fmt.isSpace</code> and <code>unicode.IsSpace</code> do not drift apart, <code>fmt</code> prudently contains a test. It is an external test, and thus it cannot access <code>isSpace</code> directly, so <code>fmt</code> opens a back door to it by declaring an exported variable that holds the internal <code>isSpace</code> function. This is the entirety of the <code>fmt</code> package's <code>export_test.go</code> file.</p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">fmt</span>
+
+<span class="kd">var</span> <span class="nx">IsSpace</span> <span class="p">=</span> <span class="nx">isSpace</span>
+</pre></div>
+
+
+<p>This test file defines no tests; it declares the exported symbol <code>fmt.IsSpace</code> for use by the external test. This trick can also be used whenever an external test needs to use some of the techniques of white-box testing.</p>
             </div>
         </div>
 
