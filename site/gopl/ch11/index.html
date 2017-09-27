@@ -386,6 +386,10 @@
                             <a href="./">Chapter 11. Testing</a>
                         </li>
                       
+                        <li>
+                            <a href="../ch12/">Chapter 12. Reflection</a>
+                        </li>
+                      
                     </ul>
                 </li>
             <li class="dropdown">
@@ -448,6 +452,8 @@
             <li><a href="#white-box-testing">White-Box Testing</a></li>
         
             <li><a href="#external-test-packages">External Test Packages</a></li>
+        
+            <li><a href="#writing-effective-tests">Writing Effective Tests</a></li>
         
     
     </ul>
@@ -1005,6 +1011,63 @@ what is exposed by its API and specified by its documentation. The package's int
 
 
 <p>This test file defines no tests; it declares the exported symbol <code>fmt.IsSpace</code> for use by the external test. This trick can also be used whenever an external test needs to use some of the techniques of white-box testing.</p>
+<h4 id="writing-effective-tests">Writing Effective Tests<a class="headerlink" href="#writing-effective-tests" title="Permanent link">&para;</a></h4>
+<p>Many newcomers to Go are surprised by the minimalism of its testing framework. Testing frameworks in other languages may provide:</p>
+<ul>
+<li>Mechanisms for identifying test functions (often using reflection or metadata)</li>
+<li>Hooks for performing "setup" and "teardown" operations before and after the tests run</li>
+<li>Libraries of utility functions for asserting common predicates, comparing values, formatting error messages, and aborting a failed test (often using exceptions)</li>
+</ul>
+<p>Although these mechanisms can make tests very concise, the resulting tests often seem like they are written in a foreign language. Furthermore, although they may report <code>PASS</code> or <code>FAIL</code> correctly, their manner may be unfriendly to the unfortunate maintainer, with cryptic failure messages like "<code>assert: 0 == 1</code>" or page after page of stack traces.</p>
+<p>However, Go expects test authors to do most of this work themselves, defining functions to avoid repetition, just as they would for ordinary programs. The process of testing is not one of rote form filling; a test has a "user interface" too, albeit one whose only users are also its maintainers.</p>
+<p>What is a good test?</p>
+<ul>
+<li>A good test does not explode on failure but prints a clear and succinct description of the symptom of the problem, and perhaps other relevant facts about the context. The maintainer should not need to read the source code to decipher a test failure.</li>
+<li>A good test should not give up after one failure but should try to report several errors in a single run, since the pattern of failures may itself be revealing.</li>
+</ul>
+<p>The assertion function below compares two values, constructs a generic error message, and stops the program. It's easy to use and it's correct, but when it fails, the error message is almost useless. It does not provide a good user interface.</p>
+<div class="codehilite"><pre><span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;fmt&quot;</span>
+    <span class="s">&quot;strings&quot;</span>
+    <span class="s">&quot;testing&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">// A poor assertion function.</span>
+<span class="kd">func</span> <span class="nx">assertEqual</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">x</span> <span class="o">!=</span> <span class="nx">y</span> <span class="p">{</span>
+        <span class="nb">panic</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%d != %d&quot;</span><span class="p">,</span> <span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">))</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">TestSplit</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">words</span> <span class="o">:=</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">Split</span><span class="p">(</span><span class="s">&quot;a:b:c&quot;</span><span class="p">,</span> <span class="s">&quot;:&quot;</span><span class="p">)</span>
+    <span class="nx">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">words</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Assertion functions suffer from <em>premature abstraction</em>. It treats the failure of this particular test as a mere difference of two integers, so we forfeit the opportunity to provide meaningful context. We can provide a better message by starting from the concrete details, as in the example below.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">TestSplit</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span> <span class="o">:=</span> <span class="s">&quot;a:b:c&quot;</span><span class="p">,</span> <span class="s">&quot;:&quot;</span>
+    <span class="nx">words</span> <span class="o">:=</span> <span class="nx">strings</span><span class="p">.</span><span class="nx">Split</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">got</span><span class="p">,</span> <span class="nx">want</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">words</span><span class="p">),</span> <span class="mi">3</span><span class="p">;</span> <span class="nx">got</span> <span class="o">!=</span> <span class="nx">want</span> <span class="p">{</span>
+        <span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;Split(%q, %q) returned %d words, want %d&quot;</span><span class="p">,</span>
+            <span class="nx">s</span><span class="p">,</span> <span class="nx">sep</span><span class="p">,</span> <span class="nx">got</span><span class="p">,</span> <span class="nx">want</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In this test:</p>
+<ul>
+<li>It reports the function that was called, its inputs, and the significance of the result;</li>
+<li>It explicitly identifies the actual value and the expectation;</li>
+<li>It continues to execute even if this assertion should fail.</li>
+</ul>
+<p>Once we've written a test like this, the natural next step is often not to define a function to replace the entire if statement, but to execute the test in a loop in which <code>s</code>, <code>sep</code>, and <code>want</code> vary, like the table-driven test of <code>IsPalindrome</code>.</p>
+<p>The previous example didn't need any utility functions, but that shouldn't stop us from introducing functions when they help make the code simpler. (We'll look at one such utility function, <code>reflect.DeepEqual</code>, in <a href="ch13.md#example-deep-equivalence">Section 13.3</a>.) The key to a good test is to start by implementing the concrete behavior that you want and only then use functions to simplify the code and eliminate repetition. Best results are rarely obtained by starting with a library of abstract, generic testing functions.</p>
             </div>
         </div>
 

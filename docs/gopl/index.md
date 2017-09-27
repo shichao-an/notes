@@ -11,3 +11,4 @@
 * [Chapter 9. Concurrency with Shared Variables](ch9.md)
 * [Chapter 10. Packages and the Go Tool](ch10.md)
 * [Chapter 11. Testing](ch11.md)
+* [Chapter 12. Reflection](ch12.md)

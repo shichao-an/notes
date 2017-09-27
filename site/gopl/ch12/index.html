@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="canonical" href="https://notes.shichao.io/tlpi/ch6/">
+        <link rel="canonical" href="https://notes.shichao.io/gopl/ch12/">
         <link rel="shortcut icon" href="../../toki_32.png">
         
 
-	<title>Chapter 6. Processes - Shichao's Notes</title>
+	<title>Chapter 12. Reflection - Shichao's Notes</title>
 
         <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -334,60 +334,60 @@
                       
                     </ul>
                 </li>
-            <li class="dropdown">
+            <li class="dropdown active">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">GOPL <b class="caret"></b></a>
                     <ul class="dropdown-menu">
                     
                         <li>
-                            <a href="../../gopl/">Contents</a>
+                            <a href="../">Contents</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch1/">Chapter 1. Tutorial</a>
+                            <a href="../ch1/">Chapter 1. Tutorial</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch2/">Chapter 2. Program Structure</a>
+                            <a href="../ch2/">Chapter 2. Program Structure</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch3/">Chapter 3. Basic Data Types</a>
+                            <a href="../ch3/">Chapter 3. Basic Data Types</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch4/">Chapter 4. Composite Types</a>
+                            <a href="../ch4/">Chapter 4. Composite Types</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch5/">Chapter 5. Functions</a>
+                            <a href="../ch5/">Chapter 5. Functions</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch6/">Chapter 6. Methods</a>
+                            <a href="../ch6/">Chapter 6. Methods</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch7/">Chapter 7. Interfaces</a>
+                            <a href="../ch7/">Chapter 7. Interfaces</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch8/">Chapter 8. Goroutines and Channels</a>
+                            <a href="../ch8/">Chapter 8. Goroutines and Channels</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch9/">Chapter 9. Concurrency with Shared Variables</a>
+                            <a href="../ch9/">Chapter 9. Concurrency with Shared Variables</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch10/">Chapter 10. Packages and the Go Tool</a>
+                            <a href="../ch10/">Chapter 10. Packages and the Go Tool</a>
                         </li>
                       
                         <li>
-                            <a href="../../gopl/ch11/">Chapter 11. Testing</a>
+                            <a href="../ch11/">Chapter 11. Testing</a>
                         </li>
                       
-                        <li>
-                            <a href="../../gopl/ch12/">Chapter 12. Reflection</a>
+                        <li class="active">
+                            <a href="./">Chapter 12. Reflection</a>
                         </li>
                       
                     </ul>
@@ -419,7 +419,7 @@
                 
                 <li>
                     
-                        <a href="https://github.com/shichao-an/notes/blob/master/docs/tlpi/ch6.md">
+                        <a href="https://github.com/shichao-an/notes/blob/master/docs/gopl/ch12.md">
                     
                         
                             <i class="fa fa-github"></i>
@@ -437,22 +437,10 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#chapter-6-processes">Chapter 6. Processes</a></li>
+        <li class="main active"><a href="#chapter-12-reflection">Chapter 12. Reflection</a></li>
         
     
-        <li class="main "><a href="#processes-and-programs">Processes and Programs</a></li>
-        
-    
-        <li class="main "><a href="#process-id-and-parent-process-id">Process ID and Parent Process ID</a></li>
-        
-    
-        <li class="main "><a href="#memory-layout-of-a-process">Memory Layout of a Process</a></li>
-        
-    
-        <li class="main "><a href="#virtual-memory-management">Virtual Memory Management</a></li>
-        
-    
-        <li class="main "><a href="#the-stack-and-stack-frames">The Stack and Stack Frames</a></li>
+        <li class="main "><a href="#why-reflection">Why Reflection?</a></li>
         
     
     </ul>
@@ -460,90 +448,30 @@
             <div class="col-md-9" role="main">
               
 
-<h3 id="chapter-6-processes"><strong>Chapter 6. Processes</strong><a class="headerlink" href="#chapter-6-processes" title="Permanent link">&para;</a></h3>
-<h3 id="processes-and-programs">Processes and Programs<a class="headerlink" href="#processes-and-programs" title="Permanent link">&para;</a></h3>
-<h3 id="process-id-and-parent-process-id">Process ID and Parent Process ID<a class="headerlink" href="#process-id-and-parent-process-id" title="Permanent link">&para;</a></h3>
-<h3 id="memory-layout-of-a-process">Memory Layout of a Process<a class="headerlink" href="#memory-layout-of-a-process" title="Permanent link">&para;</a></h3>
-<p>The memory allocated to each process is composed of a number of parts, usually referred to as <strong>segments</strong>. These segments are as follows:</p>
+<h3 id="chapter-12-reflection"><strong>Chapter 12. Reflection</strong><a class="headerlink" href="#chapter-12-reflection" title="Permanent link">&para;</a></h3>
+<p>Go provides a mechanism to do the following on variables without knowing their types at compile time:</p>
 <ul>
-<li>The <strong>text segment</strong> contains the machine-language instructions of the program run by the process.<ul>
-<li>The text segment is made read-only so that a process doesn’t accidentally modify its own instructions via a bad pointer value.</li>
-<li>Since many processes may be running the same program, the text segment is made sharable so that a single copy of the program code can be mapped into the virtual address space of all of the processes.</li>
+<li>Update variables and inspect their values at run time</li>
+<li>Call their methods</li>
+<li>Apply the operations intrinsic to their representation</li>
 </ul>
-</li>
-<li>The <strong>initialized data segment</strong> contains global and static variables that are explicitly initialized. The values of these variables are read from the executable file when the program is loaded into memory.</li>
-<li>The <strong>uninitialized data segment</strong> contains global and static variables that are not explicitly initialized. Before starting the program, the system initializes all memory in this segment to 0.<ul>
-<li>For historical reasons, this is often called the <strong>bss segment</strong>, a name derived from an old assembler mnemonic for "block started by symbol".</li>
-<li>The main reason for placing global and static variables that are initialized into a separate segment from those that are uninitialized is that, when a program is stored on disk, it is not necessary to allocate space for the uninitialized data. Instead, the executable merely needs to record the location and size required for the uninitialized data segment, and this space is allocated by the program loader at run time.</li>
-</ul>
-</li>
-<li>The <strong>stack</strong> is a dynamically growing and shrinking segment containing stack frames. One stack frame is allocated for each currently called function. A frame stores the function’s local variables (so-called automatic variables), arguments, and return value. Stack frames are detailed in <a href="#the-stack-and-stack-frames">Section 6.5</a>.</li>
-<li>The <strong>heap</strong> is an area from which memory (for variables) can be dynamically allocated at run time. The top end of the heap is called the <strong>program break</strong>.</li>
-</ul>
-<p>The following code shows various types of C variables along with comments indicating in which segment each variable is located. These comments assume a nonoptimizing compiler and an application binary interface in which all arguments are passed on the stack. In practice, an optimizing compiler may allocate frequently used variables in registers, or optimize a variable out of existence altogether. Furthermore, some ABIs require function arguments and the function result to be passed via registers, rather than on the stack. Nevertheless, this example serves to demonstrate the mapping between C variables and the segments of a process.</p>
-<p><small><a href="https://github.com/shichao-an/tlpi-dist/blob/master/proc/mem_segments.c">proc/mem_segments.c</a></small></p>
-<div class="codehilite"><pre><span class="cp">#define _BSD_SOURCE</span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
-
-<span class="kt">char</span> <span class="n">globBuf</span><span class="p">[</span><span class="mi">65536</span><span class="p">];</span>            <span class="cm">/* Uninitialized data segment */</span>
-<span class="kt">int</span> <span class="n">primes</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span> <span class="p">};</span>  <span class="cm">/* Initialized data segment */</span>
-
-<span class="k">static</span> <span class="kt">int</span>
-<span class="nf">square</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span>                   <span class="cm">/* Allocated in frame for square() */</span>
-<span class="p">{</span>
-    <span class="kt">int</span> <span class="n">result</span><span class="p">;</span>                 <span class="cm">/* Allocated in frame for square() */</span>
-
-    <span class="n">result</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span><span class="p">;</span>
-    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>              <span class="cm">/* Return value passed via register */</span>
-<span class="p">}</span>
-
-<span class="k">static</span> <span class="kt">void</span>
-<span class="nf">doCalc</span><span class="p">(</span><span class="kt">int</span> <span class="n">val</span><span class="p">)</span>                 <span class="cm">/* Allocated in frame for doCalc() */</span>
-<span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;The square of %d is %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">square</span><span class="p">(</span><span class="n">val</span><span class="p">));</span>
-
-    <span class="k">if</span> <span class="p">(</span><span class="n">val</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">int</span> <span class="n">t</span><span class="p">;</span>                  <span class="cm">/* Allocated in frame for doCalc() */</span>
-
-        <span class="n">t</span> <span class="o">=</span> <span class="n">val</span> <span class="o">*</span> <span class="n">val</span> <span class="o">*</span> <span class="n">val</span><span class="p">;</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;The cube of %d is %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">t</span><span class="p">);</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-
-<span class="kt">int</span>
-<span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>    <span class="cm">/* Allocated in frame for main() */</span>
-<span class="p">{</span>
-    <span class="k">static</span> <span class="kt">int</span> <span class="n">key</span> <span class="o">=</span> <span class="mi">9973</span><span class="p">;</span>      <span class="cm">/* Initialized data segment */</span>
-    <span class="k">static</span> <span class="kt">char</span> <span class="n">mbuf</span><span class="p">[</span><span class="mi">10240000</span><span class="p">];</span> <span class="cm">/* Uninitialized data segment */</span>
-    <span class="kt">char</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>                    <span class="cm">/* Allocated in frame for main() */</span>
-
-    <span class="n">p</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">1024</span><span class="p">);</span>           <span class="cm">/* Points to memory in heap segment */</span>
-
-    <span class="n">doCalc</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
-
-    <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_SUCCESS</span><span class="p">);</span>
-<span class="p">}</span>
-</pre></div>
-
-
-<p>An <a href="https://en.wikipedia.org/wiki/Application_binary_interface"><strong>application binary interface</strong></a> (ABI) is a set of rules specifying how a binary executable should exchange information with some service (e.g., the kernel or a library) at run time. Among other things, an ABI specifies which registers and stack locations are used to exchange this information, and what meaning is attached to the exchanged values. Once compiled for a particular ABI, a binary executable should be able to run on any system presenting the same ABI. This contrasts with a standardized API (such as SUSv3), which guarantees portability only for applications compiled from source code.</p>
-<p>Although not specified in SUSv3, the C program environment on most UNIX implementations (including Linux) provides three global symbols: <code>etext</code>, <code>edata</code>, and <code>end</code>. These symbols can be used from within a program to obtain the addresses of the next byte past, respectively, the end of the program text, the end of the initialized data segment, and the end of the uninitialized data segment. To make use of these symbols, we must explicitly declare them, as follows:</p>
-<div class="codehilite"><pre><span class="k">extern</span> <span class="kt">char</span> <span class="n">etext</span><span class="p">,</span> <span class="n">edata</span><span class="p">,</span> <span class="n">end</span><span class="p">;</span>
- <span class="cm">/* For example, &amp;etext gives the address of the end</span>
-<span class="cm"> of the program text / start of initialized data */</span>
-</pre></div>
-
-
-<p>The following figure (Figure 6-1) shows the arrangement of the various memory segments on the x86-32 architecture.</p>
+<p>This mechanism is called <a href="https://en.wikipedia.org/wiki/Reflection_(computer_programming)">reflection</a>. Reflection also lets us treat types themselves as first-class values.</p>
+<p>This chapter covers Go's reflection features on how they increase the expressiveness of the language, and in particular how they are crucial to the implementation of two
+important APIs:</p>
 <ul>
-<li>The space labeled <code>argv</code>, <code>environ</code> at the top of this diagram holds the program command-line arguments (available in C via the <code>argv</code> argument of the <code>main()</code> function) and the process environment list.</li>
-<li>The hexadecimal addresses shown in the diagram may vary, depending on kernel configuration and program linking options.</li>
-<li>The grayed-out areas represent invalid ranges in the process’s virtual address space; that is, areas for which page tables have not been created (see the following discussion of virtual memory management).</li>
+<li>String formatting provided by <a href="https://golang.org/pkg/fmt/"><code>fmt</code></a></li>
+<li>Protocol encoding provided by packages like <a href="https://golang.org/pkg/encoding/json/"><code>encoding/json</code></a> and <a href="https://golang.org/pkg/encoding/xml/"><code>encoding/xml</code></a>.</li>
 </ul>
-<p><a href="../figure_6-1.png" title="Figure 6-1: Typical memory layout of a process on Linux/x86-32"><img alt="Figure 6-1: Typical memory layout of a process on Linux/x86-32" src="../figure_6-1.png" /></a></p>
-<h3 id="virtual-memory-management">Virtual Memory Management<a class="headerlink" href="#virtual-memory-management" title="Permanent link">&para;</a></h3>
-<h3 id="the-stack-and-stack-frames">The Stack and Stack Frames<a class="headerlink" href="#the-stack-and-stack-frames" title="Permanent link">&para;</a></h3>
+<p>Reflection is also essential to the template mechanism provided by the <a href="https://golang.org/pkg/text/template/">text/template</a> and <a href="https://golang.org/pkg/html/template/">html/template</a> packages as seen in <a href="../ch4/#text-and-html-templates">Section 4.6</a>. However, reflection is complex to reason about and not for casual use, so although these packages are implemented using reflection, they do not expose reflection in their own APIs.</p>
+<h3 id="why-reflection">Why Reflection?<a class="headerlink" href="#why-reflection" title="Permanent link">&para;</a></h3>
+<p>Sometimes we need to write a function capable of dealing uniformly with values of types, which have one of the following traits:</p>
+<ul>
+<li>They don't satisfy a common interface,</li>
+<li>They don't have a known representation,</li>
+<li>They don't exist at the time we design the function,</li>
+<li>All three of above.</li>
+</ul>
+<p>A familiar example is the formatting logic within <code>fmt.Fprintf</code>, which can usefully print an arbitrary value of any type, even a user-defined one.</p>
             </div>
         </div>
 
