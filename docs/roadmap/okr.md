@@ -2,7 +2,7 @@
 
 <small>Back to [Roadmap](index.md).</small>
 
-### OKR: April 30, 2017
+### OKR (2017)
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------
@@ -29,6 +29,7 @@ GOPL | ch8 | 1 | 2016-08-15 | 2016-09-19
 GOPL | ch9 | 1 | 2016-09-21 | 2016-12-09
 GOPL | ch10 | 1 | 2016-12-22 | 2016-02-06
 GOPL | ch11 | 1 | 2017-02-06 |
+GOPL | ch12 | 1 | 2017-09-26 |
 CSN  | part1 | 1 | 2016-01-15 | 2016-05-24
 CSN  | part2 | 1 | 2016-05-25 |
 DDA  | ch1 | 1 | 2017-01-27 |
