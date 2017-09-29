@@ -152,7 +152,7 @@ p := Point{1, 2}
 fmt.Println(p) // "{2, 4}"
 ```
 
-The last two cases are verbose; <u>if the receiver `p` is a variable of type `Point` but the method requires a *Point receiver, the compiler will perform an implicit `&p` on the variable.</u> So we can use the following shorthand:
+The last two cases are verbose; <u>if the receiver `p` is a variable of type `Point` but the method requires a `*Point` receiver, the compiler will perform an implicit `&p` on the variable.</u> So we can use the following shorthand:
 
 ```go
 p.ScaleBy(2)
