@@ -443,6 +443,9 @@
         <li class="main "><a href="#why-reflection">Why Reflection?</a></li>
         
     
+        <li class="main "><a href="#reflecttype-and-reflectvalue">reflect.Type and reflect.Value</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -460,9 +463,9 @@
 important APIs:</p>
 <ul>
 <li>String formatting provided by <a href="https://golang.org/pkg/fmt/"><code>fmt</code></a></li>
-<li>Protocol encoding provided by packages like <a href="https://golang.org/pkg/encoding/json/"><code>encoding/json</code></a> and <a href="https://golang.org/pkg/encoding/xml/"><code>encoding/xml</code></a>.</li>
+<li>Protocol encoding provided by packages like <a href="https://golang.org/pkg/encoding/json/"><code>encoding/json</code></a> and <a href="https://golang.org/pkg/encoding/xml/"><code>encoding/xml</code></a></li>
 </ul>
-<p>Reflection is also essential to the template mechanism provided by the <a href="https://golang.org/pkg/text/template/">text/template</a> and <a href="https://golang.org/pkg/html/template/">html/template</a> packages as seen in <a href="../ch4/#text-and-html-templates">Section 4.6</a>. However, reflection is complex to reason about and not for casual use, so although these packages are implemented using reflection, they do not expose reflection in their own APIs.</p>
+<p>Reflection is also essential to the template mechanism provided by the <a href="https://golang.org/pkg/text/template/"><code>text/template</code></a> and <a href="https://golang.org/pkg/html/template/"><code>html/template</code></a> packages as seen in <a href="../ch4/#text-and-html-templates">Section 4.6</a>. However, reflection is complex to reason about and not for casual use, so although these packages are implemented using reflection, they do not expose reflection in their own APIs.</p>
 <h3 id="why-reflection">Why Reflection?<a class="headerlink" href="#why-reflection" title="Permanent link">&para;</a></h3>
 <p>Sometimes we need to write a function capable of dealing uniformly with values of types, which have one of the following traits:</p>
 <ul>
@@ -471,7 +474,77 @@ important APIs:</p>
 <li>They don't exist at the time we design the function,</li>
 <li>All three of above.</li>
 </ul>
-<p>A familiar example is the formatting logic within <code>fmt.Fprintf</code>, which can usefully print an arbitrary value of any type, even a user-defined one.</p>
+<p>A familiar example is the formatting logic within <code>fmt.Fprintf</code>, which can usefully print an arbitrary value of any type, even a user-defined one. Let's try to implement a function like it using what we know already. For simplicity, our function will accept one argument and will return the result as a string like <code>fmt.Sprint</code> does, so we'll call it <code>Sprint</code>.</p>
+<p>We start with a type switch that tests whether the argument defines a <code>String</code> method and call it if so. We then add switch cases that test the values' dynamic type against each of the basic types: <code>string</code>, <code>int</code>, <code>bool</code>, etc., and perform the appropriate formatting operation in each case.</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Sprint</span><span class="p">(</span><span class="nx">x</span> <span class="kd">interface</span><span class="p">{})</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="kd">type</span> <span class="nx">stringer</span> <span class="kd">interface</span> <span class="p">{</span>
+        <span class="nx">String</span><span class="p">()</span> <span class="kt">string</span>
+    <span class="p">}</span>
+    <span class="k">switch</span> <span class="nx">x</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nx">stringer</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">x</span><span class="p">.</span><span class="nx">String</span><span class="p">()</span>
+    <span class="k">case</span> <span class="kt">string</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">x</span>
+    <span class="k">case</span> <span class="kt">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+    <span class="c1">// ...similar cases for int16, uint32, and so on...</span>
+    <span class="k">case</span> <span class="kt">bool</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nx">x</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="s">&quot;true&quot;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="s">&quot;false&quot;</span>
+    <span class="k">default</span><span class="p">:</span>
+        <span class="c1">// array, chan, func, map, pointer, slice, struct</span>
+        <span class="k">return</span> <span class="s">&quot;???&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>But how do we deal with other types?</p>
+<ul>
+<li>Types like <code>[]float64</code>, <code>map[string][]string</code>: we can add more cases, but the number of such types is infinite.</li>
+<li>Named types like <a href="https://golang.org/pkg/net/url/#Values"><code>url.Values</code></a>: even if the type switch had a case for its underlying type <code>map[string][]string</code>, it wouldn't match <code>url.Values</code> because the two types are not identical, and the type switch cannot include a case for each type like <code>url.Values</code> because that would require this library to depend upon its clients.</li>
+</ul>
+<p>Without a way to inspect the representation of values of unknown types, we quickly get stuck.  What we need is reflection.</p>
+<h3 id="reflecttype-and-reflectvalue"><code>reflect.Type</code> and <code>reflect.Value</code><a class="headerlink" href="#reflecttype-and-reflectvalue" title="Permanent link">&para;</a></h3>
+<p>Reflection is provided by the <a href="https://golang.org/pkg/reflect/"><code>reflect</code></a> package. It defines two important types, <a href="https://golang.org/pkg/reflect/#Type"><code>Type</code></a> and <a href="https://golang.org/pkg/reflect/#Value"><code>Value</code></a>. A <code>Type</code> represents a Go type. It is an interface with many methods for discriminating among types and inspecting their components, like the fields of a struct or the parameters of a function. The sole implementation of <code>reflect.Type</code> is the type descriptor (<a href="../ch7/#interface-values">Section 7.5</a>), the same entity that identifies the dynamic type of an interface value.</p>
+<p>The <a href="https://golang.org/pkg/reflect/#TypeOf"><code>reflect.TypeOf</code></a> function accepts any <code>interface{}</code> and returns its dynamic type as a <code>reflect.Type</code>:</p>
+<div class="codehilite"><pre><span class="nx">t</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">TypeOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>   <span class="c1">// a reflect.Type</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>  <span class="c1">// &quot;int&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>           <span class="c1">// &quot;int&quot;</span>
+</pre></div>
+
+
+<p>The <code>TypeOf(3)</code> call above assigns the value 3 to the <code>interface{}</code> parameter. Recall from <a href="../ch7/#interface-values">Section 7.5</a> that an assignment from a concrete value to an interface type performs an implicit interface conversion, which creates an interface value consisting of two components:</p>
+<ul>
+<li>Its dynamic type is the operand's type (<code>int</code>)</li>
+<li>Its dynamic value is the operand's value (3)</li>
+</ul>
+<p>Because <code>reflect.TypeOf</code> returns an interface value's dynamic type, it always returns a concrete type. For example, the code below prints "<code>*os.File</code>", not "<code>io.Writer</code>". Later, we will see that <code>reflect.Type</code> is also capable of representing interface types.</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">w</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">TypeOf</span><span class="p">(</span><span class="nx">w</span><span class="p">))</span> <span class="c1">// &quot;*os.File&quot;</span>
+</pre></div>
+
+
+<p>Notice that <code>reflect.Type</code> satisfies <code>fmt.Stringer</code>. Because printing the dynamic type of an interface value is useful for debugging and logging, <code>fmt.Printf</code> provides a shorthand, <code>%T</code>, that uses <code>reflect.TypeOf</code> internally:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%T\n&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="c1">// &quot;int&quot;</span>
+</pre></div>
+
+
+<p>The other important type in the <code>reflect</code> package is <code>Value</code>. A <code>reflect.Value</code> can hold a value of any type. The <code>reflect.ValueOf</code> function accepts any <code>interface{}</code> and returns a <code>reflect.Value</code> containing the interface's dynamic value. As with <code>reflect.TypeOf</code>, the results of <code>reflect.ValueOf</code> are always concrete, but a <code>reflect.Value</code> can also hold interface values.</p>
+<div class="codehilite"><pre><span class="nx">v</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>  <span class="c1">// a reflect.Value</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>           <span class="c1">// &quot;3&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%v\n&quot;</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>    <span class="c1">// &quot;3&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>  <span class="c1">// NOTE: &quot;&lt;int Value&gt;&quot;</span>
+</pre></div>
+
+
+<p>Like <code>reflect.Type</code>, <code>reflect.Value</code> also satisfies <code>fmt.Stringer</code>, but <u>unless the <code>Value</code> holds a string, the result of the <code>String</code> method reveals only the type. Instead, use the <code>fmt</code> package's <code>%v</code> verb, which treats <code>reflect.Value</code>s specially.</u></p>
+<p>Calling the <code>Type</code> method on a <code>Value</code> returns its type as a <code>reflect.Type</code>:</p>
+<div class="codehilite"><pre><span class="nx">t</span> <span class="o">:=</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Type</span><span class="p">()</span>            <span class="c1">// a reflect.Type</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>  <span class="c1">// &quot;int&quot;</span>
+</pre></div>
             </div>
         </div>
 

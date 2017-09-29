@@ -409,3 +409,18 @@ In terms of organizational processes, [*Agile*](https://en.wikipedia.org/wiki/Ag
 In this book, we search for ways of increasing agility on the level of a larger data system, perhaps consisting of several different applications or services with different characteristics.
 
 The ease with which you can modify a data system, and adapt it to changing requirements, is closely linked to its simplicity and its abstractions: simple and easy-to-understand systems are usually easier to modify than complex ones. But since this is such an important idea, we will use a different word to refer to agility on a data system level: *evolvability*.
+
+### Summary
+
+In this chapter discusses some fundamental ways of thinking about data-intensive applications.
+
+An application has to meet various requirements in order to be useful:
+
+* Functional requirements: what it should do, such as allowing data to be stored, retrieved, searched, and processed in various ways.
+* Nonfunctional requirements: general properties like security, reliability, compliance, scalability, compatibility, and maintainability.
+
+This chapter details reliability, scalability, and maintainability.
+
+There is no easy fix for making applications reliable, scalable, or maintainable. However, there are certain patterns and techniques that keep reappearing in different kinds of applications. In the next few chapters we will take a look at some examples of data systems and analyze how they work toward those goals.
+
+Part III of this book will cover patterns for systems that consist of several components working together, such as the one in [Figure 1-1](figure_1-1.png).
