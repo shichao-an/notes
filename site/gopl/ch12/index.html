@@ -510,9 +510,9 @@ important APIs:</p>
 <h3 id="reflecttype-and-reflectvalue"><code>reflect.Type</code> and <code>reflect.Value</code><a class="headerlink" href="#reflecttype-and-reflectvalue" title="Permanent link">&para;</a></h3>
 <p>Reflection is provided by the <a href="https://golang.org/pkg/reflect/"><code>reflect</code></a> package. It defines two important types, <a href="https://golang.org/pkg/reflect/#Type"><code>Type</code></a> and <a href="https://golang.org/pkg/reflect/#Value"><code>Value</code></a>. A <code>Type</code> represents a Go type. It is an interface with many methods for discriminating among types and inspecting their components, like the fields of a struct or the parameters of a function. The sole implementation of <code>reflect.Type</code> is the type descriptor (<a href="../ch7/#interface-values">Section 7.5</a>), the same entity that identifies the dynamic type of an interface value.</p>
 <p>The <a href="https://golang.org/pkg/reflect/#TypeOf"><code>reflect.TypeOf</code></a> function accepts any <code>interface{}</code> and returns its dynamic type as a <code>reflect.Type</code>:</p>
-<div class="codehilite"><pre><span class="nx">t</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">TypeOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>   <span class="c1">// a reflect.Type</span>
-<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>  <span class="c1">// &quot;int&quot;</span>
-<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>           <span class="c1">// &quot;int&quot;</span>
+<div class="codehilite"><pre><span class="nx">t</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">TypeOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>  <span class="c1">// a reflect.Type</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// &quot;int&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>          <span class="c1">// &quot;int&quot;</span>
 </pre></div>
 
 
@@ -533,17 +533,88 @@ important APIs:</p>
 
 
 <p>The other important type in the <code>reflect</code> package is <code>Value</code>. A <code>reflect.Value</code> can hold a value of any type. The <code>reflect.ValueOf</code> function accepts any <code>interface{}</code> and returns a <code>reflect.Value</code> containing the interface's dynamic value. As with <code>reflect.TypeOf</code>, the results of <code>reflect.ValueOf</code> are always concrete, but a <code>reflect.Value</code> can also hold interface values.</p>
-<div class="codehilite"><pre><span class="nx">v</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>  <span class="c1">// a reflect.Value</span>
-<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>           <span class="c1">// &quot;3&quot;</span>
-<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%v\n&quot;</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>    <span class="c1">// &quot;3&quot;</span>
-<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>  <span class="c1">// NOTE: &quot;&lt;int Value&gt;&quot;</span>
+<div class="codehilite"><pre><span class="nx">v</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1">// a reflect.Value</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>          <span class="c1">// &quot;3&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%v\n&quot;</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>   <span class="c1">// &quot;3&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span> <span class="c1">// NOTE: &quot;&lt;int Value&gt;&quot;</span>
 </pre></div>
 
 
 <p>Like <code>reflect.Type</code>, <code>reflect.Value</code> also satisfies <code>fmt.Stringer</code>, but <u>unless the <code>Value</code> holds a string, the result of the <code>String</code> method reveals only the type. Instead, use the <code>fmt</code> package's <code>%v</code> verb, which treats <code>reflect.Value</code>s specially.</u></p>
-<p>Calling the <code>Type</code> method on a <code>Value</code> returns its type as a <code>reflect.Type</code>:</p>
+<p>Calling the <a href="https://golang.org/pkg/reflect/#Value.Type"><code>Type</code></a> method on a <code>Value</code> returns its type as a <code>reflect.Type</code>:</p>
 <div class="codehilite"><pre><span class="nx">t</span> <span class="o">:=</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Type</span><span class="p">()</span>            <span class="c1">// a reflect.Type</span>
 <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>  <span class="c1">// &quot;int&quot;</span>
+</pre></div>
+
+
+<p>The inverse operation to <code>reflect.ValueOf</code> is the <a href="https://golang.org/pkg/reflect/#Value.Interface"><code>reflect.Value.Interface</code></a> method. It returns an <code>interface{}</code> holding the same concrete value as the <code>reflect.Value</code>:</p>
+<div class="codehilite"><pre><span class="nx">v</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1">// a reflect.Value</span>
+<span class="nx">x</span> <span class="o">:=</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Interface</span><span class="p">()</span>      <span class="c1">// an interface{}</span>
+<span class="nx">i</span> <span class="o">:=</span> <span class="nx">x</span><span class="p">.(</span><span class="kt">int</span><span class="p">)</span>            <span class="c1">// an int</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d\n&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span>   <span class="c1">// &quot;3&quot;</span>
+</pre></div>
+
+
+<p>A <code>reflect.Value</code> and an <code>interface{}</code> (empty interface) can both hold arbitrary values. What is the difference between them?</p>
+<ul>
+<li>An empty interface hides the representation and intrinsic operations of the value it holds and exposes none of its methods, so unless we know its dynamic type and use a type assertion to peer inside it (as we did above), there is little we can do to the value within.</li>
+<li>In contrast, a <code>Value</code> has many methods for inspecting its contents, regardless of its type.</li>
+</ul>
+<p>Let's use the methods of a <code>Value</code> for our second attempt at a general formatting function called <code>format.Any</code>.</p>
+<p>Instead of a type switch, we use <code>reflect.Value</code>'s <code>Kind</code> method to discriminate the cases. Although there are infinitely many types, there are only a finite number of <em>kinds</em> of type:</p>
+<ul>
+<li>The basic types <code>Bool</code>, <code>String</code>, and all the numbers</li>
+<li>The aggregate types <code>Array</code> and <code>Struct</code></li>
+<li>The reference types <code>Chan</code>, <code>Func</code>, <code>Ptr</code>, <code>Slice</code>, and <code>Map</code></li>
+<li><code>Interface</code> types</li>
+<li><code>Invalid</code>, meaning no value at all (The zero value of a <code>reflect.Value</code> has kind <code>Invalid</code>.)</li>
+</ul>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch12/format/format.go">gopl.io/ch12/format/format.go</a></small></p>
+<div class="codehilite"><pre><span class="kn">package</span> <span class="nx">format</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+    <span class="s">&quot;reflect&quot;</span>
+    <span class="s">&quot;strconv&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">// Any formats any value as a string.</span>
+<span class="kd">func</span> <span class="nx">Any</span><span class="p">(</span><span class="nx">value</span> <span class="kd">interface</span><span class="p">{})</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">formatAtom</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="c1">// formatAtom formats a value without inspecting its internal structure.</span>
+<span class="kd">func</span> <span class="nx">formatAtom</span><span class="p">(</span><span class="nx">v</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Value</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Kind</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Invalid</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;invalid&quot;</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Int</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Int8</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Int16</span><span class="p">,</span>
+        <span class="nx">reflect</span><span class="p">.</span><span class="nx">Int32</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Int64</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">FormatInt</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">Int</span><span class="p">(),</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Uint</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Uint8</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Uint16</span><span class="p">,</span>
+        <span class="nx">reflect</span><span class="p">.</span><span class="nx">Uint32</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Uint64</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Uintptr</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">FormatUint</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">Uint</span><span class="p">(),</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="c1">// ...floating-point and complex cases omitted for brevity...</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">FormatBool</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">Bool</span><span class="p">())</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">String</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">strconv</span><span class="p">.</span><span class="nx">Quote</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Chan</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Func</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Ptr</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Slice</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Map</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Type</span><span class="p">().</span><span class="nx">String</span><span class="p">()</span> <span class="o">+</span> <span class="s">&quot; 0x&quot;</span> <span class="o">+</span>
+            <span class="nx">strconv</span><span class="p">.</span><span class="nx">FormatUint</span><span class="p">(</span><span class="nb">uint64</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">()),</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="k">default</span><span class="p">:</span> <span class="c1">// reflect.Array, reflect.Struct, reflect.Interface</span>
+        <span class="k">return</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Type</span><span class="p">().</span><span class="nx">String</span><span class="p">()</span> <span class="o">+</span> <span class="s">&quot; value&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>This function treats each value as an indivisible thing with no internal structure (hence <code>formatAtom</code>). For aggregate types (structs and arrays) and interfaces it prints only the type of the value, and for reference types (channels, functions, pointers, slices, and maps), it prints the type and the reference address in hexadecimal. This is less than ideal but still a major improvement. Since <code>Kind</code> is concerned only with the underlying representation, <code>format.Any</code> also works for named types. For example:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">x</span> <span class="kt">int64</span> <span class="p">=</span> <span class="mi">1</span>
+<span class="kd">var</span> <span class="nx">d</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span> <span class="p">=</span> <span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Nanosecond</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">format</span><span class="p">.</span><span class="nx">Any</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span>                  <span class="c1">// &quot;1&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">format</span><span class="p">.</span><span class="nx">Any</span><span class="p">(</span><span class="nx">d</span><span class="p">))</span>                  <span class="c1">// &quot;1&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">format</span><span class="p">.</span><span class="nx">Any</span><span class="p">([]</span><span class="kt">int64</span><span class="p">{</span><span class="nx">x</span><span class="p">}))</span>         <span class="c1">// &quot;[]int64 0x8202b87b0&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">format</span><span class="p">.</span><span class="nx">Any</span><span class="p">([]</span><span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">{</span><span class="nx">d</span><span class="p">}))</span> <span class="c1">// &quot;[]time.Duration 0x8202b87e0&quot;</span>
 </pre></div>
             </div>
         </div>
