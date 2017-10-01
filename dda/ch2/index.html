@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <!-- Global Site Tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59055167-2"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments)};
+          gtag('js', new Date());
+
+          gtag('config', 'UA-59055167-2');
+        </script>
+
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -442,6 +452,10 @@
     
         <li class="main "><a href="#relational-model-versus-document-model">Relational Model Versus Document Model</a></li>
         
+            <li><a href="#the-birth-of-nosql">The Birth of NoSQL</a></li>
+        
+            <li><a href="#the-object-relational-mismatch">The Object-Relational Mismatch</a></li>
+        
     
     </ul>
 </div></div>
@@ -460,8 +474,76 @@
 <p>In a complex application there may be more intermediary levels, such as APIs built upon APIs, but the basic idea is still the same: each layer hides the complexity of the layers below it by providing a clean data model. These abstractions allow different groups (e.g. database engineers and application developers) of people to work together effectively.</p>
 <p>There are many different kinds of data models, and every data model embodies assumptions about how it is going to be used. [p28]</p>
 <p>It can take a lot of effort to master just one data model. Building software is hard enough, even when working with just one data model and without worrying about its inner workings. But since the data model has such a profound effect on what the software above it can and can't do, it's important to choose one that is appropriate to the application.</p>
-<p>This chapter covers a range of general-purpose data models for data stor‐ age and querying (point 2 in the preceding list), in particular, comparing the relational model, the document model, and a few graph-based data models. We will also look at various query languages and compare their use cases. In Chapter 3 we will discuss how storage engines work; that is, how these data models are actually implemented (point 3 in the list).</p>
+<p>This chapter covers a range of general-purpose data models for data storage and querying (point 2 in the preceding list), in particular, comparing the relational model, the document model, and a few graph-based data models. We will also look at various query languages and compare their use cases. In <a href="ch3.md">Chapter 3</a> we will discuss how storage engines work; that is, how these data models are actually implemented (point 3 in the list).</p>
 <h3 id="relational-model-versus-document-model">Relational Model Versus Document Model<a class="headerlink" href="#relational-model-versus-document-model" title="Permanent link">&para;</a></h3>
+<p>The best-known data model today is probably that of SQL, based on the <a href="https://en.wikipedia.org/wiki/Relational_model">relational model</a> proposed by <a href="https://en.wikipedia.org/wiki/Edgar_F._Codd">Edgar Codd</a> in 1970: data is organized into <em>relations</em> (called <em>tables</em> in SQL), where each relation is an unordered collection of <em>tuples</em> (<em>rows</em> in SQL).</p>
+<p>The relational model was a theoretical proposal, and many people at the time doubted whether it could be implemented efficiently. However, by the mid-1980s, <a href="https://en.wikipedia.org/wiki/Relational_database_management_system">relational database management systems</a> (RDBMSes) and SQL had become the tools of choice for most people who needed to store and query data with some kind of regular structure. The dominance of relational databases has lasted around 25‒30 years, an eternity in computing history.</p>
+<p>The roots of relational databases lie in <em>business data processing</em>, which was performed on mainframe computers in the 1960s and 1970s. The use cases appear mundane from today's perspective:</p>
+<ul>
+<li>Transaction processing: entering sales or banking transactions, airline reservations, stock-keeping in warehouse.</li>
+<li>Batch processing: customer invoicing, payroll, reporting.</li>
+</ul>
+<p>Other databases at that time forced application developers to think a lot about the internal representation of the data in the database. The goal of the relational model was to hide that implementation detail behind a cleaner interface.</p>
+<p>Over the years, there have been many competing approaches to data storage and querying:</p>
+<ul>
+<li>The network model and the hierarchical model were the main alternatives in the 1970s and early 1980s, but the relational model came to dominate them.</li>
+<li>Object databases came and went again in the late 1980s and early 1990s.</li>
+<li>XML databases appeared in the early 2000s, but have only seen niche adoption.</li>
+</ul>
+<p>Each competitor to the relational model generated a lot of hype in its time, but it never lasted.</p>
+<p>As computers became vastly more powerful and networked, they started being used for increasingly diverse purposes. Relational databases turned out to generalize very well, beyond their original scope of business data processing, to a broad variety of use cases. Much of what you see on the web today is still powered by relational databases, be it online publishing, discussion, social networking, ecommerce, games, software-as-a-service productivity applications, etc.</p>
+<h4 id="the-birth-of-nosql">The Birth of NoSQL<a class="headerlink" href="#the-birth-of-nosql" title="Permanent link">&para;</a></h4>
+<p>Now, in the 2010s, NoSQL is the latest attempt to overthrow the relational model's dominance. The name "NoSQL" is unfortunate, since it doesn't actually refer to any particular technology. [p29] A number of interesting database systems are now associated with the NoSQL, and it has been retroactively reinterpreted as <em>Not Only SQL</em>.</p>
+<p>There are several driving forces behind the adoption of NoSQL databases:</p>
+<ul>
+<li>A need for greater scalability than relational databases can easily achieve, including very large datasets or very high write throughput</li>
+<li>A widespread preference for free and open source software over commercial database products</li>
+<li>Specialized query operations that are not well supported by the relational model</li>
+<li>Frustration with the restrictiveness of relational schemas, and a desire for a more dynamic and expressive data model</li>
+</ul>
+<p>Different applications have different requirements. It therefore seems likely that in the foreseeable future, relational databases will continue to be used alongside a broad variety of nonrelational datastores—an idea that is sometimes called <a href="https://en.wikipedia.org/wiki/Polyglot_persistence"><em>polyglot persistence</em></a>.</p>
+<h4 id="the-object-relational-mismatch">The Object-Relational Mismatch<a class="headerlink" href="#the-object-relational-mismatch" title="Permanent link">&para;</a></h4>
+<p>Most application development today is done in object-oriented programming languages, which leads to a common criticism of the SQL data model: if data is stored in relational tables, an awkward translation layer is required between the objects in the application code and the database model of tables, rows, and columns. The disconnect between the models is sometimes called an <a href="https://en.wikipedia.org/wiki/Object-relational_impedance_mismatch"><em>impedance mismatch</em></a>.</p>
+<p><a href="https://en.wikipedia.org/wiki/Object-relational_mapping">Object-relational mapping</a> (ORM) frameworks like ActiveRecord and Hibernate reduce the amount of boilerplate code required for this translation layer, but they can't completely hide the differences between the two models.</p>
+<p>For example, the following figure illustrates how a LinkedIn profile could be
+expressed in a relational schema.</p>
+<p><a href="../figure_2-1.png" title="Figure 2-1. Representing a LinkedIn profile using a relational schema."><img alt="Figure 2-1. Representing a LinkedIn profile using a relational schema. " src="../figure_2-1_600.png" /></a></p>
+<p>The profile as a whole can be identified by a unique identifier, <code>user_id</code>. Fields like <code>first_name</code> and <code>last_name</code> appear exactly once per user, so they can be modeled as columns on the <code>users</code> table. However, most people have had more than one job in their career (positions), and people may have varying numbers of periods of education and any number of pieces of contact information.  There is a one-to-many relationship from the user to these items, which can be represented in various ways:</p>
+<ul>
+<li>In the traditional SQL model (prior to <a href="https://en.wikipedia.org/wiki/SQL:1999">SQL:1999</a>), the most common normalized representation is to put positions, education, and contact information in separate tables, with a foreign key reference to the users table, as in <a href="../figure_2-1.png">Figure 2-1</a>.</li>
+<li>Later versions of the SQL standard added support for structured datatypes and XML data; this allowed multi-valued data to be stored within a single row, with support for querying and indexing inside those documents. These features are supported to varying degrees by Oracle, IBM DB2, MS SQL Server, and PostgreSQL. A JSON datatype is also supported by several databases, including IBM DB2, MySQL, and PostgreSQL.</li>
+<li>A third option is to encode jobs, education, and contact info as a JSON or XML document, store it on a text column in the database, and let the application interpret its structure and content. In this setup, you typically cannot use the database to query for values inside that encoded column.</li>
+</ul>
+<p>For a data structure like a résumé, which is mostly a self-contained document, a JSON representation can be quite appropriate: see the following example 2-1. JSON has the appeal of being much simpler than XML. Document-oriented databases like MongoDB, RethinkDB, CouchDB, and Espresso support this data model.</p>
+<p><small>Example 2-1. Representing a LinkedIn profile as a JSON document</small></p>
+<div class="codehilite"><pre><span class="p">{</span>
+ <span class="nt">&quot;user_id&quot;</span><span class="p">:</span> <span class="mi">251</span><span class="p">,</span>
+ <span class="nt">&quot;first_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bill&quot;</span><span class="p">,</span>
+ <span class="nt">&quot;last_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Gates&quot;</span><span class="p">,</span>
+ <span class="nt">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-chair of the Bill &amp; Melinda Gates... Active blogger.&quot;</span><span class="p">,</span>
+ <span class="nt">&quot;region_id&quot;</span><span class="p">:</span> <span class="s2">&quot;us:91&quot;</span><span class="p">,</span>
+ <span class="nt">&quot;industry_id&quot;</span><span class="p">:</span> <span class="mi">131</span><span class="p">,</span>
+ <span class="nt">&quot;photo_url&quot;</span><span class="p">:</span> <span class="s2">&quot;/p/7/000/253/05b/308dd6e.jpg&quot;</span><span class="p">,</span>
+ <span class="nt">&quot;positions&quot;</span><span class="p">:</span> <span class="p">[</span>
+ <span class="p">{</span><span class="nt">&quot;job_title&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-chair&quot;</span><span class="p">,</span> <span class="nt">&quot;organization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bill &amp; Melinda Gates Foundation&quot;</span><span class="p">},</span>
+ <span class="p">{</span><span class="nt">&quot;job_title&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-founder, Chairman&quot;</span><span class="p">,</span> <span class="nt">&quot;organization&quot;</span><span class="p">:</span> <span class="s2">&quot;Microsoft&quot;</span><span class="p">}</span>
+ <span class="p">],</span>
+ <span class="nt">&quot;education&quot;</span><span class="p">:</span> <span class="p">[</span>
+ <span class="p">{</span><span class="nt">&quot;school_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Harvard University&quot;</span><span class="p">,</span> <span class="nt">&quot;start&quot;</span><span class="p">:</span> <span class="mi">1973</span><span class="p">,</span> <span class="nt">&quot;end&quot;</span><span class="p">:</span> <span class="mi">1975</span><span class="p">},</span>
+ <span class="p">{</span><span class="nt">&quot;school_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Lakeside School, Seattle&quot;</span><span class="p">,</span> <span class="nt">&quot;start&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="nt">&quot;end&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">}</span>
+ <span class="p">],</span>
+ <span class="nt">&quot;contact_info&quot;</span><span class="p">:</span> <span class="p">{</span>
+ <span class="nt">&quot;blog&quot;</span><span class="p">:</span> <span class="s2">&quot;http://thegatesnotes.com&quot;</span><span class="p">,</span>
+ <span class="nt">&quot;twitter&quot;</span><span class="p">:</span> <span class="s2">&quot;http://twitter.com/BillGates&quot;</span>
+ <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Some think that the JSON model reduces the impedance mismatch between the application code and the storage layer. However, as we shall see in <a href="ch4.md">Chapter 4</a>, there are also problems with JSON as a data encoding format. The lack of a schema is often cited as an advantage, which will be discussed this in <a href="#schema-flexibility-in-the-document-model">Schema flexibility in the docu‐ ment model</a>.</p>
+<p>The JSON representation has better <em>locality</em> than the multi-table schema in <a href="../figure_2-1.png">Figure 2-1</a>. If you want to fetch a profile in the relational example, you need to either perform multiple queries (query each table by <code>user_id</code>) or perform a messy multi-way join between the users table and its subordinate tables. In the JSON representation, all the relevant information is in one place, and one query is sufficient.</p>
+<p>The one-to-many relationships from the user profile to the user's positions, educational history, and contact information imply a tree structure in the data, and the JSON representation makes this tree structure explicit (see <a href="../figure_2-2.png">Figure 2-2</a> below).</p>
+<p><a href="../figure_2-2.png" title="Figure 2-2. One-to-many relationships forming a tree structure."><img alt="Figure 2-2. One-to-many relationships forming a tree structure." src="../figure_2-2_600.png" /></a></p>
             </div>
         </div>
 

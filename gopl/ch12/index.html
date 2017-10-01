@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <!-- Global Site Tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59055167-2"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments)};
+          gtag('js', new Date());
+
+          gtag('config', 'UA-59055167-2');
+        </script>
+
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -446,6 +456,9 @@
         <li class="main "><a href="#reflecttype-and-reflectvalue">reflect.Type and reflect.Value</a></li>
         
     
+        <li class="main "><a href="#display-a-recursive-value-printer">Display, a Recursive Value Printer</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -616,6 +629,91 @@ important APIs:</p>
 <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">format</span><span class="p">.</span><span class="nx">Any</span><span class="p">([]</span><span class="kt">int64</span><span class="p">{</span><span class="nx">x</span><span class="p">}))</span>         <span class="c1">// &quot;[]int64 0x8202b87b0&quot;</span>
 <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">format</span><span class="p">.</span><span class="nx">Any</span><span class="p">([]</span><span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">{</span><span class="nx">d</span><span class="p">}))</span> <span class="c1">// &quot;[]time.Duration 0x8202b87e0&quot;</span>
 </pre></div>
+
+
+<h3 id="display-a-recursive-value-printer"><code>Display</code>, a Recursive Value Printer<a class="headerlink" href="#display-a-recursive-value-printer" title="Permanent link">&para;</a></h3>
+<p>This section is about how to improve the display of composite types. Rather than try to copy <code>fmt.Sprint</code> exactly, we'll build a debugging utility function called <code>Display</code> that, given an arbitrarily complex value <code>x</code>, prints the complete structure of that value, labeling each element with the path by which it was found.</p>
+<div class="codehilite"><pre><span class="nx">e</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">eval</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="s">&quot;sqrt(A / pi)&quot;</span><span class="p">)</span>
+<span class="nx">Display</span><span class="p">(</span><span class="s">&quot;e&quot;</span><span class="p">,</span> <span class="nx">e</span><span class="p">)</span>
+</pre></div>
+
+
+<p>In the call above, the argument to <code>Display</code> is a syntax tree from the expression evaluator in <a href="../ch7/#example-expression-evaluator">Section 7.9</a>. <code>eval.Parse</code> is from <a href="https://github.com/shichao-an/gopl.io/blob/master/ch7/eval/parse.go#L59">gopl.io/ch7/eval/parse.go</a>.</p>
+<p>The output of <code>Display</code> is shown below:</p>
+<div class="codehilite"><pre>Display e (eval.call):
+e.fn = &quot;sqrt&quot;
+e.args[0].type = eval.binary
+e.args[0].value.op = 47
+e.args[0].value.x.type = eval.Var
+e.args[0].value.x.value = &quot;A&quot;
+e.args[0].value.y.type = eval.Var
+e.args[0].value.y.value = &quot;pi&quot;
+</pre></div>
+
+
+<p>Where possible, you should avoid exposing reflection in the API of a package. We'll define an unexported function <code>display</code> to do the real work of the recursion, and export <code>Display</code>, a simple wrapper around it that accepts an <code>interface{}</code> parameter:</p>
+<p><small><a href="https://github.com/shichao-an/gopl.io/blob/master/ch12/display/display.go">gopl.io/ch12/display/display.go</a></small></p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">Display</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">x</span> <span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Display %s (%T):\n&quot;</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span>
+    <span class="nx">display</span><span class="p">(</span><span class="nx">name</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p><code>display</code> uses the <code>formatAtom</code> function defined earlier to print elementary values, e.g.  basic types, functions, and channels, but uses the methods of <code>reflect.Value</code> to recursively display each component of a more complex type. As the recursion descends, the <code>path</code> string, which initially describes the starting value (for instance, <code>"e"</code>), will be augmented to indicate how we reached the current value (for instance, <code>"e.args[0].value"</code>).</p>
+<div class="codehilite"><pre><span class="kd">func</span> <span class="nx">display</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">v</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Value</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Kind</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Invalid</span><span class="p">:</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s = invalid\n&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">)</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Slice</span><span class="p">,</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Array</span><span class="p">:</span>
+        <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Len</span><span class="p">();</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+            <span class="nx">display</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s[%d]&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">i</span><span class="p">),</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Index</span><span class="p">(</span><span class="nx">i</span><span class="p">))</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Struct</span><span class="p">:</span>
+        <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">v</span><span class="p">.</span><span class="nx">NumField</span><span class="p">();</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+            <span class="nx">fieldPath</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s.%s&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Type</span><span class="p">().</span><span class="nx">Field</span><span class="p">(</span><span class="nx">i</span><span class="p">).</span><span class="nx">Name</span><span class="p">)</span>
+            <span class="nx">display</span><span class="p">(</span><span class="nx">fieldPath</span><span class="p">,</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Field</span><span class="p">(</span><span class="nx">i</span><span class="p">))</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Map</span><span class="p">:</span>
+        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">key</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">v</span><span class="p">.</span><span class="nx">MapKeys</span><span class="p">()</span> <span class="p">{</span>
+            <span class="nx">display</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s[%s]&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span>
+                <span class="nx">formatAtom</span><span class="p">(</span><span class="nx">key</span><span class="p">)),</span> <span class="nx">v</span><span class="p">.</span><span class="nx">MapIndex</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Ptr</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nx">v</span><span class="p">.</span><span class="nx">IsNil</span><span class="p">()</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s = nil\n&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">)</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">display</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;(*%s)&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">),</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Elem</span><span class="p">())</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">Interface</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nx">v</span><span class="p">.</span><span class="nx">IsNil</span><span class="p">()</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s = nil\n&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">)</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s.type = %s\n&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Elem</span><span class="p">().</span><span class="nx">Type</span><span class="p">())</span>
+            <span class="nx">display</span><span class="p">(</span><span class="nx">path</span><span class="o">+</span><span class="s">&quot;.value&quot;</span><span class="p">,</span> <span class="nx">v</span><span class="p">.</span><span class="nx">Elem</span><span class="p">())</span>
+        <span class="p">}</span>
+    <span class="k">default</span><span class="p">:</span> <span class="c1">// basic types, channels, funcs</span>
+        <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s = %s\n&quot;</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">formatAtom</span><span class="p">(</span><span class="nx">v</span><span class="p">))</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>In the above code:</p>
+<ul>
+<li>
+<p><strong>Slices and arrays:</strong> The logic is the same for both. The <code>Len</code> method returns the number of elements of a slice or array value, and <code>Index(i)</code> retrieves the element at index <code>i</code>, also as a <code>reflect.Value</code>; it panics if <code>i</code> is out of bounds. These are analogous to the built-in <code>len(a)</code> and <code>a[i]</code> operations on sequences. The <code>display</code> function recursively invokes itself on each element of the sequence, appending the subscript notation <code>"[i]"</code> to the path.</p>
+<ul>
+<li>Although <code>reflect.Value</code> has many methods, only a few are safe to call on any given value.</li>
+</ul>
+</li>
+<li>
+<p><strong>Structs</strong>: The <code>NumField</code> method reports the number of fields in the struct, and <code>Field(i)</code> returns the value of the <em>i</em>-th field as a <code>reflect.Value</code>. The list of fields includes ones promoted from anonymous fields. To append the field selector notation <code>".f"</code> to the path, we must obtain the <code>reflect.Type</code> of the struct and access the name of its <em>i</em>-th field.</p>
+</li>
+<li><strong>Maps</strong>: The <code>MapKeys</code> method returns a slice of <code>reflect.Value</code>s, one per map key. As usual when iterating over a map, the order is undefined. <code>MapIndex(key)</code> returns the value corresponding to <code>key</code>. We append the subscript notation <code>"[key]"</code> to the path. (We're cutting a corner here. The type of a map key isn't restricted to the types <code>formatAtom</code> handles best; arrays, structs, and interfaces can also be valid map keys.)</li>
+<li><strong>Pointers</strong>: The <code>Elem</code> method returns the variable pointed to by a pointer as a <code>reflect.Value</code>. This operation would be safe even if the pointer value is <code>nil</code>, in which case the result would have kind <code>Invalid</code>, but we use <code>IsNil</code> to detect nil pointers explicitly so we can print a more appropriate message. We prefix the path with a <code>"*"</code> and parenthesize it to avoid ambiguity.</li>
+<li><strong>Interfaces</strong>: <code>IsNil</code> is used to test whether the interface is nil, and if not, we retrieve its dynamic value using <code>v.Elem()</code> and print its type and value.</li>
+</ul>
             </div>
         </div>
 
