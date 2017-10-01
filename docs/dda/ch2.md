@@ -15,6 +15,93 @@ There are many different kinds of data models, and every data model embodies ass
 
 It can take a lot of effort to master just one data model. Building software is hard enough, even when working with just one data model and without worrying about its inner workings. But since the data model has such a profound effect on what the software above it can and can't do, it's important to choose one that is appropriate to the application.
 
-This chapter covers a range of general-purpose data models for data stor‐ age and querying (point 2 in the preceding list), in particular, comparing the relational model, the document model, and a few graph-based data models. We will also look at various query languages and compare their use cases. In Chapter 3 we will discuss how storage engines work; that is, how these data models are actually implemented (point 3 in the list).
+This chapter covers a range of general-purpose data models for data storage and querying (point 2 in the preceding list), in particular, comparing the relational model, the document model, and a few graph-based data models. We will also look at various query languages and compare their use cases. In [Chapter 3](ch3.md) we will discuss how storage engines work; that is, how these data models are actually implemented (point 3 in the list).
 
 ### Relational Model Versus Document Model
+
+The best-known data model today is probably that of SQL, based on the [relational model](https://en.wikipedia.org/wiki/Relational_model) proposed by [Edgar Codd](https://en.wikipedia.org/wiki/Edgar_F._Codd) in 1970: data is organized into *relations* (called *tables* in SQL), where each relation is an unordered collection of *tuples* (*rows* in SQL).
+
+The relational model was a theoretical proposal, and many people at the time doubted whether it could be implemented efficiently. However, by the mid-1980s, [relational database management systems](https://en.wikipedia.org/wiki/Relational_database_management_system) (RDBMSes) and SQL had become the tools of choice for most people who needed to store and query data with some kind of regular structure. The dominance of relational databases has lasted around 25‒30 years, an eternity in computing history.
+
+The roots of relational databases lie in *business data processing*, which was performed on mainframe computers in the 1960s and 1970s. The use cases appear mundane from today's perspective:
+
+* Transaction processing: entering sales or banking transactions, airline reservations, stock-keeping in warehouse.
+* Batch processing: customer invoicing, payroll, reporting.
+
+Other databases at that time forced application developers to think a lot about the internal representation of the data in the database. The goal of the relational model was to hide that implementation detail behind a cleaner interface.
+
+Over the years, there have been many competing approaches to data storage and querying:
+
+* The network model and the hierarchical model were the main alternatives in the 1970s and early 1980s, but the relational model came to dominate them.
+* Object databases came and went again in the late 1980s and early 1990s.
+* XML databases appeared in the early 2000s, but have only seen niche adoption.
+
+Each competitor to the relational model generated a lot of hype in its time, but it never lasted.
+
+As computers became vastly more powerful and networked, they started being used for increasingly diverse purposes. Relational databases turned out to generalize very well, beyond their original scope of business data processing, to a broad variety of use cases. Much of what you see on the web today is still powered by relational databases, be it online publishing, discussion, social networking, ecommerce, games, software-as-a-service productivity applications, etc.
+
+#### The Birth of NoSQL
+
+Now, in the 2010s, NoSQL is the latest attempt to overthrow the relational model's dominance. The name "NoSQL" is unfortunate, since it doesn't actually refer to any particular technology. [p29] A number of interesting database systems are now associated with the NoSQL, and it has been retroactively reinterpreted as *Not Only SQL*.
+
+There are several driving forces behind the adoption of NoSQL databases:
+
+* A need for greater scalability than relational databases can easily achieve, including very large datasets or very high write throughput
+* A widespread preference for free and open source software over commercial database products
+* Specialized query operations that are not well supported by the relational model
+* Frustration with the restrictiveness of relational schemas, and a desire for a more dynamic and expressive data model
+
+Different applications have different requirements. It therefore seems likely that in the foreseeable future, relational databases will continue to be used alongside a broad variety of nonrelational datastores—an idea that is sometimes called [*polyglot persistence*](https://en.wikipedia.org/wiki/Polyglot_persistence).
+
+#### The Object-Relational Mismatch
+
+Most application development today is done in object-oriented programming languages, which leads to a common criticism of the SQL data model: if data is stored in relational tables, an awkward translation layer is required between the objects in the application code and the database model of tables, rows, and columns. The disconnect between the models is sometimes called an [*impedance mismatch*](https://en.wikipedia.org/wiki/Object-relational_impedance_mismatch).
+
+[Object-relational mapping](https://en.wikipedia.org/wiki/Object-relational_mapping) (ORM) frameworks like ActiveRecord and Hibernate reduce the amount of boilerplate code required for this translation layer, but they can't completely hide the differences between the two models.
+
+For example, the following figure illustrates how a LinkedIn profile could be
+expressed in a relational schema.
+
+[![Figure 2-1. Representing a LinkedIn profile using a relational schema. ](figure_2-1_600.png)](figure_2-1.png "Figure 2-1. Representing a LinkedIn profile using a relational schema.")
+
+The profile as a whole can be identified by a unique identifier, `user_id`. Fields like `first_name` and `last_name` appear exactly once per user, so they can be modeled as columns on the `users` table. However, most people have had more than one job in their career (positions), and people may have varying numbers of periods of education and any number of pieces of contact information.  There is a one-to-many relationship from the user to these items, which can be represented in various ways:
+
+* In the traditional SQL model (prior to [SQL:1999](https://en.wikipedia.org/wiki/SQL:1999)), the most common normalized representation is to put positions, education, and contact information in separate tables, with a foreign key reference to the users table, as in [Figure 2-1](figure_2-1.png).
+* Later versions of the SQL standard added support for structured datatypes and XML data; this allowed multi-valued data to be stored within a single row, with support for querying and indexing inside those documents. These features are supported to varying degrees by Oracle, IBM DB2, MS SQL Server, and PostgreSQL. A JSON datatype is also supported by several databases, including IBM DB2, MySQL, and PostgreSQL.
+* A third option is to encode jobs, education, and contact info as a JSON or XML document, store it on a text column in the database, and let the application interpret its structure and content. In this setup, you typically cannot use the database to query for values inside that encoded column.
+
+For a data structure like a résumé, which is mostly a self-contained document, a JSON representation can be quite appropriate: see the following example 2-1. JSON has the appeal of being much simpler than XML. Document-oriented databases like MongoDB, RethinkDB, CouchDB, and Espresso support this data model.
+
+<small>Example 2-1. Representing a LinkedIn profile as a JSON document</small>
+
+```json
+{
+ "user_id": 251,
+ "first_name": "Bill",
+ "last_name": "Gates",
+ "summary": "Co-chair of the Bill & Melinda Gates... Active blogger.",
+ "region_id": "us:91",
+ "industry_id": 131,
+ "photo_url": "/p/7/000/253/05b/308dd6e.jpg",
+ "positions": [
+ {"job_title": "Co-chair", "organization": "Bill & Melinda Gates Foundation"},
+ {"job_title": "Co-founder, Chairman", "organization": "Microsoft"}
+ ],
+ "education": [
+ {"school_name": "Harvard University", "start": 1973, "end": 1975},
+ {"school_name": "Lakeside School, Seattle", "start": null, "end": null}
+ ],
+ "contact_info": {
+ "blog": "http://thegatesnotes.com",
+ "twitter": "http://twitter.com/BillGates"
+ }
+}
+```
+
+Some think that the JSON model reduces the impedance mismatch between the application code and the storage layer. However, as we shall see in [Chapter 4](ch4.md), there are also problems with JSON as a data encoding format. The lack of a schema is often cited as an advantage, which will be discussed this in [Schema flexibility in the docu‐ ment model](#schema-flexibility-in-the-document-model).
+
+The JSON representation has better *locality* than the multi-table schema in [Figure 2-1](figure_2-1.png). If you want to fetch a profile in the relational example, you need to either perform multiple queries (query each table by `user_id`) or perform a messy multi-way join between the users table and its subordinate tables. In the JSON representation, all the relevant information is in one place, and one query is sufficient.
+
+The one-to-many relationships from the user profile to the user's positions, educational history, and contact information imply a tree structure in the data, and the JSON representation makes this tree structure explicit (see [Figure 2-2](figure_2-2.png) below).
+
+[![Figure 2-2. One-to-many relationships forming a tree structure.](figure_2-2_600.png)](figure_2-2.png "Figure 2-2. One-to-many relationships forming a tree structure.")
