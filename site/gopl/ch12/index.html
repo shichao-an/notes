@@ -714,6 +714,128 @@ e.args[0].value.y.value = &quot;pi&quot;
 <li><strong>Pointers</strong>: The <code>Elem</code> method returns the variable pointed to by a pointer as a <code>reflect.Value</code>. This operation would be safe even if the pointer value is <code>nil</code>, in which case the result would have kind <code>Invalid</code>, but we use <code>IsNil</code> to detect nil pointers explicitly so we can print a more appropriate message. We prefix the path with a <code>"*"</code> and parenthesize it to avoid ambiguity.</li>
 <li><strong>Interfaces</strong>: <code>IsNil</code> is used to test whether the interface is nil, and if not, we retrieve its dynamic value using <code>v.Elem()</code> and print its type and value.</li>
 </ul>
+<p>Let's use <code>Display</code> on some example types. The <code>Movie</code> type below is a slight variation on the one in <a href="../ch4/#json">Section 4.5</a>:</p>
+<div class="codehilite"><pre><span class="kd">type</span> <span class="nx">Movie</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">Title</span><span class="p">,</span> <span class="nx">Subtitle</span> <span class="kt">string</span>
+    <span class="nx">Year</span>            <span class="kt">int</span>
+    <span class="nx">Color</span>           <span class="kt">bool</span>
+    <span class="nx">Actor</span>           <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span>
+    <span class="nx">Oscars</span>          <span class="p">[]</span><span class="kt">string</span>
+    <span class="nx">Sequel</span>          <span class="o">*</span><span class="kt">string</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Let's declare a value of this type and see what <code>Display</code> does with it:</p>
+<div class="codehilite"><pre><span class="nx">strangelove</span> <span class="o">:=</span> <span class="nx">Movie</span><span class="p">{</span>
+    <span class="nx">Title</span><span class="p">:</span>    <span class="s">&quot;Dr. Strangelove&quot;</span><span class="p">,</span>
+    <span class="nx">Subtitle</span><span class="p">:</span> <span class="s">&quot;How I Learned to Stop Worrying and Love the Bomb&quot;</span><span class="p">,</span>
+    <span class="nx">Year</span><span class="p">:</span>     <span class="mi">1964</span><span class="p">,</span>
+    <span class="nx">Color</span><span class="p">:</span>    <span class="kc">false</span><span class="p">,</span>
+    <span class="nx">Actor</span><span class="p">:</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+        <span class="s">&quot;Dr. Strangelove&quot;</span><span class="p">:</span>            <span class="s">&quot;Peter Sellers&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Grp. Capt. Lionel Mandrake&quot;</span><span class="p">:</span> <span class="s">&quot;Peter Sellers&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Pres. Merkin Muffley&quot;</span><span class="p">:</span>       <span class="s">&quot;Peter Sellers&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Gen. Buck Turgidson&quot;</span><span class="p">:</span>        <span class="s">&quot;George C. Scott&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Brig. Gen. Jack D. Ripper&quot;</span><span class="p">:</span>  <span class="s">&quot;Sterling Hayden&quot;</span><span class="p">,</span>
+        <span class="s">`Maj. T.J. &quot;King&quot; Kong`</span><span class="p">:</span>      <span class="s">&quot;Slim Pickens&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="nx">Oscars</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span>
+        <span class="s">&quot;Best Actor (Nomin.)&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Best Adapted Screenplay (Nomin.)&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Best Director (Nomin.)&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Best Picture (Nomin.)&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The call <code>Display("strangelove", strangelove)</code> prints:</p>
+<div class="codehilite"><pre>Display strangelove (display.Movie):
+strangelove.Title = &quot;Dr. Strangelove&quot;
+strangelove.Subtitle = &quot;How I Learned to Stop Worrying and Love the Bomb&quot;
+strangelove.Year = 1964
+strangelove.Color = false
+strangelove.Actor[&quot;Gen. Buck Turgidson&quot;] = &quot;George C. Scott&quot;
+strangelove.Actor[&quot;Brig. Gen. Jack D. Ripper&quot;] = &quot;Sterling Hayden&quot;
+strangelove.Actor[&quot;Maj. T.J. \&quot;King\&quot; Kong&quot;] = &quot;Slim Pickens&quot;
+strangelove.Actor[&quot;Dr. Strangelove&quot;] = &quot;Peter Sellers&quot;
+strangelove.Actor[&quot;Grp. Capt. Lionel Mandrake&quot;] = &quot;Peter Sellers&quot;
+strangelove.Actor[&quot;Pres. Merkin Muffley&quot;] = &quot;Peter Sellers&quot;
+strangelove.Oscars[0] = &quot;Best Actor (Nomin.)&quot;
+strangelove.Oscars[1] = &quot;Best Adapted Screenplay (Nomin.)&quot;
+strangelove.Oscars[2] = &quot;Best Director (Nomin.)&quot;
+strangelove.Oscars[3] = &quot;Best Picture (Nomin.)&quot;
+strangelove.Sequel = nil
+</pre></div>
+
+
+<p>We can use <code>Display</code> to display the internals of library types, such as <code>*os.File</code>:</p>
+<div class="codehilite"><pre><span class="nx">Display</span><span class="p">(</span><span class="s">&quot;os.Stderr&quot;</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// Display os.Stderr (*os.File):</span>
+<span class="c1">// (*(*os.Stderr).file).fd = 2</span>
+<span class="c1">// (*(*os.Stderr).file).name = &quot;/dev/stderr&quot;</span>
+<span class="c1">// (*(*os.Stderr).file).nepipe = 0</span>
+</pre></div>
+
+
+<p>Notice that even unexported fields are visible to reflection. Beware that the particular output of this example may vary across platforms and may change over time as libraries evolve. (Those fields are private for a reason.)</p>
+<p>We can even apply <code>Display</code> to a <code>reflect.Value</code> and watch it traverse the internal representation of the type descriptor for <code>*os.File</code>. The output of the call <code>Display("rV", reflect.ValueOf(os.Stderr))</code> is shown below (though your output may vary:</p>
+<div class="codehilite"><pre>Display rV (reflect.Value):
+(*rV.typ).size = 8
+(*rV.typ).hash = 871609668
+(*rV.typ).align = 8
+(*rV.typ).fieldAlign = 8
+(*rV.typ).kind = 22
+(*(*rV.typ).string) = &quot;*os.File&quot;
+(*(*(*rV.typ).uncommonType).methods[0].name) = &quot;Chdir&quot;
+(*(*(*(*rV.typ).uncommonType).methods[0].mtyp).string) = &quot;func() error&quot;
+(*(*(*(*rV.typ).uncommonType).methods[0].typ).string) = &quot;func(*os.File) error&quot;
+...
+</pre></div>
+
+
+<p>Observe the difference between the following two examples:</p>
+<div class="codehilite"><pre><span class="kd">var</span> <span class="nx">i</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="mi">3</span>
+<span class="nx">Display</span><span class="p">(</span><span class="s">&quot;i&quot;</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// Display i (int):</span>
+<span class="c1">// i = 3</span>
+
+<span class="nx">Display</span><span class="p">(</span><span class="s">&quot;&amp;i&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">i</span><span class="p">)</span>
+<span class="c1">// Output:</span>
+<span class="c1">// Display &amp;i (*interface {}):</span>
+<span class="c1">// (*&amp;i).type = int</span>
+<span class="c1">// (*&amp;i).value = 3</span>
+</pre></div>
+
+
+<ul>
+<li>In the first example, <code>Display</code> calls <code>reflect.ValueOf(i)</code>, which returns a value of kind <code>Int</code>.  As we mentioned in <a href="#reflecttype-and-reflectvalue">Section 12.2</a>, <code>reflect.ValueOf</code> always returns a <code>Value</code> of a concrete type since it extracts the contents of an interface value.</li>
+<li>In the second example, <code>Display</code> calls <code>reflect.ValueOf(&amp;i)</code>, which returns a pointer to <code>i</code>, of kind <code>Ptr</code>. The switch case for <code>Ptr</code> calls <code>Elem</code> on this value, which returns a <code>Value</code> representing the variable <code>i</code> itself, of kind <code>Interface</code>. A <code>Value</code> obtained indirectly like this one may represent any value at all, including interfaces. The <code>display</code> function calls itself recursively and this time, it prints separate components for the interface's dynamic type and value.</li>
+</ul>
+<p>As currently implemented, <code>Display</code> will never terminate if it encounters a cycle in the object graph, such as this linked list that eats its own tail:</p>
+<div class="codehilite"><pre><span class="c1">// a struct that points to itself</span>
+<span class="kd">type</span> <span class="nx">Cycle</span> <span class="kd">struct</span><span class="p">{</span> <span class="nx">Value</span> <span class="kt">int</span><span class="p">;</span> <span class="nx">Tail</span> <span class="o">*</span><span class="nx">Cycle</span> <span class="p">}</span>
+<span class="kd">var</span> <span class="nx">c</span> <span class="nx">Cycle</span>
+<span class="nx">c</span> <span class="p">=</span> <span class="nx">Cycle</span><span class="p">{</span><span class="mi">42</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">c</span><span class="p">}</span>
+<span class="nx">Display</span><span class="p">(</span><span class="s">&quot;c&quot;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>
+</pre></div>
+
+
+<p><code>Display</code> prints this ever-growing expansion:</p>
+<div class="codehilite"><pre><span class="nx">Display</span> <span class="nx">c</span> <span class="p">(</span><span class="nx">display</span><span class="p">.</span><span class="nx">Cycle</span><span class="p">):</span>
+<span class="nx">c</span><span class="p">.</span><span class="nx">Value</span> <span class="p">=</span> <span class="mi">42</span>
+<span class="p">(</span><span class="o">*</span><span class="nx">c</span><span class="p">.</span><span class="nx">Tail</span><span class="p">).</span><span class="nx">Value</span> <span class="p">=</span> <span class="mi">42</span>
+<span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="nx">c</span><span class="p">.</span><span class="nx">Tail</span><span class="p">).</span><span class="nx">Tail</span><span class="p">).</span><span class="nx">Value</span> <span class="p">=</span> <span class="mi">42</span>
+<span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="nx">c</span><span class="p">.</span><span class="nx">Tail</span><span class="p">).</span><span class="nx">Tail</span><span class="p">).</span><span class="nx">Tail</span><span class="p">).</span><span class="nx">Value</span> <span class="p">=</span> <span class="mi">42</span>
+<span class="o">...</span><span class="nx">ad</span> <span class="nx">infinitum</span><span class="o">...</span>
+</pre></div>
+
+
+<p>Many Go programs contain at least some cyclic data. Making <code>Display</code> robust against such cycles is tricky, requiring additional bookkeeping to record the set of references that have been followed so far (which is also costly). A general solution requires <code>unsafe</code> language features, as we will see in <a href="ch13.md#example-deep-equivalence">Section 13.3</a>.</p>
+<p>Cycles pose less of a problem for <code>fmt.Sprint</code> because it rarely tries to print the complete structure. For example, when it encounters a pointer, it breaks the recursion by printing the pointer's numeric value. It can get stuck trying to print a slice or map that contains itself as an element, but such rare cases do not warrant the considerable extra trouble of handling cycles.</p>
             </div>
         </div>
 
