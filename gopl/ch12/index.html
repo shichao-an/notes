@@ -459,6 +459,12 @@
         <li class="main "><a href="#display-a-recursive-value-printer">Display, a Recursive Value Printer</a></li>
         
     
+        <li class="main "><a href="#example-encoding-s-expressions">Example: Encoding S-Expressions</a></li>
+        
+    
+        <li class="main "><a href="#setting-variables-with-reflectvalue">Setting Variables with reflect.Value</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
@@ -836,6 +842,102 @@ strangelove.Sequel = nil
 
 <p>Many Go programs contain at least some cyclic data. Making <code>Display</code> robust against such cycles is tricky, requiring additional bookkeeping to record the set of references that have been followed so far (which is also costly). A general solution requires <code>unsafe</code> language features, as we will see in <a href="ch13.md#example-deep-equivalence">Section 13.3</a>.</p>
 <p>Cycles pose less of a problem for <code>fmt.Sprint</code> because it rarely tries to print the complete structure. For example, when it encounters a pointer, it breaks the recursion by printing the pointer's numeric value. It can get stuck trying to print a slice or map that contains itself as an element, but such rare cases do not warrant the considerable extra trouble of handling cycles.</p>
+<h3 id="example-encoding-s-expressions">Example: Encoding S-Expressions<a class="headerlink" href="#example-encoding-s-expressions" title="Permanent link">&para;</a></h3>
+<p>(skipped) [p338-341]</p>
+<h3 id="setting-variables-with-reflectvalue">Setting Variables with <code>reflect.Value</code><a class="headerlink" href="#setting-variables-with-reflectvalue" title="Permanent link">&para;</a></h3>
+<p>In previous sections, reflection has only <em>interpreted</em> values in our program. The point of this section is to <em>change</em> them.</p>
+<p>Recall that some Go expressions like <code>x</code>, <code>x.f[1]</code>, and <code>*p</code> denote variables, but others like <code>x + 1</code> and <code>f(2</code>) do not. A variable is an <em>addressable</em> storage location that contains a value, and its value may be updated through that address.</p>
+<p>A similar distinction applies to <code>reflect.Value</code>s. Some are addressable; others are not.  Consider the following declarations:</p>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">2</span>                     <span class="c1">// value   type   variable?</span>
+<span class="nx">a</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c1">// 2       int    no</span>
+<span class="nx">b</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>    <span class="c1">// 2       int    no</span>
+<span class="nx">c</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">x</span><span class="p">)</span>   <span class="c1">// &amp;x      *int   no</span>
+<span class="nx">d</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">Elem</span><span class="p">()</span>              <span class="c1">// 2       int    yes (x)</span>
+</pre></div>
+
+
+<ul>
+<li>The value within <code>a</code> is not addressable. It is merely a copy of the integer 2. The same is true of b.</li>
+<li>The value within <code>c</code> is also non-addressable, being a copy of the pointer value <code>&amp;x</code>.</li>
+<li>In fact, no <code>reflect.Value</code> returned by <code>reflect.ValueOf(x)</code> is addressable.</li>
+<li>But <code>d</code>, derived from <code>c</code> by dereferencing the pointer within it, refers to a variable and is thus addressable. We can use this approach, calling <code>reflect.ValueOf(&amp;x).Elem()</code>, to obtain an addressable <code>Value</code> for any variable <code>x</code>.</li>
+</ul>
+<p>We can ask a <code>reflect.Value</code> whether it is addressable through its <code>CanAddr</code> method:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">a</span><span class="p">.</span><span class="nx">CanAddr</span><span class="p">())</span> <span class="c1">// &quot;false&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">CanAddr</span><span class="p">())</span> <span class="c1">// &quot;false&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">CanAddr</span><span class="p">())</span> <span class="c1">// &quot;false&quot;</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">CanAddr</span><span class="p">())</span> <span class="c1">// &quot;true&quot;</span>
+</pre></div>
+
+
+<p>We obtain an addressable <code>reflect.Value</code> whenever we indirect through a pointer, even if we started from a non-addressable <code>Value</code>. All the usual rules for addressability have analogs for reflection. For example, since the slice indexing expression <code>e[i]</code> implicitly follows a pointer, it is addressable even if the expression <code>e</code> is not. By analogy, <code>reflect.ValueOf(e).Index(i)</code> refers to a variable, and is thus addressable even if <code>reflect.ValueOf(e)</code> is not.</p>
+<p>To recover the variable from an addressable <code>reflect.Value</code> requires three steps:</p>
+<ol>
+<li>We call <code>Addr()</code>, which returns a <code>Value</code> holding a pointer to the variable.</li>
+<li>We call <code>Interface()</code> on this <code>Value</code>, which returns an <code>interface{}</code> value containing the pointer.</li>
+<li>If we know the type of the variable, we can use a type assertion to retrieve the contents of the interface as an ordinary pointer. We can then update the variable through the pointer:</li>
+</ol>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">2</span>
+<span class="nx">d</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">x</span><span class="p">).</span><span class="nx">Elem</span><span class="p">()</span>   <span class="c1">// d refers to the variable x</span>
+<span class="nx">px</span> <span class="o">:=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">Addr</span><span class="p">().</span><span class="nx">Interface</span><span class="p">().(</span><span class="o">*</span><span class="kt">int</span><span class="p">)</span> <span class="c1">// px := &amp;x</span>
+<span class="o">*</span><span class="nx">px</span> <span class="p">=</span> <span class="mi">3</span>                           <span class="c1">// x = 3</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>                    <span class="c1">// &quot;3&quot;</span>
+</pre></div>
+
+
+<p>Alternatively, we can update the variable referred to by an addressable <code>reflect.Value</code> directly without using a pointer, by calling the <code>reflect.Value.Set</code> method:</p>
+<div class="codehilite"><pre><span class="nx">d</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="c1">// &quot;4&quot;</span>
+</pre></div>
+
+
+<p>The same <a href="../ch2/#assignability">assignability</a> checks, which are ordinarily performed by the compiler, are done at run time by the <code>Set</code> methods. In the above code, the variable and the value both have type <code>int</code>, but if the variable had been an <code>int64</code>, the program would panic, so it's crucial to make sure the value is assignable to the type of the variable:</p>
+<div class="codehilite"><pre><span class="nx">d</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="nb">int64</span><span class="p">(</span><span class="mi">5</span><span class="p">)))</span> <span class="c1">// panic: int64 is not assignable to int</span>
+</pre></div>
+
+
+<p>Calling <code>Set</code> on a non-addressable <code>reflect.Value</code> panics too:</p>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">2</span>
+<span class="nx">b</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+<span class="nx">b</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span> <span class="c1">// panic: Set using unaddressable value</span>
+</pre></div>
+
+
+<p>There are variants of <code>Set</code> specialized for certain groups of basic types: <code>SetInt</code>, <code>SetUint</code>, <code>SetString</code>, <code>SetFloat</code>, and so on:</p>
+<div class="codehilite"><pre><span class="nx">d</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">x</span><span class="p">).</span><span class="nx">Elem</span><span class="p">()</span>
+<span class="nx">d</span><span class="p">.</span><span class="nx">SetInt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="c1">// &quot;3&quot;</span>
+</pre></div>
+
+
+<p>These methods are more forgiving. For example, <code>SetInt</code> will succeed so long as the variable's type is some kind of signed integer, or even a named type whose underlying type is a signed integer, and if the value is too large it will be quietly truncated to fit. But tread carefully: calling <code>SetInt</code> on a <code>reflect.Value</code> that refers to an <code>interface{}</code> variable will panic, even though <code>Set</code> would succeed.</p>
+<div class="codehilite"><pre><span class="nx">x</span> <span class="o">:=</span> <span class="mi">1</span>
+<span class="nx">rx</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">x</span><span class="p">).</span><span class="nx">Elem</span><span class="p">()</span>
+<span class="nx">rx</span><span class="p">.</span><span class="nx">SetInt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>                     <span class="c1">// OK, x = 2</span>
+<span class="nx">rx</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>       <span class="c1">// OK, x = 3</span>
+<span class="nx">rx</span><span class="p">.</span><span class="nx">SetString</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">)</span>            <span class="c1">// panic: string is not assignable to int</span>
+<span class="nx">rx</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// panic: string is not assignable to int</span>
+<span class="kd">var</span> <span class="nx">y</span> <span class="kd">interface</span><span class="p">{}</span>
+<span class="nx">ry</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">y</span><span class="p">).</span><span class="nx">Elem</span><span class="p">()</span>
+<span class="nx">ry</span><span class="p">.</span><span class="nx">SetInt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>                     <span class="c1">// panic: SetInt called on interface Value</span>
+<span class="nx">ry</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>       <span class="c1">// OK, y = int(3)</span>
+<span class="nx">ry</span><span class="p">.</span><span class="nx">SetString</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">)</span>            <span class="c1">// panic: SetString called on interface Value</span>
+<span class="nx">ry</span><span class="p">.</span><span class="nx">Set</span><span class="p">(</span><span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">))</span> <span class="c1">// OK, y = &quot;hello&quot;</span>
+</pre></div>
+
+
+<p>When we applied <code>Display</code> to <code>os.Stdout</code>, we found that reflection can read the values of unexported struct fields that are inaccessible according to the usual rules of the language, like the <code>fd int</code> field of an <code>os.File</code> struct on a Unix-like platform. However, reflection cannot update such values:</p>
+<div class="codehilite"><pre><span class="nx">stdout</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nx">ValueOf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">).</span><span class="nx">Elem</span><span class="p">()</span> <span class="c1">// *os.Stdout, an os.File var</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">stdout</span><span class="p">.</span><span class="nx">Type</span><span class="p">())</span>                  <span class="c1">// &quot;os.File&quot;</span>
+<span class="nx">fd</span> <span class="o">:=</span> <span class="nx">stdout</span><span class="p">.</span><span class="nx">FieldByName</span><span class="p">(</span><span class="s">&quot;fd&quot;</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">fd</span><span class="p">.</span><span class="nx">Int</span><span class="p">())</span> <span class="c1">// &quot;1&quot;</span>
+<span class="nx">fd</span><span class="p">.</span><span class="nx">SetInt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>          <span class="c1">// panic: unexported field</span>
+</pre></div>
+
+
+<p>An addressable <code>reflect.Value</code> records whether it was obtained by traversing an unexported struct field and, if so, disallows modification. Consequently, <code>CanAddr</code> is not usually the right check to use before setting a variable. The related method <code>CanSet</code> reports whether a <code>reflect.Value</code> is addressable and settable:</p>
+<div class="codehilite"><pre><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">fd</span><span class="p">.</span><span class="nx">CanAddr</span><span class="p">(),</span> <span class="nx">fd</span><span class="p">.</span><span class="nx">CanSet</span><span class="p">())</span> <span class="c1">// &quot;true false&quot;</span>
+</pre></div>
             </div>
         </div>
 
