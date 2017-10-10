@@ -192,7 +192,7 @@ As a shorthand, Go programmers often say that a concrete type "is a" particular 
 * A `*bytes.Buffer` is an `io.Writer`.
 * An `*os.File` is an `io.ReadWriter`.
 
-The assignability rule ([Section 2.4.2](ch2.md##assignability)) for interfaces is very simple: an expression may be assigned to an interface only if its type satisfies the interface. For example:
+The assignability rule ([Section 2.4.2](ch2.md#assignability)) for interfaces is very simple: an expression may be assigned to an interface only if its type satisfies the interface. For example:
 
 ```go
 var w io.Writer
@@ -527,7 +527,7 @@ Calling the `Write` method on an interface value containing an `*os.File` pointe
 w.Write([]byte("hello")) // "hello"
 ```
 
-In general, we cannot know at compile time what the dynamic type of an interface value will be, so a call through an interface must use [*dynamic dispatch*](https://en.wikipedia.org/wiki/Dynamic_dispatch). Instead of a direct call, the compiler must generate code to obtain the address of the method named `Write` from the type descriptor, then make an indirect call to that address. The receiver argument for the call is a copy of the interface's dynamic value,` os.Stdout`. The effect is as if we had made this call directly:
+In general, we cannot know at compile time what the dynamic type of an interface value will be, so a call through an interface must use [*dynamic dispatch*](https://en.wikipedia.org/wiki/Dynamic_dispatch). Instead of a direct call, the compiler must generate code to obtain the address of the method named `Write` from the type descriptor, then make an indirect call to that address. The receiver argument for the call is a copy of the interface's dynamic value,`os.Stdout`. The effect is as if we had made this call directly:
 
 ```go
 os.Stdout.Write([]byte("hello")) // "hello"
@@ -1648,7 +1648,6 @@ An exception to this rule is: when an interface is satisfied by a single concret
 Because interfaces are used only when they are satisfied by two or more types, they necessarily abstract away from the details of any particular implementation. The result is smaller interfaces with fewer, simpler methods, often just one as with `io.Writer` or `fmt.Stringer.` Small interfaces are easier to satisfy when new types come along. A good rule of thumb for interface design is *ask only for what you need*.
 
 With methods and interfaces, Go has great support for the object-oriented style of programming, but this does not mean you need to use it exclusively. Not everything need be an object; standalone functions have their place, as do unencapsulated data types.
-
 
 ### Doubts and Solution
 
