@@ -545,8 +545,7 @@ _, ok = x.(T)              // check type but discard result
 
 #### Assignability
 
-Assignment statements are an explicit form of assignment. There are many places in a
-program where an assignment occurs implicitly:
+Assignment statements are an explicit form of assignment. There are many places in a program where an assignment occurs implicitly:
 
 * A function call implicitly assigns the argument values to the corresponding parameter variables;
 * A `return` statement implicitly assigns the `return` operands to the corresponding result variables;
@@ -635,8 +634,7 @@ This package defines two types, `Celsius` and `Fahrenheit` for the two units of 
 
 #### Type conversion *
 
-For every type `T`, there is a corresponding conversion operation `T(x)` that converts the value `x`
-to type `T`. A conversion from one type to another is allowed if any of the following holds:
+For every type `T`, there is a corresponding conversion operation `T(x)` that converts the value `x` to type `T`. A conversion from one type to another is allowed if any of the following holds:
 
 * Both have the same underlying type.
 * Both are unnamed pointer types that point to variables of the same underlying type.
@@ -661,9 +659,7 @@ fmt.Printf("%g\n", boilingF-CToF(FreezingC))  // "180" °F
 fmt.Printf("%g\n", boilingF-FreezingC)        // compile error: type mismatch
 ```
 
-Comparison operators like `==` and `<` can also be used to compare a value of a named type to
-another of the same type, or to a value of the underlying type. But two values of different
-named types cannot be compared directly:
+Comparison operators like `==` and `<` can also be used to compare a value of a named type to another of the same type, or to a value of the underlying type. But two values of different named types cannot be compared directly:
 
 ```go
 var c Celsius
