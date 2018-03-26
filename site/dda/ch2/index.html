@@ -456,6 +456,8 @@
         
             <li><a href="#the-object-relational-mismatch">The Object-Relational Mismatch</a></li>
         
+            <li><a href="#many-to-one-and-many-to-many-relationships">Many-to-One and Many-to-Many Relationships</a></li>
+        
     
     </ul>
 </div></div>
@@ -516,27 +518,40 @@ expressed in a relational schema.</p>
 </ul>
 <p>For a data structure like a résumé, which is mostly a self-contained document, a JSON representation can be quite appropriate: see the following example 2-1. JSON has the appeal of being much simpler than XML. Document-oriented databases like MongoDB, RethinkDB, CouchDB, and Espresso support this data model.</p>
 <p><small>Example 2-1. Representing a LinkedIn profile as a JSON document</small></p>
-<div class="codehilite"><pre><span class="p">{</span>
- <span class="nt">&quot;user_id&quot;</span><span class="p">:</span> <span class="mi">251</span><span class="p">,</span>
- <span class="nt">&quot;first_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bill&quot;</span><span class="p">,</span>
- <span class="nt">&quot;last_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Gates&quot;</span><span class="p">,</span>
- <span class="nt">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-chair of the Bill &amp; Melinda Gates... Active blogger.&quot;</span><span class="p">,</span>
- <span class="nt">&quot;region_id&quot;</span><span class="p">:</span> <span class="s2">&quot;us:91&quot;</span><span class="p">,</span>
- <span class="nt">&quot;industry_id&quot;</span><span class="p">:</span> <span class="mi">131</span><span class="p">,</span>
- <span class="nt">&quot;photo_url&quot;</span><span class="p">:</span> <span class="s2">&quot;/p/7/000/253/05b/308dd6e.jpg&quot;</span><span class="p">,</span>
- <span class="nt">&quot;positions&quot;</span><span class="p">:</span> <span class="p">[</span>
- <span class="p">{</span><span class="nt">&quot;job_title&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-chair&quot;</span><span class="p">,</span> <span class="nt">&quot;organization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bill &amp; Melinda Gates Foundation&quot;</span><span class="p">},</span>
- <span class="p">{</span><span class="nt">&quot;job_title&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-founder, Chairman&quot;</span><span class="p">,</span> <span class="nt">&quot;organization&quot;</span><span class="p">:</span> <span class="s2">&quot;Microsoft&quot;</span><span class="p">}</span>
- <span class="p">],</span>
- <span class="nt">&quot;education&quot;</span><span class="p">:</span> <span class="p">[</span>
- <span class="p">{</span><span class="nt">&quot;school_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Harvard University&quot;</span><span class="p">,</span> <span class="nt">&quot;start&quot;</span><span class="p">:</span> <span class="mi">1973</span><span class="p">,</span> <span class="nt">&quot;end&quot;</span><span class="p">:</span> <span class="mi">1975</span><span class="p">},</span>
- <span class="p">{</span><span class="nt">&quot;school_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Lakeside School, Seattle&quot;</span><span class="p">,</span> <span class="nt">&quot;start&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="nt">&quot;end&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">}</span>
- <span class="p">],</span>
- <span class="nt">&quot;contact_info&quot;</span><span class="p">:</span> <span class="p">{</span>
- <span class="nt">&quot;blog&quot;</span><span class="p">:</span> <span class="s2">&quot;http://thegatesnotes.com&quot;</span><span class="p">,</span>
- <span class="nt">&quot;twitter&quot;</span><span class="p">:</span> <span class="s2">&quot;http://twitter.com/BillGates&quot;</span>
- <span class="p">}</span>
-<span class="p">}</span>
+<div class="codehilite"><pre>  <span class="s2">&quot;user_id&quot;</span><span class="err">:</span> <span class="mi">251</span><span class="err">,</span>
+  <span class="s2">&quot;first_name&quot;</span><span class="err">:</span> <span class="s2">&quot;Bill&quot;</span><span class="err">,</span>
+  <span class="s2">&quot;last_name&quot;</span><span class="err">:</span> <span class="s2">&quot;Gates&quot;</span><span class="err">,</span>
+  <span class="s2">&quot;summary&quot;</span><span class="err">:</span> <span class="s2">&quot;Co-chair of the Bill &amp; Melinda Gates... Active blogger.&quot;</span><span class="err">,</span>
+  <span class="s2">&quot;region_id&quot;</span><span class="err">:</span> <span class="s2">&quot;us:91&quot;</span><span class="err">,</span>
+  <span class="s2">&quot;industry_id&quot;</span><span class="err">:</span> <span class="mi">131</span><span class="err">,</span>
+  <span class="s2">&quot;photo_url&quot;</span><span class="err">:</span> <span class="s2">&quot;/p/7/000/253/05b/308dd6e.jpg&quot;</span><span class="err">,</span>
+  <span class="s2">&quot;positions&quot;</span><span class="err">:</span> <span class="p">[</span>
+    <span class="p">{</span>
+      <span class="nt">&quot;job_title&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-chair&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;organization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bill &amp; Melinda Gates Foundation&quot;</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+      <span class="nt">&quot;job_title&quot;</span><span class="p">:</span> <span class="s2">&quot;Co-founder, Chairman&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;organization&quot;</span><span class="p">:</span> <span class="s2">&quot;Microsoft&quot;</span>
+    <span class="p">}</span>
+  <span class="p">]</span><span class="err">,</span>
+  <span class="s2">&quot;education&quot;</span><span class="err">:</span> <span class="p">[</span>
+    <span class="p">{</span>
+      <span class="nt">&quot;school_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Harvard University&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;start&quot;</span><span class="p">:</span> <span class="mi">1973</span><span class="p">,</span>
+      <span class="nt">&quot;end&quot;</span><span class="p">:</span> <span class="mi">1975</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+      <span class="nt">&quot;school_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Lakeside School, Seattle&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;start&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>
+      <span class="nt">&quot;end&quot;</span><span class="p">:</span> <span class="kc">null</span>
+    <span class="p">}</span>
+  <span class="p">]</span><span class="err">,</span>
+  <span class="s2">&quot;contact_info&quot;</span><span class="err">:</span> <span class="p">{</span>
+    <span class="nt">&quot;blog&quot;</span><span class="p">:</span> <span class="s2">&quot;http://thegatesnotes.com&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;twitter&quot;</span><span class="p">:</span> <span class="s2">&quot;http://twitter.com/BillGates&quot;</span>
+  <span class="p">}</span>
+<span class="err">}</span>
 </pre></div>
 
 
@@ -544,6 +559,22 @@ expressed in a relational schema.</p>
 <p>The JSON representation has better <em>locality</em> than the multi-table schema in <a href="../figure_2-1.png">Figure 2-1</a>. If you want to fetch a profile in the relational example, you need to either perform multiple queries (query each table by <code>user_id</code>) or perform a messy multi-way join between the users table and its subordinate tables. In the JSON representation, all the relevant information is in one place, and one query is sufficient.</p>
 <p>The one-to-many relationships from the user profile to the user's positions, educational history, and contact information imply a tree structure in the data, and the JSON representation makes this tree structure explicit (see <a href="../figure_2-2.png">Figure 2-2</a> below).</p>
 <p><a href="../figure_2-2.png" title="Figure 2-2. One-to-many relationships forming a tree structure."><img alt="Figure 2-2. One-to-many relationships forming a tree structure." src="../figure_2-2_600.png" /></a></p>
+<h4 id="many-to-one-and-many-to-many-relationships">Many-to-One and Many-to-Many Relationships<a class="headerlink" href="#many-to-one-and-many-to-many-relationships" title="Permanent link">&para;</a></h4>
+<p>In the previous example, <code>region_id</code> and <code>industry_id</code> are given as IDs, not as plain-text strings "<code>Greater Seattle Area</code>" and "<code>Philanthropy</code>". Why?</p>
+<p>If the user interface has free-text fields for entering the region and the industry, it makes sense to store them as plain-text strings. But there are advantages to having standardized lists of geographic regions and industries, and letting users choose from a drop-down list or autocompleter:</p>
+<ul>
+<li>Consistent style and spelling across profiles</li>
+<li>Avoiding ambiguity (e.g., if there are several cities with the same name)</li>
+<li>Ease of updating. The name is stored in only one place, so it is easy to update across the board if it ever needs to be changed (e.g., change of a city name due to political events)</li>
+<li>Localization support. When the site is translated into other languages, the stand‐ ardized lists can be localized, so the region and industry can be displayed in the viewer's language</li>
+<li>Better search. For example, a search for philanthropists in the state of Washington can match this profile, because the list of regions can encode the fact that Seattle is in Washington (which is not apparent from the string "<code>Greater Seattle Area</code>")</li>
+</ul>
+<p>Whether you store an ID or a text string is a question of duplication:</p>
+<ul>
+<li>When you use an ID, the information that is meaningful to humans (such as the word <em>Philanthropy</em>) is stored in only one place, and everything that refers to it uses an ID (which only has meaning within the database).</li>
+<li>When you store the text directly, you are duplicating the human-meaningful information in every record that uses it.</li>
+</ul>
+<p><u>The advantage of using an ID is that because it has no meaning to humans, it never needs to change: the ID can remain the same, even if the information it identifies changes.</u> Anything that is meaningful to humans may need to change sometime in the future. If that information is duplicated, all the redundant copies need to be updated. That incurs write overheads, and risks inconsistencies (where some copies of the information are updated but others aren't). Removing such duplication is the key idea behind <em>normalization</em> in databases.</p>
             </div>
         </div>
 
