@@ -75,26 +75,39 @@ For a data structure like a résumé, which is mostly a self-contained document,
 <small>Example 2-1. Representing a LinkedIn profile as a JSON document</small>
 
 ```json
-{
- "user_id": 251,
- "first_name": "Bill",
- "last_name": "Gates",
- "summary": "Co-chair of the Bill & Melinda Gates... Active blogger.",
- "region_id": "us:91",
- "industry_id": 131,
- "photo_url": "/p/7/000/253/05b/308dd6e.jpg",
- "positions": [
- {"job_title": "Co-chair", "organization": "Bill & Melinda Gates Foundation"},
- {"job_title": "Co-founder, Chairman", "organization": "Microsoft"}
- ],
- "education": [
- {"school_name": "Harvard University", "start": 1973, "end": 1975},
- {"school_name": "Lakeside School, Seattle", "start": null, "end": null}
- ],
- "contact_info": {
- "blog": "http://thegatesnotes.com",
- "twitter": "http://twitter.com/BillGates"
- }
+  "user_id": 251,
+  "first_name": "Bill",
+  "last_name": "Gates",
+  "summary": "Co-chair of the Bill & Melinda Gates... Active blogger.",
+  "region_id": "us:91",
+  "industry_id": 131,
+  "photo_url": "/p/7/000/253/05b/308dd6e.jpg",
+  "positions": [
+    {
+      "job_title": "Co-chair",
+      "organization": "Bill & Melinda Gates Foundation"
+    },
+    {
+      "job_title": "Co-founder, Chairman",
+      "organization": "Microsoft"
+    }
+  ],
+  "education": [
+    {
+      "school_name": "Harvard University",
+      "start": 1973,
+      "end": 1975
+    },
+    {
+      "school_name": "Lakeside School, Seattle",
+      "start": null,
+      "end": null
+    }
+  ],
+  "contact_info": {
+    "blog": "http://thegatesnotes.com",
+    "twitter": "http://twitter.com/BillGates"
+  }
 }
 ```
 
@@ -105,3 +118,22 @@ The JSON representation has better *locality* than the multi-table schema in [Fi
 The one-to-many relationships from the user profile to the user's positions, educational history, and contact information imply a tree structure in the data, and the JSON representation makes this tree structure explicit (see [Figure 2-2](figure_2-2.png) below).
 
 [![Figure 2-2. One-to-many relationships forming a tree structure.](figure_2-2_600.png)](figure_2-2.png "Figure 2-2. One-to-many relationships forming a tree structure.")
+
+#### Many-to-One and Many-to-Many Relationships
+
+In the previous example, `region_id` and `industry_id` are given as IDs, not as plain-text strings "`Greater Seattle Area`" and "`Philanthropy`". Why?
+
+If the user interface has free-text fields for entering the region and the industry, it makes sense to store them as plain-text strings. But there are advantages to having standardized lists of geographic regions and industries, and letting users choose from a drop-down list or autocompleter:
+
+* Consistent style and spelling across profiles
+* Avoiding ambiguity (e.g., if there are several cities with the same name)
+* Ease of updating. The name is stored in only one place, so it is easy to update across the board if it ever needs to be changed (e.g., change of a city name due to political events)
+* Localization support. When the site is translated into other languages, the stand‐ ardized lists can be localized, so the region and industry can be displayed in the viewer's language
+* Better search. For example, a search for philanthropists in the state of Washington can match this profile, because the list of regions can encode the fact that Seattle is in Washington (which is not apparent from the string "`Greater Seattle Area`")
+
+Whether you store an ID or a text string is a question of duplication:
+
+* When you use an ID, the information that is meaningful to humans (such as the word *Philanthropy*) is stored in only one place, and everything that refers to it uses an ID (which only has meaning within the database).
+* When you store the text directly, you are duplicating the human-meaningful information in every record that uses it.
+
+<u>The advantage of using an ID is that because it has no meaning to humans, it never needs to change: the ID can remain the same, even if the information it identifies changes.</u> Anything that is meaningful to humans may need to change sometime in the future. If that information is duplicated, all the redundant copies need to be updated. That incurs write overheads, and risks inconsistencies (where some copies of the information are updated but others aren't). Removing such duplication is the key idea behind *normalization* in databases.
