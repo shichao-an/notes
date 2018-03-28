@@ -137,3 +137,10 @@ Whether you store an ID or a text string is a question of duplication:
 * When you store the text directly, you are duplicating the human-meaningful information in every record that uses it.
 
 <u>The advantage of using an ID is that because it has no meaning to humans, it never needs to change: the ID can remain the same, even if the information it identifies changes.</u> Anything that is meaningful to humans may need to change sometime in the future. If that information is duplicated, all the redundant copies need to be updated. That incurs write overheads, and risks inconsistencies (where some copies of the information are updated but others aren't). Removing such duplication is the key idea behind *normalization* in databases.
+
+Unfortunately, normalizing this data requires [*many-to-one*](https://en.wikipedia.org/wiki/One-to-many_(data_model)) relationships (e.g. many people live in one particular region, many people work in one particular industry), which don't fit nicely into the document model.
+
+* In relational databases, it's normal to refer to rows in other tables by ID, because joins are easy.
+* In document databases, joins are not needed for one-to-many tree structures, and support for joins is often weak.
+
+If the database itself does not support joins, you have to emulate a join in application code by making multiple queries to the database. In the example, the lists of regions and industries are probably small and slow-changing enough that the application can simply keep them in memory. But nevertheless, the work of making the join is shifted from the database to the application code.
