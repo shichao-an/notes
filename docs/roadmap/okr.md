@@ -2,7 +2,7 @@
 
 <small>Back to [Roadmap](index.md).</small>
 
-### OKR (2017)
+### OKR
 
 Priority | Category | Primary Book | Secondary Book(s) | Key Results
 -------- | -------- | ------------ | ----------------- | -----------

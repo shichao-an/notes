@@ -47,15 +47,8 @@
 * [CNSPP](../cnspp/index.md)
 * [HTAE](../htae/index.md)
 
-### System Architecture <small>(2)</small>
+### System Architecture <small>(3)</small>
 
 * [BD](../bd/index.md)
+* [DDA](../dda/index.md)
 * [DevOps](../devops/index.md)
-
-### Relationships and Ordering
-
-* LKD => UTLK
-* APUE => LSP => TLPI
-* GOPL => TWGR
-* TCPv1 => TCPIP
-* CSN => PIC
