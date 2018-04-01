@@ -33,7 +33,3 @@ See [Books and Materials](books.md).
 ### Roadmap
 
 See [Roadmap](roadmap/index.md).
-
-### Topics
-
-See [Topics](topics/index.md).
