@@ -152,4 +152,58 @@ Even if the initial version of an application fits well in a join-free document 
     * Each résumé could link to the organizations and schools that it mentions, and include their logos and other information.
 * Recommendations. For instance, you want to add a new feature: one user can write a recommendation for another user. The recommendation is shown on the résumé of the user who was recommended, together with the name and photo of the user making the recom‐ mendation. If the recommender updates their photo, any recommendations they have written need to reflect the new photo. Therefore, the recommendation should have a reference to the author's profile.
 
+[Figure 2-4](figure_2-4.png) below illustrates how these new features require many-to-many relationships. The data within each dotted rectangle can be grouped into one document, but the references to organizations, schools, and other users need to be represented as references, and require joins when queried.
+
 [![Figure 2-4. Extending résumés with many-to-many relationships.](figure_2-4_600.png)](figure_2-4.png "Figure 2-4. Extending résumés with many-to-many relationships.")
+
+#### Are Document Databases Repeating History?
+
+While many-to-many relationships and joins are routinely used in relational databases, document databases and NoSQL reopened the debate on how best to represent such relationships in a database. This debate is much older than NoSQL; in fact, it goes back to the very earliest computerized database systems.
+
+The most popular database for business data processing in the 1970s was IBM's [Information Management System](https://en.wikipedia.org/wiki/IBM_Information_Management_System) (IMS), originally developed for stock-keeping in the Apollo space program and first commercially released in 1968. It is still in use and maintained today, running on [OS/390](https://en.wikipedia.org/wiki/OS/390) on IBM mainframes.
+
+The design of IMS used a fairly simple data model called the [*hierarchical model*](https://en.wikipedia.org/wiki/Hierarchical_database_model), which has some remarkable similarities to the JSON model used by document databases. It represented all data as a tree of records nested within records, much like the JSON structure of [Figure 2-2](figure_2-2.png).
+
+Like document databases, IMS worked well for one-to-many relationships, but it made many-to-many relationships difficult, and it didn't support joins. Developers had to decide whether to duplicate (denormalize) data or to manually resolve references from one record to another. These problems of the 1960s and 1970s were very much like the problems that developers are running into with document databases today.
+
+Various solutions were proposed to solve the limitations of the hierarchical model.  The two most prominent were:
+
+* [*Relational model*](https://en.wikipedia.org/wiki/Relational_model) (which became SQL, and took over the world)
+* [*Network model*](https://en.wikipedia.org/wiki/Network_model) (which initially had a large following but eventually faded into obscurity).
+
+The "great debate" between these two camps lasted for much of the 1970s.
+
+##### **The network model**
+
+The network model was standardized by a committee called the [Conference on Data Systems Languages](https://en.wikipedia.org/wiki/CODASYL) (CODASYL) and implemented by several different database vendors; it is also known as the *CODASYL model*.
+
+The CODASYL model was a generalization of the hierarchical model. In the tree structure of the hierarchical model, every record has exactly one parent; in the network model, a record could have multiple parents. For example, there could be one record for the "`Greater Seattle Area`" region, and every user who lived in that region could be linked to it. This allowed many-to-one and many-to-many relationships to be modeled.
+
+The links between records in the network model were not foreign keys, but more like pointers in a programming language (while still being stored on disk). The only way of accessing a record was to follow a path from a root record along these chains of links. This was called an *access path*.
+
+In the simplest case, an access path could be like the traversal of a linked list: start at the head of the list, and look at one record at a time until you find the one you want.  But in a world of many-to-many relationships, several different paths can lead to the same record, and a programmer working with the network model had to keep track of these different access paths in their head.
+
+A query in CODASYL was performed by moving a cursor through the database by iterating over lists of records and following access paths. If a record had multiple parents (i.e., multiple incoming pointers from other records), the application code had to keep track of all the various relationships. Even CODASYL committee members admitted that this was like navigating around an *n*-dimensional data space.
+
+Although manual access path selection was able to make the most efficient use of the very limited hardware capabilities in the 1970s (such as tape drives, whose seeks are extremely slow), the problem was that they made the code for querying and updating the database complicated and inflexible. With both the hierarchical and the network model, if you didn't have a path to the data you wanted, you were in a difficult situation. You could change the access paths, but then you had to go through a lot of handwritten database query code and rewrite it to handle the new access paths. It was difficult to make changes to an application's data model.
+
+##### **The relational model**
+
+By contrast, the relational model laid out all the data in the open: a relation (table) is simply a collection of tuples (rows):
+
+* There are no labyrinthine nested structures, no complicated access paths to follow if you want to look at the data.
+* You can read any or all of the rows in a table, selecting those that match an arbitrary condition.
+* You can read a particular row by designating some columns as a key and matching on those.
+* You can insert a new row into any table without worrying about foreign key relationships to and from other tables. (Foreign key constraints allow you to restrict modifications, but such constraints are not required by the relational model. Even with constraints, joins on foreign keys are performed at query time, whereas in CODASYL, the join was effectively done at insert time.)
+
+In a relational database, the query optimizer automatically decides which parts of the query to execute in which order, and which indexes to use. Those choices are effectively the "access path", but the big difference is that they are made automatically by the query optimizer, not by the application developer, so we rarely need to think about them.
+
+If you want to query your data in new ways, you can just declare a new index, and queries will automatically use whichever indexes are most appropriate. You don't need to change your queries to take advantage of a new index. (See also [Query Languages for Data](#query-languages-for-data)) The relational model thus made it much easier to add new features to applications.
+
+Query optimizers for relational databases are complicated beasts, and they have consumed many years of research and development effort. But a key insight of the relational model was this: you only need to build a query optimizer once, and then all applications that use the database can benefit from it. If you don't have a query optimizer, it's easier to [handcode](https://en.wikipedia.org/wiki/Hand_coding) the access paths for a particular query than to write a general-purpose optimize, but the general-purpose solution wins in the long run.
+
+##### **Comparison to document databases**
+
+Document databases reverted back to the hierarchical model in one aspect: storing nested records (one-to-many relationships, like `positions`, `education`, and `contact_info` in [Figure 2-1](figure_2-1.png)) within their parent record rather than in a separate table.
+
+However, when it comes to representing many-to-one and many-to-many relationships, relational and document databases are not fundamentally different: in both cases, the related item is referenced by a unique identifier, which is called a foreign key in the relational model and a document reference in the document model. <u>That identifier is resolved at read time by using a join or follow-up queries.</u> To date, document databases have not followed the path of CODASYL.
