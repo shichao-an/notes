@@ -460,6 +460,8 @@
         
             <li><a href="#are-document-databases-repeating-history">Are Document Databases Repeating History?</a></li>
         
+            <li><a href="#relational-versus-document-databases-today">Relational Versus Document Databases Today</a></li>
+        
     
     </ul>
 </div></div>
@@ -626,6 +628,85 @@ expressed in a relational schema.</p>
 <h5 id="comparison-to-document-databases"><strong>Comparison to document databases</strong><a class="headerlink" href="#comparison-to-document-databases" title="Permanent link">&para;</a></h5>
 <p>Document databases reverted back to the hierarchical model in one aspect: storing nested records (one-to-many relationships, like <code>positions</code>, <code>education</code>, and <code>contact_info</code> in <a href="../figure_2-1.png">Figure 2-1</a>) within their parent record rather than in a separate table.</p>
 <p>However, when it comes to representing many-to-one and many-to-many relationships, relational and document databases are not fundamentally different: in both cases, the related item is referenced by a unique identifier, which is called a foreign key in the relational model and a document reference in the document model. <u>That identifier is resolved at read time by using a join or follow-up queries.</u> To date, document databases have not followed the path of CODASYL.</p>
+<h4 id="relational-versus-document-databases-today">Relational Versus Document Databases Today<a class="headerlink" href="#relational-versus-document-databases-today" title="Permanent link">&para;</a></h4>
+<p>There are many differences to consider when comparing relational databases to
+document databases, including:</p>
+<ul>
+<li>Fault-tolerance properties (see <a href="ch5.md">Chapter 5</a>)</li>
+<li>Handling of concurrency (see <a href="../ch7">Chapter 7</a>)</li>
+</ul>
+<p>This chapter concentrates only on the differences in the data model.</p>
+<p>The main arguments in favor of the document data model are:</p>
+<ul>
+<li>Schema flexibility</li>
+<li>Better performance due to locality</li>
+<li>For some applications it is closer to the data structures used by the application</li>
+</ul>
+<p>The relational model counters by providing better support for joins, and many-to-one and many-to-many relationships.</p>
+<h5 id="which-data-model-leads-to-simpler-application-code"><strong>Which data model leads to simpler application code?</strong><a class="headerlink" href="#which-data-model-leads-to-simpler-application-code" title="Permanent link">&para;</a></h5>
+<p>If the data in your application has a document-like structure (i.e., a tree of one-to-many relationships, where typically the entire tree is loaded at once), then it's probably a good idea to use a document model. The relational technique of <em>shredding</em> (splitting a document-like structure into multiple tables, like <code>positions</code>, <code>education</code>, and <code>contact_info</code> in <a href="../figure_2-1.png">Figure 2-1</a>) can lead to cumbersome schemas and unnecessarily complicated application code.</p>
+<p>The document model has limitations: for example, you cannot refer directly to a nested item within a document, but instead you need to say something like "the second item in the list of positions for user 251" (much like an access path in the hierarchical model). However, as long as documents are not too deeply nested, that is not usually a problem.</p>
+<p>The poor support for joins in document databases may or may not be a problem, depending on the application. For example, many-to-many relationships may never be needed in an analytics application that uses a document database to record which events occurred at which time.</p>
+<p>However, if your application does use many-to-many relationships, the document model becomes less appealing:</p>
+<ul>
+<li>It's possible to reduce the need for joins by denormalizing, but then the application code needs to do additional work to keep the denormalized data consistent.</li>
+<li>Joins can be emulated in application code by making multiple requests to the database, but that also moves complexity into the application and is usually slower than a join performed by specialized code inside the database.</li>
+</ul>
+<p>In such cases, using a document model can lead to significantly more complex application code and worse performance.</p>
+<p>In general, which data model leads to simpler application code depends on the kinds of relationships that exist between data items. For highly interconnected data, the document model is awkward, the relational model is acceptable, and graph models (see <a href="#graph-like-data-models">Graph-Like Data Models</a>) are the most natural.</p>
+<h5 id="schema-flexibility-in-the-document-model"><strong>Schema flexibility in the document model</strong><a class="headerlink" href="#schema-flexibility-in-the-document-model" title="Permanent link">&para;</a></h5>
+<p>Most document databases, and the JSON support in relational databases, do not enforce any schema on the data in documents. XML support in relational databases usually comes with optional schema validation. No schema means that arbitrary keys and values can be added to a document, and when reading, clients have no guarantees as to what fields the documents may contain.</p>
+<p>Document databases are sometimes called <em>schemaless</em>, but that's misleading, as the code that reads the data usually assumes some kind of structure, i.e., there is an implicit schema, but it is not enforced by the database; a more accurate term is <em>schema-on-read</em>.</p>
+<ul>
+<li><em>schema-on-read</em>: the structure of the data is implicit, and only interpreted when the data is read.</li>
+<li><em>schema-on-write</em>: the traditional approach of relational where the schema is explicit and the database ensures all written data conforms to it.</li>
+</ul>
+<p>Schema-on-read is similar to dynamic (runtime) type checking in programming languages, whereas schema-on-write is similar to static (compile-time) type checking. <u>Just as the advocates of static and dynamic type checking have big debates about their relative merits, enforcement of schemas in database is a contentious topic, and in general there's no right or wrong answer.</u></p>
+<p>The difference between the two approaches is particularly noticeable when an application wants to change the format of its data. For example, say you are currently storing each user's full name in one field, and you instead want to store the first name and last name separately. In a document database, you would just start writing new documents with the new fields and have code in the application that handles the case when old documents are read. For example:</p>
+<div class="codehilite"><pre>if (user &amp;&amp; user.name &amp;&amp; !user.first_name) {
+    // Documents written before Dec 8, 2013 don&#39;t have first_name
+    user.first_name = user.name.split(&quot; &quot;)[0];
+}
+</pre></div>
+
+
+<p>On the other hand, in a "statically typed" database schema, you would typically perform a migration along the lines of:</p>
+<div class="codehilite"><pre><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">first_name</span> <span class="nb">text</span><span class="p">;</span>
+<span class="k">UPDATE</span> <span class="n">users</span> <span class="k">SET</span> <span class="n">first_name</span> <span class="o">=</span> <span class="n">split_part</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span> <span class="c1">-- PostgreSQL</span>
+<span class="k">UPDATE</span> <span class="n">users</span> <span class="k">SET</span> <span class="n">first_name</span> <span class="o">=</span> <span class="n">substring_index</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span> <span class="c1">-- MySQL</span>
+</pre></div>
+
+
+<p>Schema changes have a bad reputation of being slow and requiring downtime. This reputation is not entirely deserved: most relational database systems execute the <code>ALTER TABLE</code> statement in a few milliseconds. MySQL is a notable exception: it copies the entire table on <code>ALTER TABLE</code>, which can mean minutes or even hours of downtime when altering a large table, although various tools exist to work around this limitation (e.g. <a href="https://www.percona.com/doc/percona-toolkit/2.2/pt-online-schema-change.html">pt-online-schema-change</a>, <a href="https://github.com/soundcloud/lhm">lhm</a> and <a href="https://githubengineering.com/gh-ost-github-s-online-migration-tool-for-mysql/">gh-ost</a>).</p>
+<p>Running the <code>UPDATE</code> statement on a large table is likely to be slow on any database, since every row needs to be rewritten. If that is not acceptable, the application can leave <code>first_name</code> set to its default of <code>NULL</code> and fill it in at read time, like it would with a document database.</p>
+<p>The schema-on-read approach is advantageous if the items in the collection don't all have the same structure for some reason (i.e., the data is heterogeneous). For example:</p>
+<ul>
+<li>There are many different types of objects, and it is not practical to put each type of object in its own table.</li>
+<li>The structure of the data is determined by external systems over which you have no control and which may change at any time.</li>
+</ul>
+<p>In situations like these, a schema may hurt more than it helps, and schemaless documents can be a much more natural data model. But in cases where all records are expected to have the same structure, schemas are a useful mechanism for documenting and enforcing that structure. Schemas and schema evolution are discussed in more detail in <a href="ch4.md">Chapter 4</a>.</p>
+<h5 id="data-locality-for-queries"><strong>Data locality for queries</strong><a class="headerlink" href="#data-locality-for-queries" title="Permanent link">&para;</a></h5>
+<p>A document is usually stored as a single continuous string, encoded as JSON, XML, or a binary variant thereof (such as <a href="https://en.wikipedia.org/wiki/MongoDB">MongoDB</a>'s <a href="https://en.wikipedia.org/wiki/BSON">BSON</a>). If your application often needs to access the entire document (for example, to render it on a web page), there is a performance advantage to this <em>storage locality</em>. If data is split across multiple tables, like in <a href="../figure_2-1.png">Figure 2-1</a>, multiple index lookups are required to retrieve it all, which may require more disk seeks and take more time.</p>
+<p>The locality advantage only applies if you need large parts of the document at the same time. The database typically needs to load the entire document, even if you access only a small portion of it, which can be wasteful on large documents. <u>On updates to a document, the entire document usually needs to be rewritten; only modifications that don't change the encoded size of a document can easily be performed in place. For these reasons, it is generally recommended that you keep documents fairly small and avoid writes that increase the size of a document.</u> These performance limitations significantly reduce the set of situations in which document databases are useful.</p>
+<p>It's worth pointing out that the idea of grouping related data together for locality is not limited to the document model. For example:</p>
+<ul>
+<li>Google's <a href="https://en.wikipedia.org/wiki/Spanner_(database)">Spanner</a> database offers the same locality properties in a relational data model, by allowing the schema to declare that a table's rows should be interleaved (nested) within a parent table.</li>
+<li>Oracle allows the same, using a feature called multi-table index cluster tables.</li>
+<li>The <a href="https://en.wikipedia.org/wiki/Column_family"><em>column-family</em></a> concept in the <a href="https://en.wikipedia.org/wiki/Bigtable">Bigtable</a> data model (used in <a href="https://en.wikipedia.org/wiki/Apache_Cassandra">Cassandra</a> and <a href="https://en.wikipedia.org/wiki/Apache_HBase">HBase</a>) has a similar purpose of managing locality.</li>
+</ul>
+<p>See more about locality in <a href="ch3.md">Chapter 3</a>.</p>
+<h5 id="convergence-of-document-and-relational-databases"><strong>Convergence of document and relational databases</strong><a class="headerlink" href="#convergence-of-document-and-relational-databases" title="Permanent link">&para;</a></h5>
+<p>Most relational database systems (other than MySQL) have supported XML since the mid-2000s. This includes functions to make local modifications to XML documents and the ability to index and query inside XML documents, which allows applications to use data models very similar to what they would do when using a document database.</p>
+<p>The follow databases also have a similar level of support for JSON documents:</p>
+<ul>
+<li>PostgreSQL since version 9.3</li>
+<li>MySQL since version 5.7</li>
+<li>IBM DB2 since version 10.5</li>
+</ul>
+<p>Given the popularity of JSON for web APIs, it is likely that other relational databases will follow in their footsteps and add JSON support.</p>
+<p>On the document database side, <a href="https://en.wikipedia.org/wiki/RethinkDB">RethinkDB</a> supports relational-like joins in its query language, and some MongoDB drivers automatically resolve database references (effectively performing a client-side join, although this is likely to be slower than a join performed in the database since it requires additional network round-trips and is less optimized).</p>
+<p>It seems that relational and document databases are becoming more similar over time, and that is a good thing: the data models complement each other. If a database is able to handle document-like data and also perform relational queries on it, applications can use the combination of features that best fits their needs.</p>
+<p><u>A hybrid of the relational and document models is a good route for databases to take in the future.</u></p>
             </div>
         </div>
 
