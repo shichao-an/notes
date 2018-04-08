@@ -207,3 +207,109 @@ Query optimizers for relational databases are complicated beasts, and they have 
 Document databases reverted back to the hierarchical model in one aspect: storing nested records (one-to-many relationships, like `positions`, `education`, and `contact_info` in [Figure 2-1](figure_2-1.png)) within their parent record rather than in a separate table.
 
 However, when it comes to representing many-to-one and many-to-many relationships, relational and document databases are not fundamentally different: in both cases, the related item is referenced by a unique identifier, which is called a foreign key in the relational model and a document reference in the document model. <u>That identifier is resolved at read time by using a join or follow-up queries.</u> To date, document databases have not followed the path of CODASYL.
+
+#### Relational Versus Document Databases Today
+
+There are many differences to consider when comparing relational databases to
+document databases, including:
+
+* Fault-tolerance properties (see [Chapter 5](ch5.md))
+* Handling of concurrency (see [Chapter 7](ch7))
+
+This chapter concentrates only on the differences in the data model.
+
+The main arguments in favor of the document data model are:
+
+* Schema flexibility
+* Better performance due to locality
+* For some applications it is closer to the data structures used by the application
+
+The relational model counters by providing better support for joins, and many-to-one and many-to-many relationships.
+
+##### **Which data model leads to simpler application code?**
+
+If the data in your application has a document-like structure (i.e., a tree of one-to-many relationships, where typically the entire tree is loaded at once), then it's probably a good idea to use a document model. The relational technique of *shredding* (splitting a document-like structure into multiple tables, like `positions`, `education`, and `contact_info` in [Figure 2-1](figure_2-1.png)) can lead to cumbersome schemas and unnecessarily complicated application code.
+
+The document model has limitations: for example, you cannot refer directly to a nested item within a document, but instead you need to say something like "the second item in the list of positions for user 251" (much like an access path in the hierarchical model). However, as long as documents are not too deeply nested, that is not usually a problem.
+
+The poor support for joins in document databases may or may not be a problem, depending on the application. For example, many-to-many relationships may never be needed in an analytics application that uses a document database to record which events occurred at which time.
+
+However, if your application does use many-to-many relationships, the document model becomes less appealing:
+
+* It's possible to reduce the need for joins by denormalizing, but then the application code needs to do additional work to keep the denormalized data consistent.
+* Joins can be emulated in application code by making multiple requests to the database, but that also moves complexity into the application and is usually slower than a join performed by specialized code inside the database.
+
+In such cases, using a document model can lead to significantly more complex application code and worse performance.
+
+In general, which data model leads to simpler application code depends on the kinds of relationships that exist between data items. For highly interconnected data, the document model is awkward, the relational model is acceptable, and graph models (see [Graph-Like Data Models](#graph-like-data-models)) are the most natural.
+
+##### **Schema flexibility in the document model**
+
+Most document databases, and the JSON support in relational databases, do not enforce any schema on the data in documents. XML support in relational databases usually comes with optional schema validation. No schema means that arbitrary keys and values can be added to a document, and when reading, clients have no guarantees as to what fields the documents may contain.
+
+Document databases are sometimes called *schemaless*, but that's misleading, as the code that reads the data usually assumes some kind of structure, i.e., there is an implicit schema, but it is not enforced by the database; a more accurate term is *schema-on-read*.
+
+* *schema-on-read*: the structure of the data is implicit, and only interpreted when the data is read.
+* *schema-on-write*: the traditional approach of relational where the schema is explicit and the database ensures all written data conforms to it.
+
+Schema-on-read is similar to dynamic (runtime) type checking in programming languages, whereas schema-on-write is similar to static (compile-time) type checking. <u>Just as the advocates of static and dynamic type checking have big debates about their relative merits, enforcement of schemas in database is a contentious topic, and in general there's no right or wrong answer.</u>
+
+The difference between the two approaches is particularly noticeable when an application wants to change the format of its data. For example, say you are currently storing each user's full name in one field, and you instead want to store the first name and last name separately. In a document database, you would just start writing new documents with the new fields and have code in the application that handles the case when old documents are read. For example:
+
+```text
+if (user && user.name && !user.first_name) {
+    // Documents written before Dec 8, 2013 don't have first_name
+    user.first_name = user.name.split(" ")[0];
+}
+```
+
+On the other hand, in a "statically typed" database schema, you would typically perform a migration along the lines of:
+
+```sql
+ALTER TABLE users ADD COLUMN first_name text;
+UPDATE users SET first_name = split_part(name, ' ', 1); -- PostgreSQL
+UPDATE users SET first_name = substring_index(name, ' ', 1); -- MySQL
+```
+
+Schema changes have a bad reputation of being slow and requiring downtime. This reputation is not entirely deserved: most relational database systems execute the `ALTER TABLE` statement in a few milliseconds. MySQL is a notable exception: it copies the entire table on `ALTER TABLE`, which can mean minutes or even hours of downtime when altering a large table, although various tools exist to work around this limitation (e.g. [pt-online-schema-change](https://www.percona.com/doc/percona-toolkit/2.2/pt-online-schema-change.html), [lhm](https://github.com/soundcloud/lhm) and [gh-ost](https://githubengineering.com/gh-ost-github-s-online-migration-tool-for-mysql/)).
+
+Running the `UPDATE` statement on a large table is likely to be slow on any database, since every row needs to be rewritten. If that is not acceptable, the application can leave `first_name` set to its default of `NULL` and fill it in at read time, like it would with a document database.
+
+The schema-on-read approach is advantageous if the items in the collection don't all have the same structure for some reason (i.e., the data is heterogeneous). For example:
+
+* There are many different types of objects, and it is not practical to put each type of object in its own table.
+* The structure of the data is determined by external systems over which you have no control and which may change at any time.
+
+In situations like these, a schema may hurt more than it helps, and schemaless documents can be a much more natural data model. But in cases where all records are expected to have the same structure, schemas are a useful mechanism for documenting and enforcing that structure. Schemas and schema evolution are discussed in more detail in [Chapter 4](ch4.md).
+
+##### **Data locality for queries**
+
+A document is usually stored as a single continuous string, encoded as JSON, XML, or a binary variant thereof (such as [MongoDB](https://en.wikipedia.org/wiki/MongoDB)'s [BSON](https://en.wikipedia.org/wiki/BSON)). If your application often needs to access the entire document (for example, to render it on a web page), there is a performance advantage to this *storage locality*. If data is split across multiple tables, like in [Figure 2-1](figure_2-1.png), multiple index lookups are required to retrieve it all, which may require more disk seeks and take more time.
+
+The locality advantage only applies if you need large parts of the document at the same time. The database typically needs to load the entire document, even if you access only a small portion of it, which can be wasteful on large documents. <u>On updates to a document, the entire document usually needs to be rewritten; only modifications that don't change the encoded size of a document can easily be performed in place. For these reasons, it is generally recommended that you keep documents fairly small and avoid writes that increase the size of a document.</u> These performance limitations significantly reduce the set of situations in which document databases are useful.
+
+It's worth pointing out that the idea of grouping related data together for locality is not limited to the document model. For example:
+
+* Google's [Spanner](https://en.wikipedia.org/wiki/Spanner_(database)) database offers the same locality properties in a relational data model, by allowing the schema to declare that a table's rows should be interleaved (nested) within a parent table.
+* Oracle allows the same, using a feature called multi-table index cluster tables.
+* The [*column-family*](https://en.wikipedia.org/wiki/Column_family) concept in the [Bigtable](https://en.wikipedia.org/wiki/Bigtable) data model (used in [Cassandra](https://en.wikipedia.org/wiki/Apache_Cassandra) and [HBase](https://en.wikipedia.org/wiki/Apache_HBase)) has a similar purpose of managing locality.
+
+See more about locality in [Chapter 3](ch3.md).
+
+##### **Convergence of document and relational databases**
+
+Most relational database systems (other than MySQL) have supported XML since the mid-2000s. This includes functions to make local modifications to XML documents and the ability to index and query inside XML documents, which allows applications to use data models very similar to what they would do when using a document database.
+
+The follow databases also have a similar level of support for JSON documents:
+
+* PostgreSQL since version 9.3
+* MySQL since version 5.7
+* IBM DB2 since version 10.5
+
+Given the popularity of JSON for web APIs, it is likely that other relational databases will follow in their footsteps and add JSON support.
+
+On the document database side, [RethinkDB](https://en.wikipedia.org/wiki/RethinkDB) supports relational-like joins in its query language, and some MongoDB drivers automatically resolve database references (effectively performing a client-side join, although this is likely to be slower than a join performed in the database since it requires additional network round-trips and is less optimized).
+
+It seems that relational and document databases are becoming more similar over time, and that is a good thing: the data models complement each other. If a database is able to handle document-like data and also perform relational queries on it, applications can use the combination of features that best fits their needs.
+
+<u>A hybrid of the relational and document models is a good route for databases to take in the future.</u>
