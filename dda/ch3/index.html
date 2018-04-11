@@ -454,6 +454,8 @@
         
             <li><a href="#hash-indexes">Hash Indexes</a></li>
         
+            <li><a href="#sstables-and-lsm-trees">SSTables and LSM-Trees</a></li>
+        
     
     </ul>
 </div></div>
@@ -515,6 +517,63 @@ db_get <span class="o">()</span> <span class="o">{</span>
 <p>An index is an additional structure that is derived from the primary data. Many databases allow you to add and remove indexes, and this doesn't affect the contents of the database; it only affects the performance of queries. Maintaining additional structures incurs overhead, especially on writes. For writes, it's hard to beat the performance of simply appending to a file, because that's the simplest possible write operation. Any kind of index usually slows down writes, because the index also needs to be updated every time data is written.</p>
 <p><u>This is an important trade-off in storage systems: well-chosen indexes speed up read queries, but every index slows down writes.</u> For this reason, databases don't usually index everything by default, but require you (the application developer or database administrator) to choose indexes manually, using your knowledge of the application's typical query patterns. You can then choose the indexes that give your application the greatest benefit, without introducing more overhead than necessary.</p>
 <h4 id="hash-indexes">Hash Indexes<a class="headerlink" href="#hash-indexes" title="Permanent link">&para;</a></h4>
+<p>Although key-value data is not the only kind of data you can index, but it's very common, and it's a useful building block for more complex indexes.</p>
+<p>Key-value stores are quite similar to the <a href="https://en.wikipedia.org/wiki/Associative_array"><em>dictionary</em></a> type that you can find in most programming languages, and which is usually implemented as a <a href="https://en.wikipedia.org/wiki/Hash_table">hash map</a> (hash table).</p>
+<p>In the preceding example, our data storage consists only of appending to a file. Then the simplest possible indexing strategy is this: keep an in-memory hash map where every key is mapped to a byte offset in the data file, as illustrated in <a href="../figure_3-1.png">Figure 3-1</a>.</p>
+<ul>
+<li>Whenever you append a new key-value pair to the file, you also update the hash map to reflect the offset of the data you just wrote (this works both for inserting new keys and for updating existing keys).</li>
+<li>When you want to look up a value, use the hash map to find the offset in the data file, seek to that location, and read the value.</li>
+</ul>
+<p><a href="../figure_3-1.png" title="Figure 3-1. Storing a log of key-value pairs in a CSV-like format, indexed with an in-memory hash map."><img alt="Figure 3-1. Storing a log of key-value pairs in a CSV-like format, indexed with an in-memory hash map." src="../figure_3-1_600.png" /></a></p>
+<p>This may sound simplistic, but it is a viable approach. In fact, this is essentially what <a href="https://en.wikipedia.org/wiki/Bitcask">Bitcask</a> (the default storage engine in <a href="https://en.wikipedia.org/wiki/Riak">Riak</a>) does:</p>
+<ul>
+<li>Bitcask offers high-performance reads and writes, subject to the requirement that all the keys fit in the available RAM, since the hash map is kept completely in memory.</li>
+<li>The values can use more space than there is available memory, since they can be loaded from disk with just one disk seek.</li>
+<li>If part of the data file is already in the filesystem cache, a read doesn't require any disk I/O at all.</li>
+</ul>
+<p>A storage engine like Bitcask is well suited to situations where the value for each key is updated frequently. For example, the key is an URL of a cat video and the value might be the number of times it has been played. In this kind of workload, there are a lot of writes, but there are not too many distinct keys. Although you have a large number of writes per key, but it's feasible to keep all keys in memory.</p>
+<p>So far we only ever append to a file. How do we avoid eventually running out of disk space? A good solution is to break the log into segments of a certain size by closing a segment file when it reaches a certain size, and making subsequent writes to a new segment file. We can then perform <em>compaction</em> on these segments, as illustrated in <a href="../figure_3-2.png">Figure 3-2</a>. Compaction means throwing away duplicate keys in the log, and keeping only the most recent update for each key.</p>
+<p><a href="../figure_3-2.png" title="Figure 3-2. Compaction of a key-value update log (counting the number of times each cat video was played), retaining only the most recent value for each key"><img alt="Figure 3-2. Compaction of a key-value update log (counting the number of times each cat video was played), retaining only the most recent value for each key" src="../figure_3-2_600.png" /></a></p>
+<p>Moreover, since compaction often makes segments much smaller (assuming that a key is overwritten several times on average within one segment), we can also merge several segments together at the same time as performing the compaction, as shown in <a href="../figure_3-3.png">Figure 3-3</a>. Segments are never modified after they have been written, so the merged segment is written to a new file. The merging and compaction of frozen segments can be done in a background thread, and while it is going on, we can still continue to serve read and write requests as normal, using the old segment files. After the merging process is complete, we switch read requests to using the new merged segment instead of the old segments, and then the old segment files can simply be deleted.</p>
+<p><a href="../figure_3-3.png" title="Figure 3-3. Performing compaction and segment merging simultaneously."><img alt="Figure 3-3. Performing compaction and segment merging simultaneously." src="../figure_3-3_600.png" /></a></p>
+<p>Each segment now has its own in-memory hash table, mapping keys to file offsets. In order to find the value for a key, we first check the most recent segment's hash map; if the key is not present we check the second-most-recent segment, and so on. The merging process keeps the number of segments small, so lookups don't need to check many hash maps.</p>
+<p>Some of the issues that are important in a real implementation are:</p>
+<ul>
+<li><strong>File format</strong>. CSV is not the best format for a log. It’s faster and simpler to use a binary format that first encodes the length of a string in bytes, followed by the raw string (without need for escaping).</li>
+<li><strong>Deleting records</strong>. If you want to delete a key and its associated value, you have to append a special deletion record to the data file (sometimes called a <a href="https://en.wikipedia.org/wiki/Tombstone_(data_store)"><em>tombstone</em></a>). When log segments are merged, the tombstone tells the merging process to discard any previous values for the deleted key.</li>
+<li><strong>Crash recovery</strong>. If the database is restarted, the in-memory hash maps are lost. In principle, you can restore each segment's hash map by reading the entire segment file from beginning to end and noting the offset of the most recent value for every key as you go along. However, that might take a long time if the segment files are large, which would make server restarts painful. Bitcask speeds up recovery by storing a snapshot of each segment's hash map on disk, which can be loaded into memory more quickly.</li>
+<li><strong>Partially written records</strong>. The database may crash at any time, including halfway through appending a record to the log. Bitcask files include checksums, allowing such corrupted parts of the log to be detected and ignored.</li>
+<li><strong>Concurrency control</strong>. As writes are appended to the log in a strictly sequential order, a common implementation choice is to have only one writer thread. Data file segments are append-only and otherwise immutable, so they can be read concurrently by multiple threads.</li>
+</ul>
+<p>An append-only log seems wasteful at first glance: why don't you update the file in place, overwriting the old value with the new value?</p>
+<p>The append-only design turns out to be good for several reasons:</p>
+<ul>
+<li>Appending and segment merging are sequential write operations, which are generally much faster than random writes, especially on magnetic spinning-disk hard drives. To some extent sequential writes are also preferable on flash-based solid state drives (SSDs). See further discussions <a href="#comparing-btrees-and-lsm-trees">Comparing BTrees and LSM-Trees</a>.</li>
+<li>Concurrency and crash recovery are much simpler if segment files are append-only or immutable. For example, you don't have to worry about the case where a crash happened while a value was being overwritten, leaving you with a file containing part of the old and part of the new value spliced together.</li>
+<li>Merging old segments avoids the problem of data files getting fragmented over time.</li>
+</ul>
+<p>However, the hash table index also has limitations:</p>
+<ul>
+<li>The hash table must fit in memory, so if you have a very large number of keys, you're out of luck. In principle, you could maintain a hash map on disk, but unfortunately it is difficult to make an on-disk hash map perform well. It requires a lot of random access I/O, it is expensive to grow when it becomes full, and hash collisions require fiddly logic.</li>
+<li><a href="https://en.wikipedia.org/wiki/Range_query_(database)">Range queries</a> are not efficient. For example, you cannot easily scan over all keys between <code>kitty00000</code> and<code>kitty99999</code>. You'd have to look up each key individually in the hash maps.</li>
+</ul>
+<p>The indexing structure in the next section doesn't have those limitations.</p>
+<h4 id="sstables-and-lsm-trees">SSTables and LSM-Trees<a class="headerlink" href="#sstables-and-lsm-trees" title="Permanent link">&para;</a></h4>
+<p>In <a href="../figure_3-3.png">Figure 3-3</a>, each log-structured storage segment is a sequence of key-value pairs. These pairs appear in the order that they were written, and values later in the log take precedence over values for the same key earlier in the log. Apart from that, the order of key-value pairs in the file does not matter.</p>
+<p>Now we can make a simple change to the format of our segment files: we require that the sequence of key-value pairs is <em>sorted by key</em>. At first glance, that requirement seems to break our ability to use sequential writes (to be discussed later).</p>
+<p>We call this format <em>Sorted String Table</em>, or <em>SSTable</em> for short. We also require that each key only appears once within each merged segment file (the compaction process already ensures that).</p>
+<p>SSTables have several big advantages over log segments with hash indexes:</p>
+<p><a href="../figure_3-4.png" title="Figure 3-4. Merging several SSTable segments, retaining only the most recent value for each key."><img alt="Figure 3-4. Merging several SSTable segments, retaining only the most recent value for each key." src="../figure_3-4_600.png" /></a></p>
+<ol>
+<li>Merging segments is simple and efficient, even if the files are bigger than the available memory. The approach is like the one used in the <a href="https://en.wikipedia.org/wiki/Merge_sort"><em>mergesort</em></a> algorithm and is illustrated in <a href="../figure_3-4.png">Figure 3-4</a> (above): read the input files side by side, for the first key in each file, copy the lowest key (according to the sort order) to the output file, and repeat. This produces a new merged segment file, also sorted by key. When multiple segments contain the same key, keep the value from the most recent segment and discard the values in older segments. [p77]</li>
+<li>In order to find a particular key in the file, you no longer need to keep an index of all the keys in memory. See <a href="../figure_3-5.png">Figure 3-5</a> (below) for an example: you're looking for the key <code>handiwork</code>, but you don't know the exact offset of that key in the segment file. However, you do know the offsets for the keys <code>handbag</code> and <code>handsome</code>, and because of the sorting you know that <code>handiwork</code> must appear between those two. This means you can jump to the offset for <code>handbag</code> and scan from there until you find <code>handiwork</code> (or not, if the key is not present in the file).<ul>
+<li>You still need an in-memory index to tell you the offsets for some of the keys, but it can be sparse: one key for every few kilobytes of segment file is sufficient, because a few kilobytes can be scanned very quickly.</li>
+<li>If all keys and values had a fixed size, you could use binary search on a segment file and avoid the in-memory index entirely. However, they are usually variable-length in practice, which makes it difficult to tell where one record ends and the next one starts if you don't have an index.</li>
+</ul>
+</li>
+<li>Since read requests need to scan over several key-value pairs in the requested range anyway, it is possible to group those records into a block and compress it before writing it to disk (indicated by the shaded area in <a href="../figure_3-5.png">Figure 3-5</a>). Each entry of the sparse in-memory index then points at the start of a compressed block.  Besides saving disk space, compression also reduces the I/O bandwidth use.</li>
+</ol>
+<p><a href="../figure_3-5.png" title="Figure 3-5. An SSTable with an in-memory index."><img alt="Figure 3-5. An SSTable with an in-memory index." src="../figure_3-5_600.png" /></a></p>
             </div>
         </div>
 
