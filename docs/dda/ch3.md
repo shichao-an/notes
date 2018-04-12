@@ -135,3 +135,37 @@ SSTables have several big advantages over log segments with hash indexes:
 3. Since read requests need to scan over several key-value pairs in the requested range anyway, it is possible to group those records into a block and compress it before writing it to disk (indicated by the shaded area in [Figure 3-5](figure_3-5.png)). Each entry of the sparse in-memory index then points at the start of a compressed block.  Besides saving disk space, compression also reduces the I/O bandwidth use.
 
 [![Figure 3-5. An SSTable with an in-memory index.](figure_3-5_600.png)](figure_3-5.png "Figure 3-5. An SSTable with an in-memory index.")
+
+##### **Constructing and maintaining SSTables**
+
+How do you get your data to be sorted by key in the first place? Incoming writes can occur in any order.
+
+Maintaining a sorted structure on disk is possible (see [B-Trees](#b-trees) in the upcoming section), but maintaining it in memory is much easier. With a plenty of well-known tree data structures you can use, such as [red-black trees](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree) or [AVL trees](https://en.wikipedia.org/wiki/AVL_tree), you can insert keys in any order and read them back in sorted order.
+
+We can now make our storage engine work as follows:
+
+* When a write comes in, add it to an in-memory balanced tree data structure (for example, a red-black tree). This in-memory tree is sometimes called a *memtable*.
+* When the memtable gets bigger than some threshold (typically a few megabytes) write it out to disk as an SSTable file. This can be done efficiently because the tree already maintains the key-value pairs sorted by key. The new SSTable file becomes the most recent segment of the database. While the SSTable is being written out to disk, writes can continue to a new memtable instance.
+* In order to serve a read request, first try to find the key in the memtable, then in the most recent on-disk segment, then in the next-older segment, etc.
+* From time to time, run a merging and compaction process in the background to combine segment files and to discard overwritten or deleted values.
+
+This works very well except for one problem: if the database crashes, the most recent writes (which are in the memtable but not yet written out to disk) are lost. In order to avoid that problem, we can keep a separate log on disk to which every write is immediately appended, just like in the previous section. That log is not in sorted order, but that doesn't matter, because its only purpose is to restore the memtable after a crash. Every time the memtable is written out to an SSTable, the corresponding log can be discarded.
+
+##### **Making an LSM-tree out of SSTables**
+
+The algorithm described here is essentially what is used in [LevelDB](https://en.wikipedia.org/wiki/LevelDB) and [RocksDB](https://en.wikipedia.org/wiki/RocksDB), key-value storage engine libraries that are designed to be embedded into other applications. Among other things, LevelDB can be used in Riak as an alternative to Bitcask. Similar storage engines are used in [Cassandra](https://en.wikipedia.org/wiki/Apache_Cassandra) and [HBase](https://en.wikipedia.org/wiki/Apache_HBase), both of which were inspired by Google's [Bigtable](https://en.wikipedia.org/wiki/Bigtable) paper.
+
+Originally this indexing structure was described by [Patrick O'Neil](https://en.wikipedia.org/wiki/Patrick_O%27Neil) et al. under the name [Log-Structured Merge-Tree](https://en.wikipedia.org/wiki/Log-structured_merge-tree) (or LSM-Tree), building on earlier work on [log-structured filesystems](https://en.wikipedia.org/wiki/Log-structured_file_system). Storage engines that are based on this principle of merging and compacting sorted files are often called LSM storage engines.
+
+[Lucene](https://en.wikipedia.org/wiki/Apache_Lucene), an indexing engine for full-text search used by [Elasticsearch](https://en.wikipedia.org/wiki/Elasticsearch) and [Solr](https://en.wikipedia.org/wiki/Apache_Solr), uses a similar method for storing its *term dictionary*. A full-text index is much more complex than a key-value index but is based on a similar idea: given a word in a search query, find all the documents (web pages, product descriptions, etc.) that mention the word. This is implemented with a key-value structure where the key is a word (a *term*) and the value is the list of IDs of all the documents that contain the word (the postings list). In Lucene, this mapping from term to postings list is kept in SSTable-like sorted files, which are merged in the background as needed.
+
+##### **Performance optimizations**
+
+As always, a lot of detail goes into making a storage engine perform well in practice. For example, the LSM-tree algorithm can be slow when looking up keys that do not exist in the database: you have to check the memtable, then the segments all the way back to the oldest before you can be sure that the key does not exist. In order to optimize this kind of access, storage engines often use additional [Bloom filters](https://en.wikipedia.org/wiki/Bloom_filter). (A Bloom filter is a memory-efficient data structure for approximating the contents of a set. It can tell you if a key does not appear in the database, and thus saves many unnecessary disk reads for nonexistent keys.)
+
+There are also different strategies to determine the order and timing of how SSTables are compacted and merged. The most common options are *size-tiered* and *leveled* compaction. LevelDB and RocksDB use leveled compaction (hence the name of LevelDB), HBase uses size-tiered, and Cassandra supports both.
+
+* In size-tiered compaction, newer and smaller SSTables are successively merged into older and larger SSTables. (See [DS210](https://academy.datastax.com/resources/ds210-datastax-enterprise-operations-apache-cassandra?unit=size-tiered-compaction))
+* In leveled compaction, the key range is split up into smaller SSTables and older data is moved into separate "levels", which allows the compaction to proceed more incrementally and use less disk space. (See [DS210](https://academy.datastax.com/resources/ds210-datastax-enterprise-operations-apache-cassandra?unit=leveled-compaction))
+
+Even though there are many subtleties, the basic idea of LSM-trees is keeping a cascade of SSTables that are merged in the background, which is simple and effective. Even when the dataset is much bigger than the available memory it continues to work well. Since data is stored in sorted order, you can efficiently perform range queries (scanning all keys above some minimum and up to some maximum), and because the disk writes are sequential the LSM-tree can support remarkably high write throughput.
