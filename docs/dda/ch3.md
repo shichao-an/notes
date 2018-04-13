@@ -165,7 +165,51 @@ As always, a lot of detail goes into making a storage engine perform well in pra
 
 There are also different strategies to determine the order and timing of how SSTables are compacted and merged. The most common options are *size-tiered* and *leveled* compaction. LevelDB and RocksDB use leveled compaction (hence the name of LevelDB), HBase uses size-tiered, and Cassandra supports both.
 
-* In size-tiered compaction, newer and smaller SSTables are successively merged into older and larger SSTables. (See [DS210](https://academy.datastax.com/resources/ds210-datastax-enterprise-operations-apache-cassandra?unit=size-tiered-compaction))
-* In leveled compaction, the key range is split up into smaller SSTables and older data is moved into separate "levels", which allows the compaction to proceed more incrementally and use less disk space. (See [DS210](https://academy.datastax.com/resources/ds210-datastax-enterprise-operations-apache-cassandra?unit=leveled-compaction))
+* In **size-tiered compaction**, newer and smaller SSTables are successively merged into older and larger SSTables. (See [DS210 Size Tiered Compaction](https://academy.datastax.com/resources/ds210-datastax-enterprise-operations-apache-cassandra?unit=size-tiered-compaction))
+* In **leveled compaction**, the key range is split up into smaller SSTables and older data is moved into separate "levels", which allows the compaction to proceed more incrementally and use less disk space. (See [DS210 Leveled Compaction](https://academy.datastax.com/resources/ds210-datastax-enterprise-operations-apache-cassandra?unit=leveled-compaction))
 
 Even though there are many subtleties, the basic idea of LSM-trees is keeping a cascade of SSTables that are merged in the background, which is simple and effective. Even when the dataset is much bigger than the available memory it continues to work well. Since data is stored in sorted order, you can efficiently perform range queries (scanning all keys above some minimum and up to some maximum), and because the disk writes are sequential the LSM-tree can support remarkably high write throughput.
+
+#### B-Trees
+
+Though gaining acceptance, the log-structured indexes are not the most common type of index. The most widely used indexing structure is quite different: the [*B-tree*](https://en.wikipedia.org/wiki/B-tree).
+
+Introduced in 1970 and called "ubiquitous" less than 10 years later, B-trees remain the standard index implementation in almost all relational databases, and also used by many non-relational databases.
+
+Like SSTables, B-trees keep key-value pairs sorted by key, which allows efficient key-value lookups and range queries. But that's where the similarity ends: B-trees have a very different design philosophy.
+
+The log-structured indexes break the database down into variable-size *segments*, typically several megabytes or more in size, and always write a segment sequentially. By contrast, B-trees break the database down into fixed-size *blocks* or *pages*, traditionally 4 KB in size (sometimes bigger), and read or write one page at a time. This design corresponds more closely to the underlying hardware, as disks are also arranged in fixed-size blocks.
+
+Each page can be identified using an address or location, which allows one page to refer to another (similar to a pointer, but on disk instead of in memory). We can use these page references to construct a tree of pages, as illustrated in [Figure 3-6](figure_3-6.png) (below).
+
+[![Figure 3-6. Looking up a key using a B-tree index.](figure_3-6_600.png)](figure_3-6.png "Figure 3-6. Looking up a key using a B-tree index.")
+
+* One page is designated as the *root* of the B-tree, which is where you starts your lookup.
+* The page contains several keys and references to child pages.
+* Each child is responsible for a continuous range of keys, and the keys between the references indicate where the boundaries between those ranges lie.
+
+In the [Figure 3-6](figure_3-6.png) example (above), we are looking for the key 251, so we know that we need to follow the page reference between the boundaries 200 and 300. That takes us to a similar-looking page that further breaks down the 200–300 range into subranges. Eventually we get down to a page containing individual keys (a *leaf page*), which either contains the value for each key inline or contains references to the pages where the values can be found.
+
+The number of references to child pages in one page of the B-tree is called the [*branching factor*](https://en.wikipedia.org/wiki/Branching_factor). For example, in Figure 3-6 the branching factor is six. In practice, the branching factor depends on the amount of space required to store the page references and the range boundaries, but typically it is several hundred.
+
+* If you want to update the value for an existing key in a B-tree, you search for the leaf page containing that key, change the value in that page, and write the page back to disk (any references to that page remain valid).
+* If you want to add a new key, you need to find the page whose range encompasses the new key and add it to that page. If there isn't enough free space in the page to accommodate the new key, it is split into two half-full pages, and the parent page is updated to account for the new subdivision of key ranges. See [Figure 3-7](figure_3-7.png) (below).
+
+[![Figure 3-7. Growing a B-tree by splitting a page.](figure_3-7_600.png)](figure_3-7.png "Figure 3-7. Growing a B-tree by splitting a page.")
+
+This algorithm ensures that the tree remains *balanced*: a B-tree with n keys always has a depth of *O(log n)*. Most databases can fit into a B-tree with a depth of three or four levels, so you don't need to follow many page references to find the page. (A four-level tree of 4 KB pages with a branching factor of 500 can store up to 256 TB.)
+
+##### **Making B-trees reliable**
+
+The underlying write operation of a B-tree is to overwrite a page on disk with new data. It is assumed that the overwrite does not change the location of the page: all references to that page remain intact when the page is overwritten. This is in contrast to log-structured indexes such as LSM-trees, which only append to files (and eventually delete obsolete files) but never modify files in place.
+
+You can think of overwriting a page on disk as an actual hardware operation:
+
+* On a magnetic hard drive, this means moving the disk head to the right place, waiting for the right position on the spinning platter to come around, and then overwriting the appropriate sector with new data.
+* On SSDs, what happens is somewhat more complicated, due to the fact that an SSD must erase and rewrite fairly large blocks of a storage chip at a time.
+
+Moreover, some operations require several different pages to be overwritten. For example, if you split a page because an insertion caused it to be overfull, you need to write the two pages that were split, and also overwrite their parent page to update the references to the two child pages. This is a dangerous operation, because if the database crashes after only some of the pages have been written, you end up with a corrupted index (e.g., there may be an *orphan* page that is not a child of any parent).
+
+In order to make the database resilient to crashes, it is common for B-tree implementations to include an additional data structure on disk: a [*write-ahead log*](https://en.wikipedia.org/wiki/Write-ahead_logging) (WAL, also known as a [*redo log*](https://en.wikipedia.org/wiki/Redo_log)). This is an append-only file to which every B-tree modification must be written before it can be applied to the pages of the tree itself. When the database comes back up after a crash, this log is used to restore the B-tree back to a consistent state.
+
+Concurrency control is required if multiple threads are going to access the B-tree at the same time, otherwise a thread may see the tree in an inconsistent state. This is typically done by protecting the tree's data structures with *latches* (lightweight locks). (In this regard, log-structured approaches are simpler in this regard, because they do all the merging in the background without interfering with incoming queries and atomically swap old segments for new segments from time to time.)
