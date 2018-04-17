@@ -82,3 +82,65 @@ As textual formats, JSON, XML, and CSV also have some subtle problems:
 Despite these flaws, JSON, XML, and CSV are good enough for many purposes. It's likely that they will remain popular, especially as data interchange formats (i.e., for sending data from one organization to another).
 
 ##### **Binary encoding**
+
+For data that is used only internally within your organization, you could choose a format that is more compact or faster to parse.
+
+Although JSON is less verbose than XML, they both still use a lot of space compared to binary formats. This led to the development of a profusion of binary encodings:
+
+* For JSON: [MessagePack](https://en.wikipedia.org/wiki/MessagePack), [BSON](https://en.wikipedia.org/wiki/BSON), BJSON, [UBJSON](https://en.wikipedia.org/wiki/UBJSON), BISON, and [Smile](https://en.wikipedia.org/wiki/Smile_(data_interchange_format))
+* For XML: [WBXML](https://en.wikipedia.org/wiki/WBXML) and [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Infoset) (FI)
+
+These formats have been adopted in various niches, but none of them are as widely adopted as the textual versions of JSON and XML.
+
+Some of these formats extend the set of datatypes (e.g., distinguishing integers and floating-point numbers, or adding support for binary strings), but otherwise they keep the JSON/XML data model unchanged. In particular, since they don't prescribe a schema, they need to include all the object field names within the encoded data.
+
+For example, in a binary encoding of the JSON document below, they will need to include the strings `userName`, `favoriteNumber`, and `interests` somewhere.
+
+<small>Example 4-1</small>
+
+```json
+{
+    "userName": "Martin",
+    "favoriteNumber": 1337,
+    "interests": ["daydreaming", "hacking"]
+}
+```
+
+The following figure shows the byte sequence that you get if you encode the JSON document in the above example with MessagePack.
+
+[![Figure 4-1. Example record (Example 4-1) encoded using MessagePack.](figure_4-1_600.png)](figure_4-1.png "Figure 4-1. Example record (Example 4-1) encoded using MessagePack.")
+
+The first few bytes are as follows:
+
+1. The first byte, `0x83`, indicates that what follows is an object (top four bits = `0x80`) with three fields (bottom four bits = `0x03`). (If an object has more than 15 fields, so that the number of fields doesn't fit in four bits, it then gets a different type indicator, and the number of fields is encoded in two or four bytes.)
+2. The second byte, `0xa8`, indicates that what follows is a string (top four bits = `0xa0`) that is eight bytes long (bottom four bits = `0x08`).
+3. The next eight bytes are the field name `userName` in ASCII. Since the length was indicated previously, there's no need for any marker to tell us where the string ends (or any escaping).
+4. The next seven bytes encode the six-letter string value `Martin` with a prefix `0xa6`, and so on.
+
+The binary encoding is 66 bytes long, which is only a little less than the 81 bytes taken by the textual JSON encoding (with whitespace removed). All the binary encodings of JSON are similar in this regard. It's not clear whether such a small space reduction (and perhaps a speedup in parsing) is worth the loss of human-readability.
+
+#### Thrift and Protocol Buffers
+
+[Apache Thrift](https://en.wikipedia.org/wiki/Apache_Thrift) and [Protocol Buffers](https://en.wikipedia.org/wiki/Protocol_Buffers) (protobuf) are binary encoding libraries that are based on the same principle. Protocol Buffers was originally developed at Google, Thrift was originally developed at Facebook, and both were made open source in 2007–08.
+
+Both Thrift and Protocol Buffers require a schema for any data that is encoded. To encode the data in Example 4-1 in Thrift, you would describe the schema in the Thrift [interface definition language](https://en.wikipedia.org/wiki/Interface_description_language) (IDL) like this:
+
+```thrift
+struct Person {
+  1: required string userName,
+  2: optional i64 favoriteNumber,
+  3: optional list<string> interests
+}
+```
+
+The equivalent schema definition for Protocol Buffers looks very similar:
+
+```protobuf
+message Person {
+    required string user_name = 1;
+    optional int64 favorite_number = 2;
+    repeated string interests = 3;
+}
+```
+
+Thrift and Protocol Buffers each come with a code generation tool that takes a schema definition like the ones shown above, and produces classes that implement the schema in various programming languages. Your application code can call this generated code to encode or decode records of the schema.
