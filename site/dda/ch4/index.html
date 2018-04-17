@@ -456,6 +456,8 @@
         
             <li><a href="#json-xml-and-binary-variants">JSON, XML, and Binary Variants</a></li>
         
+            <li><a href="#thrift-and-protocol-buffers">Thrift and Protocol Buffers</a></li>
+        
     
     </ul>
 </div></div>
@@ -539,6 +541,55 @@ objects into byte sequences. For example:</p>
 </ul>
 <p>Despite these flaws, JSON, XML, and CSV are good enough for many purposes. It's likely that they will remain popular, especially as data interchange formats (i.e., for sending data from one organization to another).</p>
 <h5 id="binary-encoding"><strong>Binary encoding</strong><a class="headerlink" href="#binary-encoding" title="Permanent link">&para;</a></h5>
+<p>For data that is used only internally within your organization, you could choose a format that is more compact or faster to parse.</p>
+<p>Although JSON is less verbose than XML, they both still use a lot of space compared to binary formats. This led to the development of a profusion of binary encodings:</p>
+<ul>
+<li>For JSON: <a href="https://en.wikipedia.org/wiki/MessagePack">MessagePack</a>, <a href="https://en.wikipedia.org/wiki/BSON">BSON</a>, BJSON, <a href="https://en.wikipedia.org/wiki/UBJSON">UBJSON</a>, BISON, and <a href="https://en.wikipedia.org/wiki/Smile_(data_interchange_format)">Smile</a></li>
+<li>For XML: <a href="https://en.wikipedia.org/wiki/WBXML">WBXML</a> and <a href="https://en.wikipedia.org/wiki/Fast_Infoset">Fast Infoset</a> (FI)</li>
+</ul>
+<p>These formats have been adopted in various niches, but none of them are as widely adopted as the textual versions of JSON and XML.</p>
+<p>Some of these formats extend the set of datatypes (e.g., distinguishing integers and floating-point numbers, or adding support for binary strings), but otherwise they keep the JSON/XML data model unchanged. In particular, since they don't prescribe a schema, they need to include all the object field names within the encoded data.</p>
+<p>For example, in a binary encoding of the JSON document below, they will need to include the strings <code>userName</code>, <code>favoriteNumber</code>, and <code>interests</code> somewhere.</p>
+<p><small>Example 4-1</small></p>
+<div class="codehilite"><pre><span class="p">{</span>
+    <span class="nt">&quot;userName&quot;</span><span class="p">:</span> <span class="s2">&quot;Martin&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;favoriteNumber&quot;</span><span class="p">:</span> <span class="mi">1337</span><span class="p">,</span>
+    <span class="nt">&quot;interests&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;daydreaming&quot;</span><span class="p">,</span> <span class="s2">&quot;hacking&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>The following figure shows the byte sequence that you get if you encode the JSON document in the above example with MessagePack.</p>
+<p><a href="../figure_4-1.png" title="Figure 4-1. Example record (Example 4-1) encoded using MessagePack."><img alt="Figure 4-1. Example record (Example 4-1) encoded using MessagePack." src="../figure_4-1_600.png" /></a></p>
+<p>The first few bytes are as follows:</p>
+<ol>
+<li>The first byte, <code>0x83</code>, indicates that what follows is an object (top four bits = <code>0x80</code>) with three fields (bottom four bits = <code>0x03</code>). (If an object has more than 15 fields, so that the number of fields doesn't fit in four bits, it then gets a different type indicator, and the number of fields is encoded in two or four bytes.)</li>
+<li>The second byte, <code>0xa8</code>, indicates that what follows is a string (top four bits = <code>0xa0</code>) that is eight bytes long (bottom four bits = <code>0x08</code>).</li>
+<li>The next eight bytes are the field name <code>userName</code> in ASCII. Since the length was indicated previously, there's no need for any marker to tell us where the string ends (or any escaping).</li>
+<li>The next seven bytes encode the six-letter string value <code>Martin</code> with a prefix <code>0xa6</code>, and so on.</li>
+</ol>
+<p>The binary encoding is 66 bytes long, which is only a little less than the 81 bytes taken by the textual JSON encoding (with whitespace removed). All the binary encodings of JSON are similar in this regard. It's not clear whether such a small space reduction (and perhaps a speedup in parsing) is worth the loss of human-readability.</p>
+<h4 id="thrift-and-protocol-buffers">Thrift and Protocol Buffers<a class="headerlink" href="#thrift-and-protocol-buffers" title="Permanent link">&para;</a></h4>
+<p><a href="https://en.wikipedia.org/wiki/Apache_Thrift">Apache Thrift</a> and <a href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protocol Buffers</a> (protobuf) are binary encoding libraries that are based on the same principle. Protocol Buffers was originally developed at Google, Thrift was originally developed at Facebook, and both were made open source in 2007–08.</p>
+<p>Both Thrift and Protocol Buffers require a schema for any data that is encoded. To encode the data in Example 4-1 in Thrift, you would describe the schema in the Thrift <a href="https://en.wikipedia.org/wiki/Interface_description_language">interface definition language</a> (IDL) like this:</p>
+<div class="codehilite"><pre><span class="kd">struct</span><span class="w"> </span><span class="nc">Person</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="k">required</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">userName</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="k">optional</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="n">favoriteNumber</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="k">optional</span><span class="w"> </span><span class="kt">list</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">&gt;</span><span class="w"> </span><span class="n">interests</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+
+
+<p>The equivalent schema definition for Protocol Buffers looks very similar:</p>
+<div class="codehilite"><pre><span class="kd">message</span> <span class="nc">Person</span> <span class="p">{</span>
+    <span class="k">required</span> <span class="kt">string</span> <span class="na">user_name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">optional</span> <span class="kt">int64</span> <span class="na">favorite_number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">interests</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Thrift and Protocol Buffers each come with a code generation tool that takes a schema definition like the ones shown above, and produces classes that implement the schema in various programming languages. Your application code can call this generated code to encode or decode records of the schema.</p>
             </div>
         </div>
 
