@@ -590,6 +590,28 @@ objects into byte sequences. For example:</p>
 
 
 <p>Thrift and Protocol Buffers each come with a code generation tool that takes a schema definition like the ones shown above, and produces classes that implement the schema in various programming languages. Your application code can call this generated code to encode or decode records of the schema.</p>
+<p>Thrift has two different binary encoding formats: <a href="https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md"><em>BinaryProtocol</em></a> and <a href="https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md"><em>CompactProtocol</em></a>.</p>
+<p>Encoding Example 4-1 in BinaryProtocol takes 59 bytes, as shown in the following figure:</p>
+<p><a href="../figure_4-2.png" title="Figure 4-2. Example record encoded using Thrift’s BinaryProtocol."><img alt="Figure 4-2. Example record encoded using Thrift’s BinaryProtocol." src="../figure_4-2_600.png" /></a></p>
+<p>Similarly to <a href="../figure_4-1.png">Figure 4-1</a>, each field has:</p>
+<ul>
+<li>A type annotation and,</li>
+<li>A length indication, when required (e.g.length of a string, number of items in a list).</li>
+</ul>
+<p>The strings that appear in the data ("Martin", "daydreaming", "hacking") are also encoded as ASCII (or rather, UTF-8), similar to before.</p>
+<p>The big difference compared to Figure 4-1 is that there are no field names (<code>userName</code>, <code>favoriteNumber</code>, <code>interests</code>). Instead, the encoded data contains <em>field tags</em>, which are numbers (1, 2, and 3). Those are the numbers that appear in the schema definition. Field tags are like aliases for fields.</p>
+<p>The Thrift CompactProtocol encoding is semantically equivalent to BinaryProtocol, but it packs the same information into only 34 bytes, as shown in the figure below.</p>
+<p><a href="../figure_4-3.png" title="Figure 4-3. Example record encoded using Thrift’s CompactProtocol."><img alt="Figure 4-3. Example record encoded using Thrift’s CompactProtocol." src="../figure_4-3_600.png" /></a></p>
+<p>The size is much smaller because:</p>
+<ul>
+<li>It packs the field type and tag number into a single byte.</li>
+<li>It uses variable-length integers.</li>
+</ul>
+<p>Rather than using a full eight bytes for the number 1337, it is encoded in two bytes, with the top bit of each byte used to indicate whether there are still more bytes to come. This means numbers between –64 and 63 are encoded in one byte, numbers between –8192 and 8191 are encoded in two bytes, etc. Bigger numbers use more bytes</p>
+<p>Finally, Protocol Buffers (which has only one binary encoding format) encodes the same data as shown in the figure below. It does the bit packing slightly differently, but is otherwise very similar to Thrift's CompactProtocol. Protocol Buffers fits the same record in 33 bytes.</p>
+<p><a href="../figure_4-4.png" title="Figure 4-4. Example record encoded using Protocol Buffers."><img alt="Figure 4-4. Example record encoded using Protocol Buffers." src="../figure_4-4_600.png" /></a></p>
+<p>Note in the schemas shown earlier, each field was marked either <code>required</code> or <code>optional</code>, but this makes no difference to how the field is encoded (nothing in the binary data indicates whether a field was required). The difference is simply that required enables a runtime check that fails if the field is not set, which can be useful for catching bugs.</p>
+<h5 id="field-tags-and-schema-evolution"><strong>Field tags and schema evolution</strong><a class="headerlink" href="#field-tags-and-schema-evolution" title="Permanent link">&para;</a></h5>
             </div>
         </div>
 
