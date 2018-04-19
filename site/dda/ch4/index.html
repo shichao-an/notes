@@ -458,6 +458,8 @@
         
             <li><a href="#thrift-and-protocol-buffers">Thrift and Protocol Buffers</a></li>
         
+            <li><a href="#avro">Avro</a></li>
+        
     
     </ul>
 </div></div>
@@ -599,7 +601,7 @@ objects into byte sequences. For example:</p>
 <li>A length indication, when required (e.g.length of a string, number of items in a list).</li>
 </ul>
 <p>The strings that appear in the data ("Martin", "daydreaming", "hacking") are also encoded as ASCII (or rather, UTF-8), similar to before.</p>
-<p>The big difference compared to Figure 4-1 is that there are no field names (<code>userName</code>, <code>favoriteNumber</code>, <code>interests</code>). Instead, the encoded data contains <em>field tags</em>, which are numbers (1, 2, and 3). Those are the numbers that appear in the schema definition. Field tags are like aliases for fields.</p>
+<p>The big difference compared to Figure 4-1 is that there are no field names (<code>userName</code>, <code>favoriteNumber</code>, <code>interests</code>). Instead, the encoded data contains <em>field tags</em>, which are numbers (<code>1</code>, <code>2</code>, and <code>3</code>). Those are the numbers that appear in the schema definition. Field tags are like aliases for fields.</p>
 <p>The Thrift CompactProtocol encoding is semantically equivalent to BinaryProtocol, but it packs the same information into only 34 bytes, as shown in the figure below.</p>
 <p><a href="../figure_4-3.png" title="Figure 4-3. Example record encoded using Thrift’s CompactProtocol."><img alt="Figure 4-3. Example record encoded using Thrift’s CompactProtocol." src="../figure_4-3_600.png" /></a></p>
 <p>The size is much smaller because:</p>
@@ -612,6 +614,31 @@ objects into byte sequences. For example:</p>
 <p><a href="../figure_4-4.png" title="Figure 4-4. Example record encoded using Protocol Buffers."><img alt="Figure 4-4. Example record encoded using Protocol Buffers." src="../figure_4-4_600.png" /></a></p>
 <p>Note in the schemas shown earlier, each field was marked either <code>required</code> or <code>optional</code>, but this makes no difference to how the field is encoded (nothing in the binary data indicates whether a field was required). The difference is simply that required enables a runtime check that fails if the field is not set, which can be useful for catching bugs.</p>
 <h5 id="field-tags-and-schema-evolution"><strong>Field tags and schema evolution</strong><a class="headerlink" href="#field-tags-and-schema-evolution" title="Permanent link">&para;</a></h5>
+<p>Schemas inevitably need to change over time. This is called <a href="https://en.wikipedia.org/wiki/Schema_evolution"><em>schema evolution</em></a>. How do Thrift and Protocol Buffers handle schema changes while keeping backward and forward compatibility?</p>
+<p>An encoded record is just the concatenation of its encoded fields. Each field is identified by its tag number (the numbers <code>1</code>, <code>2</code>, <code>3</code> in the sample schemas) and annotated with a datatype. If a field value is not set, it is simply omitted from the encoded record. From this you can see that field tags are critical to the meaning of the encoded data. You can change the name of a field in the schema, since the encoded data never refers to field names, but you cannot change a field's tag, since that would make all existing encoded data invalid.</p>
+<ul>
+<li>Forward compatibility (old code can read data written by new code). You can add new fields to the schema, provided that you give each field a new tag number. If old code (which doesn't know about the new tag numbers you added) tries to read data written by new code, it can simply ignore a new field with a tag number it doesn't recognize. The datatype annotation allows the parser to determine how many bytes it needs to skip.</li>
+<li>Backward compatibility (new code can can read data written by old code). As long as each field has a unique tag number, new code can always read old data, because the tag numbers still have the same meaning. The only detail is that if you add a new field, you cannot make it required.  If you were to add a field and make it required, that check would fail if new code read data written by old code, because the old code will not have written the new field that you added. <u>Therefore, to maintain backward compatibility, every field you add after the initial deployment of the schema must be optional or have a default value.</u></li>
+</ul>
+<p>Removing a field is just like adding a field, with backward and forward compatibility concerns reversed:</p>
+<ul>
+<li>You can only remove a field that is optional (a required field can never be removed);</li>
+<li>You can never use the same tag number again (because you may still have data written somewhere that includes the old tag number, and that field must be ignored by new code).</li>
+</ul>
+<h5 id="datatypes-and-schema-evolution"><strong>Datatypes and schema evolution</strong><a class="headerlink" href="#datatypes-and-schema-evolution" title="Permanent link">&para;</a></h5>
+<p>Changing the datatype of a field may be possible, but there is a risk that values will lose precision or get truncated.</p>
+<p>For example, say you change a 32-bit integer into a 64-bit integer:</p>
+<ul>
+<li>New code can easily read data written by old code, because the parser can fill in any missing bits with zeros.</li>
+<li>However, if old code reads data written by new code, the old code is still using a 32-bit variable to hold the value. If the decoded 64-bit value won't fit in 32 bits, it will be truncated.</li>
+</ul>
+<p>Protocol Buffers does not have a list or array datatype, but instead has a <code>repeated</code> marker for fields (which is a third option alongside <code>required</code> and <code>optional</code>). As you can see in <a href="../figure_4-4.png">Figure 4-4</a>, the encoding of a repeated field is just what it says on the tin: the same field tag simply appears multiple times in the record. This has the nice effect that it's okay to change an <code>optional</code> (single-valued) field into a <code>repeated</code> (multi-valued) field:</p>
+<ul>
+<li>New code reading old data sees a list with zero or one elements (depending on whether the field was present);</li>
+<li>Old code reading new data sees only the last element of the list.</li>
+</ul>
+<p>Thrift has a dedicated list datatype, which is parameterized with the datatype of the list elements. This does not allow the same evolution from single-valued to multi-valued as Protocol Buffers does, but it has the advantage of supporting nested lists.</p>
+<h4 id="avro">Avro<a class="headerlink" href="#avro" title="Permanent link">&para;</a></h4>
             </div>
         </div>
 
