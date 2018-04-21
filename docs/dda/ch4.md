@@ -64,7 +64,7 @@ These encoding libraries are very convenient, because they allow in-memory objec
 * **Versioning**. As they are intended for quick and easy encoding of data, they often neglect the inconvenient problems of forward and backward compatibility.
 * **Efficiency**. The efficiency such as the CPU time taken to encode or decode, and the size of the encoded structure, is also often an afterthought. For example, Java's built-in serialization is notorious for its bad performance and bloated encoding.
 
-For these reasons it's generally a bad idea to use your language’s built-in encoding for anything other than very transient purposes.
+For these reasons it's generally a bad idea to use your language's built-in encoding for anything other than very transient purposes.
 
 #### JSON, XML, and Binary Variants
 
@@ -75,7 +75,7 @@ As textual formats, JSON, XML, and CSV also have some subtle problems:
 * Ambiguity in numbers. In XML and CSV, you cannot distinguish between a number and a string that happens to consist of digits (except by referring to an external schema). JSON distinguishes strings and numbers, but it doesn't distinguish integers and floating-point numbers, and it doesn't specify a precision.
     * This is a problem when dealing with large numbers; for example, integers greater than 2<sup>53</sup> cannot be exactly represented in an [IEEE 754 double-precision floating-point](https://en.wikipedia.org/wiki/Double-precision_floating-point_format) number, so such numbers become inaccurate when parsed in a language that uses floating-point numbers (such as JavaScript). Such an example occurs on Twitter, which uses a 64-bit number to identify each tweet. The JSON returned by Twitter's API includes tweet IDs twice, once as a JSON number and once as a decimal string, to work around the fact that the numbers are not correctly parsed by JavaScript applications.
 * Lacking binary strings support. JSON and XML have good support for Unicode character strings (i.e., human-readable text), but they don't support binary strings (sequences of bytes without a character encoding).
-    * Binary strings are a useful feature, so people get around this limitation by encoding the binary data as text using [Base64](https://en.wikipedia.org/wiki/Base64). The schema is then used to indicate that the value should be interpreted as Base64-encoded. This works, but it’s somewhat hacky and increases the data size by 33%.
+    * Binary strings are a useful feature, so people get around this limitation by encoding the binary data as text using [Base64](https://en.wikipedia.org/wiki/Base64). The schema is then used to indicate that the value should be interpreted as Base64-encoded. This works, but it's somewhat hacky and increases the data size by 33%.
 * There is optional schema support for both XML (see [XML Schema](https://www.w3.org/XML/Schema)) and JSON (see [JSON Schema](http://json-schema.org/)). Use of XML schemas is fairly widespread, but many JSON-based tools don't bother using schemas. Since the correct interpretation of data (such as numbers and binary strings) depends on the schema, applications that don't use XML/JSON schemas need to potentially hardcode the appropriate encoding/decoding logic instead.
 * CSV does not have any schema, so it is up to the application to define the meaning of each row and column. If an application change adds a new row or column, you have to handle that change manually.
 
@@ -149,7 +149,7 @@ Thrift has two different binary encoding formats: [*BinaryProtocol*](https://git
 
 Encoding Example 4-1 in BinaryProtocol takes 59 bytes, as shown in the following figure:
 
-[![Figure 4-2. Example record encoded using Thrift’s BinaryProtocol.](figure_4-2_600.png)](figure_4-2.png "Figure 4-2. Example record encoded using Thrift’s BinaryProtocol.")
+[![Figure 4-2. Example record encoded using Thrift's BinaryProtocol.](figure_4-2_600.png)](figure_4-2.png "Figure 4-2. Example record encoded using Thrift's BinaryProtocol.")
 
 Similarly to [Figure 4-1](figure_4-1.png), each field has:
 
@@ -162,7 +162,7 @@ The big difference compared to Figure 4-1 is that there are no field names (`use
 
 The Thrift CompactProtocol encoding is semantically equivalent to BinaryProtocol, but it packs the same information into only 34 bytes, as shown in the figure below.
 
-[![Figure 4-3. Example record encoded using Thrift’s CompactProtocol.](figure_4-3_600.png)](figure_4-3.png "Figure 4-3. Example record encoded using Thrift’s CompactProtocol.")
+[![Figure 4-3. Example record encoded using Thrift's CompactProtocol.](figure_4-3_600.png)](figure_4-3.png "Figure 4-3. Example record encoded using Thrift's CompactProtocol.")
 
 The size is much smaller because:
 
@@ -208,3 +208,91 @@ Protocol Buffers does not have a list or array datatype, but instead has a `repe
 Thrift has a dedicated list datatype, which is parameterized with the datatype of the list elements. This does not allow the same evolution from single-valued to multi-valued as Protocol Buffers does, but it has the advantage of supporting nested lists.
 
 #### Avro
+
+[Apache Avro](https://en.wikipedia.org/wiki/Apache_Avro) is another binary encoding format that is interestingly different from Protocol Buffers and Thrift. It was started in 2009 as a subproject of Hadoop, because Thrift was not a good fit for Hadoop's use cases.
+
+Avro also uses a schema to specify the structure of the data being encoded. It has two schema languages:
+
+* Avro IDL: intended for human editing
+* JSON: more easily machine-readable
+
+An example schema, written in Avro IDL, looks like this:
+
+```avro
+record Person {
+    string               userName;
+    union { null, long } favoriteNumber = null;
+    array<string>        interests;
+}
+```
+
+The equivalent JSON representation of that schema is as follows:
+
+```json
+{
+    "type": "record",
+    "name": "Person",
+    "fields": [
+        {"name": "userName", "type": "string"},
+        {"name": "favoriteNumber", "type": ["null", "long"], "default": null},
+        {"name": "interests", "type": {"type": "array", "items": "string"}}
+    ]
+}
+```
+
+Notice that there are no tag numbers in the schema. If we encode our example record (Example 4-1) using this schema, the Avro binary encoding is just 32 bytes long—the most compact of all the encodings we have seen. The breakdown of the encoded byte sequence is shown in the figure below.
+
+[![Figure 4-5. Example record encoded using Avro.](figure_4-5_600.png)](figure_4-5.png "Figure 4-5. Example record encoded using Avro.")
+
+In the byte sequence, there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. For example:
+
+* A string is just a length prefix followed by UTF-8 bytes, but there's nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely.
+* An integer is encoded using a variable-length encoding (the same as Thrift's CompactProtocol).
+
+To parse the binary data, you go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data. Any mismatch in the schema between the reader and the writer would mean incorrectly decoded data.
+
+How does Avro support schema evolution?
+
+##### **The writer's schema and the reader's schema**
+
+When an application wants to encode some data (to write it to a file or database, to send it over the network, etc.), it encodes the data using whatever version of the schema it knows about (e.g., the schema may be compiled into the application). This is known as the **writer's schema**.
+
+When an application wants to decode some data (read it from a file or database, receive it from the network, etc.), it is expecting the data to be in some schema, which is known as the **reader's schema**. That is the schema the application code is relying on (e.g., code may have been generated from that schema during the application's build process).
+
+The key idea with Avro is that the writer's schema and the reader's schema don't have to be the same—they only need to be compatible. When data is decoded (read), the Avro library resolves the differences by looking at the writer's schema and the reader's schema side by side and translating the data from the writer's schema into the reader's schema. The [Avro specification](http://avro.apache.org/docs/1.8.2/) defines exactly how this resolution works, and it is illustrated in figure below.
+
+[![Figure 4-6. An Avro reader resolves differences between the writer's schema and the reader's schema.](figure_4-6_600.png)](figure_4-6.png "Figure 4-6. An Avro reader resolves differences between the writer's schema and the reader's schema.")
+
+For example:
+
+* It's no problem if the writer's schema and the reader's schema have their fields in a different order, because the schema resolution matches up the fields by field name.
+* If the code reading the data encounters a field that appears in the writer's schema but not in the reader's schema, it is ignored.
+* If the code reading the data expects some field, but the writer's schema does not contain a field of that name, it is filled in with a default value declared in the reader's schema.
+
+##### **Schema evolution rules**
+
+* Forward compatibility means that you can have a new version of the schema as writer and an old version of the schema as reader.
+* Conversely, backward compatibility means that you can have a new version of the schema as reader and an old version as writer.
+
+To maintain compatibility, you may only add or remove a field that has a default value. For example, say you add a field with a default value, so this new field exists in the new schema but not the old one. When a reader using the new schema reads a record written with the old schema, the default value is filled in for the missing field.
+
+* If you were to add a field that has no default value, new readers wouldn't be able to read data written by old writers, so you would break backward compatibility.
+* If you were to remove a field that has no default value, old readers wouldn't be able to read data written by new writers, so you would break forward compatibility.
+
+In some programming languages, `null` is an acceptable default for any variable, but this is not the case in Avro: if you want to allow a field to be null, you have to use a [*union type*](https://avro.apache.org/docs/1.8.2/spec.html#Unions). For example, `union { null, long, string } field`; indicates that `field` can be a number, or a string, or null. You can only use null as a default value if it is one of the branches of the union. (The default value must be of the type of the *first* branch of the union.) This helps prevent bugs by being explicit about what can and cannot be null, rather than having everything nullable by default.
+
+Consequently, Avro doesn't have `optional` and `required` markers in the same way as Protocol Buffers and Thrift do (it has union types and default values instead).
+
+Changing the datatype of a field is possible, since Avro can convert the type. Changing the name of a field is possible but a little tricky: the reader's schema can contain aliases for field names, so it can match an old writer's schema field names against the aliases. This means that changing a field name is backward compatible but not forward compatible. Similarly, adding a branch to a union type is backward compatible but not forward compatible.
+
+##### **But what is the writer's schema?**
+
+How does the reader know the writer's schema with which a particular piece of data was encoded?
+
+The answer depends on the context in which Avro is being used. For example:
+
+* **Large file with lots of records**. A common use for Avro (especially in the context of Hadoop) is for storing a large file containing millions of records, all encoded with the same schema. (This situation will be discussed in [Chapter 10](ch10.md).) In this case, the writer of that file can just include the writer's schema once at the beginning of the file. Avro specifies a file format ([object container files](https://avro.apache.org/docs/1.8.2/spec.html#Object+Container+Files)) to do this.
+* **Database with individually written records**. In a database, different records may be written using different writer's schemas. You cannot assume that all the records will have the same schema. The simplest solution is to include a version number at the beginning of every encoded record, and to keep a list of schema versions in your database. A reader can fetch a record, extract the version number, and then fetch the writer's schema for that version number from the database. Using that writer's schema, it can decode the rest of the record.
+* **Sending records over a network connection**. When two processes are communicating over a bidirectional network connection, they can negotiate the schema version on connection setup and then use that schema for the lifetime of the connection. The Avro RPC protocol (see [Dataflow Through Services: REST and RPC](#dataflow-through-services-rest-and-rpc)) works like this.
+
+A database of schema versions is a useful thing to have in any case, since it acts as documentation and gives you a chance to check schema compatibility. As for the version number, you could use a simple incrementing integer, or you could use a hash of the schema.
