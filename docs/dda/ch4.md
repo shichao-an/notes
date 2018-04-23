@@ -296,3 +296,23 @@ The answer depends on the context in which Avro is being used. For example:
 * **Sending records over a network connection**. When two processes are communicating over a bidirectional network connection, they can negotiate the schema version on connection setup and then use that schema for the lifetime of the connection. The Avro RPC protocol (see [Dataflow Through Services: REST and RPC](#dataflow-through-services-rest-and-rpc)) works like this.
 
 A database of schema versions is a useful thing to have in any case, since it acts as documentation and gives you a chance to check schema compatibility. As for the version number, you could use a simple incrementing integer, or you could use a hash of the schema.
+
+##### **Dynamically generated schemas**
+
+One advantage of Avro's approach, compared to Protocol Buffers and Thrift, is that the schema doesn't contain any tag numbers.
+
+Avro is friendlier to *dynamically generated* schemas. For example, you have a relational database and you want to dump its contents to a file using a binary format to avoid the aforementioned problems with textual formats (JSON, CSV, SQL). If you use Avro, you can easily generate an Avro schema (in the JSON representation we saw earlier) from the relational schema and encode the database contents using that schema, dumping it all to an Avro object container file. You generate a record schema for each database table, and each column becomes a field in that record. The column name in the database maps to the field name in Avro.
+
+If the database schema changes (for example, a table has one column added and one column removed), you can just generate a new Avro schema from the updated database schema and export data in the new Avro schema. The data export process does not need to pay any attention to the schema change; it can simply do the schema conversion every time it runs. Anyone who reads the new data files will see that the fields of the record have changed, but since the fields are identified by name, the updated writer's schema can still be matched up with the old reader's schema.
+
+By contrast, if you were using Thrift or Protocol Buffers for this purpose, the field tags would likely have to be assigned by hand: every time the database schema changes, an administrator would have to manually update the mapping from database column names to field tags. (It might be possible to automate this, but the schema generator would have to be very careful to not assign previously used field tags.) This kind of dynamically generated schema simply wasn't a design goal of Thrift or Protocol Buffers, whereas it was for Avro.
+
+##### **Code generation and dynamically typed languages**
+
+Thrift and Protocol Buffers rely on code generation: after a schema has been defined, you can generate code that implements this schema in a programming language of your choice. This is useful in statically typed languages such as Java, C++, or C#, because it allows efficient in-memory structures to be used for decoded data, and it allows type checking and autocompletion in IDEs when writing programs that access the data structures.
+
+In dynamically typed programming languages such as JavaScript, Ruby, or Python, there is not much point in generating code, since there is no compile-time type checker to satisfy. Moreover, in the case of a dynamically generated schema (such as an Avro schema generated from a database table), code generation is an unnecessarily obstacle to getting to the data.
+
+Avro provides optional code generation for statically typed programming languages, but it can be used just as well without any code generation. If you have an object container file (which embeds the writer's schema), you can simply open it using the Avro library and look at the data in the same way as you could look at a JSON file. The file is [*self-describing*](https://en.wikipedia.org/wiki/Self-documenting_code) since it includes all the necessary metadata.
+
+This property is especially useful in conjunction with dynamically typed data processing languages like [Apache Pig](https://en.wikipedia.org/wiki/Pig_(programming_tool)). In Pig, you can just open some Avro files, start analyzing them, and write derived datasets to output files in Avro format without even thinking about schemas.
