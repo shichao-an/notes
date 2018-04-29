@@ -316,3 +316,20 @@ In dynamically typed programming languages such as JavaScript, Ruby, or Python, 
 Avro provides optional code generation for statically typed programming languages, but it can be used just as well without any code generation. If you have an object container file (which embeds the writer's schema), you can simply open it using the Avro library and look at the data in the same way as you could look at a JSON file. The file is [*self-describing*](https://en.wikipedia.org/wiki/Self-documenting_code) since it includes all the necessary metadata.
 
 This property is especially useful in conjunction with dynamically typed data processing languages like [Apache Pig](https://en.wikipedia.org/wiki/Pig_(programming_tool)). In Pig, you can just open some Avro files, start analyzing them, and write derived datasets to output files in Avro format without even thinking about schemas.
+
+#### The Merits of Schemas
+
+Protocol Buffers, Thrift, and Avro all use a schema to describe a binary encoding format and their schema languages are much simpler than XML Schema or JSON Schema, which support much more detailed validation rules, e.g., "the string value of this field must match this regular expression" or "the integer value of this field must be between 0 and 100" (see [JSON Schema Validation](http://json-schema.org/latest/json-schema-validation.html)). They have grown to support a fairly wide range of programming languages.
+
+The ideas on which these encodings are based are by no means new. For example, they have a lot in common with [ASN.1](https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One), a schema definition language that was first standardized in 1984. It was used to define various network protocols, and its binary encoding ([DER](https://en.wikipedia.org/wiki/X.690#DER_encoding)) is still used to encode SSL certificates ([X.509](https://en.wikipedia.org/wiki/X.690)), for example. ASN.1 supports schema evolution using tag numbers, similar to Protocol Buffers and Thrift. However, it's also very complex and badly documented, so ASN.1 is probably not a good choice for new applications.
+
+Many data systems also implement proprietary binary encoding for their data. For example, most relational databases have a network protocol for sending queries to the database. Those protocols are generally specific to a particular database, and the database vendor provides a driver (e.g., using the [ODBC](https://en.wikipedia.org/wiki/Open_Database_Connectivity) or [JDBC](https://en.wikipedia.org/wiki/Java_Database_Connectivity) APIs) that decodes responses from the database's network protocol into in-memory data structures
+
+We can see that although textual data formats such as JSON, XML, and CSV are widespread, binary encodings based on schemas are also a viable option. They have a number of nice properties:
+
+* They can be much more compact than the various "binary JSON" variants, since they can omit field names from the encoded data.
+* The schema is a valuable form of documentation, and because the schema is required for decoding, you can be sure that it is up to date (whereas manually maintained documentation may easily diverge from reality).
+* Keeping a database of schemas allows you to check forward and backward compatibility of schema changes, before anything is deployed.
+* For users of statically typed programming languages, the ability to generate code from the schema is useful, since it enables type checking at compile time.
+
+### Modes of Dataflow
