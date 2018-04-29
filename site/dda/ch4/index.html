@@ -460,6 +460,11 @@
         
             <li><a href="#avro">Avro</a></li>
         
+            <li><a href="#the-merits-of-schemas">The Merits of Schemas</a></li>
+        
+    
+        <li class="main "><a href="#modes-of-dataflow">Modes of Dataflow</a></li>
+        
     
     </ul>
 </div></div>
@@ -719,6 +724,18 @@ objects into byte sequences. For example:</p>
 <p>In dynamically typed programming languages such as JavaScript, Ruby, or Python, there is not much point in generating code, since there is no compile-time type checker to satisfy. Moreover, in the case of a dynamically generated schema (such as an Avro schema generated from a database table), code generation is an unnecessarily obstacle to getting to the data.</p>
 <p>Avro provides optional code generation for statically typed programming languages, but it can be used just as well without any code generation. If you have an object container file (which embeds the writer's schema), you can simply open it using the Avro library and look at the data in the same way as you could look at a JSON file. The file is <a href="https://en.wikipedia.org/wiki/Self-documenting_code"><em>self-describing</em></a> since it includes all the necessary metadata.</p>
 <p>This property is especially useful in conjunction with dynamically typed data processing languages like <a href="https://en.wikipedia.org/wiki/Pig_(programming_tool)">Apache Pig</a>. In Pig, you can just open some Avro files, start analyzing them, and write derived datasets to output files in Avro format without even thinking about schemas.</p>
+<h4 id="the-merits-of-schemas">The Merits of Schemas<a class="headerlink" href="#the-merits-of-schemas" title="Permanent link">&para;</a></h4>
+<p>Protocol Buffers, Thrift, and Avro all use a schema to describe a binary encoding format and their schema languages are much simpler than XML Schema or JSON Schema, which support much more detailed validation rules, e.g., "the string value of this field must match this regular expression" or "the integer value of this field must be between 0 and 100" (see <a href="http://json-schema.org/latest/json-schema-validation.html">JSON Schema Validation</a>). They have grown to support a fairly wide range of programming languages.</p>
+<p>The ideas on which these encodings are based are by no means new. For example, they have a lot in common with <a href="https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One">ASN.1</a>, a schema definition language that was first standardized in 1984. It was used to define various network protocols, and its binary encoding (<a href="https://en.wikipedia.org/wiki/X.690#DER_encoding">DER</a>) is still used to encode SSL certificates (<a href="https://en.wikipedia.org/wiki/X.690">X.509</a>), for example. ASN.1 supports schema evolution using tag numbers, similar to Protocol Buffers and Thrift. However, it's also very complex and badly documented, so ASN.1 is probably not a good choice for new applications.</p>
+<p>Many data systems also implement proprietary binary encoding for their data. For example, most relational databases have a network protocol for sending queries to the database. Those protocols are generally specific to a particular database, and the database vendor provides a driver (e.g., using the <a href="https://en.wikipedia.org/wiki/Open_Database_Connectivity">ODBC</a> or <a href="https://en.wikipedia.org/wiki/Java_Database_Connectivity">JDBC</a> APIs) that decodes responses from the database's network protocol into in-memory data structures</p>
+<p>We can see that although textual data formats such as JSON, XML, and CSV are widespread, binary encodings based on schemas are also a viable option. They have a number of nice properties:</p>
+<ul>
+<li>They can be much more compact than the various "binary JSON" variants, since they can omit field names from the encoded data.</li>
+<li>The schema is a valuable form of documentation, and because the schema is required for decoding, you can be sure that it is up to date (whereas manually maintained documentation may easily diverge from reality).</li>
+<li>Keeping a database of schemas allows you to check forward and backward compatibility of schema changes, before anything is deployed.</li>
+<li>For users of statically typed programming languages, the ability to generate code from the schema is useful, since it enables type checking at compile time.</li>
+</ul>
+<h3 id="modes-of-dataflow">Modes of Dataflow<a class="headerlink" href="#modes-of-dataflow" title="Permanent link">&para;</a></h3>
             </div>
         </div>
 
