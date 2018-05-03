@@ -333,3 +333,81 @@ We can see that although textual data formats such as JSON, XML, and CSV are wid
 * For users of statically typed programming languages, the ability to generate code from the schema is useful, since it enables type checking at compile time.
 
 ### Modes of Dataflow
+
+There are many ways data can flow from one process to another. We will explore some of the most common ways how data flows between processes:
+
+* Via databases (see [Dataflow Through Databases](#dataflow-through-databases))
+* Via service calls (see [Dataflow Through Services: REST and RPC](#dataflow-through-services-rest-and-rpc))
+* Via asynchronous message passing (see [Message-Passing Dataflow](#message-passing-dataflow))
+
+#### Dataflow Through Databases
+
+In a database:
+
+* The process that writes to the database encodes the data
+* The process that reads from the database decodes it
+
+There may just be a single process accessing the database, in which case the reader is simply a later version of the same process. In that case, you can think of storing something in the database as sending a message to your future self.
+
+* Backward compatibility is necessary. Otherwise your future self won't be able to decode what you previously wrote.
+* Forward compatibility is also often required for databases. If the application is changing, it is likely that some processes accessing the database will be running newer code and some will be running older code. For example, if a new version is currently being deployed in a rolling upgrade, some instances have been updated while others haven't yet. This means that a value in the database may be written by a *newer* version of the code, and subsequently read by an *older* version of the code that is still running.
+* An additional snag. If you add a field to a record schema, and the newer code writes a value for that new field to the database. Subsequently, an older version of the code (which doesn't yet know about the new field) reads the record, updates it, and writes it back. In this situation, the desirable behavior is usually for the old code to keep the new field intact, even though it couldn't be interpreted.
+
+The encoding formats discussed previously support such preservation of unknown fields, but sometimes you need to take care at an application level, as illustrated in [Figure 4-7](figure_4-7.png) below. When an older version of the application updates data previously written by a newer version of the application, data may be lost if you're not careful.
+
+[![Figure 4-7. When an older version of the application updates data previously written by a newer version of the application, data may be lost if you're not careful.](figure_4-7_600.png)](figure_4-7.png "Figure 4-7. When an older version of the application updates data previously written by a newer version of the application, data may be lost if you're not careful.")
+
+##### **Different values written at different times**
+
+A database generally allows any value to be updated at any time. This means that within a single database you may have some values that were written five milliseconds ago, and some values that were written five years ago.
+
+When you deploy a new version of your application, you may entirely replace the old version with the new version within a few minutes. The same is not true of database contents: the five-year-old data will still be there, in the original encoding, unless you have explicitly rewritten it since then. This observation is sometimes summed up as *data outlives code*.
+
+Rewriting (*migrating*) data into a new schema is certainly possible, but it's an expensive thing to do on a large dataset, so most databases avoid it if possible. Most relational databases allow simple schema changes, such as adding a new column with a `null` default value, without rewriting existing data (except for MySQL, which often rewrites an entire table even though it is not strictly necessary, as mentioned in [Schema flexibility in the document model](ch2.md#schema-flexibility-in-the-document-model)). When an old row is read, the database fills in `nulls` for any columns that are missing from the encoded data on disk. LinkedIn's document database [Espresso](https://engineering.linkedin.com/espresso/introducing-espresso-linkedins-hot-new-distributed-document-store) uses Avro for storage, allowing it to use Avro's schema evolution rules.
+
+Schema evolution thus allows the entire database to appear as if it was encoded with a single schema, even though the underlying storage may contain records encoded with various historical versions of the schema.
+
+##### **Archival storage**
+
+You may take a snapshot of your database from time to time, e.g., for backup purposes or for loading into a data warehouse (see [Data Warehousing](ch3.md#data-warehousing)). In this case, the data dump will typically be encoded using the latest schema, even if the original encoding in the source database contained a mixture of schema versions from different eras. Since you're copying the data anyway, you might as well encode the copy of the data consistently.
+
+As the data dump is written in one go and is immutable, formats like Avro object container files are a good fit. This is also a good opportunity to encode the data in an analytics-friendly column-oriented format such as [Parquet](https://en.wikipedia.org/wiki/Apache_Parquet) (see [Column Compression](ch3.md#column-compression)).
+
+[Chapter 10](ch10.md) has more about using data in archival storage.
+
+#### Dataflow Through Services: REST and RPC
+
+When you have processes that need to communicate over a network, there are a few different ways of arranging that communication. The most common arrangement is to have two roles: *clients* and *servers*. The servers expose an API over the network, and the clients can connect to the servers to make requests to that API. The API exposed by the server is known as a *service*.
+
+Web browsers are not the only type of client. The server's response is typically not HTML for displaying to a human, but rather data in an encoding that is convenient for further processing by the client-side application code (such as JSON). Although HTTP may be used as the transport protocol, the API implemented on top is application-specific, and the client and server need to agree on the details of that API.
+
+A server can itself be a client to another service (for example, a typical web app server acts as client to a database). This approach is often used to decompose a large application into smaller services by area of functionality, such that one service makes a request to another when it requires some functionality or data from that other service. This way of building applications has traditionally been called a [*service-oriented architecture*](https://en.wikipedia.org/wiki/Service-oriented_architecture) (SOA), more recently refined and rebranded as [*microservices architecture*](https://en.wikipedia.org/wiki/Microservices).
+
+In some ways, services are similar to databases: they typically allow clients to submit and query data. However, while databases allow arbitrary queries using the query languages (discussed in [Chapter 2](ch2.md)), services expose an application-specific API that only allows inputs and outputs that are predetermined by the business logic (application code) of the service. This restriction provides a degree of encapsulation: services can impose fine-grained restrictions on what clients can and cannot do.
+
+A key design goal of a service-oriented/microservices architecture is to make the application easier to change and maintain by making services independently deployable and evolvable. In other words, we should expect old and new versions of servers and clients to be running at the same time, and so the data encoding used by servers and clients must be compatible across versions of the service API—precisely what we've been talking about in this chapter. [p132]
+
+##### **Web services**
+
+When HTTP is used as the underlying protocol for talking to the service, it is called a [*web service*](https://en.wikipedia.org/wiki/Web_service). This is a slight misnomer, because web services are not only used on the web, but in several different contexts. For example:
+
+1. A client application running on a user's device making requests to a service over HTTP.
+2. One service making requests to another service owned by the same organization, often located within the same datacenter, as part of a service-oriented or microservices architecture. (Software that supports this kind of use case is sometimes called [*middleware*](https://en.wikipedia.org/wiki/Middleware_(distributed_applications)).)
+3. One service making requests to a service owned by a different organization, usually via the internet. This is used for data exchange between different organizations' backend systems. This category includes public APIs provided by online services, such as credit card processing systems, or [OAuth](https://en.wikipedia.org/wiki/OAuth) for shared access to user data.
+
+There are two popular approaches to web services: [*REST*](https://en.wikipedia.org/wiki/Representational_state_transfer) and [*SOAP*](https://en.wikipedia.org/wiki/SOAP).
+
+* REST is not a protocol, but rather a design philosophy that builds upon the principles of HTTP. It emphasizes simple data formats, using URLs for identifying resources and using HTTP features for cache control, authentication, and content type negotiation. REST has been gaining popularity compared to SOAP, at least in the context of cross-organizational service integration, and is often associated with microservices. An API designed according to the principles of REST is called *RESTful*.
+* By contrast, SOAP is an XML-based protocol for making network API requests. Although it is most commonly used over HTTP, it aims to be independent from HTTP and avoids using most HTTP features. Instead, it comes with a sprawling and complex multitude of related standards (the *web service framework*, known as *WS-**) that add various features.
+
+The API of a SOAP web service is described using an XML-based language called the [Web Services Description Language](https://en.wikipedia.org/wiki/Web_Services_Description_Language), or WSDL. WSDL enables code generation so that a client can access a remote service using local classes and method calls (which are encoded to XML messages and decoded again by the framework). This is useful in statically typed programming languages, but less so in dynamically typed ones (see [Code generation and dynamically typed languages](#code-generation-and-dynamically-typed-languages)).
+
+[p133]
+
+Although SOAP is still used in many large enterprises, it has fallen out of favor in most smaller companies.
+
+RESTful APIs tend to favor simpler approaches, typically involving less code generation and automated tooling. A definition format such as [OpenAPI](https://en.wikipedia.org/wiki/OpenAPI_Specification), also known as [Swagger](https://swagger.io/specification/), can be used to describe RESTful APIs and produce documentation.
+
+##### **The problems with remote procedure calls (RPCs)**
+
+#### Message-Passing Dataflow

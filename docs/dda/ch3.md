@@ -52,7 +52,7 @@ This `db_set` function actually has pretty good performance, because appending t
 * Reclaiming disk space so that the log doesn't grow forever
 * Handling errors and partially written records
 
-> <small>The word *log* is often used to refer to application logs, where an application outputs text that describes what’s happening. In this book, *log* is used in the more general sense: an append-only sequence of records. It doesn't have to be human-readable; it might be binary and intended only for other programs to read.</small>
+> <small>The word *log* is often used to refer to application logs, where an application outputs text that describes what's happening. In this book, *log* is used in the more general sense: an append-only sequence of records. It doesn't have to be human-readable; it might be binary and intended only for other programs to read.</small>
 
 On the other hand, the `db_get` function has terrible performance if you have a large number of records in your database. `db_get` has to scan the entire database file from beginning to end, looking for occurrences of the key. In algorithmic terms, the cost of a lookup is *O(n)*.
 
@@ -95,7 +95,7 @@ Each segment now has its own in-memory hash table, mapping keys to file offsets.
 
 Some of the issues that are important in a real implementation are:
 
-* **File format**. CSV is not the best format for a log. It’s faster and simpler to use a binary format that first encodes the length of a string in bytes, followed by the raw string (without need for escaping).
+* **File format**. CSV is not the best format for a log. It's faster and simpler to use a binary format that first encodes the length of a string in bytes, followed by the raw string (without need for escaping).
 * **Deleting records**. If you want to delete a key and its associated value, you have to append a special deletion record to the data file (sometimes called a [*tombstone*](https://en.wikipedia.org/wiki/Tombstone_(data_store))). When log segments are merged, the tombstone tells the merging process to discard any previous values for the deleted key.
 * **Crash recovery**. If the database is restarted, the in-memory hash maps are lost. In principle, you can restore each segment's hash map by reading the entire segment file from beginning to end and noting the offset of the most recent value for every key as you go along. However, that might take a long time if the segment files are large, which would make server restarts painful. Bitcask speeds up recovery by storing a snapshot of each segment's hash map on disk, which can be loaded into memory more quickly.
 * **Partially written records**. The database may crash at any time, including halfway through appending a record to the log. Bitcask files include checksums, allowing such corrupted parts of the log to be detected and ignored.
@@ -112,7 +112,7 @@ The append-only design turns out to be good for several reasons:
 However, the hash table index also has limitations:
 
 * The hash table must fit in memory, so if you have a very large number of keys, you're out of luck. In principle, you could maintain a hash map on disk, but unfortunately it is difficult to make an on-disk hash map perform well. It requires a lot of random access I/O, it is expensive to grow when it becomes full, and hash collisions require fiddly logic.
-* [Range queries](https://en.wikipedia.org/wiki/Range_query_(database)) are not efficient. For example, you cannot easily scan over all keys between `kitty00000` and` kitty99999`. You'd have to look up each key individually in the hash maps.
+* [Range queries](https://en.wikipedia.org/wiki/Range_query_(database)) are not efficient. For example, you cannot easily scan over all keys between `kitty00000` and `kitty99999`. You'd have to look up each key individually in the hash maps.
 
 The indexing structure in the next section doesn't have those limitations.
 
@@ -131,7 +131,7 @@ SSTables have several big advantages over log segments with hash indexes:
 1. Merging segments is simple and efficient, even if the files are bigger than the available memory. The approach is like the one used in the [*mergesort*](https://en.wikipedia.org/wiki/Merge_sort) algorithm and is illustrated in [Figure 3-4](figure_3-4.png) (above): read the input files side by side, for the first key in each file, copy the lowest key (according to the sort order) to the output file, and repeat. This produces a new merged segment file, also sorted by key. When multiple segments contain the same key, keep the value from the most recent segment and discard the values in older segments. [p77]
 2. In order to find a particular key in the file, you no longer need to keep an index of all the keys in memory. See [Figure 3-5](figure_3-5.png) (below) for an example: you're looking for the key `handiwork`, but you don't know the exact offset of that key in the segment file. However, you do know the offsets for the keys `handbag` and `handsome`, and because of the sorting you know that `handiwork` must appear between those two. This means you can jump to the offset for `handbag` and scan from there until you find `handiwork` (or not, if the key is not present in the file).
     * You still need an in-memory index to tell you the offsets for some of the keys, but it can be sparse: one key for every few kilobytes of segment file is sufficient, because a few kilobytes can be scanned very quickly.
-    *  If all keys and values had a fixed size, you could use binary search on a segment file and avoid the in-memory index entirely. However, they are usually variable-length in practice, which makes it difficult to tell where one record ends and the next one starts if you don't have an index.
+    * If all keys and values had a fixed size, you could use binary search on a segment file and avoid the in-memory index entirely. However, they are usually variable-length in practice, which makes it difficult to tell where one record ends and the next one starts if you don't have an index.
 3. Since read requests need to scan over several key-value pairs in the requested range anyway, it is possible to group those records into a block and compress it before writing it to disk (indicated by the shaded area in [Figure 3-5](figure_3-5.png)). Each entry of the sparse in-memory index then points at the start of a compressed block.  Besides saving disk space, compression also reduces the I/O bandwidth use.
 
 [![Figure 3-5. An SSTable with an in-memory index.](figure_3-5_600.png)](figure_3-5.png "Figure 3-5. An SSTable with an in-memory index.")
@@ -224,3 +224,46 @@ Many optimizations for B-trees have been developed over the years, such as:
     * By contrast, since LSM-trees rewrite large segments of the storage in one go during merging, it's easier for them to keep sequential keys close to each other on disk.
 * Additional pointers have been added to the tree. For example, each leaf page may have references to its sibling pages to the left and right, which allows scanning keys in order without jumping back to parent pages.
 * B-tree variants such as [*fractal trees*](https://en.wikipedia.org/wiki/Fractal_tree_index) borrow some log-structured ideas to reduce disk seeks.
+
+#### Comparing B-Trees and LSM-Trees
+
+B-tree implementations are generally more mature, but LSM-trees are also interesting due to their performance characteristics.
+
+As a rule of thumb, <u>LSM-trees are typically faster for writes, whereas B-trees are thought to be faster for reads. Reads are typically slower on LSM-trees because they have to check several different data structures and SSTables at different stages of compaction.</u>
+
+However, benchmarks are often inconclusive and sensitive to details of the workload.  You need to test systems with your particular workload in order to make a valid comparison.
+
+##### **Advantages of LSM-trees**
+
+A B-tree index must write every piece of data at least twice: once to the write-ahead log, and once to the tree page itself (and again as pages are split). There is also overhead from having to write an entire page at a time, even if only a few bytes in that page changed. Some storage engines even overwrite the same page twice in order to avoid ending up with a partially updated page in the event of a power failure (such as [InnoDB](https://www.percona.com/blog/2006/08/04/innodb-double-write/)).
+
+Log-structured indexes also rewrite data multiple times due to repeated compaction and merging of SSTables. One write to the database resulting in multiple writes to the disk over the course of the database's lifetime. This effect is known as [*write amplification*](https://en.wikipedia.org/wiki/Write_amplification). It is of particular concern on SSDs, which can only overwrite blocks a limited number of times before wearing out (see also [wear leveling](https://en.wikipedia.org/wiki/Wear_leveling)).
+
+In write-heavy applications, the performance bottleneck might be the rate at which the database can write to disk. In this case, write amplification has a direct performance cost: the more that a storage engine writes to disk, the fewer writes per second it can handle within the available disk bandwidth.
+
+Moreover, LSM-trees are typically able to sustain higher write throughput than B-trees, partly because:
+
+* They sometimes have lower write amplification (although this depends on the storage engine configuration and workload),
+* They sequentially write compact SSTable files rather than having to overwrite several pages in the tree.
+
+This difference is particularly important on magnetic hard drives, where sequential writes are much faster than random writes.
+
+LSM-trees can be compressed better, and thus often produce smaller files on disk than B-trees. B-tree storage engines leave some disk space unused due to fragmentation: when a page is split or when a row cannot fit into an existing page, some space in a page remains unused. Since LSM-trees are not page-oriented and periodically rewrite SSTables to remove fragmentation, they have lower storage overheads, especially when using leveled compaction
+
+On many SSDs, the firmware internally uses a log-structured algorithm to turn random writes into sequential writes on the underlying storage chips, so the impact of the storage engine's write pattern is less pronounced. However, lower write amplification and reduced fragmentation are still advantageous on SSDs: representing data more compactly allows more read and write requests within the available I/O bandwidth.
+
+##### **Downsides of LSM-trees**
+
+A downside of log-structured storage is that the compaction process can sometimes interfere with the performance of ongoing reads and writes. Since disks have limited resources, so it can easily happen that a request needs to wait while the disk finishes an expensive compaction operation. The impact on throughput and average response time is usually small, but at higher percentiles the response time of queries to log-structured storage engines can sometimes be quite high, and B-trees can be more predictable.
+
+At high write throughput, the disk's finite write bandwidth needs to be shared between the initial write (logging and flushing a memtable to disk) and the compaction threads running in the background. The bigger the database gets, the more disk bandwidth is required for compaction.
+
+If write throughput is high and compaction is not configured carefully, it can happen that compaction cannot keep up with the rate of incoming writes. In this case, the number of unmerged segments on disk keeps growing until you run out of disk space, and reads also slow down because they need to check more segment files. Typically, SSTable-based storage engines do not throttle the rate of incoming writes, even if compaction cannot keep up, so you need explicit monitoring to detect this situation.
+
+##### **Advantages of B-trees**
+
+An advantage of B-trees is that each key exists in exactly one place in the index, whereas a log-structured storage engine may have multiple copies of the same key in different segments. This aspect makes B-trees attractive in databases that want to offer strong transactional semantics: in many relational databases, transaction isolation is implemented using locks on ranges of keys, and in a B-tree index, those locks can be directly attached to the tree. See more details in [Chapter 7](ch7.md).
+
+B-trees are very ingrained in the architecture of databases and provide consistently good performance for many workloads, so it's unlikely that they will go away anytime soon. In new datastores, log-structured indexes are becoming increasingly popular. There is no quick and easy rule for determining which type of storage engine is better for your use case, so it is worth testing empirically.
+
+#### Other Indexing Structures
