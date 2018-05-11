@@ -260,10 +260,28 @@ At high write throughput, the disk's finite write bandwidth needs to be shared b
 
 If write throughput is high and compaction is not configured carefully, it can happen that compaction cannot keep up with the rate of incoming writes. In this case, the number of unmerged segments on disk keeps growing until you run out of disk space, and reads also slow down because they need to check more segment files. Typically, SSTable-based storage engines do not throttle the rate of incoming writes, even if compaction cannot keep up, so you need explicit monitoring to detect this situation.
 
-##### **Advantages of B-trees**
+##### **Advantages of B-trees** *
 
 An advantage of B-trees is that each key exists in exactly one place in the index, whereas a log-structured storage engine may have multiple copies of the same key in different segments. This aspect makes B-trees attractive in databases that want to offer strong transactional semantics: in many relational databases, transaction isolation is implemented using locks on ranges of keys, and in a B-tree index, those locks can be directly attached to the tree. See more details in [Chapter 7](ch7.md).
 
 B-trees are very ingrained in the architecture of databases and provide consistently good performance for many workloads, so it's unlikely that they will go away anytime soon. In new datastores, log-structured indexes are becoming increasingly popular. There is no quick and easy rule for determining which type of storage engine is better for your use case, so it is worth testing empirically.
 
 #### Other Indexing Structures
+
+So far we have only discussed key-value indexes, which are like a [*primary key*](https://en.wikipedia.org/wiki/Primary_key) index in the relational model. A primary key uniquely identifies one row in a relational table, or one document in a document database, or one vertex in a graph database. Other records in the database can refer to that row/document/vertex by its primary key (or ID), and the index is used to resolve such references.
+
+It is also very common to have *secondary indexes*. In relational databases, you can create several secondary indexes on the same table using the CREATE INDEX command, and they are often crucial for performing joins efficiently. For example, in [Figure 2-1](figure_2-1.png) in [Chapter 2](ch2.md) you would most likely have a secondary index on the `user_id` columns so that you can find all the rows belonging to the same user in each of the tables.
+
+A secondary index can easily be constructed from a key-value index. The main difference is that the indexed values in a secondary index are not necessarily unique; that is, there might be many rows (documents, vertices) under the same index entry. This can be solved in two ways: either by making each value in the index a list of matching row identifiers (like a postings list in a full-text index) or by making each entry unique by appending a row identifier to it. Either way, both B-trees and log-structured indexes can be used as secondary indexes.
+
+##### **Storing values within the index**
+
+The key in an index is the thing that queries search for, but the value can be one of two things: it could be the actual row (document, vertex), or it could be a reference to the row. In the latter case, the place where rows are stored is known as a *heap file*, and it stores data in no particular order (it may be append-only, or it may keep track of deleted rows in order to overwrite them with new data later). The heap file approach is common because it avoids duplicating data when multiple secondary indexes are present: each index just references a location in the heap file, and the actual data is kept in one place.
+
+When updating a value without changing the key, the heap file approach can be quite efficient: the record can be overwritten in place, provided that the new value is not larger than the old value. The situation is more complicated if the new value is larger, as it probably needs to be moved to a new location in the heap where there is enough space. In that case, either all indexes need to be updated to point at the new heap location of the record, or a forwarding pointer is left behind in the old heap location.
+
+In some situations, the extra hop from the index to the heap file is too much of a performance penalty for reads, so it can be desirable to store the indexed row directly within an index. This is known as a *clustered index*. For example, in MySQL's InnoDB storage engine, the primary key of a table is always a clustered index, and secondary indexes refer to the primary key (rather than a heap file location). In SQL Server, you can specify one clustered index per table.
+
+A compromise between a clustered index (storing all row data within the index) and a nonclustered index (storing only references to the data within the index) is known as a [*covering index*](https://en.wikipedia.org/wiki/Database_index#Covering_index) or *index with included columns*, which stores some of a table's columns within the index. This allows some queries to be answered by using the index alone (in which case, the index is said to cover the query).
+
+As with any kind of duplication of data, clustered and covering indexes can speed up reads, but they require additional storage and can add overhead on writes. Databases also need to go to additional effort to enforce transactional guarantees, because applications should not see inconsistencies due to the duplication.
