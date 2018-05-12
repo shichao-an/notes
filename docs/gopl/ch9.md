@@ -544,7 +544,7 @@ var icons map[string]image.Image
 // Concurrency-safe.
 func Icon(name string) image.Image {
 	loadIconsOnce.Do(loadIcons)
-  return icons[name]
+	return icons[name]
 }
 ```
 
