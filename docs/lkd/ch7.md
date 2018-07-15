@@ -570,7 +570,7 @@ Previously, driver writers could assume a `cli()` used in their interrupt handle
 The advantages of removing the global `cli()` are:
 
 * It forces driver writers to implement real locking. A fine-grained lock with a specific purpose is faster than a global lock, which is effectively what `cli()` is.
-* It streamlined a lot of code in the interrupt system and. The result is simpler and easier to comprehend.
+* It streamlined a lot of code in the interrupt system. The result is simpler and easier to comprehend.
 
 ### Disabling a Specific Interrupt Line
 
