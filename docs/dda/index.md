@@ -7,3 +7,4 @@
 * [Chatper 4. Encoding and Evolution](ch4.md)
 * [Part II: Distributed Data](part2.md)
 * [Chatper 5. Replication](ch5.md)
+* [Chatper 6. Partitioning](ch6.md)
