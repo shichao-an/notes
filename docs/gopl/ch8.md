@@ -1301,7 +1301,7 @@ In the following program:
 <small>[gopl.io/ch8/du2/main.go](https://github.com/shichao-an/gopl.io/blob/master/ch8/du2/main.go)</small>
 
 ```go
-var verbose = flag.Bool("v", false, "show verbose progress messages")
+var verbose = flag.Bool("v", true, "show verbose progress messages")
 
 func main() {
 	// ...start background goroutine...
