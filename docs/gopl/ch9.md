@@ -33,7 +33,7 @@ There are many reasons a function might not work when called concurrently, inclu
 * Livelock
 * Resource starvation.
 
-This chapter focuse on the most important one, the [**race condition**](https://en.wikipedia.org/wiki/Race_condition).
+This chapter focuses on the most important one, the [**race condition**](https://en.wikipedia.org/wiki/Race_condition).
 
 A race condition is a situation in which the program does not give the correct result for some interleavings of the operations of multiple goroutines. Race conditions are pernicious because they may remain latent in a program and appear infrequently, perhaps only under heavy load or when using certain compilers, platforms, or architectures. This makes them hard to reproduce and diagnose.
 
