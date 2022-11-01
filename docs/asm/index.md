@@ -719,7 +719,7 @@ Syscall # | Param 1 | Param 2 | Param 3 | Param 4 | Param 5 | Param 6
 --------- | ------- | ------- | ------- | ------- | ------- | -------
 `eax` | `ebx` | `ecx` | `edx` | `esi` | `edi` | `ebp`
 
-The return value is in the `eax` register.
+The return value is in the `eax` register (`edx` the upper bits if return 64 bit).
 
 The syscall numbers are described in the Linux source file [arch/x86/include/asm/unistd_32.h](https://github.com/shichao-an/linux/blob/v2.6.34/arch/x86/include/asm/unistd_32.h).
 
@@ -733,9 +733,9 @@ The syscall numbers are described in the Linux source file [arch/x86/include/asm
 
 Syscall # | Param 1 | Param 2 | Param 3 | Param 4 | Param 5 | Param 6
 --------- | ------- | ------- | ------- | ------- | ------- | -------
-`rax` | `rdi` | `rsi` | `rdx` | `rcx` | `r8` | `r9`
+`rax` | `rdi` | `rsi` | `rdx` | `r10` | `r8` | `r9`
 
-The return value is in the `rax` register.
+The return value is in the `rax` register (`rdx` the upper bits if return 128 bit).
 
 All registers, except `rcx` and `r11`, are preserved during the syscall.
 
@@ -792,7 +792,7 @@ _start:
     int $0x80       # make syscall
 
     movl $1, %eax   # use the _exit syscall
-    movl $0, %ebx   # error code 0
+    xorl %ebx, %ebx   # error code 0
     int $0x80       # make syscall
 ```
 
@@ -809,14 +809,17 @@ Parameters are passed just like in the `int $0x80` example, except that the orde
 
 ```gas
 _start:
-    movq $1, %rax   # use the write syscall
-    movq $1, %rdi   # write to stdout
-    movq $msg, %rsi # use string "Hello World"
-    movq $12, %rdx  # write 12 characters
+    # Keep in mind, writing to 32 bit registers
+    # are zero-ing the upper bits / implicitly zero-extend
+    # to 64 bit parts.
+    movl $1, %eax   # use the write syscall
+    movl $1, %edi   # write to stdout
+    movl $msg, %esi # use string "Hello World"
+    movl $12, %edx  # write 12 characters
     syscall         # make syscall
 
-    movq $60, %rax  # use the _exit syscall
-    movq $0, %rdi   # error code 0
+    movl $60, %eax  # use the _exit syscall
+    xorl %edi, %edi   # error code 0
     syscall         # make syscall
 ```
 - - -
