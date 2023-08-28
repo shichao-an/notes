@@ -554,10 +554,10 @@ A sequence of runes can be represented as a sequence of `int32` values. In this 
 
 Encoding Format | Range | Description
 ----------------|-------|------------
-`0xxxxxx` | runes 0−127 | (ASCII)
-`11xxxxx 10xxxxxx` | 128−2047 | (values <128 unused)
-`110xxxx 10xxxxxx 10xxxxxx` | 2048−65535 | (values <2048 unused)
-`1110xxx 10xxxxxx 10xxxxxx 10xxxxxx` | 65536−0x10ffff | (other values unused)
+`0xxxxxxx` | runes 0−127 | (ASCII)
+`110xxxxx 10xxxxxx` | 128−2047 | (values <128 unused)
+`1110xxxx 10xxxxxx 10xxxxxx` | 2048−65535 | (values <2048 unused)
+`11110xxx 10xxxxxx 10xxxxxx 10xxxxxx` | 65536−0x10ffff | (other values unused)
 
 Although a variable-length encoding precludes direct indexing to access the *n*-th character of a string, UTF-8 has many desirable properties:
 
