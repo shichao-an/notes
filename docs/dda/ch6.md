@@ -1,4 +1,4 @@
-### **Chatper 6. Replication**
+### **Chatper 6. Partitioning**
 
 In [Chapter 5](ch5.md) we discussed replication, that is, having multiple copies of the same data on different nodes. For very large datasets, or very high query throughput, that is not sufficient: we need to break the data up into *partitions*, also known as *sharding*.
 
